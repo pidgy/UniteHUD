@@ -1,0 +1,63 @@
+@font-face {
+    font-family: "switch";
+    src: url("../font/switch-bold.ttf");
+}
+
+body {
+    font-family: "switch";
+    font-size: 45px;
+    font-weight: bolder;
+    background: rgba(0, 0, 0, 0);
+}
+
+table {
+    width: 100%;
+    table-layout: fixed;
+}
+
+.scoreboard {
+    height: 100%;
+    width: 100%;
+    margin-left: -5px;
+}
+
+.score {
+    padding-top: 40px;
+    vertical-align: bottom;
+}
+
+.purple {
+    padding-right: 15px;
+    text-align: center;
+    color: #7a4eea;
+    text-shadow: 1px 1px 4px #8e79d0, 2px 2px 4px #7d65c1;
+}
+
+.orange {
+    padding-right: 15px;
+    text-align: center;
+    color: #e78900;
+    text-shadow: 1px 1px 4px #f0c967, 1px 1px 4px #7c465b;
+}
+
+.self {
+    padding-left: 15px;
+    text-align: center;
+    color: white;
+    text-shadow: 1px 1px 4px black, 1px 1px 4px black;
+}
+
+.seconds {
+    padding-left: 15px;
+    text-align: center;
+    color: white;
+    text-shadow: 1px 1px 4px black, 1px 1px 4px black;
+}
+
+.error {
+    color: red;
+    text-shadow: 1px 1px 4px white, 2px 2px 4px white;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+}

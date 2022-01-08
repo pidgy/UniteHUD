@@ -1,0 +1,19 @@
+# github.com/BurntSushi/xgb v0.0.0-20210121224620-deaf085860bc
+## explicit
+github.com/BurntSushi/xgb
+github.com/BurntSushi/xgb/xproto
+# github.com/rs/zerolog v1.26.1
+## explicit
+github.com/rs/zerolog
+github.com/rs/zerolog/internal/cbor
+github.com/rs/zerolog/internal/json
+github.com/rs/zerolog/log
+# github.com/vova616/screenshot v0.0.0-20191005130345-da36db2560ab
+## explicit
+github.com/vova616/screenshot
+# gocv.io/x/gocv v0.29.0
+## explicit
+gocv.io/x/gocv
+# golang.org/x/net v0.0.0-20220107192237-5cfca573fb4d
+## explicit
+golang.org/x/net/websocket
