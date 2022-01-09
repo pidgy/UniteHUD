@@ -18,6 +18,7 @@ import (
 	"github.com/pidgy/unitehud/dev"
 	"github.com/pidgy/unitehud/pipe"
 	"github.com/pidgy/unitehud/team"
+	"github.com/pidgy/unitehud/window"
 )
 
 // windows
@@ -40,9 +41,10 @@ type template struct {
 // Coadjutants.
 var (
 	socket *pipe.Pipe
-	mask   = gocv.NewMat()
-	rect   = image.Rect(640, 0, 1400, 500)
-	sigq   = make(chan os.Signal, 1)
+
+	mask = gocv.NewMat()
+	rect = image.Rect(640, 0, 1400, 500)
+	sigq = make(chan os.Signal, 1)
 )
 
 // Options.
@@ -50,7 +52,8 @@ var (
 	record     = false
 	acceptance = float32(0.91)
 	//acceptance = float32(0.95)
-	addr = ":17069"
+	addr       = ":17069"
+	resolution = "1920x1080"
 )
 
 var workers = map[string]int{
@@ -82,6 +85,7 @@ func init() {
 	).With().Timestamp().Logger()
 
 	acceptance = float32(*avg) / 100
+	socket = pipe.New(addr)
 
 	go signals()
 
@@ -157,7 +161,12 @@ func kill(errs ...error) {
 		time.Sleep(time.Millisecond)
 	}
 
-	sigq <- os.Kill
+	sig := os.Kill
+	if len(errs) == 0 {
+		sig = os.Interrupt
+	}
+
+	sigq <- sig
 }
 
 func seconds() {
@@ -185,14 +194,15 @@ func signals() {
 	signal.Notify(sigq, syscall.SIGINT, syscall.SIGTERM)
 	s := <-sigq
 
+	window.Close()
 	log.Info().Stringer("signal", s).Msg("closing...")
-
 	os.Exit(1)
 }
 
 func main() {
 	log.Info().
 		Bool("record", record).
+		Str("resolution", resolution).
 		Str("match", strconv.Itoa(int(acceptance*100))+"%").
 		Str("addr", addr).Msg("unitehud")
 
@@ -202,8 +212,6 @@ func main() {
 			kill(err)
 		}
 	}
-
-	socket = pipe.New(addr)
 
 	go seconds()
 
@@ -220,5 +228,12 @@ func main() {
 		}
 	}
 
-	signals()
+	err := window.Init()
+	if err != nil {
+		kill(err)
+	}
+
+	window.Score(0, 0, 0)
+	window.Time(0)
+	window.Open("Started Pokemon Unite HUD Server... listening at " + addr)
 }

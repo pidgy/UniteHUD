@@ -10,6 +10,7 @@ import (
 	"github.com/pidgy/unitehud/dev"
 	"github.com/pidgy/unitehud/duplicate"
 	"github.com/pidgy/unitehud/team"
+	"github.com/pidgy/unitehud/window"
 )
 
 type match struct {
@@ -28,10 +29,16 @@ func (m match) process(matrix gocv.Mat, img *image.RGBA) {
 		case "vs":
 			socket.Clear()
 
+			window.Write(window.Default, "Match starting")
+
 			if record {
 				dev.Start()
 			}
 		case "end":
+			socket.Clear()
+
+			window.Write(window.Default, "Match ended")
+
 			if record {
 				dev.End()
 			}
@@ -92,7 +99,7 @@ func (m match) points(matrix2 gocv.Mat, img *image.RGBA) {
 		dev.Log(fmt.Sprintf("%s %d (duplicate: %t)", m.Team.Name, value, dup))
 	}
 
-	if !dup {
+	if !dup && value > 0 {
 		go socket.Publish(m.Team, value)
 	}
 }

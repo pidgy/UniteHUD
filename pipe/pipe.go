@@ -2,13 +2,17 @@ package pipe
 
 import (
 	"encoding/json"
+	"image/color"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/net/websocket"
 
 	"github.com/pidgy/unitehud/team"
+	"github.com/pidgy/unitehud/window"
 )
 
 /*
@@ -23,7 +27,10 @@ import (
 */
 
 type Pipe struct {
-	game Game
+	game     Game
+	rx       int
+	tx       int
+	requests int
 }
 
 type Game struct {
@@ -64,12 +71,21 @@ func New(addr string) *Pipe {
 		raw, err := json.Marshal(p.game)
 		if err != nil {
 			log.Error().Err(err).Str("route", "/http").Object("game", p.game).Msg("failed to marshal game update")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
 
 		_, err = w.Write(raw)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			log.Error().Err(err).Object("game", p.game).Str("route", "/http").Msg("failed to marshal game update")
+			return
+		}
+
+		p.tx += len(raw)
+		p.requests++
+		if p.requests%100 == 0 {
+			window.Write(color.RGBA{0, 255, 0, 255}, "Server has sent", strconv.Itoa(p.tx), "bytes in", strconv.Itoa(p.requests), "requests")
 		}
 
 		log.Debug().Str("route", "/http").Str("remote", r.RemoteAddr).RawJSON("raw", raw).Msg("served")
@@ -125,10 +141,14 @@ func (p *Pipe) Publish(t *team.Team, value int) {
 		p.game.Purple.Value += s.Value
 		p.game.Self.Value += s.Value
 	}
+
+	window.Write(t.RGBA, strings.Title(t.Name), "team", "scored", strconv.Itoa(value), "points")
+	window.Score(p.game.Purple.Value, p.game.Orange.Value, p.game.Self.Value)
 }
 
 func (p *Pipe) Time(minutes, seconds int) {
 	p.game.Seconds = minutes*60 + seconds
+	window.Time(p.game.Seconds)
 }
 
 func (p *Pipe) score(ws *websocket.Conn) {
@@ -145,6 +165,8 @@ func (p *Pipe) score(ws *websocket.Conn) {
 	if err != nil {
 		log.Error().Err(err).Str("route", "/ws").Object("game", p.game).Stringer("remote", ws.RemoteAddr()).Msg("failed to send game update")
 	}
+
+	p.tx += len(raw)
 
 	log.Debug().Str("route", "/ws").Stringer("remote", ws.RemoteAddr()).RawJSON("raw", raw).Msg("request served")
 }
