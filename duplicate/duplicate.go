@@ -43,7 +43,6 @@ func (d *Duplicate) Of(d2 *Duplicate) bool {
 	}
 
 	if d.Value != d2.Value {
-		println(d.Value, d2.Value)
 		return false
 	}
 

@@ -34,7 +34,11 @@ var (
 )
 
 var (
-	win *window
+	win = &window{
+		Window:   gocv.NewWindow("Pokemon Unite HUD Server"),
+		messageq: make(chan message),
+		messages: []message{},
+	}
 
 	point = image.Pt(10, 84)
 	lines = 19
@@ -58,16 +62,9 @@ func Init() error {
 		return nil
 	}
 
-	bg, err := gocv.ImageToMatRGBA(img)
+	win.bg, err = gocv.ImageToMatRGBA(img)
 	if err != nil {
 		return nil
-	}
-
-	win = &window{
-		Window:   gocv.NewWindow("Pokemon Unite HUD Server"),
-		messageq: make(chan message),
-		messages: []message{},
-		bg:       bg,
 	}
 
 	Score(0, 0, 0)
@@ -111,24 +108,29 @@ func Time(seconds int) {
 }
 
 func Write(rgba color.RGBA, txt ...string) {
+	if len(txt) == 0 {
+		return
+	}
+
 	go func() {
-		win.messageq <- message{rgba, "[" + time.Now().Format(time.Kitchen) + "] " + strings.Join(txt, " ")}
+		win.messageq <- message{rgba: rgba, txt: "[" + time.Now().Format(time.Kitchen) + "] " + strings.Join(txt, " ")}
 	}()
 }
 
 func (w *window) chunk(m message) {
-	str := ""
+	txt := ""
+
 	for i := 0; i < len(m.txt); i++ {
-		str += string(m.txt[i])
+		txt += string(m.txt[i])
 
 		if i != 0 && i%win.bg.Cols() == 0 {
-			win.messages = append(win.messages, message{m.rgba, str})
-			str = ""
+			win.messages = append(win.messages, message{rgba: m.rgba, txt: txt})
+			txt = ""
 		}
 	}
 
-	if str != "" {
-		win.messages = append(win.messages, message{m.rgba, str})
+	if txt != "" {
+		win.messages = append(win.messages, message{rgba: m.rgba, txt: txt})
 	}
 }
 
@@ -145,10 +147,15 @@ func redraw(m message) gocv.Mat {
 
 	mat := win.bg.Clone()
 
+	size := gocv.GetTextSize(" ", gocv.FontHersheyPlain, 1, 1).X
+
 	gocv.PutTextWithParams(&mat, title, image.Pt(point.X, 21), gocv.FontHersheyPlain, 1, Default, 1, gocv.Filled, false)
-	gocv.PutTextWithParams(&mat, win.purple, image.Pt(point.X, 42), gocv.FontHersheyPlain, 1, team.Purple.RGBA, 1, gocv.Filled, false)
-	gocv.PutTextWithParams(&mat, win.orange, image.Pt(win.bg.Cols()-75, 42), gocv.FontHersheyPlain, 1, team.Orange.RGBA, 1, gocv.Filled, false)
 	gocv.PutTextWithParams(&mat, win.clock, image.Pt(win.bg.Cols()-75, 21), gocv.FontHersheyPlain, 1, Default, 1, gocv.Filled, false)
+	points := strings.Split(win.purple, "/")
+	gocv.PutTextWithParams(&mat, points[0], image.Pt(point.X, 42), gocv.FontHersheyPlain, 1, color.RGBA{0, 255, 0, 255}, 1, gocv.Filled, false)
+	gocv.PutTextWithParams(&mat, "/", image.Pt(point.X+(len(points[0])*size), 42), gocv.FontHersheyPlain, 1, Default, 1, gocv.Filled, false)
+	gocv.PutTextWithParams(&mat, points[1], image.Pt(point.X+((len(points[0])+1)*size), 42), gocv.FontHersheyPlain, 1, team.Purple.RGBA, 1, gocv.Filled, false)
+	gocv.PutTextWithParams(&mat, win.orange, image.Pt(win.bg.Cols()-75, 42), gocv.FontHersheyPlain, 1, team.Orange.RGBA, 1, gocv.Filled, false)
 
 	gocv.PutTextWithParams(&mat, win.line(), image.Pt(0, 63), gocv.FontHersheyPlain, 1, Default, 1, gocv.Filled, false)
 

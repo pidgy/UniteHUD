@@ -94,13 +94,13 @@ func (m match) points(matrix2 gocv.Mat, img *image.RGBA) {
 	m.Team.Duplicate.Close()
 	m.Team.Duplicate = latest
 
+	if !dup && value > 0 {
+		go socket.Publish(m.Team, value)
+	}
+
 	if record {
 		dev.Capture(img, matrix2, m.Team.Name, order, dup, value)
 		dev.Log(fmt.Sprintf("%s %d (duplicate: %t)", m.Team.Name, value, dup))
-	}
-
-	if !dup && value > 0 {
-		go socket.Publish(m.Team, value)
 	}
 }
 
