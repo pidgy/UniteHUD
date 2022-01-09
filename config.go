@@ -239,12 +239,7 @@ func load() {
 				mat := gocv.IMRead(filter.file, gocv.IMReadColor)
 				mat2 := gocv.NewMat()
 
-				if filter.scalar != 1 {
-					scale := (filter.scalar - scale) + 1
-					gocv.Resize(mat, &mat2, image.Pt(0, 0), scale, scale, gocv.InterpolationDefault)
-				} else {
-					gocv.Resize(mat, &mat2, image.Pt(0, 0), scale, scale, gocv.InterpolationDefault)
-				}
+				gocv.Resize(mat, &mat2, image.Pt(0, 0), (filter.scalar+scale)-1, (filter.scalar+scale)-1, gocv.InterpolationDefault)
 
 				templates[category][filter.Team.Name] = append(templates[category][filter.Team.Name],
 					template{
