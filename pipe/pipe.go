@@ -15,25 +15,13 @@ import (
 	"github.com/pidgy/unitehud/window"
 )
 
-/*
-	{
-		"purple": {
-			score: 10
-		},
-		"orange": {
-			score: 10
-		},
-	}
-*/
-
 type Pipe struct {
-	game     Game
-	rx       int
+	game
 	tx       int
 	requests int
 }
 
-type Game struct {
+type game struct {
 	Purple  Score `json:"purple"`
 	Orange  Score `json:"orange"`
 	Self    Score `json:"self"`
@@ -47,7 +35,7 @@ type Score struct {
 
 func New(addr string) *Pipe {
 	p := &Pipe{
-		game: Game{
+		game: game{
 			Purple: Score{
 				team.Purple.Name,
 				0,
@@ -108,7 +96,7 @@ func (p *Pipe) Clear() {
 
 	log.Info().Object("game", p.game).Msg("clearing")
 
-	p.game = Game{
+	p.game = game{
 		Purple: Score{
 			team.Purple.Name,
 			0,
@@ -171,7 +159,7 @@ func (p *Pipe) score(ws *websocket.Conn) {
 	log.Debug().Str("route", "/ws").Stringer("remote", ws.RemoteAddr()).RawJSON("raw", raw).Msg("request served")
 }
 
-func (g Game) MarshalZerologObject(e *zerolog.Event) {
+func (g game) MarshalZerologObject(e *zerolog.Event) {
 	e.Object("purple", g.Purple).Object("orange", g.Orange)
 }
 

@@ -9,6 +9,20 @@ import (
 	"github.com/pidgy/unitehud/team"
 )
 
+type filter struct {
+	*team.Team
+	file  string
+	value int
+}
+
+type template struct {
+	filter
+	gocv.Mat
+	scalar      float64
+	category    string
+	subcategory string
+}
+
 // Configurations.
 var (
 	filenames = map[string]map[string][]filter{

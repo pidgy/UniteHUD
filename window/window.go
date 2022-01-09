@@ -23,6 +23,10 @@ type window struct {
 	messageq chan message
 	messages []message
 	bg       gocv.Mat
+
+	purple string
+	orange string
+	clock  string
 }
 
 var (
@@ -32,13 +36,16 @@ var (
 var (
 	win *window
 
-	point  = image.Pt(10, 84)
-	lines  = 19
-	purple = ""
-	orange = ""
-	clock  = ""
-	title  = "Pokemon Unite HUD Server"
+	point = image.Pt(10, 84)
+	lines = 19
+	title = "Pokemon Unite HUD Server"
 )
+
+func Close() {
+	if win != nil && win.IsOpen() {
+		win.Close()
+	}
+}
 
 func Init() error {
 	f, err := os.Open("img/bg.png")
@@ -63,21 +70,16 @@ func Init() error {
 		bg:       bg,
 	}
 
+	Score(0, 0, 0)
+	Time(0)
+
 	return nil
 }
 
-func Close() {
-	if win != nil && win.IsOpen() {
-		win.Close()
-	}
-}
-
-func Open(msg string) {
+func Open() {
 	mat := win.bg.Clone()
 	win.ResizeWindow(mat.Cols(), mat.Rows())
 	win.IMShow(mat)
-
-	Write(Default, msg)
 
 	for {
 		if !win.visible() {
@@ -100,12 +102,12 @@ func Open(msg string) {
 }
 
 func Score(p, o, s int) {
-	purple = fmt.Sprintf("%d/%d", s, p)
-	orange = fmt.Sprintf("%d", o)
+	win.purple = fmt.Sprintf("%d/%d", s, p)
+	win.orange = fmt.Sprintf("%d", o)
 }
 
 func Time(seconds int) {
-	clock = fmt.Sprintf("[%02d:%02d]", seconds/60, seconds%60)
+	win.clock = fmt.Sprintf("[%02d:%02d]", seconds/60, seconds%60)
 }
 
 func Write(rgba color.RGBA, txt ...string) {
@@ -144,9 +146,9 @@ func redraw(m message) gocv.Mat {
 	mat := win.bg.Clone()
 
 	gocv.PutTextWithParams(&mat, title, image.Pt(point.X, 21), gocv.FontHersheyPlain, 1, Default, 1, gocv.Filled, false)
-	gocv.PutTextWithParams(&mat, purple, image.Pt(point.X, 42), gocv.FontHersheyPlain, 1, team.Purple.RGBA, 1, gocv.Filled, false)
-	gocv.PutTextWithParams(&mat, orange, image.Pt(win.bg.Cols()-75, 42), gocv.FontHersheyPlain, 1, team.Orange.RGBA, 1, gocv.Filled, false)
-	gocv.PutTextWithParams(&mat, clock, image.Pt(win.bg.Cols()-75, 21), gocv.FontHersheyPlain, 1, Default, 1, gocv.Filled, false)
+	gocv.PutTextWithParams(&mat, win.purple, image.Pt(point.X, 42), gocv.FontHersheyPlain, 1, team.Purple.RGBA, 1, gocv.Filled, false)
+	gocv.PutTextWithParams(&mat, win.orange, image.Pt(win.bg.Cols()-75, 42), gocv.FontHersheyPlain, 1, team.Orange.RGBA, 1, gocv.Filled, false)
+	gocv.PutTextWithParams(&mat, win.clock, image.Pt(win.bg.Cols()-75, 21), gocv.FontHersheyPlain, 1, Default, 1, gocv.Filled, false)
 
 	gocv.PutTextWithParams(&mat, win.line(), image.Pt(0, 63), gocv.FontHersheyPlain, 1, Default, 1, gocv.Filled, false)
 

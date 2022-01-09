@@ -22,23 +22,8 @@ import (
 )
 
 // windows
-// cls && go build && unitehud.exe -server -optimal
+// cls && go build && unitehud.exe
 
-type filter struct {
-	*team.Team
-	file  string
-	value int
-}
-
-type template struct {
-	filter
-	gocv.Mat
-	scalar      float64
-	category    string
-	subcategory string
-}
-
-// Coadjutants.
 var (
 	socket *pipe.Pipe
 
@@ -47,28 +32,19 @@ var (
 	sigq = make(chan os.Signal, 1)
 )
 
-// Options.
+var imgq = map[string]chan *image.RGBA{
+	team.None.Name:   make(chan *image.RGBA, 1),
+	team.Self.Name:   make(chan *image.RGBA, 4),
+	team.Purple.Name: make(chan *image.RGBA, 1),
+	team.Orange.Name: make(chan *image.RGBA, 1),
+}
+
 var (
 	record     = false
 	acceptance = float32(0.91)
-	//acceptance = float32(0.95)
 	addr       = ":17069"
 	resolution = "1920x1080"
 )
-
-var workers = map[string]int{
-	team.None.Name:   1,
-	team.Self.Name:   4,
-	team.Purple.Name: 1,
-	team.Orange.Name: 1,
-}
-
-var imgq = map[string]chan *image.RGBA{
-	team.None.Name:   make(chan *image.RGBA),
-	team.Self.Name:   make(chan *image.RGBA),
-	team.Purple.Name: make(chan *image.RGBA),
-	team.Orange.Name: make(chan *image.RGBA),
-}
 
 func init() {
 	flag.BoolVar(&record, "record", record, "record data such as images and logs for developer-specific debugging")
@@ -129,6 +105,20 @@ func loop(t []template, imgq chan *image.RGBA) {
 	}
 }
 
+func kill(errs ...error) {
+	for _, err := range errs {
+		log.Error().Err(err).Send()
+		time.Sleep(time.Millisecond)
+	}
+
+	sig := os.Kill
+	if len(errs) == 0 {
+		sig = os.Interrupt
+	}
+
+	sigq <- sig
+}
+
 func matches(matrix gocv.Mat, img *image.RGBA, t []template) {
 	results := make([]gocv.Mat, len(t))
 
@@ -153,20 +143,6 @@ func matches(matrix gocv.Mat, img *image.RGBA, t []template) {
 			}.process(matrix, img)
 		}
 	}
-}
-
-func kill(errs ...error) {
-	for _, err := range errs {
-		log.Error().Err(err).Send()
-		time.Sleep(time.Millisecond)
-	}
-
-	sig := os.Kill
-	if len(errs) == 0 {
-		sig = os.Interrupt
-	}
-
-	sigq <- sig
 }
 
 func seconds() {
@@ -213,27 +189,27 @@ func main() {
 		}
 	}
 
-	go seconds()
-
 	for category := range templates {
 		if category == "points" || category == "time" {
 			continue
 		}
 
 		for name := range templates[category] {
-			for i := 0; i < workers[name]; i++ {
+			for i := 0; i < cap(imgq[name]); i++ {
 				go capture(name)
 				go loop(templates[category][name], imgq[name])
 			}
 		}
 	}
 
+	go seconds()
+
 	err := window.Init()
 	if err != nil {
 		kill(err)
 	}
 
-	window.Score(0, 0, 0)
-	window.Time(0)
-	window.Open("Started Pokemon Unite HUD Server... listening at " + addr)
+	window.Write(window.Default, "Started Pokemon Unite HUD Server... listening on", addr)
+
+	window.Open()
 }
