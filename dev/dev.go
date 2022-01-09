@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	"image/png"
+	"math/rand"
 	"os"
 	"time"
 
@@ -17,7 +18,7 @@ var dir = "tmp/"
 
 func Capture(img image.Image, mat gocv.Mat, subdir string, order string, duplicate bool, value int) {
 	subdir = fmt.Sprintf("%s/capture/%s/", dir, subdir)
-	file := fmt.Sprintf("%d_%s_%d", time.Now().Unix(), order, value)
+	file := fmt.Sprintf("%d@%d_%s_%d", time.Now().UnixNano(), rand.Int()%99, order, value)
 
 	if duplicate {
 		file += "_duplicate"
