@@ -3,10 +3,10 @@ Pokemon Unite scoreboard HUD and extra tools running over captured game feeds us
 
 
 ### Client (OBS Live)
-![alt text](https://github.com/Verocity-Gaming/unite/blob/main/data/client.gif "Client")
+![alt text](https://github.com/pidgy/unite/blob/main/data/client.gif "Client")
 
 ### Server
-![alt text](https://github.com/Verocity-Gaming/unite/blob/main/data/server.gif "server")
+![alt text](https://github.com/pidgy/unite/blob/main/data/server.gif "server")
 
 ### Architecture
 
