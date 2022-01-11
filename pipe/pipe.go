@@ -97,18 +97,9 @@ func (p *Pipe) Clear() {
 	log.Info().Object("game", p.game).Msg("clearing")
 
 	p.game = game{
-		Purple: Score{
-			team.Purple.Name,
-			0,
-		},
-		Orange: Score{
-			team.Orange.Name,
-			0,
-		},
-		Self: Score{
-			team.Self.Name,
-			0,
-		},
+		Purple: Score{Team: team.Purple.Name},
+		Orange: Score{Team: team.Orange.Name},
+		Self:   Score{Team: team.Self.Name},
 	}
 }
 

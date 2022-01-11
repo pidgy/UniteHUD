@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"image"
+	"time"
 
 	"github.com/rs/zerolog/log"
 	"gocv.io/x/gocv"
@@ -87,6 +88,10 @@ func (m match) points(matrix2 gocv.Mat, img *image.RGBA) {
 	latest := duplicate.New(value, matrix2, region)
 
 	dup := m.Team.Duplicate.Of(latest)
+	if !dup && m.Team.Name == team.Self.Name && time.Now().Sub(m.Team.Duplicate.Time) < time.Second*3 {
+		dup = true
+	}
+
 	if dup {
 		log.Warn().Object("latest", latest).Object("match", m).Msg("duplicate match")
 	}

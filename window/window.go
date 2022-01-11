@@ -5,6 +5,7 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"math"
 	"os"
 	"strings"
 	"time"
@@ -36,7 +37,7 @@ var (
 var (
 	win = &window{
 		Window:   gocv.NewWindow("Pokemon Unite HUD Server"),
-		messageq: make(chan message),
+		messageq: make(chan message, math.MaxUint16),
 		messages: []message{},
 	}
 
@@ -112,9 +113,10 @@ func Write(rgba color.RGBA, txt ...string) {
 		return
 	}
 
-	go func() {
-		win.messageq <- message{rgba: rgba, txt: "[" + time.Now().Format(time.Kitchen) + "] " + strings.Join(txt, " ")}
-	}()
+	select {
+	case win.messageq <- message{rgba: rgba, txt: "[" + time.Now().Format(time.Kitchen) + "] " + strings.Join(txt, " ")}:
+	default:
+	}
 }
 
 func (w *window) chunk(m message) {
