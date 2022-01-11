@@ -43,11 +43,13 @@ var (
 	record     = false
 	acceptance = float32(0.91)
 	addr       = ":17069"
+	game       = "switch"
 )
 
 func init() {
 	flag.BoolVar(&record, "record", record, "record data such as images and logs for developer-specific debugging")
 	flag.StringVar(&addr, "addr", addr, "http/websocket serve address")
+	flag.StringVar(&game, "game", game, "http/websocket serve address")
 	avg := flag.Float64("match", float64(acceptance)*100, `0-100% certainty when processing score values`)
 	level := flag.String("v", zerolog.LevelInfoValue, "log level (panic, fatal, error, warn, info, debug)")
 	flag.Parse()
@@ -178,6 +180,7 @@ func main() {
 	log.Info().
 		Bool("record", record).
 		Str("match", strconv.Itoa(int(acceptance*100))+"%").
+		Str("game", game).
 		Str("addr", addr).Msg("unitehud")
 
 	if record {

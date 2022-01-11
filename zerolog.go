@@ -29,6 +29,5 @@ func (p pieces) MarshalZerologObject(e *zerolog.Event) {
 func (t template) MarshalZerologObject(e *zerolog.Event) {
 	e.Object("filter", t.filter).
 		Int("mrows", t.Mat.Rows()).
-		Int("mcols", t.Mat.Cols()).
-		Float64("scalar", t.scalar)
+		Int("mcols", t.Mat.Cols())
 }
