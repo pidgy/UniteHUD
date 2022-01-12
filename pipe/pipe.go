@@ -128,6 +128,8 @@ func (p *Pipe) Publish(t *team.Team, value int) {
 func (p *Pipe) Time(minutes, seconds int) {
 	p.game.Seconds = minutes*60 + seconds
 	window.Time(p.game.Seconds)
+
+	log.Info().Object("game", p.game).Msg("updated time")
 }
 
 func (p *Pipe) score(ws *websocket.Conn) {
@@ -151,7 +153,7 @@ func (p *Pipe) score(ws *websocket.Conn) {
 }
 
 func (g game) MarshalZerologObject(e *zerolog.Event) {
-	e.Object("purple", g.Purple).Object("orange", g.Orange)
+	e.Object("purple", g.Purple).Object("orange", g.Orange).Int("seconds", g.Seconds)
 }
 
 func (s Score) MarshalZerologObject(e *zerolog.Event) {
