@@ -28,7 +28,7 @@ var (
 	socket *pipe.Pipe
 
 	mask = gocv.NewMat()
-	rect = image.Rect(480, 0, 1920, 1080)
+	rect = image.Rect(640, 0, 1400, 500)
 	sigq = make(chan os.Signal, 1)
 )
 
@@ -77,6 +77,9 @@ func init() {
 }
 
 func capture(name string) {
+	if game == "ios" {
+		rect = image.Rect(480, 0, 1920, 1080)
+	}
 	for {
 		img, err := screenshot.CaptureRect(rect)
 		if err != nil {
@@ -148,7 +151,12 @@ func matches(matrix gocv.Mat, img *image.RGBA, t []template) {
 }
 
 func seconds() {
-	area := image.Rect(1130, 0, 1255, 40)
+	area := image.Rect(875, 0, 1025, 60)
+
+	if game == "ios" {
+		area = image.Rect(1130, 0, 1255, 40)
+	}
+
 	m := match{}
 
 	for {
@@ -161,8 +169,6 @@ func seconds() {
 		if err != nil {
 			kill(err)
 		}
-
-		gocv.IMWrite("time.png", matrix)
 
 		m.time(matrix, img)
 
