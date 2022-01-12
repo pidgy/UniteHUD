@@ -170,7 +170,10 @@ func seconds() {
 			kill(err)
 		}
 
-		m.time(matrix, img)
+		if m.time(matrix, img, regularTime) == 0 && m.time(matrix, img, finalStretch) == 0 {
+			// Let's back off and not waste processing power.
+			time.Sleep(time.Second * 5)
+		}
 
 		time.Sleep(team.Delay(team.Time.Name))
 	}

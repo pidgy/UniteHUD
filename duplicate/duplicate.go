@@ -46,7 +46,7 @@ func (d *Duplicate) Of(d2 *Duplicate) bool {
 		return false
 	}
 
-	if d.Time.Sub(d2.Time) > time.Second*5 {
+	if d.Time.Sub(d2.Time) > time.Second*3 {
 		return false
 	}
 

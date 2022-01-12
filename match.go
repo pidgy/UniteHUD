@@ -19,6 +19,20 @@ type match struct {
 	template
 }
 
+var regularTime = []image.Rectangle{
+	image.Rect(35, 15, 60, 50),
+	image.Rect(55, 15, 75, 50),
+	image.Rect(80, 15, 100, 50),
+	image.Rect(95, 15, 120, 50),
+}
+
+var finalStretch = []image.Rectangle{
+	image.Rect(30, 20, 55, 60),
+	image.Rect(54, 25, 72, 60),
+	image.Rect(80, 20, 100, 60),
+	image.Rect(104, 25, 122, 60),
+}
+
 func (m match) process(matrix gocv.Mat, img *image.RGBA) {
 	log.Info().Object("match", m).Int("cols", matrix.Cols()).Int("rows", matrix.Rows()).Msg("match found")
 
@@ -110,15 +124,8 @@ func (m match) points(matrix2 gocv.Mat, img *image.RGBA) {
 	}
 }
 
-func (m match) time(matrix gocv.Mat, img *image.RGBA) {
+func (m match) time(matrix gocv.Mat, img *image.RGBA, hands []image.Rectangle) int {
 	clock := []int{-1, -1, -1, -1}
-
-	hands := []image.Rectangle{
-		image.Rect(35, 15, 60, 50),
-		image.Rect(55, 15, 75, 50),
-		image.Rect(80, 15, 100, 50),
-		image.Rect(95, 15, 120, 50),
-	}
 
 	for i := range clock {
 		mat := gocv.NewMat()
@@ -150,7 +157,7 @@ func (m match) time(matrix gocv.Mat, img *image.RGBA) {
 
 	for i := range clock {
 		if clock[i] == -1 {
-			return
+			return 0
 		}
 	}
 
@@ -158,4 +165,6 @@ func (m match) time(matrix gocv.Mat, img *image.RGBA) {
 	secs := clock[2]*10 + clock[3]
 
 	socket.Time(mins, secs)
+
+	return mins*60 + secs
 }
