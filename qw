@@ -1,82 +1,0 @@
-[1mdiff --git a/main.go b/main.go[m
-[1mindex b4a6a6b..1ac9f26 100644[m
-[1m--- a/main.go[m
-[1m+++ b/main.go[m
-[36m@@ -28,7 +28,7 @@[m [mvar ([m
- 	socket *pipe.Pipe[m
- [m
- 	mask = gocv.NewMat()[m
-[31m-	rect = image.Rect(640, 0, 1400, 500)[m
-[32m+[m	[32mrect = image.Rect(480, 0, 1920, 1080)[m[41m[m
- 	sigq = make(chan os.Signal, 1)[m
- )[m
- [m
-[36m@@ -37,6 +37,7 @@[m [mvar imgq = map[string]chan *image.RGBA{[m
- 	team.Self.Name:   make(chan *image.RGBA, 4),[m
- 	team.Purple.Name: make(chan *image.RGBA, 1),[m
- 	team.Orange.Name: make(chan *image.RGBA, 1),[m
-[32m+[m	[32mteam.Balls.Name:  make(chan *image.RGBA, 1),[m[41m[m
- }[m
- [m
- var ([m
-[36m@@ -147,7 +148,7 @@[m [mfunc matches(matrix gocv.Mat, img *image.RGBA, t []template) {[m
- }[m
- [m
- func seconds() {[m
-[31m-	area := image.Rect(875, 0, 1025, 60)[m
-[32m+[m	[32marea := image.Rect(1130, 0, 1255, 40)[m[41m[m
- 	m := match{}[m
- [m
- 	for {[m
-[36m@@ -161,6 +162,8 @@[m [mfunc seconds() {[m
- 			kill(err)[m
- 		}[m
- [m
-[32m+[m		[32mgocv.IMWrite("time.png", matrix)[m[41m[m
-[32m+[m[41m[m
- 		m.time(matrix, img)[m
- [m
- 		time.Sleep(team.Delay(team.Time.Name))[m
-[1mdiff --git a/match.go b/match.go[m
-[1mindex 6f2c5fd..97dab36 100644[m
-[1m--- a/match.go[m
-[1m+++ b/match.go[m
-[36m@@ -88,7 +88,7 @@[m [mfunc (m match) points(matrix2 gocv.Mat, img *image.RGBA) {[m
- 	latest := duplicate.New(value, matrix2, region)[m
- [m
- 	dup := m.Team.Duplicate.Of(latest)[m
-[31m-	if !dup && m.Team.Name == team.Self.Name && time.Now().Sub(m.Team.Duplicate.Time) < time.Second*3 {[m
-[32m+[m	[32mif !dup && m.Team.Name == team.Self.Name && time.Now().Sub(m.Team.Duplicate.Time) < time.Second {[m[41m[m
- 		dup = true[m
- 	}[m
- [m
-[1mdiff --git a/team/team.go b/team/team.go[m
-[1mindex eb33ed2..aa7f816 100644[m
-[1m--- a/team/team.go[m
-[1m+++ b/team/team.go[m
-[36m@@ -47,6 +47,13 @@[m [mvar ([m
- 		Duplicate: duplicate.New(-1, gocv.NewMat(), gocv.NewMat()),[m
- 	}[m
- [m
-[32m+[m	[32m//Balls represents the number of balls held by self.[m[41m[m
-[32m+[m	[32mBalls = &Team{[m[41m[m
-[32m+[m		[32mName:      "balls",[m[41m[m
-[32m+[m		[32mRGBA:      purple,[m[41m[m
-[32m+[m		[32mDuplicate: duplicate.New(-1, gocv.NewMat(), gocv.NewMat()),[m[41m[m
-[32m+[m	[32m}[m[41m[m
-[32m+[m[41m[m
- 	// None represents the default case for an unidentifiable side.[m
- 	None = &Team{[m
- 		Name:      "none",[m
-[36m@@ -67,8 +74,10 @@[m [mfunc Delay(name string) time.Duration {[m
- 		return time.Second * 5[m
- 	case Self.Name:[m
- 		return time.Second / 4[m
-[31m-	default:[m
-[32m+[m	[32mcase Balls.Name:[m[41m[m
- 		return time.Second[m
-[32m+[m	[32mdefault:[m[41m[m
-[32m+[m		[32mreturn time.Second * 2[m[41m[m
- 	}[m
- }[m
- [m
