@@ -1,4 +1,8 @@
 tmp/
 .vscode/
+<<<<<<< HEAD
 *.exe
 .pat
+=======
+unitehud.exe
+>>>>>>> 0dc8231a66706bc10fe9bbea3e540bc3acab91a9
