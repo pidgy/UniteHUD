@@ -37,6 +37,7 @@ var imgq = map[string]chan *image.RGBA{
 	team.Self.Name:   make(chan *image.RGBA, 4),
 	team.Purple.Name: make(chan *image.RGBA, 1),
 	team.Orange.Name: make(chan *image.RGBA, 1),
+	team.Balls.Name:  make(chan *image.RGBA, 1),
 }
 
 var (
@@ -76,6 +77,9 @@ func init() {
 }
 
 func capture(name string) {
+	if game == "ios" {
+		rect = image.Rect(480, 0, 1920, 1080)
+	}
 	for {
 		img, err := screenshot.CaptureRect(rect)
 		if err != nil {
@@ -148,6 +152,11 @@ func matches(matrix gocv.Mat, img *image.RGBA, t []template) {
 
 func seconds() {
 	area := image.Rect(875, 0, 1025, 60)
+
+	if game == "ios" {
+		area = image.Rect(1130, 0, 1255, 40)
+	}
+
 	m := match{}
 
 	for {
