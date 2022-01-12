@@ -118,6 +118,10 @@ func (m match) time(matrix gocv.Mat, img *image.RGBA, hands [4]image.Rectangle) 
 		gocv.IMWrite("hand_"+strconv.Itoa(i)+".png", matrix.Region(hands[i]))
 	}
 
+	for i := range hands {
+		gocv.IMWrite("hand_"+strconv.Itoa(i)+".png", matrix.Region(hands[i]))
+	}
+
 	for i := range clock {
 		mat := gocv.NewMat()
 		defer mat.Close()
