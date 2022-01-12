@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"image"
+	"strconv"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -17,20 +18,6 @@ import (
 type match struct {
 	image.Point
 	template
-}
-
-var regularTime = []image.Rectangle{
-	image.Rect(35, 15, 60, 50),
-	image.Rect(55, 15, 75, 50),
-	image.Rect(80, 15, 100, 50),
-	image.Rect(95, 15, 120, 50),
-}
-
-var finalStretch = []image.Rectangle{
-	image.Rect(30, 20, 55, 60),
-	image.Rect(54, 25, 72, 60),
-	image.Rect(80, 20, 100, 60),
-	image.Rect(104, 25, 122, 60),
 }
 
 func (m match) process(matrix gocv.Mat, img *image.RGBA) {
@@ -127,6 +114,10 @@ func (m match) points(matrix2 gocv.Mat, img *image.RGBA) {
 func (m match) time(matrix gocv.Mat, img *image.RGBA, hands [4]image.Rectangle) int {
 	clock := [4]int{-1, -1, -1, -1}
 
+	for i := range hands {
+		gocv.IMWrite("hand_"+strconv.Itoa(i)+".png", matrix.Region(hands[i]))
+	}
+
 	for i := range clock {
 		mat := gocv.NewMat()
 		defer mat.Close()
@@ -134,6 +125,7 @@ func (m match) time(matrix gocv.Mat, img *image.RGBA, hands [4]image.Rectangle) 
 		results := make([]gocv.Mat, len(templates["time"][team.Time.Name]))
 
 		for j, template := range templates["time"][team.Time.Name] {
+
 			mat := gocv.NewMat()
 			defer mat.Close()
 

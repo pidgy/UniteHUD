@@ -54,11 +54,21 @@ var (
 			load: loadSwitch,
 		},
 		"custom": {
-			scores:       image.Rect(480, 0, 1920, 1080),
-			time:         image.Rect(1130, 0, 1255, 40),
-			regularTime:  [4]image.Rectangle{},
-			finalStretch: [4]image.Rectangle{},
-			load:         loadIOS,
+			scores: image.Rect(480, 0, 1920, 1080),
+			time:   image.Rect(1130, 0, 1255, 40),
+			regularTime: [4]image.Rectangle{
+				image.Rect(7, 0, 19, 20),
+				image.Rect(19, 0, 31, 20),
+				image.Rect(38, 0, 50, 20),
+				image.Rect(50, 0, 62, 20),
+			},
+			finalStretch: [4]image.Rectangle{
+				image.Rect(2, 7, 15, 29),
+				image.Rect(17, 7, 30, 29),
+				image.Rect(39, 7, 52, 29),
+				image.Rect(54, 7, 67, 29),
+			},
+			load: loadIOS,
 		},
 	}
 )
@@ -318,7 +328,18 @@ func loadIOS() {
 			team.Self.Name:   {},
 		},
 		"time": {
-			team.Time.Name: {},
+			team.Time.Name: {
+				filter{team.Time, "img/ios/time/points/point_0.png", 0},
+				filter{team.Time, "img/ios/time/points/point_1.png", 1},
+				filter{team.Time, "img/ios/time/points/point_2.png", 2},
+				filter{team.Time, "img/ios/time/points/point_3.png", 3},
+				filter{team.Time, "img/ios/time/points/point_4.png", 4},
+				filter{team.Time, "img/ios/time/points/point_5.png", 5},
+				filter{team.Time, "img/ios/time/points/point_6.png", 6},
+				filter{team.Time, "img/ios/time/points/point_7.png", 7},
+				filter{team.Time, "img/ios/time/points/point_8.png", 8},
+				filter{team.Time, "img/ios/time/points/point_9.png", 9},
+			},
 		},
 	}
 
