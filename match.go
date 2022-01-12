@@ -88,7 +88,7 @@ func (m match) points(matrix2 gocv.Mat, img *image.RGBA) {
 	latest := duplicate.New(value, matrix2, region)
 
 	dup := m.Team.Duplicate.Of(latest)
-	if !dup && m.Team.Name == team.Self.Name && time.Now().Sub(m.Team.Duplicate.Time) < time.Second*3 {
+	if !dup && m.Team.Name == team.Self.Name && time.Now().Sub(m.Team.Duplicate.Time) < time.Second {
 		dup = true
 	}
 

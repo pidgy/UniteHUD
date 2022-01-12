@@ -47,6 +47,13 @@ var (
 		Duplicate: duplicate.New(-1, gocv.NewMat(), gocv.NewMat()),
 	}
 
+	//Balls represents the number of balls held by self.
+	Balls = &Team{
+		Name:      "balls",
+		RGBA:      purple,
+		Duplicate: duplicate.New(-1, gocv.NewMat(), gocv.NewMat()),
+	}
+
 	// None represents the default case for an unidentifiable side.
 	None = &Team{
 		Name:      "none",
@@ -67,8 +74,10 @@ func Delay(name string) time.Duration {
 		return time.Second * 5
 	case Self.Name:
 		return time.Second / 4
-	default:
+	case Balls.Name:
 		return time.Second
+	default:
+		return time.Second * 2
 	}
 }
 
