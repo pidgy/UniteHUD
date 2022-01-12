@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"image"
+	"strconv"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -120,6 +121,21 @@ func (m match) time(matrix gocv.Mat, img *image.RGBA) {
 		image.Rect(95, 15, 120, 50),
 	}
 
+	if game == "ios" {
+		hands = []image.Rectangle{
+			// For the first 8 mins
+
+			image.Rect(0, 0, 12, 20),
+			image.Rect(12, 0, 24, 20),
+			image.Rect(31, 0, 43, 20),
+			image.Rect(43, 0, 55, 20),
+		}
+	}
+
+	for i := range hands {
+		gocv.IMWrite("hand_"+strconv.Itoa(i)+".png", matrix.Region(hands[i]))
+	}
+
 	for i := range clock {
 		mat := gocv.NewMat()
 		defer mat.Close()
@@ -127,6 +143,7 @@ func (m match) time(matrix gocv.Mat, img *image.RGBA) {
 		results := make([]gocv.Mat, len(templates["time"][team.Time.Name]))
 
 		for j, template := range templates["time"][team.Time.Name] {
+
 			mat := gocv.NewMat()
 			defer mat.Close()
 
