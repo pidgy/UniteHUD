@@ -19,6 +19,20 @@ type match struct {
 	template
 }
 
+var regularTime = []image.Rectangle{
+	image.Rect(7, 0, 19, 20),
+	image.Rect(19, 0, 31, 20),
+	image.Rect(38, 0, 50, 20),
+	image.Rect(50, 0, 62, 20),
+}
+
+var finalStretch = []image.Rectangle{
+	image.Rect(2, 7, 15, 29),
+	image.Rect(17, 7, 30, 29),
+	image.Rect(39, 7, 52, 29),
+	image.Rect(54, 7, 67, 29),
+}
+
 func (m match) process(matrix gocv.Mat, img *image.RGBA) {
 	log.Info().Object("match", m).Int("cols", matrix.Cols()).Int("rows", matrix.Rows()).Msg("match found")
 
