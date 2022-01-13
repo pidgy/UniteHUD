@@ -79,12 +79,6 @@ func init() {
 }
 
 func capture(name string) {
-<<<<<<< HEAD
-=======
-	if game == "ios" {
-		rect = image.Rect(0, 0, 1920, 1080)
-	}
->>>>>>> a33b30429e1355c4b5e9c29fd10b084abeb48013
 	for {
 		img, err := screenshot.CaptureRect(screen.scores)
 		if err != nil {
