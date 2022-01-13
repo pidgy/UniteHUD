@@ -55,7 +55,7 @@ var (
 		},
 		"custom": {
 			scores: image.Rect(480, 0, 1920, 1080),
-			time:   image.Rect(1130, 0, 1255, 40),
+			time:   image.Rect(1160, 15, 1228, 45),
 			regularTime: [4]image.Rectangle{
 				image.Rect(7, 0, 19, 20),
 				image.Rect(19, 0, 31, 20),
