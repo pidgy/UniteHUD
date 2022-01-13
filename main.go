@@ -216,5 +216,5 @@ func main() {
 
 	window.Write(window.Default, "Started Pokemon Unite HUD Server... listening on", addr)
 
-	window.Open()
+	window.Show()
 }

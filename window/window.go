@@ -36,7 +36,6 @@ var (
 
 var (
 	win = &window{
-		Window:   gocv.NewWindow("Pokemon Unite HUD Server"),
 		messageq: make(chan message, math.MaxUint16),
 		messages: []message{},
 	}
@@ -53,6 +52,8 @@ func Close() {
 }
 
 func Init() error {
+	win.Window = gocv.NewWindow("Pokemon Unite HUD Server")
+
 	f, err := os.Open("img/bg.png")
 	if err != nil {
 		return nil
@@ -74,7 +75,7 @@ func Init() error {
 	return nil
 }
 
-func Open() {
+func Show() {
 	mat := win.bg.Clone()
 	win.ResizeWindow(mat.Cols(), mat.Rows())
 	win.IMShow(mat)
