@@ -54,11 +54,21 @@ var (
 			load: loadSwitch,
 		},
 		"custom": {
-			scores:       image.Rect(480, 0, 1920, 1080),
-			time:         image.Rect(1130, 0, 1255, 40),
-			regularTime:  [4]image.Rectangle{},
-			finalStretch: [4]image.Rectangle{},
-			load:         loadIOS,
+			scores: image.Rect(480, 0, 1920, 1080),
+			time:   image.Rect(1160, 15, 1228, 45),
+			regularTime: [4]image.Rectangle{
+				image.Rect(7, 0, 19, 20),
+				image.Rect(19, 0, 31, 20),
+				image.Rect(38, 0, 50, 20),
+				image.Rect(50, 0, 62, 20),
+			},
+			finalStretch: [4]image.Rectangle{
+				image.Rect(2, 7, 15, 29),
+				image.Rect(17, 7, 30, 29),
+				image.Rect(39, 7, 52, 29),
+				image.Rect(54, 7, 67, 29),
+			},
+			load: loadIOS,
 		},
 	}
 )
@@ -318,7 +328,37 @@ func loadIOS() {
 			team.Self.Name:   {},
 		},
 		"time": {
-			team.Time.Name: {},
+			team.Time.Name: {
+				filter{team.Time, "img/custom/time/points/point_0.png", 0},
+				filter{team.Time, "img/custom/time/points/point_0_alt.png", 0},
+
+				filter{team.Time, "img/custom/time/points/point_1.png", 1},
+				filter{team.Time, "img/custom/time/points/point_1_alt.png", 1},
+
+				filter{team.Time, "img/custom/time/points/point_2.png", 2},
+				filter{team.Time, "img/custom/time/points/point_2_alt.png", 2},
+
+				filter{team.Time, "img/custom/time/points/point_3.png", 3},
+				filter{team.Time, "img/custom/time/points/point_3_alt.png", 3},
+
+				filter{team.Time, "img/custom/time/points/point_4.png", 4},
+				filter{team.Time, "img/custom/time/points/point_4_alt.png", 4},
+
+				filter{team.Time, "img/custom/time/points/point_5.png", 5},
+				filter{team.Time, "img/custom/time/points/point_5_alt.png", 5},
+
+				filter{team.Time, "img/custom/time/points/point_6.png", 6},
+				filter{team.Time, "img/custom/time/points/point_6_alt.png", 6},
+
+				filter{team.Time, "img/custom/time/points/point_7.png", 7},
+				filter{team.Time, "img/custom/time/points/point_7_alt.png", 7},
+
+				filter{team.Time, "img/custom/time/points/point_8.png", 8},
+				filter{team.Time, "img/custom/time/points/point_8_alt.png", 8},
+
+				filter{team.Time, "img/custom/time/points/point_9.png", 9},
+				filter{team.Time, "img/custom/time/points/point_9_alt.png", 9},
+			},
 		},
 	}
 
