@@ -124,8 +124,8 @@ func (m match) points(matrix2 gocv.Mat, img *image.RGBA) {
 	}
 }
 
-func (m match) time(matrix gocv.Mat, img *image.RGBA, hands []image.Rectangle) int {
-	clock := []int{-1, -1, -1, -1}
+func (m match) time(matrix gocv.Mat, img *image.RGBA, hands [4]image.Rectangle) int {
+	clock := [4]int{-1, -1, -1, -1}
 
 	for i := range clock {
 		mat := gocv.NewMat()

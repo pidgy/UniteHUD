@@ -2,12 +2,21 @@ package main
 
 import (
 	"fmt"
+	"image"
 
 	"github.com/rs/zerolog/log"
 	"gocv.io/x/gocv"
 
 	"github.com/pidgy/unitehud/team"
 )
+
+type config struct {
+	scores       image.Rectangle
+	time         image.Rectangle
+	regularTime  [4]image.Rectangle
+	finalStretch [4]image.Rectangle
+	load         func()
+}
 
 type filter struct {
 	*team.Team
@@ -25,15 +34,37 @@ type template struct {
 var (
 	filenames map[string]map[string][]filter
 	templates map[string]map[string][]template
+
+	configs = map[string]config{
+		"default": {
+			scores: image.Rect(640, 0, 1400, 500),
+			time:   image.Rect(875, 0, 1025, 60),
+			regularTime: [4]image.Rectangle{
+				image.Rect(35, 15, 60, 50),
+				image.Rect(55, 15, 75, 50),
+				image.Rect(80, 15, 100, 50),
+				image.Rect(95, 15, 120, 50),
+			},
+			finalStretch: [4]image.Rectangle{
+				image.Rect(30, 20, 55, 60),
+				image.Rect(54, 25, 72, 60),
+				image.Rect(80, 20, 100, 60),
+				image.Rect(104, 25, 122, 60),
+			},
+			load: loadSwitch,
+		},
+		"custom": {
+			scores:       image.Rect(480, 0, 1920, 1080),
+			time:         image.Rect(1130, 0, 1255, 40),
+			regularTime:  [4]image.Rectangle{},
+			finalStretch: [4]image.Rectangle{},
+			load:         loadIOS,
+		},
+	}
 )
 
 func load() {
-	switch game {
-	case "switch":
-		loadSwitch()
-	case "ios":
-		loadIOS()
-	}
+	screen.load()
 
 	for category := range filenames {
 		for subcategory, filters := range filenames[category] {

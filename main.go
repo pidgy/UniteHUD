@@ -26,10 +26,9 @@ import (
 
 var (
 	socket *pipe.Pipe
-
-	mask = gocv.NewMat()
-	rect = image.Rect(640, 0, 1400, 500)
-	sigq = make(chan os.Signal, 1)
+	screen = configs["default"]
+	mask   = gocv.NewMat()
+	sigq   = make(chan os.Signal, 1)
 )
 
 var imgq = map[string]chan *image.RGBA{
@@ -44,13 +43,12 @@ var (
 	record     = false
 	acceptance = float32(0.91)
 	addr       = ":17069"
-	game       = "switch"
 )
 
 func init() {
 	flag.BoolVar(&record, "record", record, "record data such as images and logs for developer-specific debugging")
 	flag.StringVar(&addr, "addr", addr, "http/websocket serve address")
-	flag.StringVar(&game, "game", game, "http/websocket serve address")
+	custom := flag.Bool("custom", false, "configure a customized screen capture or use the default 1920x1080 setting")
 	avg := flag.Float64("match", float64(acceptance)*100, `0-100% certainty when processing score values`)
 	level := flag.String("v", zerolog.LevelInfoValue, "log level (panic, fatal, error, warn, info, debug)")
 	flag.Parse()
@@ -73,15 +71,16 @@ func init() {
 	}
 	log.Logger = log.Logger.Level(lvl)
 
+	if *custom {
+		screen = configs["custom"]
+	}
+
 	load()
 }
 
 func capture(name string) {
-	if game == "ios" {
-		rect = image.Rect(480, 0, 1920, 1080)
-	}
 	for {
-		img, err := screenshot.CaptureRect(rect)
+		img, err := screenshot.CaptureRect(screen.scores)
 		if err != nil {
 			kill(err)
 		}
@@ -151,16 +150,10 @@ func matches(matrix gocv.Mat, img *image.RGBA, t []template) {
 }
 
 func seconds() {
-	area := image.Rect(875, 0, 1025, 60)
-
-	if game == "ios" {
-		area = image.Rect(1130, 0, 1255, 40)
-	}
-
 	m := match{}
 
 	for {
-		img, err := screenshot.CaptureRect(area)
+		img, err := screenshot.CaptureRect(screen.time)
 		if err != nil {
 			kill(err)
 		}
@@ -170,7 +163,7 @@ func seconds() {
 			kill(err)
 		}
 
-		if m.time(matrix, img, regularTime) == 0 && m.time(matrix, img, finalStretch) == 0 {
+		if m.time(matrix, img, screen.regularTime) == 0 && m.time(matrix, img, screen.finalStretch) == 0 {
 			// Let's back off and not waste processing power.
 			time.Sleep(time.Second * 5)
 		}
@@ -192,7 +185,6 @@ func main() {
 	log.Info().
 		Bool("record", record).
 		Str("match", strconv.Itoa(int(acceptance*100))+"%").
-		Str("game", game).
 		Str("addr", addr).Msg("unitehud")
 
 	if record {
