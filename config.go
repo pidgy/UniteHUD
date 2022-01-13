@@ -279,15 +279,34 @@ func loadIOS() {
 		"time": {
 			team.Time.Name: {
 				filter{team.Time, "img/ios/time/points/point_0.png", 0},
+				filter{team.Time, "img/ios/time/points/point_0_alt.png", 0},
+
 				filter{team.Time, "img/ios/time/points/point_1.png", 1},
+				filter{team.Time, "img/ios/time/points/point_1_alt.png", 1},
+
 				filter{team.Time, "img/ios/time/points/point_2.png", 2},
+				filter{team.Time, "img/ios/time/points/point_2_alt.png", 2},
+
 				filter{team.Time, "img/ios/time/points/point_3.png", 3},
+				filter{team.Time, "img/ios/time/points/point_3_alt.png", 3},
+
 				filter{team.Time, "img/ios/time/points/point_4.png", 4},
+				filter{team.Time, "img/ios/time/points/point_4_alt.png", 4},
+
 				filter{team.Time, "img/ios/time/points/point_5.png", 5},
+				filter{team.Time, "img/ios/time/points/point_5_alt.png", 5},
+
 				filter{team.Time, "img/ios/time/points/point_6.png", 6},
+				filter{team.Time, "img/ios/time/points/point_6_alt.png", 6},
+
 				filter{team.Time, "img/ios/time/points/point_7.png", 7},
+				filter{team.Time, "img/ios/time/points/point_7_alt.png", 7},
+
 				filter{team.Time, "img/ios/time/points/point_8.png", 8},
+				filter{team.Time, "img/ios/time/points/point_8_alt.png", 8},
+
 				filter{team.Time, "img/ios/time/points/point_9.png", 9},
+				filter{team.Time, "img/ios/time/points/point_9_alt.png", 9},
 			},
 		},
 	}

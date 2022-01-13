@@ -77,7 +77,7 @@ func Delay(name string) time.Duration {
 	case Balls.Name:
 		return time.Second
 	default:
-		return time.Second * 2
+		return time.Second
 	}
 }
 

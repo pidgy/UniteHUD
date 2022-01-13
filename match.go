@@ -20,6 +20,20 @@ type match struct {
 	template
 }
 
+var regularTime = []image.Rectangle{
+	image.Rect(7, 0, 19, 20),
+	image.Rect(19, 0, 31, 20),
+	image.Rect(38, 0, 50, 20),
+	image.Rect(50, 0, 62, 20),
+}
+
+var finalStretch = []image.Rectangle{
+	image.Rect(2, 7, 15, 29),
+	image.Rect(17, 7, 30, 29),
+	image.Rect(39, 7, 52, 29),
+	image.Rect(54, 7, 67, 29),
+}
+
 func (m match) process(matrix gocv.Mat, img *image.RGBA) {
 	log.Info().Object("match", m).Int("cols", matrix.Cols()).Int("rows", matrix.Rows()).Msg("match found")
 
@@ -111,26 +125,8 @@ func (m match) points(matrix2 gocv.Mat, img *image.RGBA) {
 	}
 }
 
-func (m match) time(matrix gocv.Mat, img *image.RGBA) {
+func (m match) time(matrix gocv.Mat, img *image.RGBA, hands []image.Rectangle) int {
 	clock := []int{-1, -1, -1, -1}
-
-	hands := []image.Rectangle{
-		image.Rect(35, 15, 60, 50),
-		image.Rect(55, 15, 75, 50),
-		image.Rect(80, 15, 100, 50),
-		image.Rect(95, 15, 120, 50),
-	}
-
-	if game == "ios" {
-		hands = []image.Rectangle{
-			// For the first 8 mins
-
-			image.Rect(0, 0, 12, 20),
-			image.Rect(12, 0, 24, 20),
-			image.Rect(31, 0, 43, 20),
-			image.Rect(43, 0, 55, 20),
-		}
-	}
 
 	for i := range hands {
 		gocv.IMWrite("hand_"+strconv.Itoa(i)+".png", matrix.Region(hands[i]))
@@ -167,7 +163,7 @@ func (m match) time(matrix gocv.Mat, img *image.RGBA) {
 
 	for i := range clock {
 		if clock[i] == -1 {
-			return
+			return 0
 		}
 	}
 
@@ -175,4 +171,6 @@ func (m match) time(matrix gocv.Mat, img *image.RGBA) {
 	secs := clock[2]*10 + clock[3]
 
 	socket.Time(mins, secs)
+
+	return mins*60 + secs
 }

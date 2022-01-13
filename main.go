@@ -154,7 +154,7 @@ func seconds() {
 	area := image.Rect(875, 0, 1025, 60)
 
 	if game == "ios" {
-		area = image.Rect(1168, 15, 1223, 35)
+		area = image.Rect(1160, 15, 1228, 45)
 	}
 
 	m := match{}
@@ -170,9 +170,10 @@ func seconds() {
 			kill(err)
 		}
 
-		gocv.IMWrite("time.png", matrix)
-
-		m.time(matrix, img)
+		if m.time(matrix, img, regularTime) == 0 && m.time(matrix, img, finalStretch) == 0 {
+			// Let's back off and not waste processing power.
+			time.Sleep(time.Second * 5)
+		}
 
 		time.Sleep(team.Delay(team.Time.Name))
 	}
