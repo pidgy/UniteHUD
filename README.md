@@ -1,6 +1,12 @@
 # unite
 Pokemon Unite scoreboard HUD and extra tools running over captured game feeds using the OpenCV video processing API.
 
+### Note
+##### This project is currently in early Alpha stages. 
+##### A handful of matching techniques produce duplicated, unaccounted-for, and false postitive matches.
+##### Users are encouraged to report issues, or contribute where they can to help polish a final product.
+
+----
 
 ### Client (OBS Live)
 ![alt text](https://github.com/pidgy/unite/blob/master/data/client.gif "Client")
