@@ -137,9 +137,7 @@ func Load(config string, acceptance float32, record bool) error {
 	Current = c
 	Current.load()
 
-	Current.Save()
-
-	return nil
+	return Current.Save()
 }
 
 func validate() {
