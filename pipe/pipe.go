@@ -2,6 +2,7 @@ package pipe
 
 import (
 	"encoding/json"
+	"fmt"
 	"image/color"
 	"net/http"
 	"strconv"
@@ -105,6 +106,10 @@ func (p *Pipe) Clear() {
 	}
 }
 
+func (p *Pipe) Clock() string {
+	return fmt.Sprintf("%02d:%02d", p.game.Seconds/60, p.game.Seconds%60)
+}
+
 func (p *Pipe) Publish(t *team.Team, value int) {
 	s := Score{
 		t.Name,
@@ -130,6 +135,10 @@ func (p *Pipe) Publish(t *team.Team, value int) {
 func (p *Pipe) Time(minutes, seconds int) {
 	p.game.Seconds = minutes*60 + seconds
 	terminal.Time(p.game.Seconds)
+}
+
+func (p *Pipe) Score() (purple, orange int) {
+	return p.game.Purple.Value, p.game.Orange.Value
 }
 
 func (p *Pipe) score(ws *websocket.Conn) {

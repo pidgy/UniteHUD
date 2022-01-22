@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"image"
 	"os"
 	"os/signal"
@@ -182,8 +181,8 @@ func main() {
 		team.Balls.Name:  make(chan *image.RGBA, 1),
 	}
 
-	g := gui.New()
-	defer g.Open()
+	gui.New()
+	defer gui.Window.Open()
 
 	stop := true
 
@@ -204,28 +203,30 @@ func main() {
 
 	go func() {
 		for {
-			switch <-g.Actions {
+			switch <-gui.Window.Actions {
 			case gui.Start:
 				log.Info().Bool("record", record).Str("match", strconv.Itoa(int(config.Current.Acceptance*100))+"%").Str("addr", addr).Msg("starting")
-				g.Log("Started")
+				gui.Window.Log("Running")
 				stop = false
 			case gui.Stop:
 				log.Info().Bool("record", record).Str("match", strconv.Itoa(int(config.Current.Acceptance*100))+"%").Str("addr", addr).Msg("stopping")
-				g.Log("Stopped")
+				gui.Window.Log("Stopped")
 				stop = true
 			}
 		}
 	}()
 
-	g.Log(fmt.Sprintf("Listening at %s", addr))
+	gui.Window.Log("Started Pokemon Unite HUD Server... listening on %s", addr)
 
 	if term {
-		err := terminal.Init()
-		if err != nil {
-			kill(err)
-		}
+		go func() {
+			err := terminal.Init()
+			if err != nil {
+				kill(err)
+			}
 
-		terminal.Write(terminal.White, "Started Pokemon Unite HUD Server... listening on", addr)
-		terminal.Show()
+			terminal.Write(terminal.White, "Started Pokemon Unite HUD Server... listening on", addr)
+			terminal.Show()
+		}()
 	}
 }

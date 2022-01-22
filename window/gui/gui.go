@@ -5,6 +5,7 @@ import (
 	"image"
 	"image/color"
 	"os"
+	"strconv"
 	"time"
 
 	"gioui.org/app"
@@ -24,6 +25,8 @@ import (
 
 	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/match"
+	"github.com/pidgy/unitehud/pipe"
+	"github.com/pidgy/unitehud/team"
 	"github.com/pidgy/unitehud/window/gui/visual/area"
 	"github.com/pidgy/unitehud/window/gui/visual/button"
 	"github.com/pidgy/unitehud/window/gui/visual/screen"
@@ -45,28 +48,30 @@ type GUI struct {
 
 type Action string
 
+var Window *GUI
+
 const (
 	Start = Action("start")
 	Stop  = Action("stop")
 )
 
 func New() *GUI {
-	g := &GUI{
+	Window = &GUI{
 		Window: app.NewWindow(
 			app.Title("Pokemon Unite HUD Server"),
 		),
 		Preview: true,
 	}
 
-	return g
+	return Window
 }
 
 func (g *GUI) Log(format string, a ...interface{}) {
 	txt := fmt.Sprintf(format, a...)
 
 	g.logs = append(g.logs, fmt.Sprintf("[%s] %s", time.Now().Format(time.Kitchen), txt))
-	if len(g.logs) > 26 {
-		g.logs = g.logs[len(g.logs)-27:]
+	if len(g.logs) > 39 {
+		g.logs = g.logs[len(g.logs)-40:]
 	}
 }
 
@@ -108,22 +113,6 @@ func (g *GUI) Open() {
 	app.Main()
 }
 
-func (g *GUI) Display(src image.Image) {
-	g.Screen = &screen.Screen{
-		Image: src,
-	}
-
-	y := unit.Px(float32(g.Bounds().Max.Y) / 2).Scale(1.15)
-	x := unit.Px(float32(g.Bounds().Max.X) / 2).Scale(1.01)
-
-	if g.open {
-		g.Window.Option(app.Size(x, y))
-
-		// Redraw the image.
-		g.Invalidate()
-	}
-}
-
 func (g *GUI) main() (string, error) {
 	next := ""
 
@@ -132,6 +121,7 @@ func (g *GUI) main() (string, error) {
 	var ops op.Ops
 
 	th := material.NewTheme(gofont.Collection())
+
 	title := material.H5(th, "Pokemon Unite HUD Server")
 	title.Color = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
 	title.Alignment = text.Middle
@@ -161,15 +151,16 @@ func (g *GUI) main() (string, error) {
 	}
 
 	startButton.Click = func() {
-		startButton.Active = false
 		g.Preview = false
 
 		configButton.Disabled = true
 		configButton.Released = color.NRGBA{A: 0xF}
 
+		stopButton.Active = false
 		stopButton.Disabled = false
 		stopButton.Released = color.NRGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0x3F}
 
+		startButton.Active = false
 		startButton.Disabled = true
 		startButton.Released = color.NRGBA{A: 0xF}
 
@@ -180,9 +171,11 @@ func (g *GUI) main() (string, error) {
 		configButton.Disabled = false
 		configButton.Released = color.NRGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0x3F}
 
+		stopButton.Active = false
 		stopButton.Disabled = true
 		stopButton.Released = color.NRGBA{A: 0xF}
 
+		startButton.Active = false
 		startButton.Disabled = false
 		startButton.Released = color.NRGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0x3F}
 
@@ -216,7 +209,43 @@ func (g *GUI) main() (string, error) {
 					return Fill(gtx,
 						color.NRGBA{R: 25, G: 25, B: 25, A: 255},
 						func(gtx layout.Context) layout.Dimensions {
-							title.Layout(gtx)
+							layout.Inset{
+								Left: unit.Px(2),
+								Top:  unit.Px(10),
+							}.Layout(gtx, title.Layout)
+
+							p, o := pipe.Socket.Score()
+
+							orange := material.H5(th, strconv.Itoa(o))
+							orange.Color = color.NRGBA(team.Orange.RGBA)
+							orange.Alignment = text.Middle
+							orange.TextSize = unit.Sp(13)
+
+							layout.Inset{
+								Top:  unit.Px(15),
+								Left: unit.Px(float32(gtx.Constraints.Max.X - 50)),
+							}.Layout(gtx, orange.Layout)
+
+							clock := material.H5(th, pipe.Socket.Clock())
+							clock.Color = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
+							clock.Alignment = text.Middle
+							clock.TextSize = unit.Sp(13)
+
+							layout.Inset{
+								Top:  unit.Px(15),
+								Left: unit.Px(float32(gtx.Constraints.Max.X - 100)),
+							}.Layout(gtx, clock.Layout)
+
+							purple := material.H5(th, strconv.Itoa(p))
+							purple.Color = color.NRGBA(team.Purple.RGBA)
+							purple.Alignment = text.Middle
+							purple.TextSize = unit.Sp(13)
+
+							layout.Inset{
+								Top:  unit.Px(15),
+								Left: unit.Px(float32(gtx.Constraints.Max.X - 125)),
+							}.Layout(gtx, purple.Layout)
+
 							return layout.Inset{Top: unit.Px(50)}.Layout(gtx,
 								func(gtx layout.Context) layout.Dimensions {
 									return textblock.Layout(gtx, g.logs)
@@ -232,7 +261,7 @@ func (g *GUI) main() (string, error) {
 						func(gtx layout.Context) layout.Dimensions {
 							layout.Inset{
 								Left: unit.Px(float32(gtx.Constraints.Max.X - 125)),
-								Top:  unit.Px(float32(gtx.Constraints.Max.Y - 100)),
+								Top:  unit.Px(float32(gtx.Constraints.Max.Y - 155)),
 							}.Layout(
 								gtx,
 								func(gtx layout.Context) layout.Dimensions {
@@ -241,20 +270,22 @@ func (g *GUI) main() (string, error) {
 
 							layout.Inset{
 								Left: unit.Px(float32(gtx.Constraints.Max.X - 125)),
-								Top:  unit.Px(float32(gtx.Constraints.Max.Y - 45)),
+								Top:  unit.Px(float32(gtx.Constraints.Max.Y - 100)),
 							}.Layout(
 								gtx,
 								func(gtx layout.Context) layout.Dimensions {
 									return stopButton.Layout(gtx)
 								})
 
-							return layout.Inset{
+							layout.Inset{
 								Left: unit.Px(float32(gtx.Constraints.Max.X - 125)),
-								Top:  unit.Px(50),
+								Top:  unit.Px(float32(gtx.Constraints.Max.Y - 45)),
 							}.Layout(gtx,
 								func(gtx layout.Context) layout.Dimensions {
 									return configButton.Layout(gtx)
 								})
+
+							return layout.Dimensions{Size: gtx.Constraints.Max}
 						})
 				})
 
@@ -265,6 +296,19 @@ func (g *GUI) main() (string, error) {
 	return next, nil
 }
 
+func (g *GUI) display(src image.Image) {
+	g.Screen = &screen.Screen{
+		Image: src,
+	}
+
+	x := unit.Px((float32(g.Bounds().Max.X) / 2) + 10)
+	y := unit.Px((float32(g.Bounds().Max.Y) / 2) + 89)
+
+	if g.open {
+		g.Window.Option(app.Size(x, y))
+	}
+}
+
 func (g *GUI) preview() {
 	for {
 		if g.Preview {
@@ -273,8 +317,11 @@ func (g *GUI) preview() {
 				log.Fatal().Err(err).Send()
 			}
 
-			g.Display(img)
+			g.display(img)
 		}
+
+		// Redraw the image.
+		g.Invalidate()
 
 		time.Sleep(time.Second)
 	}
@@ -866,8 +913,8 @@ func timeAreaScaleScaleButtons(scaleUpButton, scaleDownButton *button.Button) {
 	}
 	scaleUpButton.Disabled = false
 	scaleUpButton.Released = color.NRGBA{R: 50, G: 50, B: 0xFF, A: 0x3F}
-	if config.Current.Scales.Time > 1.5 {
-		config.Current.Scales.Time = 1.5
+	if config.Current.Scales.Time > 0.99 {
+		config.Current.Scales.Time = 1.0
 		scaleUpButton.Released = color.NRGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0x3F}
 		scaleUpButton.Disabled = true
 	}

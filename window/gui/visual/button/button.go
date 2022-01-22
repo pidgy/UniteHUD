@@ -5,6 +5,7 @@ import (
 	"image/color"
 	"time"
 
+	"gioui.org/f32"
 	"gioui.org/font/gofont"
 	"gioui.org/io/pointer"
 	"gioui.org/layout"
@@ -61,7 +62,7 @@ func (b *Button) Layout(gtx layout.Context) layout.Dimensions {
 }
 
 func (b *Button) uniform(gtx layout.Context) layout.Dimensions {
-	defer clip.Rect{Max: b.Size}.Push(gtx.Ops).Pop()
+	defer clip.RRect{SE: 3, SW: 3, NE: 3, NW: 3, Rect: f32.Rectangle{Max: f32.Pt(float32(b.Size.X), float32(b.Size.Y))}}.Push(gtx.Ops).Pop()
 
 	col := b.Pressed
 	if !b.Active {
@@ -75,8 +76,9 @@ func (b *Button) uniform(gtx layout.Context) layout.Dimensions {
 
 func (b *Button) draw(gtx layout.Context) layout.Dimensions {
 	widget.Border{
-		Color: color.NRGBA{A: 0xAF},
-		Width: unit.Px(3),
+		Color:        color.NRGBA{A: 0xAF},
+		Width:        unit.Px(3),
+		CornerRadius: unit.Px(1),
 	}.Layout(gtx, b.uniform)
 
 	title := material.Body1(material.NewTheme(gofont.Collection()), b.Text)
