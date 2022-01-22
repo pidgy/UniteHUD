@@ -55,10 +55,12 @@ const (
 	Stop  = Action("stop")
 )
 
+const title = "Pokemon Unite HUD Server (Alpha 0.1)"
+
 func New() *GUI {
 	Window = &GUI{
 		Window: app.NewWindow(
-			app.Title("Pokemon Unite HUD Server"),
+			app.Title(title),
 		),
 		Preview: true,
 	}
@@ -122,9 +124,9 @@ func (g *GUI) main() (string, error) {
 
 	th := material.NewTheme(gofont.Collection())
 
-	title := material.H5(th, "Pokemon Unite HUD Server")
-	title.Color = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
-	title.Alignment = text.Middle
+	header := material.H5(th, title)
+	header.Color = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
+	header.Alignment = text.Middle
 
 	configButton := &button.Button{
 		Text:     " Configure",
@@ -212,7 +214,7 @@ func (g *GUI) main() (string, error) {
 							layout.Inset{
 								Left: unit.Px(2),
 								Top:  unit.Px(10),
-							}.Layout(gtx, title.Layout)
+							}.Layout(gtx, header.Layout)
 
 							p, o := pipe.Socket.Score()
 
