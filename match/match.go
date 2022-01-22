@@ -226,9 +226,6 @@ func (m Match) Time(matrix gocv.Mat, img *image.RGBA) (seconds int, kitchen stri
 			break
 		}
 
-		if !region.Empty() {
-			gocv.IMWrite(fmt.Sprintf("%d-%d.png", i, time.Now().UnixNano()), region)
-		}
 		region = region.Region(rect)
 	}
 
