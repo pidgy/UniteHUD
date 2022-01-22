@@ -15,15 +15,13 @@ import (
 )
 
 type Config struct {
-	Acceptance   float32
-	Record       bool
-	Scores       image.Rectangle
-	Time         image.Rectangle
-	RegularTime  [4]image.Rectangle
-	FinalStretch [4]image.Rectangle
-	Filenames    map[string]map[string][]filter.Filter     `json:"-"`
-	Templates    map[string]map[string][]template.Template `json:"-"`
-	Scale        float32
+	Acceptance float32
+	Record     bool
+	Scores     image.Rectangle
+	Time       image.Rectangle
+	Filenames  map[string]map[string][]filter.Filter     `json:"-"`
+	Templates  map[string]map[string][]template.Template `json:"-"`
+	Scale      float32
 
 	load func()
 }
@@ -87,41 +85,17 @@ func Load(config string, acceptance, scale float32, record bool) error {
 			Acceptance: acceptance,
 			Record:     record,
 			Scores:     image.Rect(400, 0, 1100, 400),
-			Time:       image.Rect(700, 0, 1025, 150),
-			RegularTime: [4]image.Rectangle{
-				image.Rect(35, 15, 60, 50),
-				image.Rect(55, 15, 75, 50),
-				image.Rect(80, 15, 100, 50),
-				image.Rect(95, 15, 120, 50),
-			},
-			FinalStretch: [4]image.Rectangle{
-				image.Rect(30, 20, 55, 60),
-				image.Rect(54, 25, 72, 60),
-				image.Rect(80, 20, 100, 60),
-				image.Rect(104, 25, 122, 60),
-			},
-			Scale: 1,
-			load:  loadDefault,
+			Time:       image.Rect(800, 0, 1000, 150),
+			Scale:      1,
+			load:       loadDefault,
 		},
 		"custom": {
 			Acceptance: acceptance,
 			Record:     record,
 			Scores:     image.Rect(480, 0, 1920, 1080),
 			Time:       image.Rect(1160, 15, 1228, 45),
-			RegularTime: [4]image.Rectangle{
-				image.Rect(7, 0, 19, 20),
-				image.Rect(19, 0, 31, 20),
-				image.Rect(38, 0, 50, 20),
-				image.Rect(50, 0, 62, 20),
-			},
-			FinalStretch: [4]image.Rectangle{
-				image.Rect(2, 7, 15, 29),
-				image.Rect(17, 7, 30, 29),
-				image.Rect(39, 7, 52, 29),
-				image.Rect(54, 7, 67, 29),
-			},
-			Scale: 1,
-			load:  loadCustom,
+			Scale:      1,
+			load:       loadCustom,
 		},
 	}
 

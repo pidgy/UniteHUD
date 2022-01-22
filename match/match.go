@@ -96,7 +96,7 @@ func (m Match) Process(matrix gocv.Mat, img image.Image) bool {
 	return false
 }
 
-func (m Match) Points(matrix2 gocv.Mat, img image.Image) bool {
+func (m Match) Points(matrix gocv.Mat, img image.Image) bool {
 	results := make([]gocv.Mat, len(config.Current.Templates["points"][m.Team.Name]))
 
 	for i, pt := range config.Current.Templates["points"][m.Team.Name] {
@@ -105,7 +105,7 @@ func (m Match) Points(matrix2 gocv.Mat, img image.Image) bool {
 
 		results[i] = mat
 
-		gocv.MatchTemplate(matrix2, pt.Mat, &mat, gocv.TmCcoeffNormed, mask)
+		gocv.MatchTemplate(matrix, pt.Mat, &mat, gocv.TmCcoeffNormed, mask)
 	}
 
 	pieces := sort.Pieces([]sort.Piece{})
@@ -120,21 +120,21 @@ func (m Match) Points(matrix2 gocv.Mat, img image.Image) bool {
 		if maxc >= config.Current.Acceptance {
 			pieces = append(pieces,
 				sort.Piece{
-					Point:  maxp,
-					Filter: config.Current.Templates["points"][m.Team.Name][i].Filter,
+					Point:    maxp,
+					Template: config.Current.Templates["points"][m.Team.Name][i],
 				},
 			)
 		}
 	}
 
-	value, order := pieces.Int()
+	value, order := pieces.Sort()
 	if value == 0 {
 		log.Warn().Object("team", m.Team).Str("order", order).Msg("no value extracted")
 	}
 
-	region := m.Team.Region(matrix2)
+	region := m.Team.Region(matrix)
 
-	latest := duplicate.New(value, matrix2, region)
+	latest := duplicate.New(value, matrix, region)
 
 	dup := m.Team.Duplicate.Of(latest)
 	//TODO simplify this
@@ -154,31 +154,36 @@ func (m Match) Points(matrix2 gocv.Mat, img image.Image) bool {
 	}
 
 	if config.Current.Record {
-		dev.Capture(img, matrix2, m.Team.Name, order, dup, value)
+		dev.Capture(img, matrix, m.Team.Name, order, dup, value)
 		dev.Log(fmt.Sprintf("%s %d (duplicate: %t)", m.Team.Name, value, dup))
 	}
 
 	return value > 0
 }
 
-func (m Match) Time(matrix gocv.Mat, img *image.RGBA, hands [4]image.Rectangle) int {
+func (m Match) Time(matrix gocv.Mat, img *image.RGBA) (seconds int, kitchen string) {
 	clock := [4]int{-1, -1, -1, -1}
 
+	region := matrix
+
 	for i := range clock {
-		mat := gocv.NewMat()
-		defer mat.Close()
+		results := []gocv.Mat{}
 
-		results := make([]gocv.Mat, len(config.Current.Templates["time"][team.Time.Name]))
-
-		for j, template := range config.Current.Templates["time"][team.Time.Name] {
+		for _, template := range config.Current.Templates["time"][team.Time.Name] {
+			if template.Mat.Cols() > region.Cols() || template.Mat.Rows() > region.Rows() {
+				log.Warn().Str("type", "time").Msg("match is outside the legal selection")
+				return 0, ""
+			}
 
 			mat := gocv.NewMat()
 			defer mat.Close()
 
-			results[j] = mat
+			results = append(results, mat)
 
-			gocv.MatchTemplate(matrix.Region(hands[i]), template.Mat, &mat, gocv.TmCcoeffNormed, mask)
+			gocv.MatchTemplate(region, template.Mat, &mat, gocv.TmCcoeffNormed, mask)
 		}
+
+		pieces := sort.Pieces([]sort.Piece{})
 
 		for j := range results {
 			if results[j].Empty() {
@@ -186,17 +191,38 @@ func (m Match) Time(matrix gocv.Mat, img *image.RGBA, hands [4]image.Rectangle) 
 				continue
 			}
 
-			_, maxc, _, _ := gocv.MinMaxLoc(results[j])
-			if maxc >= .9 {
-				clock[i] = config.Current.Templates["time"][team.Time.Name][j].Value
+			_, maxc, _, maxp := gocv.MinMaxLoc(results[j])
+			if maxc >= config.Current.Acceptance {
+				pieces = append(pieces,
+					sort.Piece{
+						Point:    maxp,
+						Template: config.Current.Templates["time"][team.Time.Name][j],
+					},
+				)
 			}
 		}
-	}
 
-	for i := range clock {
-		if clock[i] == -1 {
-			return 0
+		_, order := pieces.Sort()
+		if len(order) == 0 {
+			clock[i] = 0
+			continue
 		}
+
+		clock[i] = pieces[0].Value
+
+		rect := image.Rect(
+			pieces[0].Point.X+pieces[0].Cols(),
+			0,
+			region.Cols(),
+			region.Rows(),
+		)
+
+		if rect.Min.X < 0 || rect.Min.Y < 0 || rect.Max.X > region.Cols() || rect.Max.Y > region.Rows() {
+			log.Warn().Object("match", m).Msg("match is outside the legal selection")
+			break
+		}
+
+		region = region.Region(rect)
 	}
 
 	mins := clock[0]*10 + clock[1]
@@ -204,7 +230,7 @@ func (m Match) Time(matrix gocv.Mat, img *image.RGBA, hands [4]image.Rectangle) 
 
 	pipe.Socket.Time(mins, secs)
 
-	return mins*60 + secs
+	return mins*60 + secs, fmt.Sprintf("%d:%d", mins, secs)
 }
 
 func (m Match) MarshalZerologObject(e *zerolog.Event) {

@@ -219,7 +219,7 @@ func (g *GUI) main() (string, error) {
 						color.NRGBA{R: 25, G: 25, B: 25, A: 255},
 						func(gtx layout.Context) layout.Dimensions {
 							title.Layout(gtx)
-							return layout.Inset{Top: unit.Px(50), Left: unit.Px(5)}.Layout(gtx,
+							return layout.Inset{Top: unit.Px(50)}.Layout(gtx,
 								func(gtx layout.Context) layout.Dimensions {
 									return textblock.Layout(gtx, g.logs)
 								})
@@ -643,11 +643,11 @@ func (g *GUI) configure() (string, error) {
 }
 
 func (g *GUI) matchPoints(a *area.Area) {
-	a.NRGBA = color.NRGBA{R: 0xFF, A: 0x3F}
+	a.NRGBA = color.NRGBA{R: 0xFF, A: 0x99}
 }
 
 func (g *GUI) matchScore(a *area.Area) {
-	a.NRGBA = color.NRGBA{R: 0xFF, A: 0x3F}
+	a.NRGBA = color.NRGBA{R: 0xFF, A: 0x99}
 	a.Subtext = "(Not Detected)"
 
 	img, err := screenshot.CaptureRect(a.Rectangle())
@@ -663,7 +663,7 @@ func (g *GUI) matchScore(a *area.Area) {
 	m := match.Match{}
 	for _, templates := range config.Current.Templates["scored"] {
 		if m.Matches(matrix, g.Image, templates) {
-			a.NRGBA = color.NRGBA{G: 0xFF, A: 0x3F}
+			a.NRGBA = color.NRGBA{G: 0xFF, A: 0x99}
 			a.Subtext = "(Detected)"
 			return
 		}
@@ -671,7 +671,7 @@ func (g *GUI) matchScore(a *area.Area) {
 }
 
 func (g *GUI) matchTime(a *area.Area) {
-	a.NRGBA = color.NRGBA{R: 0xFF, A: 0x3F}
+	a.NRGBA = color.NRGBA{R: 0xFF, A: 0x99}
 	a.Subtext = "(Not Detected)"
 
 	img, err := screenshot.CaptureRect(a.Rectangle())
@@ -686,14 +686,10 @@ func (g *GUI) matchTime(a *area.Area) {
 
 	m := match.Match{}
 
-	if m.Time(matrix, img, config.Current.RegularTime) != 0 {
-		a.NRGBA = color.NRGBA{G: 0xFF, A: 0x3F}
-		a.Subtext = "(Regular Detected)"
-	}
-
-	if m.Time(matrix, img, config.Current.FinalStretch) != 0 {
-		a.NRGBA = color.NRGBA{G: 0xFF, A: 0x3F}
-		a.Subtext = "(Final Stretch Detected)"
+	s, k := m.Time(matrix, img)
+	if s != 0 {
+		a.NRGBA = color.NRGBA{G: 0xFF, A: 0x99}
+		a.Subtext = "(" + k + ")"
 	}
 }
 

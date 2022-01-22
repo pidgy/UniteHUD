@@ -25,10 +25,11 @@ type Area struct {
 
 	Min, Max image.Point
 
+	color.NRGBA
+
 	drag         bool
 	dragID       pointer.ID
 	dragX, dragY float32
-	color.NRGBA
 }
 
 func (a *Area) Rectangle() image.Rectangle {

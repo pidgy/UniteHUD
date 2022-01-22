@@ -141,7 +141,8 @@ func seconds(stop *bool) {
 			kill(err)
 		}
 
-		if m.Time(matrix, img, config.Current.RegularTime) == 0 && m.Time(matrix, img, config.Current.FinalStretch) == 0 {
+		rs, _ := m.Time(matrix, img)
+		if rs == 0 {
 			// Let's back off and not waste processing power.
 			time.Sleep(time.Second * 5)
 		}

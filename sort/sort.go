@@ -7,14 +7,15 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pidgy/unitehud/filter"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+
+	"github.com/pidgy/unitehud/template"
 )
 
 type Piece struct {
 	image.Point
-	filter.Filter
+	template.Template
 }
 
 type Pieces []Piece
@@ -42,7 +43,7 @@ func (p Pieces) Swap(i, j int) {
 	p[i], p[j] = p[j], p[i]
 }
 
-func (p Pieces) Int() (int, string) {
+func (p Pieces) Sort() (int, string) {
 	if len(p) == 0 {
 		return 0, ""
 	}
