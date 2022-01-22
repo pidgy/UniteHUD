@@ -21,6 +21,7 @@ type TextBlock struct {
 func (t *TextBlock) Layout(gtx layout.Context, texts []string) layout.Dimensions {
 	th := material.NewTheme(gofont.Collection())
 	th.TextSize = unit.Px(12)
+
 	block := material.H5(th, strings.Join(texts, "\n"))
 	block.Color = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
 	block.Alignment = text.Alignment(text.Start)

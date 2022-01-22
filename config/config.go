@@ -21,15 +21,30 @@ type Config struct {
 	Time       image.Rectangle
 	Filenames  map[string]map[string][]filter.Filter     `json:"-"`
 	Templates  map[string]map[string][]template.Template `json:"-"`
-	Scale      float32
+	Scales     Scales
 
 	load func()
+}
+
+type Scales struct {
+	Score  float64
+	Time   float64
+	Points float64
+	Game   float64
 }
 
 var Current Config
 
 func (c Config) Reload() {
-	validate()
+	defer validate()
+}
+
+func (c Config) Reset() error {
+	defer validate()
+
+	os.Remove("unitehud.config")
+
+	return Load("default", Current.Acceptance, Current.Record)
 }
 
 func (c Config) Save() error {
@@ -69,11 +84,12 @@ func open() bool {
 	}
 
 	Current = c
+	Current.load()
 
 	return true
 }
 
-func Load(config string, acceptance, scale float32, record bool) error {
+func Load(config string, acceptance float32, record bool) error {
 	defer validate()
 
 	if open() {
@@ -85,17 +101,29 @@ func Load(config string, acceptance, scale float32, record bool) error {
 			Acceptance: acceptance,
 			Record:     record,
 			Scores:     image.Rect(400, 0, 1100, 400),
-			Time:       image.Rect(800, 0, 1000, 150),
-			Scale:      1,
-			load:       loadDefault,
+			Time:       image.Rect(800, 0, 1100, 150),
+			Scales: Scales{
+				Game:   1,
+				Score:  1,
+				Points: 1,
+				Time:   1,
+			},
+
+			load: loadDefault,
 		},
 		"custom": {
 			Acceptance: acceptance,
 			Record:     record,
 			Scores:     image.Rect(480, 0, 1920, 1080),
 			Time:       image.Rect(1160, 15, 1228, 45),
-			Scale:      1,
-			load:       loadCustom,
+			Scales: Scales{
+				Game:   1,
+				Score:  1,
+				Points: 1,
+				Time:   1,
+			},
+
+			load: loadCustom,
 		},
 	}
 
@@ -105,12 +133,30 @@ func Load(config string, acceptance, scale float32, record bool) error {
 	}
 
 	Current = c
+	Current.load()
 
 	return nil
 }
 
 func validate() {
-	Current.load()
+	Current.Templates = map[string]map[string][]template.Template{
+		"game": {
+			team.None.Name: {},
+		},
+		"scored": {
+			team.Orange.Name: {},
+			team.Purple.Name: {},
+			team.Self.Name:   {},
+		},
+		"points": {
+			team.Orange.Name: {},
+			team.Purple.Name: {},
+			team.Self.Name:   {},
+		},
+		"time": {
+			team.Time.Name: {},
+		},
+	}
 
 	for category := range Current.Filenames {
 		for subcategory, filters := range Current.Filenames[category] {
@@ -118,7 +164,19 @@ func validate() {
 				mat := gocv.IMRead(filter.File, gocv.IMReadColor)
 				scaled := gocv.NewMat()
 
-				gocv.Resize(mat, &scaled, image.Pt(0, 0), float64(Current.Scale), float64(Current.Scale), gocv.InterpolationDefault)
+				scale := float64(1)
+				switch category {
+				case "scored":
+					scale = Current.Scales.Score
+				case "time":
+					scale = Current.Scales.Time
+				case "points":
+					scale = Current.Scales.Points
+				case "game":
+					scale = Current.Scales.Game
+				}
+
+				gocv.Resize(mat, &scaled, image.Pt(0, 0), scale, scale, gocv.InterpolationDefault)
 
 				Current.Templates[category][filter.Team.Name] = append(Current.Templates[category][filter.Team.Name],
 					template.Template{
@@ -329,25 +387,6 @@ func loadDefault() {
 				filter.Filter{team.Time, "img/default/time/points/point_9.png", 9},
 				filter.Filter{team.Time, "img/default/time/points/point_9_alt.png", 9},
 			},
-		},
-	}
-
-	Current.Templates = map[string]map[string][]template.Template{
-		"game": {
-			team.None.Name: {},
-		},
-		"scored": {
-			team.Orange.Name: {},
-			team.Purple.Name: {},
-			team.Self.Name:   {},
-		},
-		"points": {
-			team.Orange.Name: {},
-			team.Purple.Name: {},
-			team.Self.Name:   {},
-		},
-		"time": {
-			team.Time.Name: {},
 		},
 	}
 }

@@ -3,13 +3,13 @@ package button
 import (
 	"image"
 	"image/color"
+	"time"
 
 	"gioui.org/font/gofont"
 	"gioui.org/io/pointer"
 	"gioui.org/layout"
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
-	"gioui.org/text"
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
@@ -22,9 +22,11 @@ type Button struct {
 	Pressed, Released color.NRGBA
 	Disabled          bool
 	Size              image.Point
+	TextSize          unit.Value
+	LastPressed       time.Time
 }
 
-var Max = image.Pt(100, 40)
+var Max = image.Pt(100, 35)
 
 func (b *Button) Layout(gtx layout.Context) layout.Dimensions {
 	if b.Size.Eq(image.Pt(0, 0)) {
@@ -86,9 +88,16 @@ func (b *Button) draw(gtx layout.Context) layout.Dimensions {
 		title.Color.A = 0x3F
 	}
 
-	title.Alignment = text.Middle
+	if b.TextSize.V == 0 {
+		title.TextSize = unit.Px(16)
+	} else {
+		title.TextSize = b.TextSize
+	}
 
-	return layout.UniformInset(unit.Dp(10)).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+	return layout.Inset{
+		Left: unit.Dp(11),
+		Top:  unit.Px((float32(b.Size.Y) / title.TextSize.V) * 3),
+	}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 		return layout.N.Layout(gtx, title.Layout)
 	})
 

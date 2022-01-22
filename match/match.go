@@ -28,7 +28,7 @@ var (
 	mask = gocv.NewMat()
 )
 
-func (m Match) Matches(matrix gocv.Mat, img image.Image, t []template.Template) bool {
+func (m Match) Matches(matrix gocv.Mat, img image.Image, t []template.Template) (matched bool, score int) {
 	results := make([]gocv.Mat, len(t))
 
 	for i, template := range t {
@@ -53,10 +53,10 @@ func (m Match) Matches(matrix gocv.Mat, img image.Image, t []template.Template) 
 		}
 	}
 
-	return false
+	return false, 0
 }
 
-func (m Match) Process(matrix gocv.Mat, img image.Image) bool {
+func (m Match) Process(matrix gocv.Mat, img image.Image) (matched bool, score int) {
 	log.Info().Object("match", m).Int("cols", matrix.Cols()).Int("rows", matrix.Rows()).Msg("match found")
 
 	switch m.Category {
@@ -64,7 +64,7 @@ func (m Match) Process(matrix gocv.Mat, img image.Image) bool {
 		rect := m.Team.Rectangle(m.Point)
 		if rect.Min.X < 0 || rect.Min.Y < 0 || rect.Max.X > matrix.Cols() || rect.Max.Y > matrix.Rows() {
 			log.Warn().Object("match", m).Msg("match is outside the legal selection")
-			return false
+			return false, 0
 		}
 
 		return m.Points(matrix.Region(rect), img)
@@ -79,7 +79,7 @@ func (m Match) Process(matrix gocv.Mat, img image.Image) bool {
 				dev.Start()
 			}
 
-			return true
+			return true, 0
 		case "end":
 			pipe.Socket.Clear()
 
@@ -89,14 +89,14 @@ func (m Match) Process(matrix gocv.Mat, img image.Image) bool {
 				dev.End()
 			}
 
-			return true
+			return true, 0
 		}
 	}
 
-	return false
+	return false, 0
 }
 
-func (m Match) Points(matrix gocv.Mat, img image.Image) bool {
+func (m Match) Points(matrix gocv.Mat, img image.Image) (matched bool, score int) {
 	results := make([]gocv.Mat, len(config.Current.Templates["points"][m.Team.Name]))
 
 	for i, pt := range config.Current.Templates["points"][m.Team.Name] {
@@ -158,7 +158,7 @@ func (m Match) Points(matrix gocv.Mat, img image.Image) bool {
 		dev.Log(fmt.Sprintf("%s %d (duplicate: %t)", m.Team.Name, value, dup))
 	}
 
-	return value > 0
+	return value > 0, value
 }
 
 func (m Match) Time(matrix gocv.Mat, img *image.RGBA) (seconds int, kitchen string) {
@@ -192,7 +192,7 @@ func (m Match) Time(matrix gocv.Mat, img *image.RGBA) (seconds int, kitchen stri
 			}
 
 			_, maxc, _, maxp := gocv.MinMaxLoc(results[j])
-			if maxc >= config.Current.Acceptance {
+			if maxc >= .9 {
 				pieces = append(pieces,
 					sort.Piece{
 						Point:    maxp,
@@ -204,8 +204,7 @@ func (m Match) Time(matrix gocv.Mat, img *image.RGBA) (seconds int, kitchen stri
 
 		_, order := pieces.Sort()
 		if len(order) == 0 {
-			clock[i] = 0
-			continue
+			return 0, ""
 		}
 
 		clock[i] = pieces[0].Value

@@ -126,9 +126,19 @@ func (a *Area) Layout(gtx layout.Context) layout.Dimensions {
 		func(gtx layout.Context) layout.Dimensions {
 			title := material.Body1(material.NewTheme(gofont.Collection()), a.Text+" "+a.Subtext)
 			title.Color = color.NRGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0xFF}
+
+			//defer clip.Rect{Min: a.Max.Sub(a.Min).Sub(image.Pt(0, int(title.TextSize.V))), Max: a.Max.Sub(a.Min).Sub(image.Pt(len(title.Text), int(title.TextSize.V)))}.Push(gtx.Ops).Pop()
+			defer clip.Rect{
+				Min: image.Pt(7, a.Max.Sub(a.Min).Y-int(title.TextSize.V)),
+				Max: image.Pt(a.Max.Sub(a.Min).X+3, a.Max.Sub(a.Min).Y+int(title.TextSize.V)-12),
+			}.Push(gtx.Ops).Pop()
+
+			paint.ColorOp{Color: color.NRGBA{A: 0x9F}}.Add(gtx.Ops)
+			paint.PaintOp{}.Add(gtx.Ops)
+
 			layout.Inset{
-				Left: unit.Px(15),
-				Top:  unit.Px(10),
+				Left: unit.Px(float32((a.Max.Sub(a.Min).X)/2) - float32(len(title.Text)*3)),
+				Top:  unit.Px(float32(a.Max.Sub(a.Min).Y) - title.TextSize.V),
 			}.Layout(gtx, title.Layout)
 
 			return layout.Dimensions{Size: a.Max.Sub(a.Min)}

@@ -70,7 +70,7 @@ func init() {
 		conf = "custom"
 	}
 
-	err = config.Load(conf, float32(*avg)/100, 1, record)
+	err = config.Load(conf, float32(*avg)/100, record)
 	if err != nil {
 		kill(err)
 	}
