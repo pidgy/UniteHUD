@@ -163,6 +163,7 @@ func signals() {
 func main() {
 	log.Info().
 		Bool("record", record).
+		Str("imgs", "img/"+config.Current.Dir+"/").
 		Str("match", strconv.Itoa(int(config.Current.Acceptance*100))+"%").
 		Str("addr", addr).Msg("unitehud")
 

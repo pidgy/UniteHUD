@@ -23,6 +23,7 @@ type Config struct {
 	Filenames  map[string]map[string][]filter.Filter     `json:"-"`
 	Templates  map[string]map[string][]template.Template `json:"-"`
 	Scales     Scales
+	Dir        string
 
 	load func()
 }
@@ -67,7 +68,7 @@ func (c Config) Save() error {
 	return nil
 }
 
-func open() bool {
+func open(dir string) bool {
 	b, err := os.ReadFile("unitehud.config")
 	if err != nil {
 		log.Warn().Err(err).Msg("previously saved config does not exist")
@@ -85,15 +86,18 @@ func open() bool {
 	}
 
 	Current = c
+	if Current.Dir == "custom" {
+		Current.load = loadCustom
+	}
 	Current.load()
 
 	return true
 }
 
-func Load(config string, acceptance float32, record bool) error {
+func Load(dir string, acceptance float32, record bool) error {
 	defer validate()
 
-	if open() {
+	if open(dir) {
 		return nil
 	}
 
@@ -110,28 +114,29 @@ func Load(config string, acceptance float32, record bool) error {
 				Points: 1,
 				Time:   1,
 			},
-
+			Dir:  "default",
 			load: loadDefault,
 		},
 		"custom": {
 			Acceptance: acceptance,
 			Record:     record,
-			Scores:     image.Rect(480, 0, 1920, 1080),
-			Time:       image.Rect(1160, 15, 1228, 45),
+			Scores:     image.Rect(400, 0, 1100, 400),
+			Time:       image.Rect(800, 0, 1100, 150),
+			Points:     image.Rect(0, 0, 200, 200),
 			Scales: Scales{
 				Game:   1,
 				Score:  1,
 				Points: 1,
 				Time:   1,
 			},
-
+			Dir:  "custom",
 			load: loadCustom,
 		},
 	}
 
-	c, ok := configs[config]
+	c, ok := configs[dir]
 	if !ok {
-		return fmt.Errorf("unknown configuration: %s", config)
+		return fmt.Errorf("unknown configuration: %s", dir)
 	}
 
 	Current = c
