@@ -192,7 +192,11 @@ func (m Match) Time(matrix gocv.Mat, img *image.RGBA) (seconds int, kitchen stri
 			}
 
 			_, maxc, _, maxp := gocv.MinMaxLoc(results[j])
-			if maxc >= .9 {
+			if maxc >= .85 {
+				if len(config.Current.Templates["time"][team.Time.Name]) <= j {
+					return 0, ""
+				}
+
 				pieces = append(pieces,
 					sort.Piece{
 						Point:    maxp,
@@ -209,8 +213,9 @@ func (m Match) Time(matrix gocv.Mat, img *image.RGBA) (seconds int, kitchen stri
 
 		clock[i] = pieces[0].Value
 
+		// Crop the left side of the selection area via the  first <x-5,y> point matched.
 		rect := image.Rect(
-			pieces[0].Point.X+pieces[0].Cols(),
+			pieces[0].Point.X+pieces[0].Cols()-5,
 			0,
 			region.Cols(),
 			region.Rows(),
@@ -221,6 +226,9 @@ func (m Match) Time(matrix gocv.Mat, img *image.RGBA) (seconds int, kitchen stri
 			break
 		}
 
+		if !region.Empty() {
+			gocv.IMWrite(fmt.Sprintf("%d-%d.png", i, time.Now().UnixNano()), region)
+		}
 		region = region.Region(rect)
 	}
 
@@ -229,7 +237,7 @@ func (m Match) Time(matrix gocv.Mat, img *image.RGBA) (seconds int, kitchen stri
 
 	pipe.Socket.Time(mins, secs)
 
-	return mins*60 + secs, fmt.Sprintf("%d:%d", mins, secs)
+	return mins*60 + secs, fmt.Sprintf("%d%d:%d%d", clock[0], clock[1], clock[2], clock[3])
 }
 
 func (m Match) MarshalZerologObject(e *zerolog.Event) {

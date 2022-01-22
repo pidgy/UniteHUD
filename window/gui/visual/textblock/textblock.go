@@ -11,6 +11,7 @@ import (
 	"gioui.org/op/paint"
 	"gioui.org/text"
 	"gioui.org/unit"
+	"gioui.org/widget"
 	"gioui.org/widget/material"
 )
 
@@ -29,17 +30,25 @@ func (t *TextBlock) Layout(gtx layout.Context, texts []string) layout.Dimensions
 	return Fill(gtx,
 		color.NRGBA{R: 25, G: 25, B: 100, A: 50},
 		func(gtx layout.Context) layout.Dimensions {
-			return block.Layout(gtx)
+			return layout.Inset{Top: unit.Px(5), Left: unit.Px(5)}.Layout(gtx, block.Layout)
 		},
 	)
 }
 
 // ColorBox creates a widget with the specified dimensions and color.
-func ColorBox(gtx layout.Context, size image.Point, color color.NRGBA) layout.Dimensions {
+func ColorBox(gtx layout.Context, size image.Point, c color.NRGBA) layout.Dimensions {
 	defer clip.Rect{Max: size}.Push(gtx.Ops).Pop()
-	paint.ColorOp{Color: color}.Add(gtx.Ops)
+	paint.ColorOp{Color: c}.Add(gtx.Ops)
 	paint.PaintOp{}.Add(gtx.Ops)
-	return layout.Dimensions{Size: size}
+
+	return widget.Border{
+		Color: color.NRGBA{R: 100, G: 100, B: 100, A: 50},
+		Width: unit.Px(2),
+	}.Layout(
+		gtx,
+		func(gtx layout.Context) layout.Dimensions {
+			return layout.Dimensions{Size: size}
+		})
 }
 
 func Fill(gtx layout.Context, backgroundColor color.NRGBA, w layout.Widget) layout.Dimensions {

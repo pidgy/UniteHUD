@@ -5,7 +5,6 @@ import (
 	"image"
 	"image/color"
 	"os"
-	"sync"
 	"time"
 
 	"gioui.org/app"
@@ -42,8 +41,6 @@ type GUI struct {
 	open    bool
 
 	Actions chan Action
-
-	once *sync.Once
 }
 
 type Action string
@@ -56,10 +53,9 @@ const (
 func New() *GUI {
 	g := &GUI{
 		Window: app.NewWindow(
-			app.Title("Pokemon Unite HUD Server Configuration"),
+			app.Title("Pokemon Unite HUD Server"),
 		),
 		Preview: true,
-		once:    &sync.Once{},
 	}
 
 	return g
@@ -234,19 +230,28 @@ func (g *GUI) main() (string, error) {
 						gtx,
 						color.NRGBA{R: 25, G: 25, B: 25, A: 255},
 						func(gtx layout.Context) layout.Dimensions {
-							layout.Inset{Left: unit.Px(float32(gtx.Constraints.Max.X - 125)), Top: unit.Px(float32(gtx.Constraints.Max.Y - 100))}.Layout(
+							layout.Inset{
+								Left: unit.Px(float32(gtx.Constraints.Max.X - 125)),
+								Top:  unit.Px(float32(gtx.Constraints.Max.Y - 100)),
+							}.Layout(
 								gtx,
 								func(gtx layout.Context) layout.Dimensions {
 									return startButton.Layout(gtx)
 								})
 
-							layout.Inset{Left: unit.Px(float32(gtx.Constraints.Max.X - 125)), Top: unit.Px(float32(gtx.Constraints.Max.Y - 45))}.Layout(
+							layout.Inset{
+								Left: unit.Px(float32(gtx.Constraints.Max.X - 125)),
+								Top:  unit.Px(float32(gtx.Constraints.Max.Y - 45)),
+							}.Layout(
 								gtx,
 								func(gtx layout.Context) layout.Dimensions {
 									return stopButton.Layout(gtx)
 								})
 
-							return layout.Inset{Left: unit.Px(float32(gtx.Constraints.Max.X - 125)), Top: unit.Px(5)}.Layout(gtx,
+							return layout.Inset{
+								Left: unit.Px(float32(gtx.Constraints.Max.X - 125)),
+								Top:  unit.Px(50),
+							}.Layout(gtx,
 								func(gtx layout.Context) layout.Dimensions {
 									return configButton.Layout(gtx)
 								})
@@ -278,6 +283,7 @@ func (g *GUI) preview() {
 func (g *GUI) configure() (string, error) {
 	g.Preview = true
 	defer func() { g.Preview = false }()
+
 	next := ""
 
 	split := &split.Horizontal{Ratio: .75}
@@ -287,8 +293,8 @@ func (g *GUI) configure() (string, error) {
 
 	pointsArea := &area.Area{
 		Text: "Points",
-		Min:  image.Pt(0, 0),
-		Max:  image.Pt(100, 100),
+		Min:  config.Current.Points.Min.Div(2),
+		Max:  config.Current.Points.Max.Div(2),
 		Button: &button.Button{
 			Active:   true,
 			Text:     "\t Points",
@@ -575,13 +581,17 @@ func (g *GUI) configure() (string, error) {
 	}
 
 	resetButton.Click = func() {
-		err := config.Current.Reset()
+		err := config.Reset()
 		if err != nil {
 			log.Error().Err(err).Msg("failed to reset config")
 			g.Log("failed to reset configuration (%s)", err.Error())
 		}
 
 		config.Current.Reload()
+
+		pointsArea.Min, pointsArea.Max = config.Current.Points.Min.Div(2), config.Current.Points.Max.Div(2)
+		timeArea.Min, timeArea.Max = config.Current.Time.Min.Div(2), config.Current.Time.Max.Div(2)
+		scoreArea.Min, scoreArea.Max = config.Current.Scores.Min.Div(2), config.Current.Scores.Max.Div(2)
 
 		resetButton.Active = !resetButton.Active
 	}
@@ -590,11 +600,11 @@ func (g *GUI) configure() (string, error) {
 	title.Color = color.NRGBA{R: 0, G: 0, B: 0, A: 255}
 	title.Alignment = text.Middle
 
-	g.once.Do(func() {
-		go g.run(func() { g.matchScore(scoreArea) })
-		go g.run(func() { g.matchPoints(pointsArea) })
-		go g.run(func() { g.matchTime(timeArea) })
-	})
+	kill := false
+	defer func() { kill = true }()
+	go g.run(func() { g.matchScore(scoreArea) }, &kill)
+	go g.run(func() { g.matchPoints(pointsArea) }, &kill)
+	go g.run(func() { g.matchTime(timeArea) }, &kill)
 
 	for next == "" {
 		if !g.open {
@@ -640,7 +650,7 @@ func (g *GUI) configure() (string, error) {
 									layout.Inset{
 										Left:  unit.Px(float32(gtx.Constraints.Max.X - 110)),
 										Right: unit.Px(10),
-										Top:   unit.Px(15),
+										Top:   unit.Px(30),
 									}.Layout(
 										gtx,
 										func(gtx layout.Context) layout.Dimensions {
@@ -650,7 +660,7 @@ func (g *GUI) configure() (string, error) {
 									layout.Inset{
 										Left:  unit.Px(float32(gtx.Constraints.Max.X - 220)),
 										Right: unit.Px(10),
-										Top:   unit.Px(15),
+										Top:   unit.Px(30),
 									}.Layout(
 										gtx,
 										func(gtx layout.Context) layout.Dimensions {
@@ -660,7 +670,7 @@ func (g *GUI) configure() (string, error) {
 									layout.Inset{
 										Left:  unit.Px(float32(gtx.Constraints.Max.X - 330)),
 										Right: unit.Px(10),
-										Top:   unit.Px(15),
+										Top:   unit.Px(30),
 									}.Layout(
 										gtx,
 										func(gtx layout.Context) layout.Dimensions {
@@ -670,7 +680,7 @@ func (g *GUI) configure() (string, error) {
 									layout.Inset{
 										Left:  unit.Px(float32(gtx.Constraints.Max.X - 440)),
 										Right: unit.Px(10),
-										Top:   unit.Px(15),
+										Top:   unit.Px(30),
 									}.Layout(
 										gtx,
 										func(gtx layout.Context) layout.Dimensions {
@@ -856,8 +866,8 @@ func timeAreaScaleScaleButtons(scaleUpButton, scaleDownButton *button.Button) {
 	}
 	scaleUpButton.Disabled = false
 	scaleUpButton.Released = color.NRGBA{R: 50, G: 50, B: 0xFF, A: 0x3F}
-	if config.Current.Scales.Time > 0.99 {
-		config.Current.Scales.Time = 1.0
+	if config.Current.Scales.Time > 1.5 {
+		config.Current.Scales.Time = 1.5
 		scaleUpButton.Released = color.NRGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0x3F}
 		scaleUpButton.Disabled = true
 	}
@@ -964,8 +974,12 @@ func (g *GUI) matchTime(a *area.Area) {
 	}
 }
 
-func (g *GUI) run(fn func()) {
+func (g *GUI) run(fn func(), kill *bool) {
 	for {
+		if *kill {
+			return
+		}
+
 		fn()
 
 		time.Sleep(time.Second)

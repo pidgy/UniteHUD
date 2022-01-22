@@ -19,6 +19,7 @@ type Config struct {
 	Record     bool
 	Scores     image.Rectangle
 	Time       image.Rectangle
+	Points     image.Rectangle
 	Filenames  map[string]map[string][]filter.Filter     `json:"-"`
 	Templates  map[string]map[string][]template.Template `json:"-"`
 	Scales     Scales
@@ -39,7 +40,7 @@ func (c Config) Reload() {
 	defer validate()
 }
 
-func (c Config) Reset() error {
+func Reset() error {
 	defer validate()
 
 	os.Remove("unitehud.config")
@@ -102,6 +103,7 @@ func Load(config string, acceptance float32, record bool) error {
 			Record:     record,
 			Scores:     image.Rect(400, 0, 1100, 400),
 			Time:       image.Rect(800, 0, 1100, 150),
+			Points:     image.Rect(0, 0, 200, 200),
 			Scales: Scales{
 				Game:   1,
 				Score:  1,
