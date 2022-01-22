@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"image"
 	"os"
 	"os/signal"
@@ -15,41 +16,35 @@ import (
 	"github.com/vova616/screenshot"
 	"gocv.io/x/gocv"
 
+	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/dev"
+	"github.com/pidgy/unitehud/match"
 	"github.com/pidgy/unitehud/pipe"
 	"github.com/pidgy/unitehud/team"
-	"github.com/pidgy/unitehud/window"
+	"github.com/pidgy/unitehud/template"
+	"github.com/pidgy/unitehud/window/gui"
+	"github.com/pidgy/unitehud/window/terminal"
 )
 
 // windows
 // cls && go build && unitehud.exe
-
+// go build -ldflags="-H windowsgui"
 var (
-	socket *pipe.Pipe
-	screen = configs["default"]
-	mask   = gocv.NewMat()
-	sigq   = make(chan os.Signal, 1)
+	sigq = make(chan os.Signal, 1)
 )
 
-var imgq = map[string]chan *image.RGBA{
-	team.None.Name:   make(chan *image.RGBA, 1),
-	team.Self.Name:   make(chan *image.RGBA, 4),
-	team.Purple.Name: make(chan *image.RGBA, 1),
-	team.Orange.Name: make(chan *image.RGBA, 1),
-	team.Balls.Name:  make(chan *image.RGBA, 1),
-}
-
 var (
-	record     = false
-	acceptance = float32(0.91)
-	addr       = ":17069"
+	record = false
+	addr   = ":17069"
+	term   = false
 )
 
 func init() {
 	flag.BoolVar(&record, "record", record, "record data such as images and logs for developer-specific debugging")
+	flag.BoolVar(&term, "terminal", term, "use a custom terminal style window for debugging")
 	flag.StringVar(&addr, "addr", addr, "http/websocket serve address")
 	custom := flag.Bool("custom", false, "configure a customized screen capture or use the default 1920x1080 setting")
-	avg := flag.Float64("match", float64(acceptance)*100, `0-100% certainty when processing score values`)
+	avg := flag.Float64("match", 91, `0-100% certainty when processing score values`)
 	level := flag.String("v", zerolog.LevelInfoValue, "log level (panic, fatal, error, warn, info, debug)")
 	flag.Parse()
 
@@ -60,8 +55,7 @@ func init() {
 		},
 	).With().Timestamp().Logger()
 
-	acceptance = float32(*avg) / 100
-	socket = pipe.New(addr)
+	pipe.Socket = pipe.New(addr)
 
 	go signals()
 
@@ -71,30 +65,33 @@ func init() {
 	}
 	log.Logger = log.Logger.Level(lvl)
 
+	conf := "default"
 	if *custom {
-		screen = configs["custom"]
+		conf = "custom"
 	}
 
-	load()
+	err = config.Load(conf, float32(*avg)/100, 1, record)
+	if err != nil {
+		kill(err)
+	}
 }
 
-func capture(name string) {
+func capture(name string, imgq chan *image.RGBA, stop *bool) {
 	for {
-		img, err := screenshot.CaptureRect(screen.scores)
-		if err != nil {
-			kill(err)
-		}
+		if !*stop {
+			img, err := screenshot.CaptureRect(config.Current.Scores)
+			if err != nil {
+				kill(err)
+			}
 
-		select {
-		case imgq[name] <- img:
-		default:
+			imgq <- img
 		}
 
 		time.Sleep(team.Delay(name))
 	}
 }
 
-func loop(t []template, imgq chan *image.RGBA) {
+func loop(t []template.Template, imgq chan *image.RGBA) {
 	runtime.LockOSThread()
 
 	for img := range imgq {
@@ -103,7 +100,9 @@ func loop(t []template, imgq chan *image.RGBA) {
 			kill(err)
 		}
 
-		matches(matrix, img, t)
+		m := match.Match{}
+
+		m.Matches(matrix, img, t)
 
 		matrix.Close()
 	}
@@ -123,37 +122,16 @@ func kill(errs ...error) {
 	sigq <- sig
 }
 
-func matches(matrix gocv.Mat, img *image.RGBA, t []template) {
-	results := make([]gocv.Mat, len(t))
+func seconds(stop *bool) {
+	m := match.Match{}
 
-	for i, template := range t {
-		results[i] = gocv.NewMat()
-		defer results[i].Close()
-
-		gocv.MatchTemplate(matrix, template.Mat, &results[i], gocv.TmCcoeffNormed, mask)
-	}
-
-	for i, mat := range results {
-		if mat.Empty() {
-			log.Warn().Str("filename", t[i].file).Msg("empty result")
+	for {
+		if *stop {
+			time.Sleep(time.Second)
 			continue
 		}
 
-		_, maxc, _, maxp := gocv.MinMaxLoc(mat)
-		if maxc >= acceptance {
-			match{
-				Point:    maxp,
-				template: t[i],
-			}.process(matrix, img)
-		}
-	}
-}
-
-func seconds() {
-	m := match{}
-
-	for {
-		img, err := screenshot.CaptureRect(screen.time)
+		img, err := screenshot.CaptureRect(config.Current.Time)
 		if err != nil {
 			kill(err)
 		}
@@ -163,7 +141,7 @@ func seconds() {
 			kill(err)
 		}
 
-		if m.time(matrix, img, screen.regularTime) == 0 && m.time(matrix, img, screen.finalStretch) == 0 {
+		if m.Time(matrix, img, config.Current.RegularTime) == 0 && m.Time(matrix, img, config.Current.FinalStretch) == 0 {
 			// Let's back off and not waste processing power.
 			time.Sleep(time.Second * 5)
 		}
@@ -176,7 +154,7 @@ func signals() {
 	signal.Notify(sigq, syscall.SIGINT, syscall.SIGTERM)
 	s := <-sigq
 
-	window.Close()
+	terminal.Close()
 	log.Info().Stringer("signal", s).Msg("closing...")
 	os.Exit(1)
 }
@@ -184,7 +162,7 @@ func signals() {
 func main() {
 	log.Info().
 		Bool("record", record).
-		Str("match", strconv.Itoa(int(acceptance*100))+"%").
+		Str("match", strconv.Itoa(int(config.Current.Acceptance*100))+"%").
 		Str("addr", addr).Msg("unitehud")
 
 	if record {
@@ -194,27 +172,58 @@ func main() {
 		}
 	}
 
-	for category := range templates {
+	imgq := map[string]chan *image.RGBA{
+		team.None.Name:   make(chan *image.RGBA, 1),
+		team.Self.Name:   make(chan *image.RGBA, 4),
+		team.Purple.Name: make(chan *image.RGBA, 1),
+		team.Orange.Name: make(chan *image.RGBA, 1),
+		team.Balls.Name:  make(chan *image.RGBA, 1),
+	}
+
+	g := gui.New()
+	defer g.Open()
+
+	stop := true
+
+	for category := range config.Current.Templates {
 		if category == "points" || category == "time" {
 			continue
 		}
 
-		for name := range templates[category] {
+		for name := range config.Current.Templates[category] {
 			for i := 0; i < cap(imgq[name]); i++ {
-				go capture(name)
-				go loop(templates[category][name], imgq[name])
+				go capture(name, imgq[name], &stop)
+				go loop(config.Current.Templates[category][name], imgq[name])
 			}
 		}
 	}
 
-	go seconds()
+	go seconds(&stop)
 
-	err := window.Init()
-	if err != nil {
-		kill(err)
+	go func() {
+		for {
+			switch <-g.Actions {
+			case gui.Start:
+				log.Info().Bool("record", record).Str("match", strconv.Itoa(int(config.Current.Acceptance*100))+"%").Str("addr", addr).Msg("starting")
+				g.Log("Started")
+				stop = false
+			case gui.Stop:
+				log.Info().Bool("record", record).Str("match", strconv.Itoa(int(config.Current.Acceptance*100))+"%").Str("addr", addr).Msg("stopping")
+				g.Log("Stopped")
+				stop = true
+			}
+		}
+	}()
+
+	g.Log(fmt.Sprintf("Listening at %s", addr))
+
+	if term {
+		err := terminal.Init()
+		if err != nil {
+			kill(err)
+		}
+
+		terminal.Write(terminal.White, "Started Pokemon Unite HUD Server... listening on", addr)
+		terminal.Show()
 	}
-
-	window.Write(window.Default, "Started Pokemon Unite HUD Server... listening on", addr)
-
-	window.Show()
 }

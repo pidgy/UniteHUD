@@ -12,7 +12,7 @@ import (
 	"golang.org/x/net/websocket"
 
 	"github.com/pidgy/unitehud/team"
-	"github.com/pidgy/unitehud/window"
+	"github.com/pidgy/unitehud/window/terminal"
 )
 
 type Pipe struct {
@@ -32,6 +32,8 @@ type Score struct {
 	Team  string `json:"team"`
 	Value int    `json:"value"`
 }
+
+var Socket *Pipe
 
 func New(addr string) *Pipe {
 	p := &Pipe{
@@ -73,7 +75,7 @@ func New(addr string) *Pipe {
 		p.tx += len(raw)
 		p.requests++
 		if p.requests%100 == 0 {
-			window.Write(color.RGBA{0, 255, 0, 255}, "Server has sent", strconv.Itoa(p.tx), "bytes in", strconv.Itoa(p.requests), "requests")
+			terminal.Write(color.RGBA{0, 255, 0, 255}, "Server has sent", strconv.Itoa(p.tx), "bytes in", strconv.Itoa(p.requests), "requests")
 		}
 
 		log.Debug().Str("route", "/http").Str("remote", r.RemoteAddr).RawJSON("raw", raw).Msg("served")
@@ -121,13 +123,13 @@ func (p *Pipe) Publish(t *team.Team, value int) {
 		p.game.Self.Value += s.Value
 	}
 
-	window.Write(t.RGBA, strings.Title(t.Name), "team", "scored", strconv.Itoa(value), "points")
-	window.Score(p.game.Purple.Value, p.game.Orange.Value, p.game.Self.Value)
+	terminal.Write(t.RGBA, strings.Title(t.Name), "team", "scored", strconv.Itoa(value), "points")
+	terminal.Score(p.game.Purple.Value, p.game.Orange.Value, p.game.Self.Value)
 }
 
 func (p *Pipe) Time(minutes, seconds int) {
 	p.game.Seconds = minutes*60 + seconds
-	window.Time(p.game.Seconds)
+	terminal.Time(p.game.Seconds)
 }
 
 func (p *Pipe) score(ws *websocket.Conn) {

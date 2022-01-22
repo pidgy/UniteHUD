@@ -85,7 +85,8 @@ func (t Team) Rectangle(p image.Point) image.Rectangle {
 	if t.Name == Self.Name {
 		return image.Rect(p.X-200, p.Y-50, p.X+250, p.Y+100)
 	}
-	return image.Rect(p.X-100, p.Y-30, p.X+150, p.Y+75)
+
+	return image.Rect(p.X-50, p.Y-30, p.X+150, p.Y+75)
 }
 
 func (t Team) Region(mat gocv.Mat) gocv.Mat {
