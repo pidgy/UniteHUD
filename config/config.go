@@ -29,10 +29,10 @@ type Config struct {
 }
 
 type Scales struct {
-	Score  float64
-	Time   float64
-	Points float64
-	Game   float64
+	Score float64
+	Time  float64
+	Balls float64
+	Game  float64
 }
 
 var Current Config
@@ -109,10 +109,10 @@ func Load(dir string, acceptance float32, record bool) error {
 			Time:       image.Rect(800, 0, 1100, 150),
 			Points:     image.Rect(0, 0, 200, 200),
 			Scales: Scales{
-				Game:   1,
-				Score:  1,
-				Points: 1,
-				Time:   1,
+				Game:  1,
+				Score: 1,
+				Balls: 1,
+				Time:  1,
 			},
 			Dir:  "default",
 			load: loadDefault,
@@ -124,10 +124,10 @@ func Load(dir string, acceptance float32, record bool) error {
 			Time:       image.Rect(800, 0, 1100, 150),
 			Points:     image.Rect(0, 0, 200, 200),
 			Scales: Scales{
-				Game:   1,
-				Score:  1,
-				Points: 1,
-				Time:   1,
+				Game:  1,
+				Score: 1,
+				Balls: 1,
+				Time:  1,
 			},
 			Dir:  "custom",
 			load: loadCustom,
@@ -173,12 +173,12 @@ func validate() {
 
 				scale := float64(1)
 				switch category {
-				case "scored":
+				case "scored", "points":
 					scale = Current.Scales.Score
+				case "balls":
+					scale = Current.Scales.Balls
 				case "time":
 					scale = Current.Scales.Time
-				case "points":
-					scale = Current.Scales.Points
 				case "game":
 					scale = Current.Scales.Game
 				}

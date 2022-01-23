@@ -28,7 +28,7 @@ var (
 	mask = gocv.NewMat()
 )
 
-func (m Match) Matches(matrix gocv.Mat, img image.Image, t []template.Template) (matched bool, score int) {
+func (m *Match) Matches(matrix gocv.Mat, img image.Image, t []template.Template) (matched, dup bool, score int) {
 	results := make([]gocv.Mat, len(t))
 
 	for i, template := range t {
@@ -53,10 +53,10 @@ func (m Match) Matches(matrix gocv.Mat, img image.Image, t []template.Template) 
 		}
 	}
 
-	return false, 0
+	return false, false, 0
 }
 
-func (m Match) Process(matrix gocv.Mat, img image.Image) (matched bool, score int) {
+func (m *Match) Process(matrix gocv.Mat, img image.Image) (matched, dup bool, score int) {
 	log.Info().Object("match", m).Int("cols", matrix.Cols()).Int("rows", matrix.Rows()).Msg("match found")
 
 	switch m.Category {
@@ -64,7 +64,7 @@ func (m Match) Process(matrix gocv.Mat, img image.Image) (matched bool, score in
 		rect := m.Team.Rectangle(m.Point)
 		if rect.Min.X < 0 || rect.Min.Y < 0 || rect.Max.X > matrix.Cols() || rect.Max.Y > matrix.Rows() {
 			log.Warn().Object("match", m).Msg("match is outside the legal selection")
-			return false, 0
+			return false, false, 0
 		}
 
 		return m.Points(matrix.Region(rect), img)
@@ -79,7 +79,7 @@ func (m Match) Process(matrix gocv.Mat, img image.Image) (matched bool, score in
 				dev.Start()
 			}
 
-			return true, 0
+			return true, false, 0
 		case "end":
 			pipe.Socket.Clear()
 
@@ -89,14 +89,14 @@ func (m Match) Process(matrix gocv.Mat, img image.Image) (matched bool, score in
 				dev.End()
 			}
 
-			return true, 0
+			return true, false, 0
 		}
 	}
 
-	return false, 0
+	return false, false, 0
 }
 
-func (m Match) Points(matrix gocv.Mat, img image.Image) (matched bool, score int) {
+func (m *Match) Points(matrix gocv.Mat, img image.Image) (matched, dup bool, score int) {
 	results := make([]gocv.Mat, len(config.Current.Templates["points"][m.Team.Name]))
 
 	for i, pt := range config.Current.Templates["points"][m.Team.Name] {
@@ -130,13 +130,14 @@ func (m Match) Points(matrix gocv.Mat, img image.Image) (matched bool, score int
 	value, order := pieces.Sort()
 	if value == 0 {
 		log.Warn().Object("team", m.Team).Str("order", order).Msg("no value extracted")
+		return false, false, 0
 	}
 
 	region := m.Team.Region(matrix)
 
 	latest := duplicate.New(value, matrix, region)
 
-	dup := m.Team.Duplicate.Of(latest)
+	dup = m.Team.Duplicate.Of(latest)
 	//TODO simplify this
 	if !dup && m.Team.Name == team.Self.Name && time.Since(m.Team.Duplicate.Time) < time.Second {
 		dup = true
@@ -158,10 +159,10 @@ func (m Match) Points(matrix gocv.Mat, img image.Image) (matched bool, score int
 		dev.Log(fmt.Sprintf("%s %d (duplicate: %t)", m.Team.Name, value, dup))
 	}
 
-	return value > 0, value
+	return value > 0, dup, value
 }
 
-func (m Match) Time(matrix gocv.Mat, img *image.RGBA) (seconds int, kitchen string) {
+func (m *Match) Time(matrix gocv.Mat, img *image.RGBA) (seconds int, kitchen string) {
 	clock := [4]int{-1, -1, -1, -1}
 
 	region := matrix
@@ -237,6 +238,6 @@ func (m Match) Time(matrix gocv.Mat, img *image.RGBA) (seconds int, kitchen stri
 	return mins*60 + secs, fmt.Sprintf("%d%d:%d%d", clock[0], clock[1], clock[2], clock[3])
 }
 
-func (m Match) MarshalZerologObject(e *zerolog.Event) {
+func (m *Match) MarshalZerologObject(e *zerolog.Event) {
 	e.Object("template", m.Template).Stringer("point", m.Point).Object("duplicate", m.Duplicate)
 }

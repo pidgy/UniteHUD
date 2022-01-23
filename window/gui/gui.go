@@ -29,6 +29,7 @@ import (
 	"github.com/pidgy/unitehud/team"
 	"github.com/pidgy/unitehud/window/gui/visual/area"
 	"github.com/pidgy/unitehud/window/gui/visual/button"
+	"github.com/pidgy/unitehud/window/gui/visual/help"
 	"github.com/pidgy/unitehud/window/gui/visual/screen"
 	"github.com/pidgy/unitehud/window/gui/visual/split"
 	"github.com/pidgy/unitehud/window/gui/visual/textblock"
@@ -38,7 +39,7 @@ type GUI struct {
 	*app.Window
 	*screen.Screen
 
-	logs []string
+	logs []textblock.Text
 
 	Preview bool
 	open    bool
@@ -68,12 +69,23 @@ func New() *GUI {
 	return Window
 }
 
+func (g *GUI) LogColor(c color.RGBA, format string, a ...interface{}) {
+	g.log(c, format, a...)
+}
+
 func (g *GUI) Log(format string, a ...interface{}) {
+	g.log(color.RGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0xFF}, format, a...)
+}
+
+func (g *GUI) log(c color.RGBA, format string, a ...interface{}) {
 	txt := fmt.Sprintf(format, a...)
 
-	g.logs = append(g.logs, fmt.Sprintf("[%s] %s", time.Now().Format(time.Kitchen), txt))
-	if len(g.logs) > 39 {
-		g.logs = g.logs[len(g.logs)-40:]
+	g.logs = append(g.logs, textblock.Text{
+		Msg:   fmt.Sprintf("[%s] %s", time.Now().Format(time.Kitchen), txt),
+		Color: c,
+	})
+	if len(g.logs) > 37 {
+		g.logs = g.logs[len(g.logs)-38:]
 	}
 }
 
@@ -103,8 +115,13 @@ func (g *GUI) Open() {
 				if err != nil {
 					log.Error().Err(err).Send()
 				}
+			case "help_configure":
+				h := help.Configuration()
+				next, err = g.configurationHelpDialog(h.Help, h.Layout)
+				if err != nil {
+					log.Error().Err(err).Send()
+				}
 			default:
-				println("retuyrn")
 				return
 			}
 		}
@@ -115,8 +132,8 @@ func (g *GUI) Open() {
 	app.Main()
 }
 
-func (g *GUI) main() (string, error) {
-	next := ""
+func (g *GUI) main() (next string, err error) {
+	g.Window.Raise()
 
 	split := &split.Vertical{Ratio: .70}
 
@@ -141,7 +158,7 @@ func (g *GUI) main() (string, error) {
 
 	startButton := &button.Button{
 		Text:     "\t  Start",
-		Released: color.NRGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0x3F},
+		Released: color.NRGBA{R: 0xF, G: 0xFF, B: 0xF, A: 0x3F},
 		Pressed:  color.NRGBA{A: 0x4F},
 	}
 
@@ -160,7 +177,7 @@ func (g *GUI) main() (string, error) {
 
 		stopButton.Active = false
 		stopButton.Disabled = false
-		stopButton.Released = color.NRGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0x3F}
+		stopButton.Released = color.NRGBA{R: 0xFF, G: 0xF, B: 0xF, A: 0x3F}
 
 		startButton.Active = false
 		startButton.Disabled = true
@@ -179,7 +196,7 @@ func (g *GUI) main() (string, error) {
 
 		startButton.Active = false
 		startButton.Disabled = false
-		startButton.Released = color.NRGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0x3F}
+		startButton.Released = color.NRGBA{R: 0xF, G: 0xFF, B: 0xF, A: 0x3F}
 
 		g.Actions <- Stop
 	}
@@ -208,7 +225,8 @@ func (g *GUI) main() (string, error) {
 
 			split.Layout(gtx,
 				func(gtx layout.Context) layout.Dimensions {
-					return Fill(gtx,
+					return Fill(
+						gtx,
 						color.NRGBA{R: 25, G: 25, B: 25, A: 255},
 						func(gtx layout.Context) layout.Dimensions {
 							layout.Inset{
@@ -218,14 +236,24 @@ func (g *GUI) main() (string, error) {
 
 							p, o := pipe.Socket.Score()
 
+							purple := material.H5(th, strconv.Itoa(p))
+							purple.Color = color.NRGBA(team.Purple.RGBA)
+							purple.Alignment = text.Middle
+							purple.TextSize = unit.Sp(13)
+
+							layout.Inset{
+								Top:  unit.Px(2),
+								Left: unit.Px(float32(gtx.Constraints.Max.X - 35)),
+							}.Layout(gtx, purple.Layout)
+
 							orange := material.H5(th, strconv.Itoa(o))
 							orange.Color = color.NRGBA(team.Orange.RGBA)
 							orange.Alignment = text.Middle
 							orange.TextSize = unit.Sp(13)
 
 							layout.Inset{
-								Top:  unit.Px(15),
-								Left: unit.Px(float32(gtx.Constraints.Max.X - 50)),
+								Top:  unit.Px(19),
+								Left: unit.Px(float32(gtx.Constraints.Max.X - 35)),
 							}.Layout(gtx, orange.Layout)
 
 							clock := material.H5(th, pipe.Socket.Clock())
@@ -234,19 +262,9 @@ func (g *GUI) main() (string, error) {
 							clock.TextSize = unit.Sp(13)
 
 							layout.Inset{
-								Top:  unit.Px(15),
-								Left: unit.Px(float32(gtx.Constraints.Max.X - 100)),
+								Top:  unit.Px(35),
+								Left: unit.Px(float32(gtx.Constraints.Max.X - 35)),
 							}.Layout(gtx, clock.Layout)
-
-							purple := material.H5(th, strconv.Itoa(p))
-							purple.Color = color.NRGBA(team.Purple.RGBA)
-							purple.Alignment = text.Middle
-							purple.TextSize = unit.Sp(13)
-
-							layout.Inset{
-								Top:  unit.Px(15),
-								Left: unit.Px(float32(gtx.Constraints.Max.X - 125)),
-							}.Layout(gtx, purple.Layout)
 
 							return layout.Inset{Top: unit.Px(50)}.Layout(gtx,
 								func(gtx layout.Context) layout.Dimensions {
@@ -329,54 +347,52 @@ func (g *GUI) preview() {
 	}
 }
 
-func (g *GUI) configure() (string, error) {
+func (g *GUI) configure() (next string, err error) {
 	g.Preview = true
 	defer func() { g.Preview = false }()
-
-	next := ""
 
 	split := &split.Horizontal{Ratio: .75}
 
 	th := material.NewTheme(gofont.Collection())
 	var ops op.Ops
 
-	pointsArea := &area.Area{
-		Text: "Points",
+	ballsArea := &area.Area{
+		Text: "Balls",
 		Min:  config.Current.Points.Min.Div(2),
 		Max:  config.Current.Points.Max.Div(2),
 		Button: &button.Button{
 			Active:   true,
-			Text:     "\t Points",
+			Text:     "\t  Balls",
 			Pressed:  color.NRGBA{G: 0xFF, A: 0x3F},
 			Released: color.NRGBA{G: 0xFF, A: 0x4F},
 			Size:     image.Pt(100, 30),
 		},
 	}
 
-	pointsArea.Button.Click = func() {
-		if !pointsArea.Button.Active {
-			pointsArea.Text = "Points (Locked)"
-			pointsArea.Button.Text = "\tLocked"
-			pointsArea.NRGBA.A = 0x9
+	ballsArea.Button.Click = func() {
+		if !ballsArea.Button.Active {
+			ballsArea.Text = "Balls (Locked)"
+			ballsArea.Button.Text = "\tLocked"
+			ballsArea.NRGBA.A = 0x9
 			return
 		}
 
-		pointsArea.Text = "Points"
-		pointsArea.Button.Text = "\t Points"
-		pointsArea.NRGBA.A = 0x4F
+		ballsArea.Text = "Balls"
+		ballsArea.Button.Text = "\t  Balls"
+		ballsArea.NRGBA.A = 0x4F
 	}
 
-	pointsAreaScaleText := material.H5(th, "Scale")
-	pointsAreaScaleText.Color = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
-	pointsAreaScaleText.Alignment = text.Middle
-	pointsAreaScaleText.TextSize = unit.Sp(11)
+	ballsAreaScaleText := material.H5(th, "Scale")
+	ballsAreaScaleText.Color = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
+	ballsAreaScaleText.Alignment = text.Middle
+	ballsAreaScaleText.TextSize = unit.Sp(11)
 
-	pointsAreaScaleValueText := material.H5(th, "1x")
-	pointsAreaScaleValueText.Color = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
-	pointsAreaScaleValueText.Alignment = text.Middle
-	pointsAreaScaleValueText.TextSize = unit.Sp(11)
+	ballsAreaScaleValueText := material.H5(th, "1x")
+	ballsAreaScaleValueText.Color = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
+	ballsAreaScaleValueText.Alignment = text.Middle
+	ballsAreaScaleValueText.TextSize = unit.Sp(11)
 
-	pointsAreaScaleUpButton := &button.Button{
+	ballsAreaScaleUpButton := &button.Button{
 		Text:     "+",
 		Pressed:  color.NRGBA{R: 100, G: 100, B: 100, A: 0x4F},
 		Released: color.NRGBA{R: 50, G: 50, B: 0xFF, A: 0x3F},
@@ -384,7 +400,7 @@ func (g *GUI) configure() (string, error) {
 		TextSize: unit.Sp(12),
 	}
 
-	pointsAreaScaleDownButton := &button.Button{
+	ballsAreaScaleDownButton := &button.Button{
 		Text:     "-",
 		Pressed:  color.NRGBA{R: 100, G: 100, B: 100, A: 0x4F},
 		Released: color.NRGBA{R: 50, G: 50, B: 0xFF, A: 0x3F},
@@ -392,26 +408,24 @@ func (g *GUI) configure() (string, error) {
 		TextSize: unit.Sp(12),
 	}
 
-	pointsAreaScaleUpButton.Click = func() {
+	ballsAreaScaleUpButton.Click = func() {
 		g.Preview = false
-		defer g.buttonSpam(pointsAreaScaleUpButton)
+		defer g.buttonSpam(ballsAreaScaleUpButton)
 
-		pointsAreaScaleUpButton.Active = !pointsAreaScaleUpButton.Active
-		config.Current.Scales.Points += .01
+		ballsAreaScaleUpButton.Active = !ballsAreaScaleUpButton.Active
+		config.Current.Scales.Balls += .01
 
-		pointsAreaScaleScaleButtons(pointsAreaScaleUpButton, pointsAreaScaleDownButton)
-		config.Current.Reload()
+		ballsAreaScaleScaleButtons(ballsArea, ballsAreaScaleUpButton, ballsAreaScaleDownButton)
 	}
 
-	pointsAreaScaleDownButton.Click = func() {
+	ballsAreaScaleDownButton.Click = func() {
 		g.Preview = false
-		defer g.buttonSpam(pointsAreaScaleDownButton)
+		defer g.buttonSpam(ballsAreaScaleDownButton)
 
-		pointsAreaScaleDownButton.Active = !pointsAreaScaleDownButton.Active
-		config.Current.Scales.Points -= .01
+		ballsAreaScaleDownButton.Active = !ballsAreaScaleDownButton.Active
+		config.Current.Scales.Balls -= .01
 
-		pointsAreaScaleScaleButtons(pointsAreaScaleUpButton, pointsAreaScaleDownButton)
-		config.Current.Reload()
+		ballsAreaScaleScaleButtons(ballsArea, ballsAreaScaleUpButton, ballsAreaScaleDownButton)
 	}
 
 	timeArea := &area.Area{
@@ -473,8 +487,7 @@ func (g *GUI) configure() (string, error) {
 		timeAreaScaleUpButton.Active = !timeAreaScaleUpButton.Active
 		config.Current.Scales.Time += .01
 
-		timeAreaScaleScaleButtons(timeAreaScaleUpButton, timeAreaScaleDownButton)
-		config.Current.Reload()
+		timeAreaScaleScaleButtons(timeArea, timeAreaScaleUpButton, timeAreaScaleDownButton)
 	}
 
 	timeAreaScaleDownButton.Click = func() {
@@ -484,8 +497,7 @@ func (g *GUI) configure() (string, error) {
 		timeAreaScaleDownButton.Active = !timeAreaScaleDownButton.Active
 		config.Current.Scales.Time -= .01
 
-		timeAreaScaleScaleButtons(timeAreaScaleUpButton, timeAreaScaleDownButton)
-		config.Current.Reload()
+		timeAreaScaleScaleButtons(timeArea, timeAreaScaleUpButton, timeAreaScaleDownButton)
 	}
 
 	scoreArea := &area.Area{
@@ -548,8 +560,7 @@ func (g *GUI) configure() (string, error) {
 		scoreAreaScaleUpButton.Active = !scoreAreaScaleUpButton.Active
 		config.Current.Scales.Score += .01
 
-		scoreAreaScaleScaleButtons(scoreAreaScaleUpButton, scoreAreaScaleDownButton)
-		config.Current.Reload()
+		scoreAreaScaleScaleButtons(scoreArea, scoreAreaScaleUpButton, scoreAreaScaleDownButton)
 	}
 
 	scoreAreaScaleDownButton.Click = func() {
@@ -559,13 +570,12 @@ func (g *GUI) configure() (string, error) {
 		scoreAreaScaleDownButton.Active = !scoreAreaScaleDownButton.Active
 		config.Current.Scales.Score -= .01
 
-		scoreAreaScaleScaleButtons(scoreAreaScaleUpButton, scoreAreaScaleDownButton)
-		config.Current.Reload()
+		scoreAreaScaleScaleButtons(scoreArea, scoreAreaScaleUpButton, scoreAreaScaleDownButton)
 	}
 
-	pointsAreaScaleScaleButtons(pointsAreaScaleUpButton, pointsAreaScaleDownButton)
-	timeAreaScaleScaleButtons(timeAreaScaleUpButton, timeAreaScaleDownButton)
-	scoreAreaScaleScaleButtons(scoreAreaScaleUpButton, scoreAreaScaleDownButton)
+	ballsAreaScaleScaleButtons(ballsArea, ballsAreaScaleUpButton, ballsAreaScaleDownButton)
+	timeAreaScaleScaleButtons(timeArea, timeAreaScaleUpButton, timeAreaScaleDownButton)
+	scoreAreaScaleScaleButtons(scoreArea, scoreAreaScaleUpButton, scoreAreaScaleDownButton)
 
 	saveButton := &button.Button{
 		Text:     "\t  Save",
@@ -582,7 +592,7 @@ func (g *GUI) configure() (string, error) {
 	cancelButton.Click = func() {
 		cancelButton.Disabled = true
 		saveButton.Disabled = true
-		pointsArea.Button.Disabled = true
+		ballsArea.Button.Disabled = true
 		timeArea.Button.Disabled = true
 		scoreArea.Button.Disabled = true
 
@@ -593,7 +603,7 @@ func (g *GUI) configure() (string, error) {
 	saveButton.Click = func() {
 		cancelButton.Disabled = true
 		saveButton.Disabled = true
-		pointsArea.Button.Disabled = true
+		ballsArea.Button.Disabled = true
 		timeArea.Button.Disabled = true
 		scoreArea.Button.Disabled = true
 
@@ -638,11 +648,23 @@ func (g *GUI) configure() (string, error) {
 
 		config.Current.Reload()
 
-		pointsArea.Min, pointsArea.Max = config.Current.Points.Min.Div(2), config.Current.Points.Max.Div(2)
+		ballsArea.Min, ballsArea.Max = config.Current.Points.Min.Div(2), config.Current.Points.Max.Div(2)
 		timeArea.Min, timeArea.Max = config.Current.Time.Min.Div(2), config.Current.Time.Max.Div(2)
 		scoreArea.Min, scoreArea.Max = config.Current.Scores.Min.Div(2), config.Current.Scores.Max.Div(2)
 
 		resetButton.Active = !resetButton.Active
+	}
+
+	helpButton := &button.Button{
+		Text:     "\t  Help",
+		Pressed:  color.NRGBA{R: 0xFF, G: 0xFF, A: 0x3F},
+		Released: color.NRGBA{R: 0xF, G: 0xFF, B: 0xF, A: 0x3F},
+		Active:   true,
+	}
+
+	helpButton.Click = func() {
+		helpButton.Active = !helpButton.Active
+		next = "help_configure"
 	}
 
 	title := material.H5(th, "Pokemon Unite HUD Server")
@@ -652,7 +674,7 @@ func (g *GUI) configure() (string, error) {
 	kill := false
 	defer func() { kill = true }()
 	go g.run(func() { g.matchScore(scoreArea) }, &kill)
-	go g.run(func() { g.matchPoints(pointsArea) }, &kill)
+	go g.run(func() { g.matchPoints(ballsArea) }, &kill)
 	go g.run(func() { g.matchTime(timeArea) }, &kill)
 
 	for next == "" {
@@ -736,6 +758,16 @@ func (g *GUI) configure() (string, error) {
 											return resetButton.Layout(gtx)
 										})
 
+									layout.Inset{
+										Left:  unit.Px(float32(gtx.Constraints.Max.X - 550)),
+										Right: unit.Px(10),
+										Top:   unit.Px(30),
+									}.Layout(
+										gtx,
+										func(gtx layout.Context) layout.Dimensions {
+											return helpButton.Layout(gtx)
+										})
+
 									// Time Area Rectangle Buttons
 									layout.Inset{
 										Left: unit.Px(240),
@@ -790,7 +822,7 @@ func (g *GUI) configure() (string, error) {
 									}.Layout(
 										gtx,
 										func(gtx layout.Context) layout.Dimensions {
-											return pointsArea.Button.Layout(gtx)
+											return ballsArea.Button.Layout(gtx)
 										})
 
 									layout.Inset{
@@ -799,7 +831,7 @@ func (g *GUI) configure() (string, error) {
 									}.Layout(
 										gtx,
 										func(gtx layout.Context) layout.Dimensions {
-											return pointsAreaScaleDownButton.Layout(gtx)
+											return ballsAreaScaleDownButton.Layout(gtx)
 										})
 
 									layout.Inset{
@@ -808,7 +840,7 @@ func (g *GUI) configure() (string, error) {
 									}.Layout(
 										gtx,
 										func(gtx layout.Context) layout.Dimensions {
-											return pointsAreaScaleText.Layout(gtx)
+											return ballsAreaScaleText.Layout(gtx)
 										})
 
 									layout.Inset{
@@ -817,8 +849,8 @@ func (g *GUI) configure() (string, error) {
 									}.Layout(
 										gtx,
 										func(gtx layout.Context) layout.Dimensions {
-											pointsAreaScaleValueText.Text = fmt.Sprintf("%.2fx", config.Current.Scales.Points)
-											return pointsAreaScaleValueText.Layout(gtx)
+											ballsAreaScaleValueText.Text = fmt.Sprintf("%.2fx", config.Current.Scales.Balls)
+											return ballsAreaScaleValueText.Layout(gtx)
 										})
 
 									layout.Inset{
@@ -827,7 +859,7 @@ func (g *GUI) configure() (string, error) {
 									}.Layout(
 										gtx,
 										func(gtx layout.Context) layout.Dimensions {
-											return pointsAreaScaleUpButton.Layout(gtx)
+											return ballsAreaScaleUpButton.Layout(gtx)
 										})
 
 									// Score Area Rectangle Buttons
@@ -885,7 +917,7 @@ func (g *GUI) configure() (string, error) {
 			)
 
 			scoreArea.Layout(gtx)
-			pointsArea.Layout(gtx)
+			ballsArea.Layout(gtx)
 			timeArea.Layout(gtx)
 
 			e.Frame(gtx.Ops)
@@ -895,17 +927,156 @@ func (g *GUI) configure() (string, error) {
 	return next, nil
 }
 
+func (g *GUI) configurationHelpDialog(h *help.Help, widget layout.Widget) (next string, err error) {
+	split := &split.Vertical{Ratio: .70}
+
+	var ops op.Ops
+
+	th := material.NewTheme(gofont.Collection())
+
+	header := material.H5(th, "Help: Configuration")
+	header.Color = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
+	header.Alignment = text.Middle
+
+	backwardButton := &button.Button{
+		Text:     " <",
+		Released: color.NRGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0x3F},
+		Pressed:  color.NRGBA{A: 0x4F},
+		Size:     image.Pt(40, 35),
+	}
+
+	backwardButton.Click = func() {
+		backwardButton.Active = !backwardButton.Active
+		if h.Page != 0 {
+			h.Page--
+		}
+	}
+
+	forwardButton := &button.Button{
+		Text:     " >",
+		Released: color.NRGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0x3F},
+		Pressed:  color.NRGBA{A: 0x4F},
+		Size:     image.Pt(40, 35),
+	}
+
+	forwardButton.Click = func() {
+		forwardButton.Active = !forwardButton.Active
+		if h.Page != h.Pages-1 {
+			h.Page++
+		}
+	}
+
+	returnButton := &button.Button{
+		Text:     "\t  Back",
+		Released: color.NRGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0x3F},
+		Pressed:  color.NRGBA{A: 0x4F},
+	}
+
+	returnButton.Click = func() {
+		returnButton.Active = false
+		next = "configure"
+	}
+
+	for next == "" {
+		if !g.open {
+			time.Sleep(time.Millisecond * 10)
+			continue
+		}
+
+		e := <-g.Events()
+		switch e := e.(type) {
+		case app.ConfigEvent:
+		case system.DestroyEvent:
+			return "", e.Err
+		case system.FrameEvent:
+			gtx := layout.NewContext(&ops, e)
+			pointer.CursorNameOp{Name: pointer.CursorGrab}.Add(gtx.Ops)
+
+			background := clip.Rect{Max: gtx.Constraints.Max}.Push(gtx.Ops)
+			paint.ColorOp{Color: color.NRGBA{R: 100, G: 100, B: 100, A: 255}}.Add(gtx.Ops)
+			paint.PaintOp{}.Add(gtx.Ops)
+			background.Pop()
+
+			split.Layout(gtx,
+				func(gtx layout.Context) layout.Dimensions {
+					return Fill(gtx,
+						color.NRGBA{R: 25, G: 25, B: 25, A: 255},
+						func(gtx layout.Context) layout.Dimensions {
+							layout.Inset{
+								Left: unit.Px(2),
+								Top:  unit.Px(10),
+							}.Layout(gtx, header.Layout)
+
+							return layout.Inset{Top: unit.Px(50)}.Layout(gtx,
+								func(gtx layout.Context) layout.Dimensions {
+									return widget(gtx)
+								})
+						},
+					)
+				},
+
+				func(gtx layout.Context) layout.Dimensions {
+					return Fill(
+						gtx,
+						color.NRGBA{R: 25, G: 25, B: 25, A: 255},
+						func(gtx layout.Context) layout.Dimensions {
+							pages := material.H5(th, fmt.Sprintf("%d / %d", h.Page+1, h.Pages))
+							pages.Color = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
+							pages.Alignment = text.Middle
+							pages.TextSize = unit.Sp(14)
+							layout.Inset{
+								Left: unit.Px(float32(gtx.Constraints.Max.X - 90)),
+								Top:  unit.Px(float32(gtx.Constraints.Max.Y - 130)),
+							}.Layout(gtx, pages.Layout)
+
+							layout.Inset{
+								Left: unit.Px(float32(gtx.Constraints.Max.X - 125)),
+								Top:  unit.Px(float32(gtx.Constraints.Max.Y - 100)),
+							}.Layout(gtx,
+								func(gtx layout.Context) layout.Dimensions {
+									return backwardButton.Layout(gtx)
+								})
+
+							layout.Inset{
+								Left: unit.Px(float32(gtx.Constraints.Max.X - 65)),
+								Top:  unit.Px(float32(gtx.Constraints.Max.Y - 100)),
+							}.Layout(gtx,
+								func(gtx layout.Context) layout.Dimensions {
+									return forwardButton.Layout(gtx)
+								})
+
+							layout.Inset{
+								Left: unit.Px(float32(gtx.Constraints.Max.X - 125)),
+								Top:  unit.Px(float32(gtx.Constraints.Max.Y - 45)),
+							}.Layout(gtx,
+								func(gtx layout.Context) layout.Dimensions {
+									return returnButton.Layout(gtx)
+								})
+
+							return layout.Dimensions{Size: gtx.Constraints.Max}
+						})
+				})
+
+			e.Frame(gtx.Ops)
+		}
+	}
+
+	return next, nil
+}
+
+// buttonSpam ensures we only call reload once for multiple button presses.
 func (g *GUI) buttonSpam(b *button.Button) {
 	b.LastPressed = time.Now()
 
 	time.AfterFunc(time.Second, func() {
 		if time.Since(b.LastPressed) >= time.Second {
+			config.Current.Reload()
 			g.Preview = true
 		}
 	})
 }
 
-func timeAreaScaleScaleButtons(scaleUpButton, scaleDownButton *button.Button) {
+func timeAreaScaleScaleButtons(a *area.Area, scaleUpButton, scaleDownButton *button.Button) {
 	scaleDownButton.Disabled = false
 	scaleDownButton.Released = color.NRGBA{R: 50, G: 50, B: 0xFF, A: 0x3F}
 	if config.Current.Scales.Time < 0.01 {
@@ -922,24 +1093,24 @@ func timeAreaScaleScaleButtons(scaleUpButton, scaleDownButton *button.Button) {
 	}
 }
 
-func pointsAreaScaleScaleButtons(scaleUpButton, scaleDownButton *button.Button) {
+func ballsAreaScaleScaleButtons(a *area.Area, scaleUpButton, scaleDownButton *button.Button) {
 	scaleDownButton.Disabled = false
 	scaleDownButton.Released = color.NRGBA{R: 50, G: 50, B: 0xFF, A: 0x3F}
-	if config.Current.Scales.Points < 0.01 {
-		config.Current.Scales.Points = 0.05
+	if config.Current.Scales.Balls < 0.01 {
+		config.Current.Scales.Balls = 0.05
 		scaleDownButton.Released = color.NRGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0x3F}
 		scaleDownButton.Disabled = true
 	}
 	scaleUpButton.Disabled = false
 	scaleUpButton.Released = color.NRGBA{R: 50, G: 50, B: 0xFF, A: 0x3F}
-	if config.Current.Scales.Points > 0.99 {
-		config.Current.Scales.Points = 1.0
+	if config.Current.Scales.Balls > 0.99 {
+		config.Current.Scales.Balls = 1.0
 		scaleUpButton.Released = color.NRGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0x3F}
 		scaleUpButton.Disabled = true
 	}
 }
 
-func scoreAreaScaleScaleButtons(scaleUpButton, scaleDownButton *button.Button) {
+func scoreAreaScaleScaleButtons(a *area.Area, scaleUpButton, scaleDownButton *button.Button) {
 	scaleDownButton.Disabled = false
 	scaleDownButton.Released = color.NRGBA{R: 50, G: 50, B: 0xFF, A: 0x3F}
 	if config.Current.Scales.Score < 0.01 {
@@ -986,7 +1157,7 @@ func (g *GUI) matchScore(a *area.Area) {
 
 	m := match.Match{}
 	for _, templates := range config.Current.Templates["scored"] {
-		ok, score := m.Matches(matrix, g.Image, templates)
+		ok, _, score := m.Matches(matrix, g.Image, templates)
 		if ok {
 			a.NRGBA = color.NRGBA{G: 0xFF, A: 0x99}
 			a.Subtext = fmt.Sprintf("(+%d)", score)

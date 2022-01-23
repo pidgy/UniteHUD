@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"runtime"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -75,16 +76,19 @@ func init() {
 	}
 }
 
-func capture(name string, imgq chan *image.RGBA, stop *bool) {
+func capture(name string, imgq chan *image.RGBA, paused *bool) {
 	for {
-		if !*stop {
-			img, err := screenshot.CaptureRect(config.Current.Scores)
-			if err != nil {
-				kill(err)
-			}
-
-			imgq <- img
+		if *paused {
+			time.Sleep(team.Delay(name))
+			continue
 		}
+
+		img, err := screenshot.CaptureRect(config.Current.Scores)
+		if err != nil {
+			kill(err)
+		}
+
+		imgq <- img
 
 		time.Sleep(team.Delay(name))
 	}
@@ -101,7 +105,10 @@ func loop(t []template.Template, imgq chan *image.RGBA) {
 
 		m := match.Match{}
 
-		m.Matches(matrix, img, t)
+		ok, dup, score := m.Matches(matrix, img, t)
+		if ok && !dup && score > 0 {
+			gui.Window.LogColor(m.Team.RGBA, "%s scored %d points", strings.Title(m.Template.Team.Name), score)
+		}
 
 		matrix.Close()
 	}
@@ -121,11 +128,11 @@ func kill(errs ...error) {
 	sigq <- sig
 }
 
-func seconds(stop *bool) {
+func seconds(paused *bool) {
 	m := match.Match{}
 
 	for {
-		if *stop {
+		if *paused {
 			time.Sleep(time.Second)
 			continue
 		}
@@ -184,7 +191,7 @@ func main() {
 	gui.New()
 	defer gui.Window.Open()
 
-	stop := true
+	paused := true
 
 	for category := range config.Current.Templates {
 		if category == "points" || category == "time" {
@@ -193,40 +200,29 @@ func main() {
 
 		for name := range config.Current.Templates[category] {
 			for i := 0; i < cap(imgq[name]); i++ {
-				go capture(name, imgq[name], &stop)
+				go capture(name, imgq[name], &paused)
 				go loop(config.Current.Templates[category][name], imgq[name])
 			}
 		}
 	}
 
-	go seconds(&stop)
+	go seconds(&paused)
 
 	go func() {
 		for {
 			switch <-gui.Window.Actions {
 			case gui.Start:
 				log.Info().Bool("record", record).Str("match", strconv.Itoa(int(config.Current.Acceptance*100))+"%").Str("addr", addr).Msg("starting")
-				gui.Window.Log("Running")
-				stop = false
+				gui.Window.Log("Starting...")
+				paused = false
 			case gui.Stop:
 				log.Info().Bool("record", record).Str("match", strconv.Itoa(int(config.Current.Acceptance*100))+"%").Str("addr", addr).Msg("stopping")
-				gui.Window.Log("Stopped")
-				stop = true
+				gui.Window.Log("Stopping...")
+				paused = true
 			}
 		}
 	}()
 
-	gui.Window.Log("Started Pokemon Unite HUD Server... listening on %s", addr)
-
-	if term {
-		go func() {
-			err := terminal.Init()
-			if err != nil {
-				kill(err)
-			}
-
-			terminal.Write(terminal.White, "Started Pokemon Unite HUD Server... listening on", addr)
-			terminal.Show()
-		}()
-	}
+	gui.Window.Log("Pokemon Unite HUD Server... listening on %s", addr)
+	gui.Window.Log("Not started")
 }

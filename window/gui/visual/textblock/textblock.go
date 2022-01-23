@@ -3,7 +3,6 @@ package textblock
 import (
 	"image"
 	"image/color"
-	"strings"
 
 	"gioui.org/font/gofont"
 	"gioui.org/layout"
@@ -19,20 +18,34 @@ type TextBlock struct {
 	Text string
 }
 
-func (t *TextBlock) Layout(gtx layout.Context, texts []string) layout.Dimensions {
+type Text struct {
+	Msg   string
+	Color color.RGBA
+}
+
+func (t *TextBlock) Layout(gtx layout.Context, texts []Text) layout.Dimensions {
 	th := material.NewTheme(gofont.Collection())
 	th.TextSize = unit.Sp(8)
 
-	block := material.H5(th, strings.Join(texts, "\n"))
-	block.Color = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
-	block.Alignment = text.Alignment(text.Start)
-
-	return Fill(gtx,
+	Fill(gtx,
 		color.NRGBA{R: 25, G: 25, B: 100, A: 50},
 		func(gtx layout.Context) layout.Dimensions {
-			return layout.Inset{Top: unit.Px(5), Left: unit.Px(5)}.Layout(gtx, block.Layout)
+			return layout.Dimensions{Size: gtx.Constraints.Max}
 		},
 	)
+
+	inset := float32(5)
+	for _, t := range texts {
+		block := material.H5(th, t.Msg+"\n")
+		block.Color = color.NRGBA(t.Color)
+		block.Alignment = text.Alignment(text.Start)
+
+		layout.Inset{Top: unit.Px(inset), Left: unit.Px(5)}.Layout(gtx, block.Layout)
+
+		inset += 15
+	}
+
+	return layout.Dimensions{Size: gtx.Constraints.Max}
 }
 
 // ColorBox creates a widget with the specified dimensions and color.
