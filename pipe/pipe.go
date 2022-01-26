@@ -133,12 +133,16 @@ func (p *Pipe) Publish(t *team.Team, value int) {
 }
 
 func (p *Pipe) Time(minutes, seconds int) {
+	if minutes+seconds == 0 {
+		return
+	}
+
 	p.game.Seconds = minutes*60 + seconds
 	terminal.Time(p.game.Seconds)
 }
 
-func (p *Pipe) Score() (purple, orange int) {
-	return p.game.Purple.Value, p.game.Orange.Value
+func (p *Pipe) Score() (purple, orange, self int) {
+	return p.game.Purple.Value, p.game.Orange.Value, p.game.Self.Value
 }
 
 func (p *Pipe) score(ws *websocket.Conn) {

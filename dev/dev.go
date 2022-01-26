@@ -8,23 +8,34 @@ import (
 	"os"
 	"time"
 
-	"github.com/rs/zerolog/log"
+	"github.com/skratchdot/open-golang/open"
 	"gocv.io/x/gocv"
+
+	"github.com/pidgy/unitehud/config"
+	"github.com/pidgy/unitehud/notify"
+	"github.com/pidgy/unitehud/rgba"
+	"github.com/rs/zerolog/log"
 )
 
 var logFilename = fmt.Sprintf("%d.log", time.Now().Unix())
 var lastlog = ""
-var dir = "tmp/"
+var dir = "tmp"
 
 func Capture(img image.Image, mat gocv.Mat, subdir string, order string, duplicate bool, value int) {
 	subdir = fmt.Sprintf("%s/capture/%s/", dir, subdir)
 	file := fmt.Sprintf("%d@%d_%s_%d", time.Now().UnixNano(), rand.Int()%99, order, value)
 
 	if duplicate {
+		if !config.Current.RecordDuplicates && !config.Current.Record {
+			return
+		}
+
 		file += "_duplicate"
 	}
 
-	f, err := os.Create(fmt.Sprintf("%s/%s.png", subdir, file))
+	path := fmt.Sprintf("%s/%s.png", subdir, file)
+
+	f, err := os.Create(path)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to create missed image")
 		return
@@ -43,7 +54,9 @@ func Capture(img image.Image, mat gocv.Mat, subdir string, order string, duplica
 		return
 	}
 
-	f, err = os.Create(fmt.Sprintf("%s/%s_crop.png", subdir, file))
+	crop := fmt.Sprintf("%s/%s_crop.png", subdir, file)
+
+	f, err = os.Create(crop)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to create missed image")
 		return
@@ -55,6 +68,8 @@ func Capture(img image.Image, mat gocv.Mat, subdir string, order string, duplica
 		log.Error().Err(err).Msg("failed to encode missed image")
 		return
 	}
+
+	notify.Feed(rgba.Yellow, "Saved as %s in %s", file, subdir)
 }
 
 func End() {
@@ -114,6 +129,14 @@ func New() error {
 	logFilename = fmt.Sprintf("%d.log", time.Now().Unix())
 
 	return nil
+}
+
+func Open() error {
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		return fmt.Errorf("failed to find %s directory", dir)
+	}
+
+	return open.Run(dir)
 }
 
 func Start() {

@@ -1,3 +1,5 @@
+//go:generate go-winres make --product-version=git-tag
+
 package main
 
 import (
@@ -7,19 +9,20 @@ import (
 	"os/signal"
 	"runtime"
 	"strconv"
-	"strings"
 	"syscall"
 	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/vova616/screenshot"
 	"gocv.io/x/gocv"
 
+	"github.com/pidgy/screenshot"
 	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/dev"
 	"github.com/pidgy/unitehud/match"
+	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/pipe"
+	"github.com/pidgy/unitehud/rgba"
 	"github.com/pidgy/unitehud/team"
 	"github.com/pidgy/unitehud/template"
 	"github.com/pidgy/unitehud/window/gui"
@@ -34,13 +37,17 @@ var (
 )
 
 var (
+	dup    = false
 	record = false
+	missed = false
 	addr   = ":17069"
 	term   = false
 )
 
 func init() {
-	flag.BoolVar(&record, "record", record, "record data such as images and logs for developer-specific debugging")
+	flag.BoolVar(&record, "record", record, "record data such as matched images and logs for developer-specific debugging")
+	flag.BoolVar(&dup, "dup", dup, "record duplicate image matching")
+	flag.BoolVar(&missed, "missed", missed, "record missed image matching")
 	flag.BoolVar(&term, "terminal", term, "use a custom terminal style window for debugging")
 	flag.StringVar(&addr, "addr", addr, "http/websocket serve address")
 	custom := flag.Bool("custom", false, "configure a customized screen capture or use the default 1920x1080 setting")
@@ -70,7 +77,7 @@ func init() {
 		conf = "custom"
 	}
 
-	err = config.Load(conf, float32(*avg)/100, record)
+	err = config.Load(conf, float32(*avg)/100, record, missed, dup)
 	if err != nil {
 		kill(err)
 	}
@@ -105,10 +112,7 @@ func loop(t []template.Template, imgq chan *image.RGBA) {
 
 		m := match.Match{}
 
-		ok, dup, score := m.Matches(matrix, img, t)
-		if ok && !dup && score > 0 {
-			gui.Window.LogColor(m.Team.RGBA, "%s scored %d points", strings.Title(m.Template.Team.Name), score)
-		}
+		m.Matches(matrix, img, t)
 
 		matrix.Close()
 	}
@@ -167,17 +171,33 @@ func signals() {
 }
 
 func main() {
+	gui.New()
+	defer gui.Window.Open()
+
 	log.Info().
-		Bool("record", record).
+		Bool("duplicates", config.Current.RecordDuplicates).
+		Bool("missed", config.Current.RecordMissed).
+		Bool("record", config.Current.Record).
 		Str("imgs", "img/"+config.Current.Dir+"/").
 		Str("match", strconv.Itoa(int(config.Current.Acceptance*100))+"%").
 		Str("addr", addr).Msg("unitehud")
 
-	if record {
+	notify.Feed(rgba.White, "Pokemon Unite HUD Server")
+	notify.Feed(rgba.Green, "Options")
+	notify.Feed(rgba.Green, "Server address: \"%s\"", addr)
+	notify.Feed(rgba.Bool(config.Current.Record), "Record matched points: %t", config.Current.Record)
+	notify.Feed(rgba.Bool(config.Current.RecordMissed), "Record missed points: %t", config.Current.RecordMissed)
+	notify.Feed(rgba.Bool(config.Current.RecordDuplicates), "Record duplicate points: %t", config.Current.RecordDuplicates)
+	notify.Feed(rgba.Green, "Image directory: img/%s/", config.Current.Dir)
+	notify.Feed(rgba.Green, "Match acceptance: %d%s", int(config.Current.Acceptance*100), "%")
+
+	if config.Current.Record || config.Current.RecordMissed {
 		err := dev.New()
 		if err != nil {
 			kill(err)
 		}
+
+		notify.Feed(rgba.Green, "Created tmp/ directory for match recording")
 	}
 
 	imgq := map[string]chan *image.RGBA{
@@ -187,9 +207,6 @@ func main() {
 		team.Orange.Name: make(chan *image.RGBA, 1),
 		team.Balls.Name:  make(chan *image.RGBA, 1),
 	}
-
-	gui.New()
-	defer gui.Window.Open()
 
 	paused := true
 
@@ -212,17 +229,39 @@ func main() {
 		for {
 			switch <-gui.Window.Actions {
 			case gui.Start:
-				log.Info().Bool("record", record).Str("match", strconv.Itoa(int(config.Current.Acceptance*100))+"%").Str("addr", addr).Msg("starting")
-				gui.Window.Log("Starting...")
+				notify.Feed(rgba.Green, "Starting...")
 				paused = false
 			case gui.Stop:
-				log.Info().Bool("record", record).Str("match", strconv.Itoa(int(config.Current.Acceptance*100))+"%").Str("addr", addr).Msg("stopping")
-				gui.Window.Log("Stopping...")
+				notify.Feed(rgba.Green, "Stopping...")
 				paused = true
+			case gui.Record:
+				config.Current.Record = !config.Current.Record
+
+				if !config.Current.Record {
+					notify.Feed(rgba.White, "Closing open files in tmp/")
+					dev.End()
+					continue
+				}
+
+				err := dev.New()
+				if err != nil {
+					kill(err)
+				}
+
+				notify.Feed(rgba.White, "Using tmp/ directory for recording matches")
+
+				err = config.Current.Save()
+				if err != nil {
+					kill(err)
+				}
+			case gui.Open:
+				err := dev.Open()
+				if err != nil {
+					notify.Feed(rgba.Red, "%s", err.Error())
+				}
 			}
 		}
 	}()
 
-	gui.Window.Log("Pokemon Unite HUD Server... listening on %s", addr)
-	gui.Window.Log("Not started")
+	notify.Feed(rgba.White, "Not started")
 }

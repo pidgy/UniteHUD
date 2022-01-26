@@ -15,15 +15,17 @@ import (
 )
 
 type Config struct {
-	Acceptance float32
-	Record     bool
-	Scores     image.Rectangle
-	Time       image.Rectangle
-	Points     image.Rectangle
-	Filenames  map[string]map[string][]filter.Filter     `json:"-"`
-	Templates  map[string]map[string][]template.Template `json:"-"`
-	Scales     Scales
-	Dir        string
+	Acceptance       float32
+	Record           bool // Record all matched images and logs.
+	RecordMissed     bool // Record missed images.
+	RecordDuplicates bool // Record duplicate matched images.
+	Scores           image.Rectangle
+	Time             image.Rectangle
+	Points           image.Rectangle
+	Filenames        map[string]map[string][]filter.Filter     `json:"-"`
+	Templates        map[string]map[string][]template.Template `json:"-"`
+	Scales           Scales
+	Dir              string
 
 	load func()
 }
@@ -46,7 +48,7 @@ func Reset() error {
 
 	os.Remove("unitehud.config")
 
-	return Load("default", Current.Acceptance, Current.Record)
+	return Load("default", Current.Acceptance, Current.Record, Current.RecordMissed, Current.RecordDuplicates)
 }
 
 func (c Config) Save() error {
@@ -68,46 +70,26 @@ func (c Config) Save() error {
 	return nil
 }
 
-func open(dir string) bool {
-	b, err := os.ReadFile("unitehud.config")
-	if err != nil {
-		log.Warn().Err(err).Msg("previously saved config does not exist")
-		return false
-	}
-
-	c := Config{
-		load: loadDefault,
-	}
-
-	err = json.Unmarshal(b, &c)
-	if err != nil {
-		log.Error().Err(err).Msg("failed to parse previously saved config")
-		return false
-	}
-
-	Current = c
-	if Current.Dir == "custom" {
-		Current.load = loadCustom
-	}
-	Current.load()
-
-	return true
-}
-
-func Load(dir string, acceptance float32, record bool) error {
+func Load(dir string, acceptance float32, record, missed, dup bool) error {
 	defer validate()
 
 	if open(dir) {
-		return nil
+		Current.Acceptance = acceptance
+		Current.Dir = dir
+		Current.Record = record
+		Current.RecordMissed = missed
+		Current.RecordDuplicates = dup
+		return Current.Save()
 	}
 
 	configs := map[string]Config{
 		"default": {
-			Acceptance: acceptance,
-			Record:     record,
-			Scores:     image.Rect(400, 0, 1100, 400),
-			Time:       image.Rect(800, 0, 1100, 150),
-			Points:     image.Rect(0, 0, 200, 200),
+			Acceptance:   acceptance,
+			Record:       record,
+			RecordMissed: missed,
+			Scores:       image.Rect(400, 0, 1300, 600),
+			Time:         image.Rect(800, 0, 1100, 200),
+			Points:       image.Rect(0, 0, 200, 200),
 			Scales: Scales{
 				Game:  1,
 				Score: 1,
@@ -118,11 +100,12 @@ func Load(dir string, acceptance float32, record bool) error {
 			load: loadDefault,
 		},
 		"custom": {
-			Acceptance: acceptance,
-			Record:     record,
-			Scores:     image.Rect(400, 0, 1100, 400),
-			Time:       image.Rect(800, 0, 1100, 150),
-			Points:     image.Rect(0, 0, 200, 200),
+			Acceptance:   acceptance,
+			Record:       record,
+			RecordMissed: missed,
+			Scores:       image.Rect(400, 0, 1100, 400),
+			Time:         image.Rect(800, 0, 1100, 150),
+			Points:       image.Rect(0, 0, 200, 200),
 			Scales: Scales{
 				Game:  1,
 				Score: 1,
@@ -263,6 +246,7 @@ func loadDefault() {
 				filter.Filter{team.Purple, "img/default/purple/points/point_1_big.png", 1},
 				filter.Filter{team.Purple, "img/default/purple/points/point_1_big_alt.png", 1},
 				filter.Filter{team.Purple, "img/default/purple/points/point_1_big_alt_alt.png", 1},
+				filter.Filter{team.Purple, "img/default/purple/points/point_1_big_alt_alt_alt.png", 1},
 
 				filter.Filter{team.Purple, "img/default/purple/points/point_2.png", 2},
 				filter.Filter{team.Purple, "img/default/purple/points/point_2_alt.png", 2},
@@ -288,6 +272,7 @@ func loadDefault() {
 				filter.Filter{team.Purple, "img/default/purple/points/point_6_alt.png", 6},
 				filter.Filter{team.Purple, "img/default/purple/points/point_6_big.png", 6},
 				filter.Filter{team.Purple, "img/default/purple/points/point_6_big_alt.png", 6},
+				filter.Filter{team.Purple, "img/default/purple/points/point_6_big_alt_alt.png", 6},
 
 				filter.Filter{team.Purple, "img/default/purple/points/point_7.png", 7},
 				filter.Filter{team.Purple, "img/default/purple/points/point_7_big.png", 7},
@@ -321,6 +306,7 @@ func loadDefault() {
 
 				filter.Filter{team.Orange, "img/default/orange/points/point_3.png", 3},
 				filter.Filter{team.Orange, "img/default/orange/points/point_3_alt.png", 3},
+				filter.Filter{team.Orange, "img/default/orange/points/point_3_alt_alt.png", 3},
 
 				filter.Filter{team.Orange, "img/default/orange/points/point_4.png", 4},
 				filter.Filter{team.Orange, "img/default/orange/points/point_4_alt.png", 4},
@@ -338,6 +324,8 @@ func loadDefault() {
 				filter.Filter{team.Orange, "img/default/orange/points/point_6_big_alt_alt.png", 6},
 
 				filter.Filter{team.Orange, "img/default/orange/points/point_7.png", 7},
+				filter.Filter{team.Orange, "img/default/orange/points/point_7_alt.png", 7},
+				filter.Filter{team.Orange, "img/default/orange/points/point_7_alt_alt.png", 7},
 				filter.Filter{team.Orange, "img/default/orange/points/point_7_big.png", 7},
 
 				filter.Filter{team.Orange, "img/default/orange/points/point_8.png", 8},
@@ -354,20 +342,29 @@ func loadDefault() {
 				filter.Filter{team.Self, "img/default/self/points/point_0_alt.png", 0},
 				filter.Filter{team.Self, "img/default/self/points/point_0_alt_alt.png", 0},
 				filter.Filter{team.Self, "img/default/self/points/point_0_alt_alt_alt.png", 0},
+
 				filter.Filter{team.Self, "img/default/self/points/point_1.png", 1},
 				filter.Filter{team.Self, "img/default/self/points/point_1_alt.png", 1},
+
 				filter.Filter{team.Self, "img/default/self/points/point_2.png", 2},
 				filter.Filter{team.Self, "img/default/self/points/point_2_alt.png", 2},
+
+				filter.Filter{team.Self, "img/default/self/points/point_4.png", 4},
+				filter.Filter{team.Self, "img/default/self/points/point_4_alt.png", 4},
+
 				filter.Filter{team.Self, "img/default/self/points/point_5.png", 5},
 				filter.Filter{team.Self, "img/default/self/points/point_5_alt.png", 5},
 				filter.Filter{team.Self, "img/default/self/points/point_5_alt_alt.png", 5},
 				filter.Filter{team.Self, "img/default/self/points/point_5_alt_alt_alt.png", 5},
 				filter.Filter{team.Self, "img/default/self/points/point_5_alt_alt_alt_alt.png", 5},
+
 				filter.Filter{team.Self, "img/default/self/points/point_6.png", 6},
 				filter.Filter{team.Self, "img/default/self/points/point_6_alt.png", 6},
+
 				filter.Filter{team.Self, "img/default/self/points/point_7.png", 7},
 				filter.Filter{team.Self, "img/default/self/points/point_7_alt.png", 7},
 				filter.Filter{team.Self, "img/default/self/points/point_7_alt_alt.png", 7},
+
 				filter.Filter{team.Self, "img/default/self/points/point_8_alt.png", 8},
 			},
 		},
@@ -467,4 +464,30 @@ func loadCustom() {
 			team.Time.Name: {},
 		},
 	}
+}
+
+func open(dir string) bool {
+	b, err := os.ReadFile("unitehud.config")
+	if err != nil {
+		log.Warn().Err(err).Msg("previously saved config does not exist")
+		return false
+	}
+
+	c := Config{
+		load: loadDefault,
+	}
+
+	err = json.Unmarshal(b, &c)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to parse previously saved config")
+		return false
+	}
+
+	Current = c
+	if Current.Dir == "custom" {
+		Current.load = loadCustom
+	}
+	Current.load()
+
+	return true
 }

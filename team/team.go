@@ -9,13 +9,7 @@ import (
 	"gocv.io/x/gocv"
 
 	"github.com/pidgy/unitehud/duplicate"
-)
-
-var (
-	black  = color.RGBA{0, 0, 0, 255}
-	orange = color.RGBA{255, 165, 0, 255}
-	purple = color.RGBA{83, 94, 255, 255}
-	// white  = color.RGBA{255, 255, 255, 255}
+	"github.com/pidgy/unitehud/rgba"
 )
 
 // Team represents a team side in Pokemon Unite.
@@ -29,41 +23,41 @@ var (
 	// Orange represents the standard Team for the Orange side.
 	Orange = &Team{
 		Name:      "orange",
-		RGBA:      orange,
+		RGBA:      rgba.Orange,
 		Duplicate: duplicate.New(-1, gocv.NewMat(), gocv.NewMat()),
 	}
 
 	// Purple represents the standard Team for the Purple side.
 	Purple = &Team{
 		Name:      "purple",
-		RGBA:      purple,
+		RGBA:      rgba.Purple,
 		Duplicate: duplicate.New(-1, gocv.NewMat(), gocv.NewMat()),
 	}
 
 	// Self represents a wrapper Team for the Purple side.
 	Self = &Team{
 		Name:      "self",
-		RGBA:      purple,
+		RGBA:      rgba.Yellow,
 		Duplicate: duplicate.New(-1, gocv.NewMat(), gocv.NewMat()),
 	}
 
 	//Balls represents the number of balls held by self.
 	Balls = &Team{
 		Name:      "balls",
-		RGBA:      purple,
+		RGBA:      rgba.Purple,
 		Duplicate: duplicate.New(-1, gocv.NewMat(), gocv.NewMat()),
 	}
 
 	// None represents the default case for an unidentifiable side.
 	None = &Team{
 		Name:      "none",
-		RGBA:      black,
+		RGBA:      rgba.Black,
 		Duplicate: duplicate.New(-1, gocv.NewMat(), gocv.NewMat()),
 	}
 
 	Time = &Team{
 		Name:      "time",
-		RGBA:      black,
+		RGBA:      rgba.Black,
 		Duplicate: duplicate.New(-1, gocv.NewMat(), gocv.NewMat()),
 	}
 )
@@ -71,11 +65,13 @@ var (
 func Delay(name string) time.Duration {
 	switch name {
 	case None.Name:
-		return time.Second * 5
+		return time.Second * 3
 	case Self.Name:
 		return time.Second / 4
 	case Balls.Name:
 		return time.Second
+	case Purple.Name, Orange.Name:
+		return time.Second / 2
 	default:
 		return time.Second
 	}

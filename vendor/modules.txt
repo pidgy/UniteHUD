@@ -52,15 +52,18 @@ gioui.org/shader/piet
 ## explicit
 github.com/BurntSushi/xgb
 github.com/BurntSushi/xgb/xproto
+# github.com/pidgy/screenshot v0.0.0-20191005130345-da36db2560ab
+## explicit
+github.com/pidgy/screenshot
 # github.com/rs/zerolog v1.25.0
 ## explicit
 github.com/rs/zerolog
 github.com/rs/zerolog/internal/cbor
 github.com/rs/zerolog/internal/json
 github.com/rs/zerolog/log
-# github.com/vova616/screenshot v0.0.0-20191005130345-da36db2560ab
+# github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
 ## explicit
-github.com/vova616/screenshot
+github.com/skratchdot/open-golang/open
 # gocv.io/x/gocv v0.28.0
 ## explicit
 gocv.io/x/gocv

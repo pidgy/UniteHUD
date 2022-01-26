@@ -12,18 +12,14 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
+	"github.com/pidgy/unitehud/notify"
 )
 
 type TextBlock struct {
 	Text string
 }
 
-type Text struct {
-	Msg   string
-	Color color.RGBA
-}
-
-func (t *TextBlock) Layout(gtx layout.Context, texts []Text) layout.Dimensions {
+func (t *TextBlock) Layout(gtx layout.Context, texts []notify.Post) layout.Dimensions {
 	th := material.NewTheme(gofont.Collection())
 	th.TextSize = unit.Sp(8)
 
