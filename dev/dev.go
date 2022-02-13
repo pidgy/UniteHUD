@@ -22,7 +22,7 @@ var dir = "tmp"
 
 func Capture(img image.Image, mat gocv.Mat, subdir, order string, duplicate bool, value int) {
 	subdir = fmt.Sprintf("%s/capture/%s/", dir, subdir)
-	file := fmt.Sprintf("%d@%s_%d", time.Now().UnixNano(), order, value)
+	file := fmt.Sprintf("%s_%d-%d", order, value, time.Now().UnixNano())
 
 	if duplicate {
 		if !config.Current.RecordDuplicates && !config.Current.Record {
@@ -66,7 +66,7 @@ func Capture(img image.Image, mat gocv.Mat, subdir, order string, duplicate bool
 		return
 	}
 
-	notify.Feed(rgba.Yellow, "Saved as %s in %s", file, subdir)
+	notify.Feed(rgba.DarkYellow, "Saved at %s%s", subdir, file)
 }
 
 func End() {

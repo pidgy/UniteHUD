@@ -51,7 +51,7 @@ func (n *notify) log(c color.RGBA, format string, a ...interface{}) {
 
 func (p Post) String() string {
 	if p.count > 1 {
-		return fmt.Sprintf("%s (x%d)", p.msg, p.count)
+		return fmt.Sprintf("%s (%d)", p.msg, p.count)
 	}
 
 	return p.msg

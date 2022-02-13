@@ -67,9 +67,12 @@ func (c Config) Reload() {
 func Reset() error {
 	defer validate()
 
-	os.Remove("config.unitehud")
+	err := os.Remove("config.unitehud")
+	if err != nil {
+		return err
+	}
 
-	return Load("default", Current.Acceptance, Current.Record, Current.RecordMissed, Current.RecordDuplicates)
+	return Load(Current.Acceptance, Current.Record, Current.RecordMissed, Current.RecordDuplicates)
 }
 
 func (c Config) Save() error {
@@ -91,20 +94,16 @@ func (c Config) Save() error {
 	return nil
 }
 
-func Load(dir string, acceptance float32, record, missed, dup bool) error {
+func Load(acceptance float32, record, missed, dup bool) error {
 	defer validate()
 
-	if open(dir) {
+	if open() {
 		Current.Acceptance = acceptance
-		Current.Dir = dir
 		Current.Record = record
 		Current.RecordMissed = missed
 		Current.RecordDuplicates = dup
-		return Current.Save()
-	}
-
-	configs := map[string]Config{
-		"default": {
+	} else {
+		Current = Config{
 			Acceptance:   acceptance,
 			Record:       record,
 			RecordMissed: missed,
@@ -119,32 +118,10 @@ func Load(dir string, acceptance float32, record, missed, dup bool) error {
 			},
 			Dir:  "default",
 			load: loadDefault,
-		},
-		"custom": {
-			Acceptance:   acceptance,
-			Record:       record,
-			RecordMissed: missed,
-			Scores:       image.Rect(400, 0, 1100, 400),
-			Time:         image.Rect(800, 0, 1100, 150),
-			Balls:        image.Rect(0, 0, 200, 200),
-			Scales: Scales{
-				Game:  1,
-				Score: 1,
-				Balls: 1,
-				Time:  1,
-			},
-			Dir:  "custom",
-			load: loadCustom,
-		},
-	}
+		}
 
-	c, ok := configs[dir]
-	if !ok {
-		return fmt.Errorf("unknown configuration: %s", dir)
+		Current.load()
 	}
-
-	Current = c
-	Current.load()
 
 	return Current.Save()
 }
@@ -385,7 +362,7 @@ func loadCustom() {
 	}
 }
 
-func open(dir string) bool {
+func open() bool {
 	b, err := os.ReadFile("config.unitehud")
 	if err != nil {
 		log.Warn().Err(err).Msg("previously saved config does not exist")
@@ -405,7 +382,10 @@ func open(dir string) bool {
 	Current = c
 	if Current.Dir == "custom" {
 		Current.load = loadCustom
+	} else {
+		Current.Dir = "default"
 	}
+
 	Current.load()
 
 	return true

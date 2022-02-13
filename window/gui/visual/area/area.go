@@ -38,6 +38,10 @@ func (a *Area) Rectangle() image.Rectangle {
 }
 
 func (a *Area) Layout(gtx layout.Context) layout.Dimensions {
+	if a.TextSize.V == unit.Px(0).V {
+		a.TextSize = unit.Px(16)
+	}
+
 	{
 		// handle input
 		for _, ev := range gtx.Events(a) {

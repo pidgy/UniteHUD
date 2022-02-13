@@ -50,7 +50,6 @@ func init() {
 	flag.BoolVar(&missed, "missed", missed, "record missed image matching")
 	flag.BoolVar(&term, "terminal", term, "use a custom terminal style window for debugging")
 	flag.StringVar(&addr, "addr", addr, "http/websocket serve address")
-	custom := flag.Bool("custom", false, "configure a customized screen capture or use the default 1920x1080 setting")
 	avg := flag.Float64("match", 91, `0-100% certainty when processing score values`)
 	level := flag.String("v", zerolog.LevelErrorValue, "log level (panic, fatal, error, warn, info, debug)")
 	flag.Parse()
@@ -72,12 +71,7 @@ func init() {
 	}
 	log.Logger = log.Logger.Level(lvl)
 
-	conf := "default"
-	if *custom {
-		conf = "custom"
-	}
-
-	err = config.Load(conf, float32(*avg)/100, record, missed, dup)
+	err = config.Load(float32(*avg)/100, record, missed, dup)
 	if err != nil {
 		kill(err)
 	}

@@ -23,5 +23,5 @@ func Bool(b bool) color.RGBA {
 		return Green
 	}
 
-	return color.RGBA(ForestGreen)
+	return color.RGBA(SlateGray)
 }

@@ -3,6 +3,7 @@ package match
 import (
 	"fmt"
 	"image"
+	"image/color"
 	"strings"
 	"time"
 
@@ -67,6 +68,11 @@ func (m *Match) Process(matrix gocv.Mat, img image.Image) (bool, int) {
 		if rect.Min.X < 0 || rect.Min.Y < 0 || rect.Max.X > matrix.Cols() || rect.Max.Y > matrix.Rows() {
 			log.Warn().Object("match", m).Msg("match is outside the legal selection")
 			notify.Feed(rgba.Red, "Scored match is outside the configured selection area")
+
+			if config.Current.RecordMissed {
+				dev.Capture(img, matrix, m.Team.Name, "invalid", false, 0)
+			}
+
 			return false, 0
 		}
 
@@ -140,11 +146,13 @@ func (m *Match) Points(matrix gocv.Mat, img image.Image) (bool, int) {
 	if value == 0 || value > 100 {
 		log.Warn().Object("team", m.Team).Str("order", order).Msg("no value extracted")
 
+		notify.Feed(rgba.Red, "[%s] Possible missed points for %s", pipe.Socket.Clock(), strings.Title(m.Template.Team.Name))
+
 		if config.Current.RecordMissed {
 			dev.Capture(img, matrix, m.Team.Name, "missed-"+order, false, value)
+		} else {
+			notify.Feed(color.RGBA(rgba.SlateGray), "Set \"RecordMissed: true\" to view missed points in /tmp")
 		}
-
-		notify.Feed(rgba.Red, "[%s] Potential score miss for %s", pipe.Socket.Clock(), strings.Title(m.Template.Team.Name))
 
 		return false, -1
 	}
@@ -163,9 +171,7 @@ func (m *Match) Points(matrix gocv.Mat, img image.Image) (bool, int) {
 		log.Warn().Object("latest", latest).Object("previous", m.Duplicate).Msg("duplicate match")
 
 		if latest.Value > m.Team.Duplicate.Value {
-			if !m.Team.Duplicate.Counted {
-				notify.Feed(m.Team.RGBA, "Ignoring previous duplicate score %d", m.Team.Duplicate.Value)
-			} else {
+			if m.Team.Duplicate.Counted {
 				log.Warn().Object("latest", latest).Object("match", m).Msg("overwriting previous value")
 				notify.Feed(m.Team.RGBA, "[%s] -%d", pipe.Socket.Clock(), m.Team.Duplicate.Value)
 				notify.Feed(m.Team.RGBA, "[%s] +%d", pipe.Socket.Clock(), value)
@@ -205,6 +211,11 @@ func (m *Match) Time(matrix gocv.Mat, img *image.RGBA) (seconds int, kitchen str
 			if template.Mat.Cols() > region.Cols() || template.Mat.Rows() > region.Rows() {
 				log.Warn().Str("type", "time").Msg("match is outside the legal selection")
 				notify.Feed(rgba.Red, "Time match is outside the configured selection area")
+
+				if config.Current.RecordMissed {
+					dev.Capture(img, region, team.Time.Name, "missed-"+template.File, false, template.Value)
+				}
+
 				return 0, ""
 			}
 
