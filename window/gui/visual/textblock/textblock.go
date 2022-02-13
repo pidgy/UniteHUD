@@ -12,6 +12,7 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
+
 	"github.com/pidgy/unitehud/notify"
 )
 
@@ -32,8 +33,8 @@ func (t *TextBlock) Layout(gtx layout.Context, texts []notify.Post) layout.Dimen
 
 	inset := float32(5)
 	for _, t := range texts {
-		block := material.H5(th, t.Msg+"\n")
-		block.Color = color.NRGBA(t.Color)
+		block := material.H5(th, t.String()+"\n")
+		block.Color = color.NRGBA(t.RGBA)
 		block.Alignment = text.Alignment(text.Start)
 
 		layout.Inset{Top: unit.Px(inset), Left: unit.Px(5)}.Layout(gtx, block.Layout)

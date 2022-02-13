@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"image"
 	"image/png"
-	"math/rand"
 	"os"
 	"time"
 
@@ -21,9 +20,9 @@ var logFilename = fmt.Sprintf("%d.log", time.Now().Unix())
 var lastlog = ""
 var dir = "tmp"
 
-func Capture(img image.Image, mat gocv.Mat, subdir string, order string, duplicate bool, value int) {
+func Capture(img image.Image, mat gocv.Mat, subdir, order string, duplicate bool, value int) {
 	subdir = fmt.Sprintf("%s/capture/%s/", dir, subdir)
-	file := fmt.Sprintf("%d@%d_%s_%d", time.Now().UnixNano(), rand.Int()%99, order, value)
+	file := fmt.Sprintf("%d@%s_%d", time.Now().UnixNano(), order, value)
 
 	if duplicate {
 		if !config.Current.RecordDuplicates && !config.Current.Record {
@@ -54,9 +53,7 @@ func Capture(img image.Image, mat gocv.Mat, subdir string, order string, duplica
 		return
 	}
 
-	crop := fmt.Sprintf("%s/%s_crop.png", subdir, file)
-
-	f, err = os.Create(crop)
+	f, err = os.Create(fmt.Sprintf("%s/%s_crop.png", subdir, file))
 	if err != nil {
 		log.Error().Err(err).Msg("failed to create missed image")
 		return

@@ -58,6 +58,7 @@ table {
     color: red;
     text-shadow: 1px 1px 4px white, 2px 2px 4px white;
     position: fixed;
-    bottom: 0;
+    bottom: -43px;
     left: 0;
+    opacity: .4;
 }

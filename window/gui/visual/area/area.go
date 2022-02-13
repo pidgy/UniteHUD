@@ -17,9 +17,10 @@ import (
 )
 
 type Area struct {
-	Text    string
-	Subtext string
-	Hidden  bool
+	Text     string
+	TextSize unit.Value
+	Subtext  string
+	Hidden   bool
 
 	*button.Button
 
@@ -126,6 +127,7 @@ func (a *Area) Layout(gtx layout.Context) layout.Dimensions {
 		func(gtx layout.Context) layout.Dimensions {
 			title := material.Body1(material.NewTheme(gofont.Collection()), a.Text+" "+a.Subtext)
 			title.Color = color.NRGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0xFF}
+			title.TextSize = a.TextSize
 
 			//defer clip.Rect{Min: a.Max.Sub(a.Min).Sub(image.Pt(0, int(title.TextSize.V))), Max: a.Max.Sub(a.Min).Sub(image.Pt(len(title.Text), int(title.TextSize.V)))}.Push(gtx.Ops).Pop()
 			defer clip.Rect{

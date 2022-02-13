@@ -286,6 +286,8 @@ func (g *GUI) main() (next string, err error) {
 		case system.DestroyEvent:
 			return "", e.Err
 		case system.FrameEvent:
+			g.Window.Option(app.Title(title))
+
 			gtx := layout.NewContext(&ops, e)
 			pointer.CursorNameOp{Name: pointer.CursorGrab}.Add(gtx.Ops)
 
@@ -312,7 +314,7 @@ func (g *GUI) main() (next string, err error) {
 
 							layout.Inset{
 								Top:  unit.Px(2),
-								Left: unit.Px(float32(gtx.Constraints.Max.X - 130)),
+								Left: unit.Px(float32(gtx.Constraints.Max.X - 175)),
 							}.Layout(gtx, cpu.Layout)
 
 							ram := material.H5(th, g.ram)
@@ -322,10 +324,10 @@ func (g *GUI) main() (next string, err error) {
 
 							layout.Inset{
 								Top:  unit.Px(19),
-								Left: unit.Px(float32(gtx.Constraints.Max.X - 130)),
+								Left: unit.Px(float32(gtx.Constraints.Max.X - 175)),
 							}.Layout(gtx, ram.Layout)
 
-							p, o, _ := pipe.Socket.Score()
+							p, o, s := pipe.Socket.Score()
 
 							purple := material.H5(th, strconv.Itoa(p))
 							purple.Color = color.NRGBA(team.Purple.RGBA)
@@ -347,14 +349,24 @@ func (g *GUI) main() (next string, err error) {
 								Left: unit.Px(float32(gtx.Constraints.Max.X - 35)),
 							}.Layout(gtx, orange.Layout)
 
+							self := material.H5(th, strconv.Itoa(s))
+							self.Color = color.NRGBA(team.Self.RGBA)
+							self.Alignment = text.Middle
+							self.TextSize = unit.Sp(13)
+
+							layout.Inset{
+								Top:  unit.Px(35),
+								Left: unit.Px(float32(gtx.Constraints.Max.X - 35)),
+							}.Layout(gtx, self.Layout)
+
 							clock := material.H5(th, pipe.Socket.Clock())
 							clock.Color = color.NRGBA(rgba.White)
 							clock.Alignment = text.Middle
 							clock.TextSize = unit.Sp(13)
 
 							layout.Inset{
-								Top:  unit.Px(35),
-								Left: unit.Px(float32(gtx.Constraints.Max.X - 35)),
+								Top:  unit.Px(2),
+								Left: unit.Px(float32(gtx.Constraints.Max.X - 90)),
 							}.Layout(gtx, clock.Layout)
 
 							return layout.Inset{Top: unit.Px(50)}.Layout(gtx,
@@ -454,7 +466,7 @@ func (g *GUI) preview() {
 		// Redraw the image.
 		g.Invalidate()
 
-		time.Sleep(time.Second)
+		time.Sleep(time.Second / 2)
 	}
 }
 
@@ -468,9 +480,10 @@ func (g *GUI) configure() (next string, err error) {
 	var ops op.Ops
 
 	ballsArea := &area.Area{
-		Text: "Balls",
-		Min:  config.Current.Points.Min.Div(2),
-		Max:  config.Current.Points.Max.Div(2),
+		Text:     "\tBalls",
+		TextSize: unit.Sp(13),
+		Min:      config.Current.Balls.Min.Div(2),
+		Max:      config.Current.Balls.Max.Div(2),
 		Button: &button.Button{
 			Active:   true,
 			Text:     "\t  Balls",
@@ -482,13 +495,13 @@ func (g *GUI) configure() (next string, err error) {
 
 	ballsArea.Button.Click = func() {
 		if !ballsArea.Button.Active {
-			ballsArea.Text = "Balls (Locked)"
+			ballsArea.Text = "\tBalls (Locked)"
 			ballsArea.Button.Text = "\tLocked"
 			ballsArea.NRGBA.A = 0x9
 			return
 		}
 
-		ballsArea.Text = "Balls"
+		ballsArea.Text = "\tBalls"
 		ballsArea.Button.Text = "\t  Balls"
 		ballsArea.NRGBA.A = 0x4F
 	}
@@ -540,9 +553,10 @@ func (g *GUI) configure() (next string, err error) {
 	}
 
 	timeArea := &area.Area{
-		Text: "Time",
-		Min:  config.Current.Time.Min.Div(2),
-		Max:  config.Current.Time.Max.Div(2),
+		Text:     "\tTime",
+		TextSize: unit.Sp(13),
+		Min:      config.Current.Time.Min.Div(2),
+		Max:      config.Current.Time.Max.Div(2),
 		Button: &button.Button{
 			Active:   true,
 			Text:     "\t  Time",
@@ -560,7 +574,7 @@ func (g *GUI) configure() (next string, err error) {
 			return
 		}
 
-		timeArea.Text = "Time"
+		timeArea.Text = "\tTime"
 		timeArea.Button.Text = "\t  Time"
 		timeArea.NRGBA.A = 0x4F
 	}
@@ -722,6 +736,7 @@ func (g *GUI) configure() (next string, err error) {
 
 		config.Current.Scores = scoreArea.Rectangle()
 		config.Current.Time = timeArea.Rectangle()
+		config.Current.Balls = ballsArea.Rectangle()
 
 		err := config.Current.Save()
 		if err != nil {
@@ -729,7 +744,7 @@ func (g *GUI) configure() (next string, err error) {
 		}
 
 		next = "main"
-		notify.Feed(rgba.White, "Configuration saved to unitehud.config")
+		notify.Feed(rgba.White, "Configuration saved to config.unitehud")
 	}
 
 	screenButton := &button.Button{
@@ -759,7 +774,7 @@ func (g *GUI) configure() (next string, err error) {
 
 		config.Current.Reload()
 
-		ballsArea.Min, ballsArea.Max = config.Current.Points.Min.Div(2), config.Current.Points.Max.Div(2)
+		ballsArea.Min, ballsArea.Max = config.Current.Balls.Min.Div(2), config.Current.Balls.Max.Div(2)
 		timeArea.Min, timeArea.Max = config.Current.Time.Min.Div(2), config.Current.Time.Max.Div(2)
 		scoreArea.Min, scoreArea.Max = config.Current.Scores.Min.Div(2), config.Current.Scores.Max.Div(2)
 
@@ -778,9 +793,49 @@ func (g *GUI) configure() (next string, err error) {
 		next = "help_configure"
 	}
 
-	title := material.H5(th, "Pokemon Unite HUD Server")
-	title.Color = color.NRGBA{R: 0, G: 0, B: 0, A: 255}
-	title.Alignment = text.Middle
+	button16x9 := &button.Button{
+		Text:        "16:9",
+		TextSize:    unit.Sp(12),
+		TextOffset:  -3,
+		BorderWidth: unit.Px(1),
+		Pressed:     color.NRGBA(rgba.Purple),
+		Released:    rgba.DarkGray,
+		Active:      true,
+		Size:        image.Pt(45, 18),
+	}
+
+	button4x3 := &button.Button{
+		Text:        " 4:3",
+		TextSize:    unit.Sp(12),
+		TextOffset:  -3,
+		BorderWidth: unit.Px(1),
+		Pressed:     color.NRGBA(rgba.Purple),
+		Released:    rgba.DarkGray,
+		Active:      true,
+		Size:        image.Pt(45, 18),
+	}
+
+	button16x9.Click = func() {
+		config.Current.Scales.To16x9()
+		ballsAreaScaleScaleButtons(ballsArea, ballsAreaScaleUpButton, ballsAreaScaleDownButton)
+		timeAreaScaleScaleButtons(timeArea, timeAreaScaleUpButton, timeAreaScaleDownButton)
+		scoreAreaScaleScaleButtons(scoreArea, scoreAreaScaleUpButton, scoreAreaScaleDownButton)
+
+		button16x9.Active = !button16x9.Active
+	}
+
+	button4x3.Click = func() {
+		config.Current.Scales.To4x3()
+		ballsAreaScaleScaleButtons(ballsArea, ballsAreaScaleUpButton, ballsAreaScaleDownButton)
+		timeAreaScaleScaleButtons(timeArea, timeAreaScaleUpButton, timeAreaScaleDownButton)
+		scoreAreaScaleScaleButtons(scoreArea, scoreAreaScaleUpButton, scoreAreaScaleDownButton)
+
+		button4x3.Active = !button4x3.Active
+	}
+
+	header := material.H5(th, "Pokemon Unite HUD Server")
+	header.Color = color.NRGBA{R: 0, G: 0, B: 0, A: 255}
+	header.Alignment = text.Middle
 
 	kill := false
 	defer func() { kill = true }()
@@ -800,6 +855,8 @@ func (g *GUI) configure() (next string, err error) {
 		case system.DestroyEvent:
 			return "", nil
 		case system.FrameEvent:
+			g.Window.Option(app.Title(fmt.Sprintf("%s (%s %s)", title, g.cpu, g.ram)))
+
 			gtx := layout.NewContext(&ops, e)
 			pointer.CursorNameOp{Name: pointer.CursorGrab}.Add(gtx.Ops)
 
@@ -877,6 +934,26 @@ func (g *GUI) configure() (next string, err error) {
 										gtx,
 										func(gtx layout.Context) layout.Dimensions {
 											return helpButton.Layout(gtx)
+										})
+
+									layout.Inset{
+										Left:  unit.Px(float32(gtx.Constraints.Max.X - 607)),
+										Right: unit.Px(10),
+										Top:   unit.Px(3),
+									}.Layout(
+										gtx,
+										func(gtx layout.Context) layout.Dimensions {
+											return button16x9.Layout(gtx)
+										})
+
+									layout.Inset{
+										Left:  unit.Px(float32(gtx.Constraints.Max.X - 607)),
+										Right: unit.Px(10),
+										Top:   unit.Px(25),
+									}.Layout(
+										gtx,
+										func(gtx layout.Context) layout.Dimensions {
+											return button4x3.Layout(gtx)
 										})
 
 									// Time Area Rectangle Buttons
@@ -1192,14 +1269,14 @@ func timeAreaScaleScaleButtons(a *area.Area, scaleUpButton, scaleDownButton *but
 	scaleDownButton.Released = color.NRGBA{R: 50, G: 50, B: 0xFF, A: 0x3F}
 	if config.Current.Scales.Time < 0.01 {
 		config.Current.Scales.Time = 0.05
-		scaleDownButton.Released = rgba.SlateGray
+		scaleDownButton.Released = rgba.DarkerGray
 		scaleDownButton.Disabled = true
 	}
 	scaleUpButton.Disabled = false
 	scaleUpButton.Released = color.NRGBA{R: 50, G: 50, B: 0xFF, A: 0x3F}
 	if config.Current.Scales.Time > 0.99 {
 		config.Current.Scales.Time = 1.0
-		scaleUpButton.Released = rgba.SlateGray
+		scaleUpButton.Released = rgba.DarkerGray
 		scaleUpButton.Disabled = true
 	}
 }
@@ -1209,14 +1286,14 @@ func ballsAreaScaleScaleButtons(a *area.Area, scaleUpButton, scaleDownButton *bu
 	scaleDownButton.Released = color.NRGBA{R: 50, G: 50, B: 0xFF, A: 0x3F}
 	if config.Current.Scales.Balls < 0.01 {
 		config.Current.Scales.Balls = 0.05
-		scaleDownButton.Released = rgba.SlateGray
+		scaleDownButton.Released = rgba.DarkerGray
 		scaleDownButton.Disabled = true
 	}
 	scaleUpButton.Disabled = false
 	scaleUpButton.Released = color.NRGBA{R: 50, G: 50, B: 0xFF, A: 0x3F}
 	if config.Current.Scales.Balls > 0.99 {
 		config.Current.Scales.Balls = 1.0
-		scaleUpButton.Released = rgba.SlateGray
+		scaleUpButton.Released = rgba.DarkerGray
 		scaleUpButton.Disabled = true
 	}
 }
@@ -1226,14 +1303,14 @@ func scoreAreaScaleScaleButtons(a *area.Area, scaleUpButton, scaleDownButton *bu
 	scaleDownButton.Released = color.NRGBA{R: 50, G: 50, B: 0xFF, A: 0x3F}
 	if config.Current.Scales.Score < 0.01 {
 		config.Current.Scales.Score = 0.05
-		scaleDownButton.Released = rgba.SlateGray
+		scaleDownButton.Released = rgba.DarkerGray
 		scaleDownButton.Disabled = true
 	}
 	scaleUpButton.Disabled = false
 	scaleUpButton.Released = color.NRGBA{R: 50, G: 50, B: 0xFF, A: 0x3F}
 	if config.Current.Scales.Score > 0.99 {
 		config.Current.Scales.Score = 1.0
-		scaleUpButton.Released = rgba.SlateGray
+		scaleUpButton.Released = rgba.DarkerGray
 		scaleUpButton.Disabled = true
 	}
 }

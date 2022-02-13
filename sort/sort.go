@@ -74,7 +74,7 @@ func (p Pieces) Sort() (int, string) {
 		order += strconv.Itoa(piece.Value)
 	}
 
-	log.Info().Object("pieces", p).Str("order", order).Object("removed", removed).Msg("sorted")
+	log.Debug().Object("pieces", p).Str("order", order).Object("removed", removed).Msg("sorted")
 
 	v, err := strconv.Atoi(order)
 	if err != nil {

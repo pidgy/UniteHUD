@@ -11,8 +11,10 @@ type notify struct {
 }
 
 type Post struct {
-	Msg   string
-	Color color.RGBA
+	color.RGBA
+	msg   string
+	orig  string
+	count int
 }
 
 var feed = &notify{}
@@ -26,13 +28,31 @@ func Feed(c color.RGBA, format string, a ...interface{}) {
 }
 
 func (n *notify) log(c color.RGBA, format string, a ...interface{}) {
-	txt := fmt.Sprintf(format, a...)
+	p := Post{
+		RGBA:  c,
+		orig:  fmt.Sprintf(format, a...),
+		count: 1,
+	}
 
-	n.logs = append(n.logs, Post{
-		Msg:   fmt.Sprintf("[%s] %s", time.Now().Format(time.Kitchen), txt),
-		Color: c,
-	})
+	p.msg = fmt.Sprintf("[%s] %s", time.Now().Format(time.Kitchen), p.orig)
+
+	if len(n.logs) > 0 {
+		if p.orig == n.logs[len(n.logs)-1].orig {
+			n.logs[len(n.logs)-1].count++
+			return
+		}
+	}
+
+	n.logs = append(n.logs, p)
 	if len(n.logs) > 37 {
 		n.logs = n.logs[len(n.logs)-38:]
 	}
+}
+
+func (p Post) String() string {
+	if p.count > 1 {
+		return fmt.Sprintf("%s (x%d)", p.msg, p.count)
+	}
+
+	return p.msg
 }

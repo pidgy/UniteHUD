@@ -52,7 +52,7 @@ func init() {
 	flag.StringVar(&addr, "addr", addr, "http/websocket serve address")
 	custom := flag.Bool("custom", false, "configure a customized screen capture or use the default 1920x1080 setting")
 	avg := flag.Float64("match", 91, `0-100% certainty when processing score values`)
-	level := flag.String("v", zerolog.LevelInfoValue, "log level (panic, fatal, error, warn, info, debug)")
+	level := flag.String("v", zerolog.LevelErrorValue, "log level (panic, fatal, error, warn, info, debug)")
 	flag.Parse()
 
 	log.Logger = zerolog.New(
@@ -237,22 +237,23 @@ func main() {
 			case gui.Record:
 				config.Current.Record = !config.Current.Record
 
-				if !config.Current.Record {
+				switch config.Current.Record {
+				case true:
+					err := dev.New()
+					if err != nil {
+						kill(err)
+					}
+
+					notify.Feed(rgba.White, "Using tmp/ directory for recording matches")
+
+					err = config.Current.Save()
+					if err != nil {
+						kill(err)
+					}
+				case false:
 					notify.Feed(rgba.White, "Closing open files in tmp/")
+
 					dev.End()
-					continue
-				}
-
-				err := dev.New()
-				if err != nil {
-					kill(err)
-				}
-
-				notify.Feed(rgba.White, "Using tmp/ directory for recording matches")
-
-				err = config.Current.Save()
-				if err != nil {
-					kill(err)
 				}
 			case gui.Open:
 				err := dev.Open()

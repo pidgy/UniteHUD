@@ -18,7 +18,7 @@ function score() {
             }
         },
         error: function(err) {
-            $('.error').html("Failed to connect to Unite HUD server...");
+            $('.error').html("Unite HUD Client reconnecting...");
 
             $('.purple').html("");
             $('.orange').html("");

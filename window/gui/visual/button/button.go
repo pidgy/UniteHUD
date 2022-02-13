@@ -17,14 +17,19 @@ import (
 )
 
 type Button struct {
+	Text        string
+	TextSize    unit.Value
+	TextOffset  float32
+	BorderWidth unit.Value
+
+	Size image.Point
+
 	Active            bool
-	Text              string
-	Click             func()
-	Pressed, Released color.NRGBA
 	Disabled          bool
-	Size              image.Point
-	TextSize          unit.Value
 	LastPressed       time.Time
+	Pressed, Released color.NRGBA
+
+	Click func()
 }
 
 var Max = image.Pt(100, 35)
@@ -75,9 +80,13 @@ func (b *Button) uniform(gtx layout.Context) layout.Dimensions {
 }
 
 func (b *Button) draw(gtx layout.Context) layout.Dimensions {
+	if b.BorderWidth.V == unit.Px(0).V {
+		b.BorderWidth = unit.Px(3)
+	}
+
 	widget.Border{
 		Color:        color.NRGBA{A: 0xAF},
-		Width:        unit.Px(3),
+		Width:        b.BorderWidth,
 		CornerRadius: unit.Px(1),
 	}.Layout(gtx, b.uniform)
 
@@ -98,9 +107,8 @@ func (b *Button) draw(gtx layout.Context) layout.Dimensions {
 
 	return layout.Inset{
 		Left: unit.Dp(11),
-		Top:  unit.Px((float32(b.Size.Y) / title.TextSize.V) * 3),
+		Top:  unit.Px(((float32(b.Size.Y) / title.TextSize.V) * 3) + b.TextOffset),
 	}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 		return layout.N.Layout(gtx, title.Layout)
 	})
-
 }

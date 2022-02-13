@@ -5,11 +5,16 @@ import (
 	"fmt"
 	"image"
 	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
 
 	"github.com/rs/zerolog/log"
 	"gocv.io/x/gocv"
 
 	"github.com/pidgy/unitehud/filter"
+	"github.com/pidgy/unitehud/notify"
+	"github.com/pidgy/unitehud/rgba"
 	"github.com/pidgy/unitehud/team"
 	"github.com/pidgy/unitehud/template"
 )
@@ -21,7 +26,7 @@ type Config struct {
 	RecordDuplicates bool // Record duplicate matched images.
 	Scores           image.Rectangle
 	Time             image.Rectangle
-	Points           image.Rectangle
+	Balls            image.Rectangle
 	Filenames        map[string]map[string][]filter.Filter     `json:"-"`
 	Templates        map[string]map[string][]template.Template `json:"-"`
 	Scales           Scales
@@ -39,6 +44,22 @@ type Scales struct {
 
 var Current Config
 
+func (s Scales) Is16x9() bool {
+	return s.Balls+s.Game+s.Score+s.Time == 4
+}
+
+func (s *Scales) To16x9() {
+	s.Balls, s.Game, s.Score, s.Time = 1, 1, 1, 1
+}
+
+func (s Scales) Is4x3() bool {
+	return s.Balls == 0.4 && s.Game == 0.4 && s.Score == 0.4 && s.Time == 0.4
+}
+
+func (s *Scales) To4x3() {
+	s.Balls, s.Game, s.Score, s.Time = 0.4, 0.4, 0.4, 0.4
+}
+
 func (c Config) Reload() {
 	defer validate()
 }
@@ -46,13 +67,13 @@ func (c Config) Reload() {
 func Reset() error {
 	defer validate()
 
-	os.Remove("unitehud.config")
+	os.Remove("config.unitehud")
 
 	return Load("default", Current.Acceptance, Current.Record, Current.RecordMissed, Current.RecordDuplicates)
 }
 
 func (c Config) Save() error {
-	f, err := os.Create("unitehud.config")
+	f, err := os.Create("config.unitehud")
 	if err != nil {
 		return err
 	}
@@ -87,9 +108,9 @@ func Load(dir string, acceptance float32, record, missed, dup bool) error {
 			Acceptance:   acceptance,
 			Record:       record,
 			RecordMissed: missed,
-			Scores:       image.Rect(400, 0, 1300, 600),
+			Scores:       image.Rect(400, 0, 1300, 300),
 			Time:         image.Rect(800, 0, 1100, 200),
-			Points:       image.Rect(0, 0, 200, 200),
+			Balls:        image.Rect(0, 0, 200, 200),
 			Scales: Scales{
 				Game:  1,
 				Score: 1,
@@ -105,7 +126,7 @@ func Load(dir string, acceptance float32, record, missed, dup bool) error {
 			RecordMissed: missed,
 			Scores:       image.Rect(400, 0, 1100, 400),
 			Time:         image.Rect(800, 0, 1100, 150),
-			Points:       image.Rect(0, 0, 200, 200),
+			Balls:        image.Rect(0, 0, 200, 200),
 			Scales: Scales{
 				Game:  1,
 				Score: 1,
@@ -193,6 +214,64 @@ func validate() {
 	}
 }
 
+func (c Config) pointFiles(t *team.Team) []filter.Filter {
+	var files []string
+
+	root := fmt.Sprintf("img/%s/%s/points/", c.Dir, t.Name)
+	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		files = append(files, path)
+		return nil
+	})
+	if err != nil {
+		log.Fatal().Err(err).Str("root", root).Msg("invalid point image path")
+		return nil
+	}
+
+	filters := []filter.Filter{}
+	for _, file := range files {
+		if !strings.Contains(file, ".png") {
+			continue
+		}
+		b := strings.Split(file, "point_")
+		if len(b) != 2 {
+			continue
+		}
+
+		v := strings.ReplaceAll(
+			strings.ReplaceAll(
+				strings.ReplaceAll(
+					b[1],
+					".png",
+					"",
+				),
+				"_big",
+				"",
+			),
+			"_alt",
+			"",
+		)
+		if v == "" {
+			log.Warn().Str("file", file).Msg("invalid file in points directory")
+			notify.Feed(rgba.Yellow, "Invalid file in points directory: %s", file)
+			continue
+		}
+
+		value, err := strconv.Atoi(v)
+		if err != nil {
+			log.Fatal().Err(err).Str("root", root).Msg("invalid point image filename")
+			return nil
+		}
+
+		filters = append(filters, filter.Filter{
+			Team:  t,
+			File:  file,
+			Value: value,
+		})
+	}
+
+	return filters
+}
+
 func loadDefault() {
 	Current.Filenames = map[string]map[string][]filter.Filter{
 		"game": {
@@ -225,172 +304,12 @@ func loadDefault() {
 			},
 		},
 		"points": {
-			team.Purple.Name: {
-				filter.Filter{team.Purple, "img/default/purple/points/point_0.png", 0},
-				filter.Filter{team.Purple, "img/default/purple/points/point_0_alt.png", 0},
-				filter.Filter{team.Purple, "img/default/purple/points/point_0_alt_alt.png", 0},
-				filter.Filter{team.Purple, "img/default/purple/points/point_0_alt_alt_alt.png", 0},
-				filter.Filter{team.Purple, "img/default/purple/points/point_0_alt_alt_alt_alt.png", 0},
-				filter.Filter{team.Purple, "img/default/purple/points/point_0_alt_alt_alt_alt_alt.png", 0},
-				filter.Filter{team.Purple, "img/default/purple/points/point_0_alt_alt_alt_alt_alt_alt.png", 0},
-
-				filter.Filter{team.Purple, "img/default/purple/points/point_0_big.png", 0},
-				filter.Filter{team.Purple, "img/default/purple/points/point_0_big_alt.png", 0},
-				filter.Filter{team.Purple, "img/default/purple/points/point_0_big_alt_alt.png", 0},
-				filter.Filter{team.Purple, "img/default/purple/points/point_0_big_alt_alt_alt.png", 0},
-				filter.Filter{team.Purple, "img/default/purple/points/point_0_big_alt_alt_alt_alt.png", 0},
-
-				filter.Filter{team.Purple, "img/default/purple/points/point_1.png", 1},
-				filter.Filter{team.Purple, "img/default/purple/points/point_1_alt.png", 1},
-				filter.Filter{team.Purple, "img/default/purple/points/point_1_alt_alt.png", 1},
-				filter.Filter{team.Purple, "img/default/purple/points/point_1_big.png", 1},
-				filter.Filter{team.Purple, "img/default/purple/points/point_1_big_alt.png", 1},
-				filter.Filter{team.Purple, "img/default/purple/points/point_1_big_alt_alt.png", 1},
-				filter.Filter{team.Purple, "img/default/purple/points/point_1_big_alt_alt_alt.png", 1},
-
-				filter.Filter{team.Purple, "img/default/purple/points/point_2.png", 2},
-				filter.Filter{team.Purple, "img/default/purple/points/point_2_alt.png", 2},
-				filter.Filter{team.Purple, "img/default/purple/points/point_2_alt_alt.png", 2},
-				filter.Filter{team.Purple, "img/default/purple/points/point_2_alt_alt_alt.png", 2},
-				filter.Filter{team.Purple, "img/default/purple/points/point_2_big_alt.png", 2},
-
-				filter.Filter{team.Purple, "img/default/purple/points/point_3.png", 3},
-				filter.Filter{team.Purple, "img/default/purple/points/point_3_alt.png", 3},
-
-				filter.Filter{team.Purple, "img/default/purple/points/point_4.png", 4},
-				filter.Filter{team.Purple, "img/default/purple/points/point_4_alt.png", 4},
-				filter.Filter{team.Purple, "img/default/purple/points/point_4_alt_alt.png", 4},
-				filter.Filter{team.Purple, "img/default/purple/points/point_4_big.png", 4},
-				filter.Filter{team.Purple, "img/default/purple/points/point_4_big_alt.png", 4},
-				filter.Filter{team.Purple, "img/default/purple/points/point_4_big_alt_alt.png", 4},
-				filter.Filter{team.Purple, "img/default/purple/points/point_4_big_alt_alt_alt.png", 4},
-
-				filter.Filter{team.Purple, "img/default/purple/points/point_5_alt.png", 5},
-				filter.Filter{team.Purple, "img/default/purple/points/point_5_big.png", 5},
-
-				filter.Filter{team.Purple, "img/default/purple/points/point_6.png", 6},
-				filter.Filter{team.Purple, "img/default/purple/points/point_6_alt.png", 6},
-				filter.Filter{team.Purple, "img/default/purple/points/point_6_big.png", 6},
-				filter.Filter{team.Purple, "img/default/purple/points/point_6_big_alt.png", 6},
-				filter.Filter{team.Purple, "img/default/purple/points/point_6_big_alt_alt.png", 6},
-
-				filter.Filter{team.Purple, "img/default/purple/points/point_7.png", 7},
-				filter.Filter{team.Purple, "img/default/purple/points/point_7_big.png", 7},
-
-				filter.Filter{team.Purple, "img/default/purple/points/point_8.png", 8},
-				filter.Filter{team.Purple, "img/default/purple/points/point_8_big.png", 8},
-				filter.Filter{team.Purple, "img/default/purple/points/point_8_big_alt.png", 8},
-				filter.Filter{team.Purple, "img/default/purple/points/point_8_big_alt_alt.png", 8},
-
-				filter.Filter{team.Purple, "img/default/purple/points/point_9.png", 9},
-				filter.Filter{team.Purple, "img/default/purple/points/point_9_alt.png", 9},
-				filter.Filter{team.Purple, "img/default/purple/points/point_9_big.png", 9},
-			},
-			team.Orange.Name: {
-				filter.Filter{team.Orange, "img/default/orange/points/point_0.png", 0},
-				filter.Filter{team.Orange, "img/default/orange/points/point_0_alt.png", 0},
-				filter.Filter{team.Orange, "img/default/orange/points/point_0_big.png", 0},
-				filter.Filter{team.Orange, "img/default/orange/points/point_0_big_alt.png", 0},
-				filter.Filter{team.Orange, "img/default/orange/points/point_0_big_alt_alt.png", 0},
-				filter.Filter{team.Orange, "img/default/orange/points/point_0_big_alt_alt_alt.png", 0},
-				filter.Filter{team.Orange, "img/default/orange/points/point_0_big_alt_alt_alt_alt.png", 0},
-
-				filter.Filter{team.Orange, "img/default/orange/points/point_1.png", 1},
-				filter.Filter{team.Orange, "img/default/orange/points/point_1_alt.png", 1},
-				filter.Filter{team.Orange, "img/default/orange/points/point_1_big.png", 1},
-				filter.Filter{team.Orange, "img/default/orange/points/point_1_big_alt.png", 1},
-
-				filter.Filter{team.Orange, "img/default/orange/points/point_2.png", 2},
-				filter.Filter{team.Orange, "img/default/orange/points/point_2_alt.png", 2},
-				filter.Filter{team.Orange, "img/default/orange/points/point_2_big_alt.png", 2},
-
-				filter.Filter{team.Orange, "img/default/orange/points/point_3.png", 3},
-				filter.Filter{team.Orange, "img/default/orange/points/point_3_alt.png", 3},
-				filter.Filter{team.Orange, "img/default/orange/points/point_3_alt_alt.png", 3},
-
-				filter.Filter{team.Orange, "img/default/orange/points/point_4.png", 4},
-				filter.Filter{team.Orange, "img/default/orange/points/point_4_alt.png", 4},
-				filter.Filter{team.Orange, "img/default/orange/points/point_4_alt_alt.png", 4},
-				filter.Filter{team.Orange, "img/default/orange/points/point_4_alt_alt_alt.png", 4},
-				filter.Filter{team.Orange, "img/default/orange/points/point_4_big_alt.png", 4},
-
-				filter.Filter{team.Orange, "img/default/orange/points/point_5.png", 5},
-				filter.Filter{team.Orange, "img/default/orange/points/point_5_alt.png", 5},
-
-				filter.Filter{team.Orange, "img/default/orange/points/point_6.png", 6},
-				filter.Filter{team.Orange, "img/default/orange/points/point_6_alt.png", 6},
-				filter.Filter{team.Orange, "img/default/orange/points/point_6_alt_alt.png", 6},
-				filter.Filter{team.Orange, "img/default/orange/points/point_6_big_alt.png", 6},
-				filter.Filter{team.Orange, "img/default/orange/points/point_6_big_alt_alt.png", 6},
-
-				filter.Filter{team.Orange, "img/default/orange/points/point_7.png", 7},
-				filter.Filter{team.Orange, "img/default/orange/points/point_7_alt.png", 7},
-				filter.Filter{team.Orange, "img/default/orange/points/point_7_alt_alt.png", 7},
-				filter.Filter{team.Orange, "img/default/orange/points/point_7_big.png", 7},
-
-				filter.Filter{team.Orange, "img/default/orange/points/point_8.png", 8},
-				filter.Filter{team.Orange, "img/default/orange/points/point_8_alt.png", 8},
-				filter.Filter{team.Orange, "img/default/orange/points/point_8_alt_alt.png", 8},
-				filter.Filter{team.Orange, "img/default/orange/points/point_8_big_alt.png", 8},
-
-				filter.Filter{team.Orange, "img/default/orange/points/point_9.png", 9},
-				filter.Filter{team.Orange, "img/default/orange/points/point_9_alt.png", 9},
-				filter.Filter{team.Orange, "img/default/orange/points/point_9_big.png", 9},
-			},
-			team.Self.Name: {
-				filter.Filter{team.Self, "img/default/self/points/point_0.png", 0},
-				filter.Filter{team.Self, "img/default/self/points/point_0_alt.png", 0},
-				filter.Filter{team.Self, "img/default/self/points/point_0_alt_alt.png", 0},
-				filter.Filter{team.Self, "img/default/self/points/point_0_alt_alt_alt.png", 0},
-
-				filter.Filter{team.Self, "img/default/self/points/point_1.png", 1},
-				filter.Filter{team.Self, "img/default/self/points/point_1_alt.png", 1},
-
-				filter.Filter{team.Self, "img/default/self/points/point_2.png", 2},
-				filter.Filter{team.Self, "img/default/self/points/point_2_alt.png", 2},
-
-				filter.Filter{team.Self, "img/default/self/points/point_4.png", 4},
-				filter.Filter{team.Self, "img/default/self/points/point_4_alt.png", 4},
-
-				filter.Filter{team.Self, "img/default/self/points/point_5.png", 5},
-				filter.Filter{team.Self, "img/default/self/points/point_5_alt.png", 5},
-				filter.Filter{team.Self, "img/default/self/points/point_5_alt_alt.png", 5},
-				filter.Filter{team.Self, "img/default/self/points/point_5_alt_alt_alt.png", 5},
-				filter.Filter{team.Self, "img/default/self/points/point_5_alt_alt_alt_alt.png", 5},
-
-				filter.Filter{team.Self, "img/default/self/points/point_6.png", 6},
-				filter.Filter{team.Self, "img/default/self/points/point_6_alt.png", 6},
-
-				filter.Filter{team.Self, "img/default/self/points/point_7.png", 7},
-				filter.Filter{team.Self, "img/default/self/points/point_7_alt.png", 7},
-				filter.Filter{team.Self, "img/default/self/points/point_7_alt_alt.png", 7},
-
-				filter.Filter{team.Self, "img/default/self/points/point_8_alt.png", 8},
-			},
+			team.Purple.Name: Current.pointFiles(team.Purple),
+			team.Orange.Name: Current.pointFiles(team.Orange),
+			team.Self.Name:   Current.pointFiles(team.Self),
 		},
 		"time": {
-			team.Time.Name: {
-				filter.Filter{team.Time, "img/default/time/points/point_0.png", 0},
-				filter.Filter{team.Time, "img/default/time/points/point_0_alt.png", 0},
-				filter.Filter{team.Time, "img/default/time/points/point_1.png", 1},
-				filter.Filter{team.Time, "img/default/time/points/point_1_alt.png", 1},
-				filter.Filter{team.Time, "img/default/time/points/point_2.png", 2},
-				filter.Filter{team.Time, "img/default/time/points/point_2_alt.png", 2},
-				filter.Filter{team.Time, "img/default/time/points/point_3.png", 3},
-				filter.Filter{team.Time, "img/default/time/points/point_3_alt.png", 3},
-				filter.Filter{team.Time, "img/default/time/points/point_4.png", 4},
-				filter.Filter{team.Time, "img/default/time/points/point_4_alt.png", 4},
-				filter.Filter{team.Time, "img/default/time/points/point_5.png", 5},
-				filter.Filter{team.Time, "img/default/time/points/point_5_alt.png", 5},
-				filter.Filter{team.Time, "img/default/time/points/point_6.png", 6},
-				filter.Filter{team.Time, "img/default/time/points/point_6_alt.png", 6},
-				filter.Filter{team.Time, "img/default/time/points/point_7.png", 7},
-				filter.Filter{team.Time, "img/default/time/points/point_7_alt.png", 7},
-				filter.Filter{team.Time, "img/default/time/points/point_8.png", 8},
-				filter.Filter{team.Time, "img/default/time/points/point_8_alt.png", 8},
-				filter.Filter{team.Time, "img/default/time/points/point_9.png", 9},
-				filter.Filter{team.Time, "img/default/time/points/point_9_alt.png", 9},
-			},
+			team.Time.Name: Current.pointFiles(team.Time),
 		},
 	}
 }
@@ -467,7 +386,7 @@ func loadCustom() {
 }
 
 func open(dir string) bool {
-	b, err := os.ReadFile("unitehud.config")
+	b, err := os.ReadFile("config.unitehud")
 	if err != nil {
 		log.Warn().Err(err).Msg("previously saved config does not exist")
 		return false

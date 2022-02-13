@@ -137,11 +137,11 @@ func (m *Match) Points(matrix gocv.Mat, img image.Image) (bool, int) {
 	}
 
 	value, order := pieces.Sort()
-	if value == 0 {
+	if value == 0 || value > 100 {
 		log.Warn().Object("team", m.Team).Str("order", order).Msg("no value extracted")
 
 		if config.Current.RecordMissed {
-			dev.Capture(img, matrix, m.Team.Name, "missed", false, value)
+			dev.Capture(img, matrix, m.Team.Name, "missed-"+order, false, value)
 		}
 
 		notify.Feed(rgba.Red, "[%s] Potential score miss for %s", pipe.Socket.Clock(), strings.Title(m.Template.Team.Name))
@@ -164,7 +164,7 @@ func (m *Match) Points(matrix gocv.Mat, img image.Image) (bool, int) {
 
 		if latest.Value > m.Team.Duplicate.Value {
 			if !m.Team.Duplicate.Counted {
-				notify.Feed(m.Team.RGBA, "Ignorning previous duplicate score %d", m.Team.Duplicate.Value)
+				notify.Feed(m.Team.RGBA, "Ignoring previous duplicate score %d", m.Team.Duplicate.Value)
 			} else {
 				log.Warn().Object("latest", latest).Object("match", m).Msg("overwriting previous value")
 				notify.Feed(m.Team.RGBA, "[%s] -%d", pipe.Socket.Clock(), m.Team.Duplicate.Value)
@@ -194,7 +194,7 @@ func (m *Match) Points(matrix gocv.Mat, img image.Image) (bool, int) {
 }
 
 func (m *Match) Time(matrix gocv.Mat, img *image.RGBA) (seconds int, kitchen string) {
-	clock := [4]int{-1, -1, -1, -1}
+	clock := [4]int{0, -1, -1, -1}
 
 	region := matrix
 
@@ -264,10 +264,16 @@ func (m *Match) Time(matrix gocv.Mat, img *image.RGBA) (seconds int, kitchen str
 
 	mins := clock[0]*10 + clock[1]
 	secs := clock[2]*10 + clock[3]
+	kitchen = fmt.Sprintf("%d%d:%d%d", clock[0], clock[1], clock[2], clock[3])
+
+	if clock[0] != 0 || mins > 9 {
+		notify.Feed(rgba.Red, "Invalid time detected %s", kitchen)
+		return 0, "00:00"
+	}
 
 	pipe.Socket.Time(mins, secs)
 
-	return mins*60 + secs, fmt.Sprintf("%d%d:%d%d", clock[0], clock[1], clock[2], clock[3])
+	return mins*60 + secs, kitchen
 }
 
 func (m *Match) MarshalZerologObject(e *zerolog.Event) {

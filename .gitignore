@@ -2,4 +2,4 @@ tmp/
 .vscode/
 *.exe
 .pat
-unitehud.config
+config.unitehud
