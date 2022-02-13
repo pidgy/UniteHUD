@@ -42,3 +42,8 @@ GET 127.0.0.1:17069/http
     }
 }
 ```
+
+### TODO
+- Detect "First Goal" messages.
+- Optimize CPU usage (smaller areas, better image matching)
+- Wiki for tutorial's
