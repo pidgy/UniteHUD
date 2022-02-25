@@ -2,13 +2,16 @@ package notify
 
 import (
 	"fmt"
+	"image"
 	"image/color"
 	"time"
 )
 
-type notify struct {
-	logs []Post
-}
+var OrangeScore image.Image
+var PurpleScore image.Image
+var SelfScore image.Image
+var Balls image.Image
+var Time image.Image
 
 type Post struct {
 	color.RGBA
@@ -17,24 +20,36 @@ type Post struct {
 	count int
 }
 
+type notify struct {
+	logs []Post
+}
+
 var feed = &notify{}
+
+func Append(c color.RGBA, format string, a ...interface{}) {
+	feed.log(c, false, format, a...)
+}
 
 func Feeds() []Post {
 	return feed.logs
 }
 
 func Feed(c color.RGBA, format string, a ...interface{}) {
-	feed.log(c, format, a...)
+	feed.log(c, true, format, a...)
 }
 
-func (n *notify) log(c color.RGBA, format string, a ...interface{}) {
+func (n *notify) log(c color.RGBA, clock bool, format string, a ...interface{}) {
 	p := Post{
 		RGBA:  c,
 		orig:  fmt.Sprintf(format, a...),
 		count: 1,
 	}
 
-	p.msg = fmt.Sprintf("[%s] %s", time.Now().Format(time.Kitchen), p.orig)
+	if clock {
+		p.msg = fmt.Sprintf("[%s] %s", time.Now().Format(time.Kitchen), p.orig)
+	} else {
+		p.msg = p.orig
+	}
 
 	if len(n.logs) > 0 {
 		if p.orig == n.logs[len(n.logs)-1].orig {
@@ -44,9 +59,6 @@ func (n *notify) log(c color.RGBA, format string, a ...interface{}) {
 	}
 
 	n.logs = append(n.logs, p)
-	if len(n.logs) > 37 {
-		n.logs = n.logs[len(n.logs)-38:]
-	}
 }
 
 func (p Post) String() string {

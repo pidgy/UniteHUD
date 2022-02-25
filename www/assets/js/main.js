@@ -1,3 +1,6 @@
+var loaders = [".", "..", "..."];
+var index = 0;
+
 function score() {
     $.ajax({
         type: 'GET',
@@ -16,9 +19,22 @@ function score() {
             } else {
                 $('.score').css('opacity', '1');
             }
+
+            if (data.purple.value > 99) {
+                $('.purple').css("font-size", "30px");
+            } else {
+                $('.purple').css("font-size", "40px");
+            }
+
+            if (data.orange.value > 99) {
+                $('.orange').css("font-size", "30px");
+            } else {
+                $('.orange').css("font-size", "40px");
+            }
         },
         error: function(err) {
-            $('.error').html("Unite HUD Client reconnecting...");
+            $('.error').html(`Unite HUD reconnecting${loaders[index]}`);
+            index = (index + 1) % loaders.length;
 
             $('.purple').html("");
             $('.orange').html("");

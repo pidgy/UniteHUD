@@ -19,6 +19,7 @@ table {
     height: 100%;
     width: 100%;
     margin-left: -5px;
+    margin-top: -40px;
 }
 
 .score {
@@ -26,28 +27,38 @@ table {
     vertical-align: bottom;
 }
 
+.circle {
+    -moz-border-radius: 70px;
+    -webkit-border-radius: 70px;
+    border-radius: 70px;
+}
+
 .purple {
-    padding-right: 15px;
+    font-size: 40px;
     text-align: center;
-    color: #7a4eea;
-    text-shadow: 1px 1px 4px #8e79d0, 2px 2px 4px #7d65c1;
+    background: rgba(122, 78, 234, .7);
+    color: white;
+    text-shadow: 1px 1px 4px black, 1px 1px 4px black;
 }
 
 .orange {
-    padding-right: 15px;
+    font-size: 40px;
     text-align: center;
-    color: #e78900;
-    text-shadow: 1px 1px 4px #f0c967, 1px 1px 4px #7c465b;
+    background: rgba(255, 100, 0, .65);
+    color: white;
+    text-shadow: 1px 1px 4px black, 1px 1px 4px black;
 }
 
 .self {
-    padding-left: 15px;
+    font-size: 40px;
     text-align: center;
+    background: rgba(255, 255, 0, 0.75);
     color: white;
     text-shadow: 1px 1px 4px black, 1px 1px 4px black;
 }
 
 .seconds {
+    font-size: 40px;
     padding-left: 15px;
     text-align: center;
     color: white;
@@ -56,9 +67,10 @@ table {
 
 .error {
     color: red;
-    text-shadow: 1px 1px 4px white, 2px 2px 4px white;
+    text-shadow: 1px 1px 1px white, 1px 1px 1px white;
+    font-size: 35px;
     position: fixed;
-    bottom: -43px;
+    bottom: -35px;
     left: 0;
     opacity: .4;
 }

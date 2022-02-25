@@ -3,8 +3,9 @@ package template
 import (
 	"gocv.io/x/gocv"
 
-	"github.com/pidgy/unitehud/filter"
 	"github.com/rs/zerolog"
+
+	"github.com/pidgy/unitehud/filter"
 )
 
 type Template struct {
@@ -12,6 +13,24 @@ type Template struct {
 	gocv.Mat
 	Category    string
 	Subcategory string
+	Mask        gocv.Mat
+}
+
+func New(f filter.Filter, m gocv.Mat, category, subcategory string) Template {
+	t := Template{
+		Filter:      f,
+		Mat:         m,
+		Category:    category,
+		Subcategory: subcategory,
+		Mask:        gocv.NewMat(),
+	}
+
+	return t
+}
+
+func (t Template) AsTransparent() Template {
+	gocv.CvtColor(t.Mat, &t.Mask, gocv.ColorBGRAToBGR)
+	return t
 }
 
 func (t Template) MarshalZerologObject(e *zerolog.Event) {

@@ -24,6 +24,7 @@ type Config struct {
 	Record           bool // Record all matched images and logs.
 	RecordMissed     bool // Record missed images.
 	RecordDuplicates bool // Record duplicate matched images.
+	Stats            bool // Log image template match statistics.
 	Scores           image.Rectangle
 	Time             image.Rectangle
 	Balls            image.Rectangle
@@ -64,17 +65,6 @@ func (c Config) Reload() {
 	defer validate()
 }
 
-func Reset() error {
-	defer validate()
-
-	err := os.Remove("config.unitehud")
-	if err != nil {
-		return err
-	}
-
-	return Load(Current.Acceptance, Current.Record, Current.RecordMissed, Current.RecordDuplicates)
-}
-
 func (c Config) Save() error {
 	f, err := os.Create("config.unitehud")
 	if err != nil {
@@ -94,7 +84,7 @@ func (c Config) Save() error {
 	return nil
 }
 
-func Load(acceptance float32, record, missed, dup bool) error {
+func Load(acceptance float32, record, missed, dup, stats bool) error {
 	defer validate()
 
 	if open() {
@@ -102,14 +92,17 @@ func Load(acceptance float32, record, missed, dup bool) error {
 		Current.Record = record
 		Current.RecordMissed = missed
 		Current.RecordDuplicates = dup
+		Current.Stats = stats
 	} else {
 		Current = Config{
-			Acceptance:   acceptance,
-			Record:       record,
-			RecordMissed: missed,
-			Scores:       image.Rect(400, 0, 1300, 300),
-			Time:         image.Rect(800, 0, 1100, 200),
-			Balls:        image.Rect(0, 0, 200, 200),
+			Acceptance:       acceptance,
+			Record:           record,
+			RecordMissed:     missed,
+			RecordDuplicates: dup,
+			Stats:            stats,
+			Scores:           image.Rect(0, 0, 1100, 500),
+			Time:             image.Rect(0, 0, 300, 200),
+			Balls:            image.Rect(0, 0, 150, 100),
 			Scales: Scales{
 				Game:  1,
 				Score: 1,
@@ -129,17 +122,20 @@ func Load(acceptance float32, record, missed, dup bool) error {
 func validate() {
 	Current.Templates = map[string]map[string][]template.Template{
 		"game": {
-			team.None.Name: {},
+			team.Game.Name: {},
 		},
 		"scored": {
 			team.Orange.Name: {},
 			team.Purple.Name: {},
 			team.Self.Name:   {},
+			team.First.Name:  {},
 		},
 		"points": {
 			team.Orange.Name: {},
 			team.Purple.Name: {},
 			team.Self.Name:   {},
+			team.First.Name:  {},
+			team.Balls.Name:  {},
 		},
 		"time": {
 			team.Time.Name: {},
@@ -152,9 +148,22 @@ func validate() {
 				mat := gocv.IMRead(filter.File, gocv.IMReadColor)
 				scaled := gocv.NewMat()
 
+				transparent := false
+
 				scale := float64(1)
 				switch category {
-				case "scored", "points":
+				case "points":
+					scale = Current.Scales.Score
+
+					switch filter.Team.Name {
+					case team.First.Name,
+						team.Self.Name,
+						team.Orange.Name,
+						team.Purple.Name,
+						team.Balls.Name:
+						transparent = true
+					}
+				case "scored":
 					scale = Current.Scales.Score
 				case "balls":
 					scale = Current.Scales.Balls
@@ -166,13 +175,14 @@ func validate() {
 
 				gocv.Resize(mat, &scaled, image.Pt(0, 0), scale, scale, gocv.InterpolationDefault)
 
-				Current.Templates[category][filter.Team.Name] = append(Current.Templates[category][filter.Team.Name],
-					template.Template{
-						Filter:      filter,
-						Mat:         scaled,
-						Category:    category,
-						Subcategory: subcategory,
-					},
+				template := template.New(filter, scaled, category, subcategory)
+				if transparent {
+					template = template.AsTransparent()
+				}
+
+				Current.Templates[category][filter.Team.Name] = append(
+					Current.Templates[category][filter.Team.Name],
+					template,
 				)
 			}
 		}
@@ -191,6 +201,31 @@ func validate() {
 	}
 }
 
+func (c Config) scoreFiles(t *team.Team) []filter.Filter {
+	var files []string
+
+	root := fmt.Sprintf("img/%s/%s/score/", c.Dir, t.Name)
+	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		files = append(files, path)
+		return nil
+	})
+	if err != nil {
+		log.Fatal().Err(err).Str("root", root).Msg("invalid point image path")
+		return nil
+	}
+
+	filters := []filter.Filter{}
+	for _, file := range files {
+		if !strings.Contains(file, ".png") && !strings.Contains(file, ".PNG") {
+			continue
+		}
+
+		filters = append(filters, filter.New(t, file, -1, false))
+	}
+
+	return filters
+}
+
 func (c Config) pointFiles(t *team.Team) []filter.Filter {
 	var files []string
 
@@ -206,7 +241,7 @@ func (c Config) pointFiles(t *team.Team) []filter.Filter {
 
 	filters := []filter.Filter{}
 	for _, file := range files {
-		if !strings.Contains(file, ".png") {
+		if !strings.Contains(file, ".png") && !strings.Contains(file, ".PNG") {
 			continue
 		}
 		b := strings.Split(file, "point_")
@@ -214,19 +249,7 @@ func (c Config) pointFiles(t *team.Team) []filter.Filter {
 			continue
 		}
 
-		v := strings.ReplaceAll(
-			strings.ReplaceAll(
-				strings.ReplaceAll(
-					b[1],
-					".png",
-					"",
-				),
-				"_big",
-				"",
-			),
-			"_alt",
-			"",
-		)
+		v := filter.Strip(b[1])
 		if v == "" {
 			log.Warn().Str("file", file).Msg("invalid file in points directory")
 			notify.Feed(rgba.Yellow, "Invalid file in points directory: %s", file)
@@ -239,51 +262,47 @@ func (c Config) pointFiles(t *team.Team) []filter.Filter {
 			return nil
 		}
 
-		filters = append(filters, filter.Filter{
-			Team:  t,
-			File:  file,
-			Value: value,
-		})
+		alias := strings.Contains(file, "alt") || strings.Contains(file, "big")
+
+		filters = append(filters, filter.New(t, file, value, alias))
 	}
 
 	return filters
+}
+
+func Reset() error {
+	defer validate()
+
+	err := os.Remove("config.unitehud")
+	if err != nil {
+		return err
+	}
+
+	return Load(Current.Acceptance, Current.Record, Current.RecordMissed, Current.RecordDuplicates, Current.Stats)
 }
 
 func loadDefault() {
 	Current.Filenames = map[string]map[string][]filter.Filter{
 		"game": {
 			"vs": {
-				filter.Filter{team.None, "img/default/game/vs.png", -0},
+				filter.New(team.Game, "img/default/game/vs.png", 0, false),
 			},
 			"end": {
-				filter.Filter{team.None, "img/default/game/end.png", -0},
+				filter.New(team.Game, "img/default/game/end.png", 0, false),
 			},
 		},
 		"scored": {
-			team.Purple.Name: {
-				filter.Filter{team.Purple, "img/default/purple/score/score.png", -0},
-				filter.Filter{team.Purple, "img/default/purple/score/score_alt.png", -0},
-			},
-			team.Orange.Name: {
-				filter.Filter{team.Orange, "img/default/orange/score/score.png", -0},
-				filter.Filter{team.Orange, "img/default/orange/score/score_alt.png", -0},
-			},
-			team.Self.Name: {
-				//filter.Filter{team.Self, "img/default/self/score/score.png", -0},
-				filter.Filter{team.Self, "img/default/self/score/score_alt.png", -0},
-				/*
-					filter.Filter{team.Self, "img/default/self/score/score_alt_alt.png", -0},
-					filter.Filter{team.Self, "img/default/self/score/score_alt_alt_alt.png", -0},
-					filter.Filter{team.Self, "img/default/self/score/score_alt_alt_alt_alt.png", -0},
-					filter.Filter{team.Self, "img/default/self/score/score_alt_alt.png", -0},
-					filter.Filter{team.Self, "img/default/self/score/score_big_alt.png", -0},
-				*/
-			},
+			team.Purple.Name: Current.scoreFiles(team.Purple),
+			team.Orange.Name: Current.scoreFiles(team.Orange),
+			team.Self.Name:   Current.scoreFiles(team.Self),
+			team.First.Name:  Current.scoreFiles(team.First),
 		},
 		"points": {
 			team.Purple.Name: Current.pointFiles(team.Purple),
 			team.Orange.Name: Current.pointFiles(team.Orange),
 			team.Self.Name:   Current.pointFiles(team.Self),
+			team.First.Name:  Current.pointFiles(team.First),
+			team.Balls.Name:  Current.pointFiles(team.Balls),
 		},
 		"time": {
 			team.Time.Name: Current.pointFiles(team.Time),
@@ -291,80 +310,10 @@ func loadDefault() {
 	}
 }
 
-func loadCustom() {
-	Current.Filenames = map[string]map[string][]filter.Filter{
-		"game": {
-			"vs":  {},
-			"end": {},
-		},
-		"scored": {
-			team.Purple.Name: {},
-			team.Orange.Name: {},
-			team.Self.Name:   {},
-		},
-		"points": {
-			team.Purple.Name: {},
-			team.Orange.Name: {},
-			team.Self.Name:   {},
-		},
-		"time": {
-			team.Time.Name: {
-				filter.Filter{team.Time, "img/custom/time/points/point_0.png", 0},
-				filter.Filter{team.Time, "img/custom/time/points/point_0_alt.png", 0},
-
-				filter.Filter{team.Time, "img/custom/time/points/point_1.png", 1},
-				filter.Filter{team.Time, "img/custom/time/points/point_1_alt.png", 1},
-
-				filter.Filter{team.Time, "img/custom/time/points/point_2.png", 2},
-				filter.Filter{team.Time, "img/custom/time/points/point_2_alt.png", 2},
-
-				filter.Filter{team.Time, "img/custom/time/points/point_3.png", 3},
-				filter.Filter{team.Time, "img/custom/time/points/point_3_alt.png", 3},
-
-				filter.Filter{team.Time, "img/custom/time/points/point_4.png", 4},
-				filter.Filter{team.Time, "img/custom/time/points/point_4_alt.png", 4},
-
-				filter.Filter{team.Time, "img/custom/time/points/point_5.png", 5},
-				filter.Filter{team.Time, "img/custom/time/points/point_5_alt.png", 5},
-
-				filter.Filter{team.Time, "img/custom/time/points/point_6.png", 6},
-				filter.Filter{team.Time, "img/custom/time/points/point_6_alt.png", 6},
-
-				filter.Filter{team.Time, "img/custom/time/points/point_7.png", 7},
-				filter.Filter{team.Time, "img/custom/time/points/point_7_alt.png", 7},
-
-				filter.Filter{team.Time, "img/custom/time/points/point_8.png", 8},
-				filter.Filter{team.Time, "img/custom/time/points/point_8_alt.png", 8},
-
-				filter.Filter{team.Time, "img/custom/time/points/point_9.png", 9},
-				filter.Filter{team.Time, "img/custom/time/points/point_9_alt.png", 9},
-			},
-		},
-	}
-
-	Current.Templates = map[string]map[string][]template.Template{
-		"game": {
-			team.None.Name: {},
-		},
-		"scored": {
-			team.Orange.Name: {},
-			team.Purple.Name: {},
-			team.Self.Name:   {},
-		},
-		"points": {
-			team.Orange.Name: {},
-			team.Purple.Name: {},
-			team.Self.Name:   {},
-		},
-		"time": {
-			team.Time.Name: {},
-		},
-	}
-}
-
 func open() bool {
 	b, err := os.ReadFile("config.unitehud")
 	if err != nil {
+		notify.Feed(rgba.DarkerYellow, "Creating default config.unitehud file. Select \"Configure\" from the main screen to customize your HUD.")
 		log.Warn().Err(err).Msg("previously saved config does not exist")
 		return false
 	}
@@ -380,13 +329,7 @@ func open() bool {
 	}
 
 	Current = c
-	if Current.Dir == "custom" {
-		Current.load = loadCustom
-	} else {
-		Current.Dir = "default"
-	}
-
-	Current.load()
+	defer Current.load()
 
 	return true
 }

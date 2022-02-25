@@ -13,12 +13,21 @@ import (
 	"github.com/pidgy/unitehud/template"
 )
 
+const minDistance = 6
+
 type Piece struct {
 	image.Point
 	template.Template
 }
 
 type Pieces []Piece
+
+type StringInt struct {
+	Int    int
+	String string
+}
+
+type StringInts []StringInt
 
 func (p Piece) Eq(p2 Piece) bool {
 	f := strings.ReplaceAll(strings.ReplaceAll(p.File, "_alt", ""), "_big", "")
@@ -27,7 +36,7 @@ func (p Piece) Eq(p2 Piece) bool {
 		return false
 	}
 
-	return math.Abs(float64(p.X-p2.X)) < 6
+	return math.Abs(float64(p.X-p2.X)) < minDistance
 }
 
 func (p Pieces) Len() int {
@@ -38,12 +47,11 @@ func (p Pieces) Less(i, j int) bool {
 	return p[i].X < p[j].X
 }
 
-// Swap swaps the elements with indexes i and j.
 func (p Pieces) Swap(i, j int) {
 	p[i], p[j] = p[j], p[i]
 }
 
-func (p Pieces) Sort() (int, string) {
+func (p Pieces) Sort(hack bool) (int, string) {
 	if len(p) == 0 {
 		return 0, ""
 	}
@@ -76,6 +84,40 @@ func (p Pieces) Sort() (int, string) {
 
 	log.Debug().Object("pieces", p).Str("order", order).Object("removed", removed).Msg("sorted")
 
+	// TODO: replace/remove hack once image processing stabilizes.
+	if hack {
+		switch len(order) {
+		case 3:
+			if order == "100" {
+				break
+			}
+
+			o := ""
+
+			if order[0] == order[1] {
+				o = order[1:]
+			} else if order[0] == order[2] {
+				o = order[:2]
+			}
+
+			v, err := strconv.Atoi(o)
+			if err != nil {
+				log.Warn().Err(err).Object("pieces", p).Msg("failed to convert 3 sortable pieces to an integer")
+			}
+
+			return v, order
+		case 4:
+			if order[:2] == order[2:] {
+				v, err := strconv.Atoi(order[:2])
+				if err != nil {
+					log.Warn().Err(err).Object("pieces", p).Msg("failed to convert 4 sortable pieces to an integer")
+				}
+
+				return v, order
+			}
+		}
+	}
+
 	v, err := strconv.Atoi(order)
 	if err != nil {
 		log.Warn().Err(err).Object("pieces", p).Msg("failed to convert sortable pieces to an integer")
@@ -94,4 +136,28 @@ func (p Pieces) MarshalZerologObject(e *zerolog.Event) {
 	for i, piece := range p {
 		e.Object(strconv.Itoa(i), piece)
 	}
+}
+
+func (s StringInts) Len() int {
+	return len(s)
+}
+
+func (s StringInts) Less(i, j int) bool {
+	return s[i].Int > s[j].Int
+}
+
+func (s StringInts) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
+func StringIntMap(m map[string]int) StringInts {
+	is := StringInts{}
+
+	for s, i := range m {
+		is = append(is, StringInt{Int: i, String: s})
+	}
+
+	sort.Sort(is)
+
+	return is
 }

@@ -15,15 +15,16 @@ type Duplicate struct {
 	gocv.Mat
 	region  gocv.Mat
 	Counted bool
+
+	Captured bool
 }
 
 func New(value int, mat, region gocv.Mat) *Duplicate {
 	return &Duplicate{
-		value,
-		time.Now(),
-		mat.Clone(),
-		region,
-		false,
+		Value:  value,
+		Time:   time.Now(),
+		Mat:    mat.Clone(),
+		region: region,
 	}
 }
 
@@ -48,9 +49,9 @@ func (d *Duplicate) Of(d2 *Duplicate) bool {
 		return false
 	}
 
-	// if d.Value != d2.Value {
-	//	return false
-	//}
+	/*if d.Value != d2.Value {
+		return false
+	}*/
 
 	if d.Time.Sub(d2.Time) > time.Second*3 {
 		return false
@@ -60,8 +61,7 @@ func (d *Duplicate) Of(d2 *Duplicate) bool {
 
 	gocv.MatchTemplate(d.Mat, d2.region, &m2, gocv.TmCcoeffNormed, gocv.NewMat())
 	_, maxc, _, _ := gocv.MinMaxLoc(m2)
-
-	return maxc >= 0.85
+	return maxc > 0.9
 }
 
 func (d *Duplicate) MarshalZerologObject(e *zerolog.Event) {

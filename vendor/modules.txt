@@ -52,6 +52,11 @@ gioui.org/shader/piet
 ## explicit
 github.com/BurntSushi/xgb
 github.com/BurntSushi/xgb/xproto
+# github.com/mattn/go-runewidth v0.0.9
+github.com/mattn/go-runewidth
+# github.com/olekukonko/tablewriter v0.0.5
+## explicit
+github.com/olekukonko/tablewriter
 # github.com/pidgy/screenshot v0.0.0-20191005130345-da36db2560ab
 ## explicit
 github.com/pidgy/screenshot

@@ -13,6 +13,7 @@ import (
 	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/rgba"
+	"github.com/pidgy/unitehud/team"
 	"github.com/rs/zerolog/log"
 )
 
@@ -20,8 +21,8 @@ var logFilename = fmt.Sprintf("%d.log", time.Now().Unix())
 var lastlog = ""
 var dir = "tmp"
 
-func Capture(img image.Image, mat gocv.Mat, subdir, order string, duplicate bool, value int) {
-	subdir = fmt.Sprintf("%s/capture/%s/", dir, subdir)
+func Capture(img image.Image, mat gocv.Mat, t *team.Team, p image.Point, order string, duplicate bool, value int) {
+	subdir := fmt.Sprintf("%s/capture/%s/", dir, t.Name)
 	file := fmt.Sprintf("%s_%d-%d", order, value, time.Now().UnixNano())
 
 	if duplicate {
@@ -47,18 +48,7 @@ func Capture(img image.Image, mat gocv.Mat, subdir, order string, duplicate bool
 		return
 	}
 
-	img, err = mat.ToImage()
-	if err != nil {
-		log.Error().Err(err).Msg("failed to convert matrix to image")
-		return
-	}
-
-	f, err = os.Create(fmt.Sprintf("%s/%s_crop.png", subdir, file))
-	if err != nil {
-		log.Error().Err(err).Msg("failed to create missed image")
-		return
-	}
-	defer f.Close()
+	gocv.IMWrite(fmt.Sprintf("%s/%s_crop.png", subdir, file), mat.Region(t.Crop(p)))
 
 	err = png.Encode(f, img)
 	if err != nil {
@@ -66,7 +56,7 @@ func Capture(img image.Image, mat gocv.Mat, subdir, order string, duplicate bool
 		return
 	}
 
-	notify.Feed(rgba.DarkYellow, "Saved at %s%s", subdir, file)
+	notify.Feed(rgba.DarkerYellow, "Saved at %s%s", subdir, file)
 }
 
 func End() {
@@ -113,6 +103,7 @@ func New() error {
 		"/tmp/capture/orange",
 		"/tmp/capture/self",
 		"/tmp/capture/time",
+		"/tmp/capture/first",
 	} {
 		err := os.Mkdir(dir+subdir, 0755)
 		if err != nil {

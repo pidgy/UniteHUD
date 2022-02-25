@@ -5,6 +5,7 @@ go 1.16
 require (
 	gioui.org v0.0.0-20220113184748-9209fd91431f
 	github.com/BurntSushi/xgb v0.0.0-20210121224620-deaf085860bc // indirect
+	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pidgy/screenshot v0.0.0-20191005130345-da36db2560ab
 	github.com/rs/zerolog v1.25.0
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966

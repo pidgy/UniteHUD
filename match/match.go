@@ -1,11 +1,9 @@
 package match
 
 import (
-	"fmt"
 	"image"
 	"image/color"
-	"strings"
-	"time"
+	"strconv"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -13,11 +11,9 @@ import (
 
 	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/dev"
-	"github.com/pidgy/unitehud/duplicate"
 	"github.com/pidgy/unitehud/notify"
-	"github.com/pidgy/unitehud/pipe"
 	"github.com/pidgy/unitehud/rgba"
-	"github.com/pidgy/unitehud/sort"
+	"github.com/pidgy/unitehud/server"
 	"github.com/pidgy/unitehud/team"
 	"github.com/pidgy/unitehud/template"
 )
@@ -27,18 +23,28 @@ type Match struct {
 	template.Template
 }
 
+type Result int
+
+const (
+	Duplicate Result = -3
+	Invalid   Result = -2
+	Missed    Result = -1
+	NotFound  Result = 0
+	Found     Result = 1
+)
+
 var (
 	mask = gocv.NewMat()
 )
 
-func (m *Match) Matches(matrix gocv.Mat, img image.Image, t []template.Template) (bool, int) {
+func (m *Match) Matches(matrix gocv.Mat, img image.Image, t []template.Template) (Result, int) {
 	results := make([]gocv.Mat, len(t))
 
 	for i, template := range t {
 		results[i] = gocv.NewMat()
 		defer results[i].Close()
 
-		gocv.MatchTemplate(matrix, template.Mat, &results[i], gocv.TmCcoeffNormed, mask)
+		gocv.MatchTemplate(matrix, template.Mat, &results[i], gocv.TmCcoeffNormed, template.Mask)
 	}
 
 	for i, mat := range results {
@@ -52,35 +58,53 @@ func (m *Match) Matches(matrix gocv.Mat, img image.Image, t []template.Template)
 			m.Template = t[i]
 			m.Point = maxp
 
-			return m.Process(matrix, img)
+			return m.process(matrix, img)
 		}
 	}
 
-	return false, 0
+	return NotFound, 0
 }
 
-func (m *Match) Process(matrix gocv.Mat, img image.Image) (bool, int) {
-	log.Info().Object("match", m).Int("cols", matrix.Cols()).Int("rows", matrix.Rows()).Msg("match found")
+func (m *Match) Identify(mat gocv.Mat, points int) (image.Image, error) {
+	clone := mat.Clone()
+	defer clone.Close()
+
+	gocv.Rectangle(&clone, m.Rectangle(), color.RGBA(rgba.Highlight), 2)
+
+	region := clone.Region(m.Team.Crop(m.Point))
+
+	p := image.Pt(10, region.Rows()-15)
+	gocv.PutText(&region, strconv.Itoa(points), p, gocv.FontHersheyPlain, 2, color.RGBA(rgba.Highlight), 3)
+
+	crop, err := region.ToImage()
+	if err != nil {
+		log.Error().Err(err).Msg("failed to convert image")
+		return nil, err
+	}
+
+	return crop, nil
+}
+
+func (m *Match) Rectangle() image.Rectangle {
+	return image.Rect(m.Point.X, m.Point.Y, m.Point.X+m.Template.Mat.Cols(), m.Point.Y+m.Template.Mat.Rows())
+}
+
+func (m *Match) process(matrix gocv.Mat, img image.Image) (Result, int) {
+	log.Debug().Object("match", m).Int("cols", matrix.Cols()).Int("rows", matrix.Rows()).Msg("processing match")
 
 	switch m.Category {
 	case "scored":
-		rect := m.Team.Rectangle(m.Point)
-		if rect.Min.X < 0 || rect.Min.Y < 0 || rect.Max.X > matrix.Cols() || rect.Max.Y > matrix.Rows() {
-			log.Warn().Object("match", m).Msg("match is outside the legal selection")
-			notify.Feed(rgba.Red, "Scored match is outside the configured selection area")
-
-			if config.Current.RecordMissed {
-				dev.Capture(img, matrix, m.Team.Name, "invalid", false, 0)
-			}
-
-			return false, 0
+		crop := m.Team.Crop(m.Point)
+		if crop.Min.X < 0 || crop.Min.Y < 0 || crop.Max.X > matrix.Cols() || crop.Max.Y > matrix.Rows() {
+			log.Error().Object("match", m).Msg("cropped image is outside the legal selection")
+			return Invalid, 0
 		}
 
-		return m.Points(matrix.Region(rect), img)
+		return m.points(matrix.Region(crop))
 	case "game":
 		switch m.Subcategory {
 		case "vs":
-			pipe.Socket.Clear()
+			server.Clear()
 
 			notify.Feed(team.Self.RGBA, "Match starting")
 
@@ -88,9 +112,9 @@ func (m *Match) Process(matrix gocv.Mat, img image.Image) (bool, int) {
 				dev.Start()
 			}
 
-			return true, 0
+			return Found, 0
 		case "end":
-			p, o, s := pipe.Socket.Score()
+			p, o, s := server.Scores()
 			if p+o+s > 0 {
 				notify.Feed(team.Self.RGBA, "Match ended")
 				notify.Feed(team.Self.RGBA, "Purple Score: %d", p)
@@ -98,195 +122,36 @@ func (m *Match) Process(matrix gocv.Mat, img image.Image) (bool, int) {
 				notify.Feed(team.Self.RGBA, "Self Score:   %d", s)
 			}
 
-			pipe.Socket.Clear()
+			server.Clear()
+			team.Clear()
 
 			if config.Current.Record || config.Current.RecordMissed || config.Current.RecordDuplicates {
 				dev.End()
 			}
 
-			return true, 0
+			return Found, 0
 		}
 	}
 
-	return false, 0
-}
-
-func (m *Match) Points(matrix gocv.Mat, img image.Image) (bool, int) {
-	results := make([]gocv.Mat, len(config.Current.Templates["points"][m.Team.Name]))
-
-	for i, pt := range config.Current.Templates["points"][m.Team.Name] {
-		mat := gocv.NewMat()
-		defer mat.Close()
-
-		results[i] = mat
-
-		gocv.MatchTemplate(matrix, pt.Mat, &mat, gocv.TmCcoeffNormed, mask)
-	}
-
-	pieces := sort.Pieces([]sort.Piece{})
-
-	for i := range results {
-		if results[i].Empty() {
-			log.Warn().Str("filename", m.File).Msg("empty result")
-			continue
-		}
-
-		_, maxc, _, maxp := gocv.MinMaxLoc(results[i])
-		if maxc >= config.Current.Acceptance {
-			pieces = append(pieces,
-				sort.Piece{
-					Point:    maxp,
-					Template: config.Current.Templates["points"][m.Team.Name][i],
-				},
-			)
-		}
-	}
-
-	value, order := pieces.Sort()
-	if value == 0 || value > 100 {
-		log.Warn().Object("team", m.Team).Str("order", order).Msg("no value extracted")
-
-		notify.Feed(rgba.Red, "[%s] Possible missed points for %s", pipe.Socket.Clock(), strings.Title(m.Template.Team.Name))
-
-		if config.Current.RecordMissed {
-			dev.Capture(img, matrix, m.Team.Name, "missed-"+order, false, value)
-		} else {
-			notify.Feed(color.RGBA(rgba.SlateGray), "Set \"RecordMissed: true\" to view missed points in /tmp")
-		}
-
-		return false, -1
-	}
-
-	region := m.Team.Region(matrix)
-
-	latest := duplicate.New(value, matrix, region)
-
-	dup := m.Team.Duplicate.Of(latest)
-	//TODO simplify this
-	if !dup && m.Team.Name == team.Self.Name && time.Since(m.Team.Duplicate.Time) < time.Second {
-		dup = true
-	}
-
-	if dup {
-		log.Warn().Object("latest", latest).Object("previous", m.Duplicate).Msg("duplicate match")
-
-		if latest.Value > m.Team.Duplicate.Value {
-			if m.Team.Duplicate.Counted {
-				log.Warn().Object("latest", latest).Object("match", m).Msg("overwriting previous value")
-				notify.Feed(m.Team.RGBA, "[%s] -%d", pipe.Socket.Clock(), m.Team.Duplicate.Value)
-				notify.Feed(m.Team.RGBA, "[%s] +%d", pipe.Socket.Clock(), value)
-
-				pipe.Socket.Publish(m.Team, latest.Value)
-				pipe.Socket.Publish(m.Team, -m.Team.Duplicate.Value)
-			}
-		}
-	}
-
-	m.Team.Duplicate.Close()
-	m.Team.Duplicate = latest
-
-	if !dup && value > 0 {
-		go pipe.Socket.Publish(m.Team, value)
-		m.Team.Duplicate.Counted = true
-		notify.Feed(m.Team.RGBA, "[%s] +%d", pipe.Socket.Clock(), value)
-	}
-
-	if config.Current.Record {
-		dev.Capture(img, matrix, m.Team.Name, order, dup, value)
-		dev.Log(fmt.Sprintf("%s %d (duplicate: %t)", m.Team.Name, value, dup))
-	}
-
-	return value > 0, value
-}
-
-func (m *Match) Time(matrix gocv.Mat, img *image.RGBA) (seconds int, kitchen string) {
-	clock := [4]int{0, -1, -1, -1}
-
-	region := matrix
-
-	for i := range clock {
-		results := []gocv.Mat{}
-
-		for _, template := range config.Current.Templates["time"][team.Time.Name] {
-			if template.Mat.Cols() > region.Cols() || template.Mat.Rows() > region.Rows() {
-				log.Warn().Str("type", "time").Msg("match is outside the legal selection")
-				notify.Feed(rgba.Red, "Time match is outside the configured selection area")
-
-				if config.Current.RecordMissed {
-					dev.Capture(img, region, team.Time.Name, "missed-"+template.File, false, template.Value)
-				}
-
-				return 0, ""
-			}
-
-			mat := gocv.NewMat()
-			defer mat.Close()
-
-			results = append(results, mat)
-
-			gocv.MatchTemplate(region, template.Mat, &mat, gocv.TmCcoeffNormed, mask)
-		}
-
-		pieces := sort.Pieces([]sort.Piece{})
-
-		for j := range results {
-			if results[j].Empty() {
-				log.Warn().Str("filename", m.File).Msg("empty result")
-				continue
-			}
-
-			_, maxc, _, maxp := gocv.MinMaxLoc(results[j])
-			if maxc >= config.Current.Acceptance {
-				if len(config.Current.Templates["time"][team.Time.Name]) <= j {
-					return 0, ""
-				}
-
-				pieces = append(pieces,
-					sort.Piece{
-						Point:    maxp,
-						Template: config.Current.Templates["time"][team.Time.Name][j],
-					},
-				)
-			}
-		}
-
-		_, order := pieces.Sort()
-		if len(order) == 0 {
-			return 0, ""
-		}
-
-		clock[i] = pieces[0].Value
-
-		// Crop the left side of the selection area via the  first <x-5,y> point matched.
-		rect := image.Rect(
-			pieces[0].Point.X+pieces[0].Cols()-5,
-			0,
-			region.Cols(),
-			region.Rows(),
-		)
-
-		if rect.Min.X < 0 || rect.Min.Y < 0 || rect.Max.X > region.Cols() || rect.Max.Y > region.Rows() {
-			log.Warn().Object("match", m).Msg("match is outside the legal selection")
-			break
-		}
-
-		region = region.Region(rect)
-	}
-
-	mins := clock[0]*10 + clock[1]
-	secs := clock[2]*10 + clock[3]
-	kitchen = fmt.Sprintf("%d%d:%d%d", clock[0], clock[1], clock[2], clock[3])
-
-	if clock[0] != 0 || mins > 9 {
-		notify.Feed(rgba.Red, "Invalid time detected %s", kitchen)
-		return 0, "00:00"
-	}
-
-	pipe.Socket.Time(mins, secs)
-
-	return mins*60 + secs, kitchen
+	return NotFound, 0
 }
 
 func (m *Match) MarshalZerologObject(e *zerolog.Event) {
-	e.Object("template", m.Template).Stringer("point", m.Point).Object("duplicate", m.Duplicate)
+	e.Object("template", m.Template).Stringer("point", m.Point).Object("duplicate", m.Duplicate).Object("team", m.Team)
+}
+
+func (r Result) String() string {
+	switch r {
+	case Duplicate:
+		return "duplicate"
+	case Invalid:
+		return "invalid"
+	case Missed:
+		return "missed"
+	case NotFound:
+		return "not found"
+	case Found:
+		return "found"
+	}
+	return "unknown"
 }
