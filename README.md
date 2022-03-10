@@ -1,5 +1,5 @@
 # unite
-Pokemon Unite scoreboard HUD and extra tools running over captured game feeds using the OpenCV video processing API.
+Pokemon Unite scoreboard HUD and extra tools running over captured game feeds using OpenCV with a Gio interface.
 
 ### Note
 ##### This project is currently in early Alpha stages. 
