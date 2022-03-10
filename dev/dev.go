@@ -26,7 +26,7 @@ func Capture(img image.Image, mat gocv.Mat, t *team.Team, p image.Point, order s
 	file := fmt.Sprintf("%s_%d-%d", order, value, time.Now().UnixNano())
 
 	if duplicate {
-		if !config.Current.RecordDuplicates && !config.Current.Record {
+		if !config.Current.RecordDuplicates {
 			return
 		}
 

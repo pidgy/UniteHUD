@@ -30,6 +30,14 @@ func Append(c color.RGBA, format string, a ...interface{}) {
 	feed.log(c, false, format, a...)
 }
 
+func Clear() {
+	OrangeScore = nil
+	PurpleScore = nil
+	SelfScore = nil
+	Balls = nil
+	Time = nil
+}
+
 func Feeds() []Post {
 	return feed.logs
 }

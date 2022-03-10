@@ -15,12 +15,13 @@ import (
 // Team represents a team side in Pokemon Unite.
 type Team struct {
 	Name                 string `json:"name"`
+	Alias                string `json:"-"`
 	color.RGBA           `json:"-"`
 	*duplicate.Duplicate `json:"-"`
 
-	Holding      int
-	HoldingMax   int
-	HoldingReset bool
+	Holding      int  `json:"-"`
+	HoldingMax   int  `json:"-"`
+	HoldingReset bool `json:"-"`
 
 	acceptance float32
 }
@@ -76,6 +77,8 @@ var (
 		Name:      "time",
 		RGBA:      rgba.White,
 		Duplicate: duplicate.New(-1, gocv.NewMat(), gocv.NewMat()),
+
+		acceptance: .8,
 	}
 
 	First = &Team{
@@ -113,7 +116,7 @@ func (t Team) Comparable(mat gocv.Mat) gocv.Mat {
 	case Time.Name:
 		return mat.Region(image.Rect(15, 30, 100, 60))
 	default:
-		return mat.Region(image.Rect(15, 30, 150, 60))
+		return mat.Region(image.Rect(0, 30, 100, 60))
 	}
 }
 
@@ -123,7 +126,7 @@ func (t Team) Crop(p image.Point) image.Rectangle {
 	case Self.Name:
 		return image.Rect(p.X, p.Y-100, p.X+300, p.Y+100)
 	case First.Name:
-		return image.Rect(p.X, 0, p.X+300, p.Y+100)
+		return image.Rect(p.X, 0, p.X+350, p.Y+100)
 	case Purple.Name, Orange.Name:
 		return image.Rect(p.X-50, p.Y-30, p.X+200, p.Y+75)
 	default:

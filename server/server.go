@@ -147,7 +147,14 @@ func Publish(t *team.Team, value int) {
 		pipe.game.Purple.Value += s.Value
 		pipe.game.Self.Value += s.Value
 	case team.First.Name:
-		pipe.game.Purple.Value += s.Value
+		switch team.First.Alias {
+		case team.Purple.Name:
+			pipe.game.Purple.Value += s.Value
+		case team.Orange.Name:
+			pipe.game.Orange.Value += s.Value
+		default:
+			notify.Feed(rgba.Red, "Unknown team scored first goal")
+		}
 	}
 }
 

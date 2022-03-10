@@ -40,7 +40,7 @@ function score() {
             $('.orange').html("");
             $('.seconds').html("");
             $('.self').html("");
-            $('.score').css('opacity', '1');
+            $('.score').css('opacity', '0');
         },
     });
 };

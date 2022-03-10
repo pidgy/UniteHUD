@@ -108,8 +108,8 @@ func capture(name string, imgq chan image.Image, paused *bool) {
 	}
 }
 
+// Create a new grayscale image
 func gray(img *image.RGBA) *image.Gray {
-	// Create a new grayscale image
 	bounds := img.Bounds()
 	w, h := bounds.Max.X, bounds.Max.Y
 	gray := image.NewGray(image.Rectangle{image.Point{0, 0}, image.Point{w, h}})
@@ -121,9 +121,8 @@ func gray(img *image.RGBA) *image.Gray {
 			g := math.Pow(float64(gg), 2.2)
 			b := math.Pow(float64(bb), 2.2)
 			m := math.Pow(0.2125*r+0.7154*g+0.0721*b, 1/2.2)
-			Y := uint16(m + 0.5)
-			c := color.Gray{uint8(Y >> 8)}
-			gray.Set(x, y, c)
+			yy := uint16(m + 0.5)
+			gray.Set(x, y, color.Gray{uint8(yy >> 8)})
 		}
 	}
 
@@ -159,7 +158,7 @@ func process(t []template.Template, imgq chan image.Image) {
 				dev.Capture(img, matrix, m.Team, m.Point, "capture", false, p)
 			}
 
-			notify.Feed(m.Team.RGBA, "[%s] +%d", server.Clock(), p)
+			notify.Feed(m.Team.RGBA, "[%s] +%d %s", server.Clock(), p, m.Team.Alias)
 
 			switch m.Team.Name {
 			case team.Self.Name:
@@ -186,10 +185,6 @@ func process(t []template.Template, imgq chan image.Image) {
 			}
 		case match.Invalid:
 			notify.Feed(rgba.Red, "Scored match is outside the configured selection area")
-
-			if config.Current.RecordMissed {
-				dev.Capture(img, matrix, m.Team, m.Point, "invalid", false, 0)
-			}
 		case match.Duplicate:
 			if config.Current.RecordDuplicates {
 				dev.Capture(img, matrix, m.Team, m.Point, "", true, p)
@@ -234,27 +229,29 @@ func balls(paused *bool) {
 		}
 
 		result, order, points := match.Balls(matrix, img)
-		if result == match.Found {
-			_, ok := assured[points]
-			assured = make(map[int]int)
-			if !ok {
-				assured[points]++
-				goto sleep
-			}
-
-			if points != team.Balls.Holding {
-				log.Info().Int("points", points).Int("prev", team.Balls.Holding).Object("team", team.Balls).Ints("read", order).Msg(result.String())
-			}
-
-			notify.Balls, err = match.IdentifyBalls(matrix, points)
-			if err != nil {
-				log.Error().Err(err).Send()
-				goto sleep
-			}
-
-			team.Balls.HoldingReset = false
-			team.Balls.Holding = points
+		if result != match.Found {
+			goto sleep
 		}
+
+		assured[points]++
+
+		if assured[points] < 1 {
+			goto sleep
+		}
+		assured = make(map[int]int)
+
+		if points != team.Balls.Holding {
+			log.Info().Int("points", points).Int("prev", team.Balls.Holding).Object("team", team.Balls).Ints("read", order).Msg(result.String())
+		}
+
+		notify.Balls, err = match.IdentifyBalls(matrix, points)
+		if err != nil {
+			log.Error().Err(err).Send()
+			goto sleep
+		}
+
+		team.Balls.HoldingReset = false
+		team.Balls.Holding = points
 
 	sleep:
 		time.Sleep(team.Delay(team.Balls.Name))
@@ -363,14 +360,23 @@ func main() {
 		for {
 			switch <-gui.Window.Actions {
 			case gui.Start:
+				if !paused {
+					continue
+				}
+
 				notify.Feed(rgba.Green, "Starting...")
 
+				notify.Clear()
 				server.Clear()
 				team.Clear()
 				stats.Clear()
 
 				paused = false
 			case gui.Stop:
+				if paused {
+					continue
+				}
+
 				paused = true
 
 				server.Clear()

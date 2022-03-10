@@ -1,7 +1,6 @@
 package match
 
 import (
-	"fmt"
 	"image"
 	"math"
 	"time"
@@ -23,6 +22,10 @@ func (m *Match) points(matrix gocv.Mat) (Result, int) {
 	case team.Self.Name:
 		return m.self(matrix)
 	case team.First.Name:
+		team.First.Alias = team.Purple.Name
+		if m.Point.X > m.Max.X/2 {
+			team.First.Alias = team.Orange.Name
+		}
 		return m.first(matrix)
 	}
 
@@ -109,7 +112,7 @@ func (m *Match) first(matrix gocv.Mat) (Result, int) {
 }
 
 func (m *Match) regular(matrix gocv.Mat) (Result, int) {
-	inset := 50
+	inset := 0
 
 	mins := []int{math.MaxInt32, math.MaxInt32, math.MaxInt32}
 	points := []int{-1, -1, -1}
@@ -123,6 +126,8 @@ func (m *Match) regular(matrix gocv.Mat) (Result, int) {
 				Max: image.Pt(matrix.Cols(), matrix.Rows()),
 			},
 		)
+
+		// gocv.IMWrite(fmt.Sprintf("region-%d.png", round), region)
 
 		results := make([]gocv.Mat, len(templates))
 
@@ -147,11 +152,17 @@ func (m *Match) regular(matrix gocv.Mat) (Result, int) {
 
 			_, maxv, _, maxp := gocv.MinMaxLoc(results[i])
 			if maxv >= m.Team.Acceptance(config.Current.Acceptance) {
+				// fmt.Printf("#%d, %d%% %s, %s %d\n", round, int(maxv*100), templates[i].File, maxp, templates[i].Cols())
+
+				if round > 0 && maxp.X > templates[i].Mat.Cols() {
+					maxp.X = 0
+				}
+
 				go stats.Average(templates[i].File, maxv)
 				go stats.Count(templates[i].File)
 
 				if maxp.X < mins[round] {
-					mins[round] = maxp.X + 15
+					mins[round] = maxp.X + templates[i].Mat.Cols() - 1
 					points[round] = templates[i].Value
 				}
 			}
@@ -229,8 +240,4 @@ func pointSlice(points []int) (Result, int) {
 		// Triple digits found at index 0, 1, and 2.
 		return Found, points[0]*100 + points[1]*10 + points[2]
 	}
-}
-
-func save(region gocv.Mat, index int) {
-	gocv.IMWrite(fmt.Sprintf("region-%d.png", index), region)
 }

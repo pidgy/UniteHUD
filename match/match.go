@@ -21,6 +21,7 @@ import (
 type Match struct {
 	image.Point
 	template.Template
+	Max image.Point
 }
 
 type Result int
@@ -39,6 +40,8 @@ var (
 
 func (m *Match) Matches(matrix gocv.Mat, img image.Image, t []template.Template) (Result, int) {
 	results := make([]gocv.Mat, len(t))
+
+	m.Max = img.Bounds().Max
 
 	for i, template := range t {
 		results[i] = gocv.NewMat()
@@ -92,7 +95,7 @@ func (m *Match) Rectangle() image.Rectangle {
 func (m *Match) process(matrix gocv.Mat, img image.Image) (Result, int) {
 	log.Debug().Object("match", m).Int("cols", matrix.Cols()).Int("rows", matrix.Rows()).Msg("processing match")
 
-	switch m.Category {
+	switch m.Template.Category {
 	case "scored":
 		crop := m.Team.Crop(m.Point)
 		if crop.Min.X < 0 || crop.Min.Y < 0 || crop.Max.X > matrix.Cols() || crop.Max.Y > matrix.Rows() {
@@ -102,7 +105,7 @@ func (m *Match) process(matrix gocv.Mat, img image.Image) (Result, int) {
 
 		return m.points(matrix.Region(crop))
 	case "game":
-		switch m.Subcategory {
+		switch m.Template.Subcategory {
 		case "vs":
 			server.Clear()
 
@@ -119,7 +122,7 @@ func (m *Match) process(matrix gocv.Mat, img image.Image) (Result, int) {
 				notify.Feed(team.Self.RGBA, "Match ended")
 				notify.Feed(team.Self.RGBA, "Purple Score: %d", p)
 				notify.Feed(team.Self.RGBA, "Orange Score: %d", o)
-				notify.Feed(team.Self.RGBA, "Self Score:   %d", s)
+				notify.Feed(team.Self.RGBA, "Self Score: %d", s)
 			}
 
 			server.Clear()
