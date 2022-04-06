@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"image"
 	"image/color"
-	"os"
 	"runtime"
 	"strconv"
 	"syscall"
@@ -30,18 +29,22 @@ import (
 	"github.com/pidgy/unitehud/gui/visual/button"
 	"github.com/pidgy/unitehud/gui/visual/help"
 	"github.com/pidgy/unitehud/gui/visual/screen"
+	"github.com/pidgy/unitehud/gui/visual/spinner"
 	"github.com/pidgy/unitehud/gui/visual/split"
 	"github.com/pidgy/unitehud/gui/visual/textblock"
 	"github.com/pidgy/unitehud/match"
 	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/rgba"
 	"github.com/pidgy/unitehud/server"
+	"github.com/pidgy/unitehud/stats"
 	"github.com/pidgy/unitehud/team"
 )
 
 type GUI struct {
 	*app.Window
 	*screen.Screen
+
+	WindowSize image.Rectangle
 
 	Preview bool
 	open    bool
@@ -51,7 +54,7 @@ type GUI struct {
 
 	Actions chan Action
 
-	Recording bool
+	Running bool
 
 	cpu, ram, uptime string
 	time             time.Time
@@ -60,18 +63,19 @@ type GUI struct {
 type Action string
 
 const (
-	Start  = Action("start")
-	Stats  = Action("stats")
-	Stop   = Action("stop")
-	Record = Action("record")
-	Open   = Action("open")
+	Start   = Action("start")
+	Stats   = Action("stats")
+	Stop    = Action("stop")
+	Record  = Action("record")
+	Open    = Action("open")
+	Closing = Action("closing")
 )
 
 var Window *GUI
 
 const title = "Pokemon Unite HUD Server"
 
-func New() *GUI {
+func New() {
 	Window = &GUI{
 		Window: app.NewWindow(
 			app.Title(title),
@@ -80,8 +84,6 @@ func New() *GUI {
 		Actions: make(chan Action, 1024),
 		resize:  true,
 	}
-
-	return Window
 }
 
 func (g *GUI) Open() {
@@ -92,7 +94,9 @@ func (g *GUI) Open() {
 	go g.preview()
 
 	go func() {
-		defer os.Exit(0)
+		defer func() {
+			g.Actions <- Closing
+		}()
 
 		var err error
 
@@ -176,7 +180,6 @@ func (g *GUI) proc() {
 		g.uptime = fmt.Sprintf("RUN: %02d:%02d", run.Minute(), run.Second())
 	}
 }
-
 func (g *GUI) main() (next string, err error) {
 	g.Window.Raise()
 
@@ -201,6 +204,15 @@ func (g *GUI) main() (next string, err error) {
 		next = "configure"
 	}
 
+	spinRun := spinner.Running()
+	defer spinRun.Stop()
+
+	spinStop := spinner.Stopped()
+	defer spinStop.Stop()
+
+	spinRecord := spinner.Recording()
+	defer spinRecord.Stop()
+
 	startButton := &button.Button{
 		Text:     "\t  Start",
 		Released: rgba.Background,
@@ -209,6 +221,11 @@ func (g *GUI) main() (next string, err error) {
 
 	stopButton := &button.Button{
 		Text:     "\t  Stop",
+		Disabled: true,
+	}
+
+	recordButton := &button.Button{
+		Text:     "\tRecord",
 		Disabled: true,
 	}
 
@@ -227,7 +244,12 @@ func (g *GUI) main() (next string, err error) {
 		startButton.Disabled = true
 		startButton.Released = rgba.DarkerGray
 
+		recordButton.Active = false
+		recordButton.Disabled = false
+		recordButton.Released = rgba.Background
+
 		g.Actions <- Start
+		g.Running = true
 	}
 
 	stopButton.Click = func() {
@@ -243,37 +265,29 @@ func (g *GUI) main() (next string, err error) {
 		startButton.Disabled = false
 		startButton.Released = rgba.Background
 
+		recordButton.Active = false
+		recordButton.Disabled = true
+		recordButton.Released = rgba.DarkerGray
+
 		g.Actions <- Stop
+		g.Running = false
 	}
 
-	recordButton := &button.Button{
-		Text:     "\tRecord",
-		Released: rgba.Background,
-		Pressed:  rgba.DarkGray,
-	}
-
-	prevRecording := false
 	recording := func() {
-		g.Recording = config.Current.Record
-
-		defer func() { prevRecording = g.Recording }()
-
-		if prevRecording == g.Recording {
-			return
-		}
-		if g.Recording {
+		if config.Current.Record {
 			recordButton.Text = " Recording"
 			recordButton.Released = rgba.DarkRed
 		} else {
 			recordButton.Text = "\tRecord"
 			recordButton.Released = rgba.Background
+			if recordButton.Disabled {
+				recordButton.Released = rgba.DarkerGray
+			}
 		}
 	}
 
 	recordButton.Click = func() {
 		recordButton.Active = !recordButton.Active
-		g.Recording = !g.Recording
-
 		g.Actions <- Record
 	}
 
@@ -290,6 +304,38 @@ func (g *GUI) main() (next string, err error) {
 	}
 
 	textblock := &textblock.TextBlock{}
+
+	statsButton := &button.Button{
+		Text:           "ƒ",
+		Released:       rgba.CoolBlue,
+		Pressed:        rgba.DarkGray,
+		Size:           image.Pt(15, 15),
+		TextSize:       unit.Sp(10),
+		TextOffsetTop:  -4,
+		TextOffsetLeft: -5,
+		BorderWidth:    unit.Sp(.5),
+	}
+
+	statsButton.Click = func() {
+		stats.Data()
+		statsButton.Active = !statsButton.Active
+	}
+
+	clearStatsButton := &button.Button{
+		Text:           "×",
+		Released:       rgba.DarkRed,
+		Pressed:        rgba.DarkGray,
+		Size:           image.Pt(15, 15),
+		TextSize:       unit.Sp(12),
+		TextOffsetTop:  -4,
+		TextOffsetLeft: -7,
+		BorderWidth:    unit.Sp(.5),
+	}
+
+	clearStatsButton.Click = func() {
+		stats.Clear()
+		clearStatsButton.Active = !clearStatsButton.Active
+	}
 
 	var ops op.Ops
 
@@ -352,7 +398,7 @@ func (g *GUI) main() (next string, err error) {
 							uptime.TextSize = unit.Sp(12)
 
 							layout.Inset{
-								Top:  unit.Px(35),
+								Top:  unit.Px(34),
 								Left: unit.Px(float32(gtx.Constraints.Max.X - 175)),
 							}.Layout(gtx, uptime.Layout)
 
@@ -369,6 +415,51 @@ func (g *GUI) main() (next string, err error) {
 								Top:  unit.Px(18),
 								Left: unit.Px(float32(gtx.Constraints.Max.X - 90)),
 							}.Layout(gtx, holding.Layout)
+
+							symbol := material.H5(th, spinStop.Next())
+							symbol.Alignment = text.Middle
+							symbol.TextSize = unit.Sp(14)
+							symbol.Font.Weight = text.ExtraBold
+							symbol.Color = color.NRGBA(rgba.SlateGray)
+
+							acronym := material.H5(th, "STP")
+							acronym.Alignment = text.Middle
+							acronym.TextSize = unit.Sp(11)
+							acronym.Color = color.NRGBA(rgba.SlateGray)
+
+							down := float32(1)
+							left := 1
+
+							if config.Current.Record {
+								symbol.Text = spinRecord.Next()
+								symbol.Color = color.NRGBA(rgba.Red)
+								symbol.TextSize = unit.Sp(20)
+								acronym.Font.Weight = text.ExtraBold
+
+								acronym.Text = "REC"
+								acronym.Color = color.NRGBA(rgba.Red)
+
+								down = 0
+							} else if g.Running {
+								symbol.Text = spinRun.Next()
+								symbol.Color = color.NRGBA(rgba.Green)
+
+								acronym.Text = "RUN"
+								acronym.Color = color.NRGBA(rgba.Green)
+
+								left = 3
+								down = .5
+							}
+
+							layout.Inset{
+								Top:  unit.Px(31 + down),
+								Left: unit.Px(float32(gtx.Constraints.Max.X - 90 - left)),
+							}.Layout(gtx, symbol.Layout)
+
+							layout.Inset{
+								Top:  unit.Px(35),
+								Left: unit.Px(float32(gtx.Constraints.Max.X - 80)),
+							}.Layout(gtx, acronym.Layout)
 
 							p, o, s := server.Scores()
 
@@ -429,6 +520,24 @@ func (g *GUI) main() (next string, err error) {
 						color.NRGBA{R: 25, G: 25, B: 25, A: 255},
 						func(gtx layout.Context) layout.Dimensions {
 							recording()
+
+							layout.Inset{
+								Left: unit.Px(float32(gtx.Constraints.Max.X - statsButton.Size.X)),
+								Top:  unit.Px(float32(gtx.Constraints.Min.Y)),
+							}.Layout(
+								gtx,
+								func(gtx layout.Context) layout.Dimensions {
+									return statsButton.Layout(gtx)
+								})
+
+							layout.Inset{
+								Left: unit.Px(float32(gtx.Constraints.Max.X - clearStatsButton.Size.X)),
+								Top:  unit.Px(float32(gtx.Constraints.Min.Y + statsButton.Size.Y)),
+							}.Layout(
+								gtx,
+								func(gtx layout.Context) layout.Dimensions {
+									return clearStatsButton.Layout(gtx)
+								})
 
 							layout.Inset{
 								Left: unit.Px(float32(gtx.Constraints.Max.X - 125)),
@@ -502,6 +611,8 @@ func (g *GUI) main() (next string, err error) {
 									Border:      true,
 									BorderColor: color.NRGBA(team.Self.RGBA),
 									Image:       notify.Balls,
+									ScaleX:      2,
+									ScaleY:      2,
 								}).Layout)
 							}
 							if notify.SelfScore != nil {
@@ -512,7 +623,8 @@ func (g *GUI) main() (next string, err error) {
 									Border:      true,
 									BorderColor: color.NRGBA(team.Self.RGBA),
 									Image:       notify.SelfScore,
-									Descale:     4,
+									ScaleX:      4,
+									ScaleY:      4,
 								}).Layout)
 							}
 							if notify.Time != nil {
@@ -523,6 +635,8 @@ func (g *GUI) main() (next string, err error) {
 									Image:       notify.Time,
 									Border:      true,
 									BorderColor: color.NRGBA(team.Time.RGBA),
+									ScaleX:      2,
+									ScaleY:      2,
 								}).Layout)
 							}
 
@@ -539,11 +653,13 @@ func (g *GUI) main() (next string, err error) {
 
 func (g *GUI) display(src image.Image) {
 	g.Screen = &screen.Screen{
-		Image: src,
+		Image:  src,
+		ScaleX: 2,
+		ScaleY: 2,
 	}
 
-	x := unit.Px((float32(g.Bounds().Max.X) / 2) + 10)
-	y := unit.Px((float32(g.Bounds().Max.Y) / 2) + 89)
+	x := unit.Px((float32(g.Screen.Bounds().Max.X) / 2) + 10)
+	y := unit.Px((float32(g.Screen.Bounds().Max.Y) / 2) + 89)
 
 	if g.open && g.resize {
 		g.Window.Option(app.Size(x, y))
@@ -575,7 +691,9 @@ func (g *GUI) preview() {
 
 func (g *GUI) configure() (next string, err error) {
 	g.Preview = true
-	defer func() { g.Preview = false }()
+	defer func() {
+		g.Preview = false
+	}()
 
 	split := &split.Horizontal{
 		Ratio: .75,
@@ -588,6 +706,7 @@ func (g *GUI) configure() (next string, err error) {
 		TextSize: unit.Sp(13),
 		Min:      config.Current.Balls.Min.Div(2),
 		Max:      config.Current.Balls.Max.Div(2),
+
 		Button: &button.Button{
 			Active:   true,
 			Text:     "\t  Balls",
@@ -821,6 +940,8 @@ func (g *GUI) configure() (next string, err error) {
 	}
 
 	cancelButton.Click = func() {
+		defer server.Clear()
+
 		cancelButton.Disabled = true
 		saveButton.Disabled = true
 		ballsArea.Button.Disabled = true
@@ -832,6 +953,8 @@ func (g *GUI) configure() (next string, err error) {
 	}
 
 	saveButton.Click = func() {
+		defer server.Clear()
+
 		cancelButton.Disabled = true
 		saveButton.Disabled = true
 		ballsArea.Button.Disabled = true
@@ -850,7 +973,7 @@ func (g *GUI) configure() (next string, err error) {
 		}
 
 		next = "main"
-		notify.Feed(rgba.White, "Configuration saved to config.unitehud")
+		notify.Feed(rgba.White, "Configuration saved to "+config.File)
 	}
 
 	screenButton := &button.Button{
@@ -900,25 +1023,25 @@ func (g *GUI) configure() (next string, err error) {
 	}
 
 	button16x9 := &button.Button{
-		Text:        "16:9",
-		TextSize:    unit.Sp(12),
-		TextOffset:  -3,
-		BorderWidth: unit.Px(1),
-		Pressed:     rgba.Background,
-		Released:    rgba.DarkGray,
-		Active:      true,
-		Size:        image.Pt(45, 18),
+		Text:          "16:9",
+		TextSize:      unit.Sp(12),
+		TextOffsetTop: -3,
+		BorderWidth:   unit.Px(1),
+		Pressed:       rgba.Background,
+		Released:      rgba.DarkGray,
+		Active:        true,
+		Size:          image.Pt(45, 18),
 	}
 
 	button4x3 := &button.Button{
-		Text:        " 4:3",
-		TextSize:    unit.Sp(12),
-		TextOffset:  -3,
-		BorderWidth: unit.Px(1),
-		Pressed:     rgba.Background,
-		Released:    rgba.DarkGray,
-		Active:      true,
-		Size:        image.Pt(45, 18),
+		Text:          " 4:3",
+		TextSize:      unit.Sp(12),
+		TextOffsetTop: -3,
+		BorderWidth:   unit.Px(1),
+		Pressed:       rgba.Background,
+		Released:      rgba.DarkGray,
+		Active:        true,
+		Size:          image.Pt(45, 18),
 	}
 
 	button16x9.Click = func() {
@@ -1444,14 +1567,14 @@ func (g *GUI) matchBalls(a *area.Area) {
 	switch result {
 	case match.Found, match.Duplicate:
 		a.NRGBA = color.NRGBA(rgba.Alpha(rgba.Green, 0x99))
-		a.Text = fmt.Sprintf("\tBalls (+%d)", score)
+		a.Text = fmt.Sprintf("\t%d", score)
 		return
 	case match.NotFound:
 		a.NRGBA = color.NRGBA(rgba.Alpha(rgba.Red, 0x99))
 		a.Text = "\tBalls"
 	case match.Missed:
 		a.NRGBA = color.NRGBA(rgba.Alpha(rgba.DarkerYellow, 0x99))
-		a.Text = fmt.Sprintf("\tBalls (%d?)", score)
+		a.Text = fmt.Sprintf("\t%d?", score)
 	case match.Invalid:
 		a.NRGBA = color.NRGBA(rgba.Alpha(rgba.Red, 0x99))
 		a.Text = "\tBalls"

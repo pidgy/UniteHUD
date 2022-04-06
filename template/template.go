@@ -11,18 +11,16 @@ import (
 type Template struct {
 	filter.Filter
 	gocv.Mat
-	Category    string
-	Subcategory string
-	Mask        gocv.Mat
+	Category string
+	Mask     gocv.Mat
 }
 
 func New(f filter.Filter, m gocv.Mat, category, subcategory string) Template {
 	t := Template{
-		Filter:      f,
-		Mat:         m,
-		Category:    category,
-		Subcategory: subcategory,
-		Mask:        gocv.NewMat(),
+		Filter:   f,
+		Mat:      m,
+		Category: category,
+		Mask:     gocv.NewMat(),
 	}
 
 	return t

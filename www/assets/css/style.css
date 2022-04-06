@@ -12,20 +12,28 @@ body {
 
 table {
     width: 100%;
-    table-layout: fixed;
+    margin-left: -1px;
 }
 
 td {
-    min-width: 80px;
-    max-width: 80px;
+    min-width: 30px;
+    max-width: 30px;
     font-size: 35px;
+    /*border: 1px solid red;*/
 }
 
 .scoreboard {
     height: 100%;
     width: 100%;
-    margin-left: -5px;
     margin-top: -40px;
+}
+
+.separator {
+    min-width: 198px;
+}
+
+.padder {
+    min-width: 50px;
 }
 
 .score {
@@ -39,23 +47,32 @@ td {
 
 .purple {
     text-align: center;
-    background: rgba(122, 78, 234, .7);
+    background: rgba(122, 78, 234, 0.5);
     color: white;
-    text-shadow: 1px 1px 4px black, 1px 1px 4px black;
+    min-width: 45px;
+    max-width: 45px;
 }
 
 .orange {
     text-align: center;
-    background: rgba(255, 100, 0, .65);
+    background: rgba(185, 59, 0, 0.5);
     color: white;
-    text-shadow: 1px 1px 4px black, 1px 1px 4px black;
+    min-width: 45px;
+    max-width: 45px;
+}
+
+.font-border-black {
+    text-shadow: -1px -1px 0px #000, 0px -1px 0px #000, 1px -1px 0px #000, -1px 0px 0px #000, 1px 0px 0px #000, -1px 1px 0px #000, 0px 1px 0px #000, 1px 1px 0px #000;
+}
+
+.font-border-white {
+    text-shadow: -1px -1px 0px #fff, 0px -1px 0px #fff, 1px -1px 0px #fff, -1px 0px 0px #fff, 1px 0px 0px #fff, -1px 1px 0px #fff, 0px 1px 0px #fff, 1px 1px 0px #fff;
 }
 
 .self {
     text-align: center;
-    background: rgba(255, 255, 0, 0.75);
+    background: rgba(255, 255, 83, 0.4);
     color: white;
-    text-shadow: 1px 1px 4px black, 1px 1px 4px black;
 }
 
 .seconds {
@@ -63,12 +80,10 @@ td {
     padding-left: 15px;
     text-align: center;
     color: white;
-    text-shadow: 1px 1px 4px black, 1px 1px 4px black;
 }
 
 .error {
     color: red;
-    text-shadow: 1px 1px 1px white, 1px 1px 1px white;
     font-size: 35px;
     position: fixed;
     bottom: -35px;

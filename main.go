@@ -6,10 +6,8 @@ import (
 	"flag"
 	"image"
 	"image/color"
-	"math"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
 	"time"
 
@@ -25,7 +23,7 @@ import (
 	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/rgba"
 	"github.com/pidgy/unitehud/server"
-	"github.com/pidgy/unitehud/stats"
+	"github.com/pidgy/unitehud/state"
 	"github.com/pidgy/unitehud/team"
 	"github.com/pidgy/unitehud/template"
 )
@@ -38,16 +36,14 @@ var (
 )
 
 var (
-	dup    = false
 	record = false
-	missed = false
 	addr   = ":17069"
 )
 
 var (
 	imgq = map[string]chan image.Image{
-		team.Game.Name:   make(chan image.Image, 1),
-		team.Self.Name:   make(chan image.Image, 2),
+		team.Game.Name: make(chan image.Image, 1),
+		// team.Self.Name:   make(chan image.Image, 0),
 		team.Purple.Name: make(chan image.Image, 1),
 		team.Orange.Name: make(chan image.Image, 1),
 		team.Balls.Name:  make(chan image.Image, 1),
@@ -55,17 +51,15 @@ var (
 	}
 )
 
+var (
+	empty = gocv.NewMat()
+)
+
 func init() {
 	notify.Feed(rgba.White, "Pokemon Unite HUD Server")
 
 	flag.StringVar(&addr, "addr", addr, "http/websocket serve address")
-	flag.BoolVar(&dup, "dup", dup, "record duplicate image matching")
-	flag.BoolVar(&missed, "missed", missed, "record missed image matching")
 	flag.BoolVar(&record, "record", record, "record data such as matched images and logs for developer-specific debugging")
-
-	avg := flag.Float64("match", 91, `0-100% certainty when processing score values`)
-	stats := flag.Bool("stats", false, "record image template stats in logs and print data to UI")
-
 	level := flag.String("v", zerolog.LevelErrorValue, "log level (panic, fatal, error, warn, info, debug)")
 	flag.Parse()
 
@@ -84,7 +78,7 @@ func init() {
 	}
 	log.Logger = log.Logger.Level(lvl)
 
-	err = config.Load(float32(*avg)/100, record, missed, dup, *stats)
+	err = config.Load(record)
 	if err != nil {
 		kill(err)
 	}
@@ -92,44 +86,24 @@ func init() {
 
 func capture(name string, imgq chan image.Image, paused *bool) {
 	for {
+		time.Sleep(team.Delay(name))
+
 		if *paused {
-			time.Sleep(team.Delay(name))
+			time.Sleep(time.Second)
 			continue
 		}
 
 		img, err := screenshot.CaptureRect(config.Current.Scores)
 		if err != nil {
 			kill(err)
+			return
 		}
 
 		imgq <- img
-
-		time.Sleep(team.Delay(name))
 	}
 }
 
-// Create a new grayscale image
-func gray(img *image.RGBA) *image.Gray {
-	bounds := img.Bounds()
-	w, h := bounds.Max.X, bounds.Max.Y
-	gray := image.NewGray(image.Rectangle{image.Point{0, 0}, image.Point{w, h}})
-	for x := 0; x < w; x++ {
-		for y := 0; y < h; y++ {
-			imageColor := img.At(x, y)
-			rr, gg, bb, _ := imageColor.RGBA()
-			r := math.Pow(float64(rr), 2.2)
-			g := math.Pow(float64(gg), 2.2)
-			b := math.Pow(float64(bb), 2.2)
-			m := math.Pow(0.2125*r+0.7154*g+0.0721*b, 1/2.2)
-			yy := uint16(m + 0.5)
-			gray.Set(x, y, color.Gray{uint8(yy >> 8)})
-		}
-	}
-
-	return gray
-}
-
-func process(t []template.Template, imgq chan image.Image) {
+func first(t []template.Template, imgq chan image.Image) {
 	for img := range imgq {
 		matrix, err := gocv.ImageToMatRGB(img)
 		if err != nil {
@@ -155,7 +129,14 @@ func process(t []template.Template, imgq chan image.Image) {
 			go server.Publish(m.Team, p)
 
 			if config.Current.Record {
-				dev.Capture(img, matrix, m.Team, m.Point, "capture", false, p)
+				loc := dev.Capture(img, matrix, m.Team, m.Point, "capture", p)
+				dev.Log("matched points for %s (%d)", m.Team.Name, p)
+				dev.Log("Saved at %s", loc)
+
+				if m.Team == team.Self {
+					loc := dev.Capture(notify.Balls, empty, m.Team, m.Point, "capture", p)
+					dev.Log("Saved at %s", loc)
+				}
 			}
 
 			notify.Feed(m.Team.RGBA, "[%s] +%d %s", server.Clock(), p, m.Team.Alias)
@@ -166,7 +147,19 @@ func process(t []template.Template, imgq chan image.Image) {
 				if err != nil {
 					log.Error().Err(err).Send()
 				}
-			case team.Purple.Name, team.First.Name:
+			case team.First.Name:
+				score, err := m.Identify(matrix, p)
+				if err != nil {
+					log.Error().Err(err).Send()
+					break
+				}
+
+				if team.First.Alias == team.Purple.Name {
+					notify.PurpleScore = score
+				} else {
+					notify.OrangeScore = score
+				}
+			case team.Purple.Name:
 				notify.PurpleScore, err = m.Identify(matrix, p)
 				if err != nil {
 					log.Error().Err(err).Send()
@@ -178,16 +171,19 @@ func process(t []template.Template, imgq chan image.Image) {
 				}
 			}
 		case match.Missed:
-			if config.Current.RecordMissed {
-				dev.Capture(img, matrix, m.Team, m.Point, "missed", false, p)
+			notify.Feed(rgba.Red, "Missed points matched for %s! (%d?)", m.Team.Name, p)
+
+			if config.Current.Record {
+				dev.Capture(img, matrix, m.Team, m.Point, "missed", p)
 			} else {
-				notify.Feed(color.RGBA(rgba.SlateGray), "Set \"RecordMissed: true\" to view missed points in /tmp")
+				notify.Feed(rgba.Red, "Select the \"Record\" button to view missed points in /tmp")
 			}
 		case match.Invalid:
 			notify.Feed(rgba.Red, "Scored match is outside the configured selection area")
 		case match.Duplicate:
-			if config.Current.RecordDuplicates {
-				dev.Capture(img, matrix, m.Team, m.Point, "", true, p)
+			if config.Current.Record {
+				dev.Capture(img, matrix, m.Team, m.Point, "duplicate", p)
+				dev.Log("duplicate points matched for %s (%d)", m.Team.Name, p)
 			}
 		}
 
@@ -195,24 +191,15 @@ func process(t []template.Template, imgq chan image.Image) {
 	}
 }
 
-func kill(errs ...error) {
-	for _, err := range errs {
-		log.Error().Err(err).Send()
-		time.Sleep(time.Millisecond)
-	}
-
-	sig := os.Kill
-	if len(errs) == 0 {
-		sig = os.Interrupt
-	}
-
-	sigq <- sig
+func minimap(paused *bool) {
 }
 
-func balls(paused *bool) {
+func orbs(paused *bool) {
 	assured := make(map[int]int)
 
 	for {
+		time.Sleep(team.Delay(team.Balls.Name))
+
 		if *paused {
 			time.Sleep(time.Second)
 			continue
@@ -228,33 +215,188 @@ func balls(paused *bool) {
 			kill(err)
 		}
 
-		result, order, points := match.Balls(matrix, img)
+		result, order, points := match.Balls2(matrix, img)
 		if result != match.Found {
-			goto sleep
+			continue
 		}
 
 		assured[points]++
 
-		if assured[points] < 1 {
-			goto sleep
+		threshold := 1
+		if points == 0 {
+			threshold = 2
+		}
+
+		// TODO: touching pad
+		if team.Balls.Holding != 0 && team.Balls.Holding/10 == points {
+			continue
+		}
+
+		if assured[points] < threshold {
+			continue
 		}
 		assured = make(map[int]int)
 
 		if points != team.Balls.Holding {
 			log.Info().Int("points", points).Int("prev", team.Balls.Holding).Object("team", team.Balls).Ints("read", order).Msg(result.String())
+			s := "s"
+			if points == 1 {
+				s = ""
+			}
+
+			notify.Feed(team.Self.RGBA, "[%s] Holding %d point%s", server.Clock(), points, s)
+
+			state.AddEvent(state.HoldingBalls, server.Clock(), points)
 		}
 
 		notify.Balls, err = match.IdentifyBalls(matrix, points)
 		if err != nil {
 			log.Error().Err(err).Send()
-			goto sleep
+			continue
 		}
 
 		team.Balls.HoldingReset = false
 		team.Balls.Holding = points
 
-	sleep:
-		time.Sleep(team.Delay(team.Balls.Name))
+		server.Balls(points)
+	}
+}
+
+func scoring(paused *bool) {
+	for {
+		time.Sleep(time.Millisecond * 1500)
+
+		if *paused {
+			time.Sleep(time.Second)
+			continue
+		}
+
+		img, err := screenshot.CaptureRect(config.Current.Scoring())
+		if err != nil {
+			kill(err)
+		}
+
+		matrix, err := gocv.ImageToMatRGB(img)
+		if err != nil {
+			kill(err)
+		}
+
+		m := &match.Match{}
+		r, n := m.Matches(matrix, img, config.Current.Templates["scoring"][team.Game.Name])
+		if r != match.Found {
+			matrix.Close()
+			continue
+		}
+
+		past := state.PastEvents(state.PostScore, time.Second*3)
+		if len(past) < 2 {
+			go server.Publish(team.Self, n)
+			notify.Feed(team.Self.RGBA, "[%s] +%d (self)", server.Clock(), n)
+		} else {
+			total := 0
+			for _, event := range past[1:] {
+				total -= event.Value
+			}
+
+			go server.Publish(team.Self, total)
+			notify.Feed(team.Self.RGBA, "[%s] %d (invalid self)", server.Clock(), total)
+		}
+
+		matrix.Close()
+	}
+}
+
+func killed(paused *bool) {
+	area := image.Rectangle{}
+	modified := config.Current.Templates["killed"][team.Game.Name]
+	unmodified := config.Current.Templates["killed"][team.Game.Name]
+
+	for {
+		time.Sleep(time.Second)
+
+		if *paused || gui.Window.Screen == nil {
+			time.Sleep(time.Second)
+			continue
+		}
+
+		if area.Empty() {
+			b := gui.Window.Screen.Bounds()
+			area = image.Rect(b.Max.X/3, b.Max.Y/2, b.Max.X-b.Max.X/3, b.Max.Y-b.Max.Y/3)
+		}
+
+		img, err := screenshot.CaptureRect(area)
+		if err != nil {
+			kill(err)
+		}
+
+		matrix, err := gocv.ImageToMatRGB(img)
+		if err != nil {
+			kill(err)
+		}
+
+		gocv.IMWrite("killed2.png", matrix)
+
+		m := &match.Match{}
+
+		r, e := m.Matches(matrix, img, modified)
+		if r == match.Found {
+			state.AddEvent(state.EventType(e), server.Clock(), -1)
+
+			switch e := state.EventType(e); e {
+			case state.Killed:
+				modified = modified[1:] // Remove killed event.
+
+				team.Self.Killed = time.Now()
+
+				notify.Feed(color.RGBA(rgba.DarkRed), "[%s] Killed", server.Clock())
+			case state.KilledWithPoints:
+				modified = modified[1:]
+
+				notify.Feed(color.RGBA(rgba.DarkRed), "[%s] Killed with %d points", server.Clock(), team.Balls.Holding)
+			case state.KilledWithoutPoints:
+				modified = modified[1:]
+
+				notify.Feed(color.RGBA(rgba.DarkRed), "[%s] Killed without points", server.Clock())
+			}
+		} else {
+			if time.Since(team.Self.Killed) > time.Minute {
+				modified = unmodified
+			}
+		}
+
+		matrix.Close()
+	}
+}
+
+func states(paused *bool) {
+	area := image.Rectangle{}
+
+	for {
+		time.Sleep(team.Game.Delay)
+
+		if *paused || gui.Window.Screen == nil {
+			time.Sleep(time.Second)
+			continue
+		}
+
+		if area.Empty() {
+			b := gui.Window.Screen.Bounds()
+			area = image.Rect(b.Max.X/3, 0, b.Max.X-b.Max.X/3, b.Max.Y)
+		}
+
+		img, err := screenshot.CaptureRect(area)
+		if err != nil {
+			kill(err)
+		}
+
+		matrix, err := gocv.ImageToMatRGB(img)
+		if err != nil {
+			kill(err)
+		}
+
+		(&match.Match{}).Matches(matrix, img, config.Current.Templates["game"][team.Game.Name])
+
+		matrix.Close()
 	}
 }
 
@@ -262,6 +404,8 @@ func seconds(paused *bool) {
 	m := match.Match{}
 
 	for {
+		time.Sleep(team.Delay(team.Time.Name))
+
 		if *paused {
 			time.Sleep(time.Second)
 			continue
@@ -287,17 +431,7 @@ func seconds(paused *bool) {
 				log.Error().Err(err).Send()
 			}
 		}
-
-		time.Sleep(team.Delay(team.Time.Name))
 	}
-}
-
-func signals() {
-	signal.Notify(sigq, syscall.SIGINT, syscall.SIGTERM)
-	s := <-sigq
-
-	log.Info().Stringer("signal", s).Msg("closing...")
-	os.Exit(1)
 }
 
 func main() {
@@ -307,34 +441,22 @@ func main() {
 	defer gui.Window.Open()
 
 	log.Info().
-		Bool("duplicates", config.Current.RecordDuplicates).
-		Bool("missed", config.Current.RecordMissed).
 		Bool("record", config.Current.Record).
-		Bool("stats", config.Current.Stats).
 		Str("imgs", "img/"+config.Current.Dir+"/").
-		Str("match", strconv.Itoa(int(config.Current.Acceptance*100))+"%").
-		Str("addr", addr).Msg("unitehud")
+		Str("addr", addr).
+		Msg("unitehud")
 
 	notify.Append(rgba.Green, "Server address: \"%s\"", addr)
-	notify.Append(rgba.Bool(config.Current.Record), "Record matched points: %t", config.Current.Record)
-	notify.Append(rgba.Bool(config.Current.RecordMissed), "Record missed points: %t", config.Current.RecordMissed)
-	notify.Append(rgba.Bool(config.Current.RecordDuplicates), "Record duplicate points: %t", config.Current.RecordDuplicates)
+	notify.Append(rgba.Bool(config.Current.Record), "Recording: %t", config.Current.Record)
 	notify.Append(rgba.Green, "Image directory: img/%s/", config.Current.Dir)
-	notify.Append(rgba.Green, "Match acceptance: %d%s", int(config.Current.Acceptance*100), "%")
-
-	if config.Current.Record || config.Current.RecordMissed {
-		err := dev.New()
-		if err != nil {
-			kill(err)
-		}
-
-		notify.Feed(rgba.Green, "Created tmp/ directory for match recording")
-	}
 
 	paused := true
 
 	for category := range config.Current.Templates {
 		switch category {
+		case "game":
+			// Ignore first-stage matching for game.
+			continue
 		case "points":
 			// Ignore first-stage matching for points.
 			continue
@@ -346,19 +468,28 @@ func main() {
 		for name := range config.Current.Templates[category] {
 			for i := 0; i < cap(imgq[name]); i++ {
 				go capture(name, imgq[name], &paused)
-				go process(config.Current.Templates[category][name], imgq[name])
+				go first(config.Current.Templates[category][name], imgq[name])
 
-				time.Sleep(time.Millisecond * 250) // .
+				// Stagger processing for workers by sleeping.
+				time.Sleep(time.Millisecond * 250)
 			}
 		}
 	}
 
+	go killed(&paused)
+	go minimap(&paused)
+	go orbs(&paused)
 	go seconds(&paused)
-	go balls(&paused)
+	go states(&paused)
+	go scoring(&paused)
 
 	go func() {
-		for {
-			switch <-gui.Window.Actions {
+		for action := range gui.Window.Actions {
+			switch action {
+			case gui.Closing:
+				dev.Close()
+				os.Exit(0)
+				return
 			case gui.Start:
 				if !paused {
 					continue
@@ -369,43 +500,47 @@ func main() {
 				notify.Clear()
 				server.Clear()
 				team.Clear()
-				stats.Clear()
+				// stats.Clear()
+				state.Clear()
 
 				paused = false
 			case gui.Stop:
 				if paused {
 					continue
 				}
-
 				paused = true
 
 				server.Clear()
 				team.Clear()
-				if config.Current.Stats {
-					stats.Data()
-				}
 
 				notify.Feed(rgba.Green, "Stopping...")
+
+				if !config.Current.Record {
+					continue
+				}
+
+				fallthrough
 			case gui.Record:
 				config.Current.Record = !config.Current.Record
+				notify.Feed(rgba.Bool(config.Current.Record), "Recording images: %t", config.Current.Record)
 
 				switch config.Current.Record {
 				case true:
-					err := dev.New()
+					err := dev.Start()
 					if err != nil {
 						kill(err)
 					}
 
-					notify.Feed(rgba.White, "Using tmp/ directory for recording match captures")
+					notify.Feed(rgba.White, "Using tmp/ directory for recording data")
 
 					err = config.Current.Save()
 					if err != nil {
 						kill(err)
 					}
 				case false:
-					notify.Feed(rgba.White, "Closing any open match capture files in tmp/")
+					notify.Feed(rgba.White, "Closing open files in tmp/")
 
-					dev.End()
+					dev.Stop()
 				}
 			case gui.Open:
 				err := dev.Open()
@@ -417,4 +552,27 @@ func main() {
 	}()
 
 	notify.Feed(rgba.White, "Not started")
+}
+
+func signals() {
+	signal.Notify(sigq, syscall.SIGINT, syscall.SIGTERM)
+	s := <-sigq
+
+	log.Info().Stringer("signal", s).Msg("closing...")
+	os.Exit(1)
+}
+
+func kill(errs ...error) {
+	for _, err := range errs {
+		log.Error().Err(err).Msg("killing unitehud")
+	}
+
+	time.Sleep(time.Second)
+
+	sig := os.Kill
+	if len(errs) == 0 {
+		sig = os.Interrupt
+	}
+
+	sigq <- sig
 }

@@ -3,7 +3,6 @@ package match
 import (
 	"fmt"
 	"image"
-	"image/color"
 	"math"
 
 	"github.com/rs/zerolog/log"
@@ -13,18 +12,19 @@ import (
 	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/rgba"
 	"github.com/pidgy/unitehud/server"
+	"github.com/pidgy/unitehud/stats"
 	"github.com/pidgy/unitehud/team"
 )
 
 func (m *Match) Time(matrix gocv.Mat, img *image.RGBA) (seconds int, kitchen string) {
 	clock := [4]int{-1, -1, -1, -1}
-	mins := []int{math.MaxInt32, math.MaxInt32, math.MaxInt32, math.MaxInt32}
-
+	locs := []int{math.MaxInt32, math.MaxInt32, math.MaxInt32, math.MaxInt32}
+	cols := []int{0, 0, 0, 0}
 	templates := config.Current.Templates["time"][team.Time.Name]
 
 	inset := 0
 
-	for i := range clock {
+	for c := range clock {
 		region := matrix.Region(
 			image.Rectangle{
 				Min: image.Pt(inset, 0),
@@ -39,7 +39,7 @@ func (m *Match) Time(matrix gocv.Mat, img *image.RGBA) (seconds int, kitchen str
 				log.Warn().Str("type", "time").Msg("match is outside the legal selection")
 				notify.Feed(rgba.Red, "Time match is outside the configured selection area")
 
-				if config.Current.RecordMissed {
+				if config.Current.Record {
 					// dev.Capture(img, region, team.Time.Name, "missed-"+template.Name, false, template.Value)
 				}
 
@@ -54,28 +54,33 @@ func (m *Match) Time(matrix gocv.Mat, img *image.RGBA) (seconds int, kitchen str
 			gocv.MatchTemplate(region, template.Mat, &mat, gocv.TmCcoeffNormed, mask)
 		}
 
-		for j := range results {
-			if results[j].Empty() {
+		for i := range results {
+			if results[i].Empty() {
 				log.Warn().Str("filename", m.File).Msg("empty result")
 				continue
 			}
 
-			_, maxc, _, maxp := gocv.MinMaxLoc(results[j])
-			if maxc >= team.Time.Acceptance(config.Current.Acceptance) {
+			_, maxv, _, maxp := gocv.MinMaxLoc(results[i])
+			if maxv >= team.Time.Acceptance {
+				go stats.Average(templates[i].File, maxv)
+				go stats.Count(templates[i].File)
 
-				if maxp.X < mins[i] {
-					mins[i] = maxp.X + templates[j].Cols()
-					clock[i] = templates[j].Value
+				if maxp.X < locs[c] {
+					locs[c] = maxp.X
+					cols[c] = templates[i].Cols() - 2
+					clock[c] = templates[i].Value
 				}
 			}
+
+			go stats.Frequency(templates[i].File, 1)
 		}
 
-		if clock[i] == -1 {
+		if clock[c] == -1 {
 			return 0, "00:00"
 		}
 
-		// Crop the left side of the selection area via the  first <x-5,y> point matched.
-		inset += mins[i]
+		// Crop the left side of the selection area via the first <x,y> point matched.
+		inset += locs[c] + cols[c]
 		if inset > matrix.Cols() {
 			break
 		}
@@ -99,10 +104,10 @@ func IdentifyTime(mat gocv.Mat, kitchen string) (image.Image, error) {
 	clone := mat.Clone()
 	defer clone.Close()
 
-	region := clone.Region(image.Rect(clone.Cols()/4, 0, clone.Cols()-(clone.Cols()/4), clone.Rows()/2))
+	region := clone.Region(image.Rect(clone.Cols()/4, 0, clone.Cols(), clone.Rows()))
 
-	p := image.Pt(10, region.Rows()-15)
-	gocv.PutText(&region, kitchen, p, gocv.FontHersheyPlain, 2, color.RGBA(rgba.Highlight), 3)
+	// p := image.Pt(10, region.Rows()-15)
+	// gocv.PutText(&region, kitchen, p, gocv.FontHersheyPlain, 2, color.RGBA(rgba.Highlight), 3)
 
 	crop, err := region.ToImage()
 	if err != nil {

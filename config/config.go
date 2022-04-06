@@ -13,27 +13,24 @@ import (
 	"gocv.io/x/gocv"
 
 	"github.com/pidgy/unitehud/filter"
-	"github.com/pidgy/unitehud/notify"
-	"github.com/pidgy/unitehud/rgba"
+	"github.com/pidgy/unitehud/state"
 	"github.com/pidgy/unitehud/team"
 	"github.com/pidgy/unitehud/template"
 )
 
-type Config struct {
-	Acceptance       float32
-	Record           bool // Record all matched images and logs.
-	RecordMissed     bool // Record missed images.
-	RecordDuplicates bool // Record duplicate matched images.
-	Stats            bool // Log image template match statistics.
-	Scores           image.Rectangle
-	Time             image.Rectangle
-	Balls            image.Rectangle
-	Filenames        map[string]map[string][]filter.Filter     `json:"-"`
-	Templates        map[string]map[string][]template.Template `json:"-"`
-	Scales           Scales
-	Dir              string
+const File = "config.unitehud"
 
-	load func()
+type Config struct {
+	Record     bool `json:"-"` // Record all matched images and logs.
+	Scores     image.Rectangle
+	Time       image.Rectangle
+	Balls      image.Rectangle
+	Filenames  map[string]map[string][]filter.Filter     `json:"-"`
+	Templates  map[string]map[string][]template.Template `json:"-"`
+	Scales     Scales
+	Dir        string
+	Acceptance float32
+	load       func()
 }
 
 type Scales struct {
@@ -66,7 +63,7 @@ func (c Config) Reload() {
 }
 
 func (c Config) Save() error {
-	f, err := os.Create("config.unitehud")
+	f, err := os.Create(File)
 	if err != nil {
 		return err
 	}
@@ -84,35 +81,34 @@ func (c Config) Save() error {
 	return nil
 }
 
-func Load(acceptance float32, record, missed, dup, stats bool) error {
+func (c Config) Scoring() image.Rectangle {
+	return image.Rectangle{
+		Min: image.Pt(c.Balls.Min.X-50, c.Balls.Min.Y),
+		Max: image.Pt(c.Balls.Max.X+50, c.Balls.Max.Y+100),
+	}
+}
+
+func Load(record bool) error {
 	defer validate()
 
 	if open() {
-		Current.Acceptance = acceptance
 		Current.Record = record
-		Current.RecordMissed = missed
-		Current.RecordDuplicates = dup
-		Current.Stats = stats
+		Current.Acceptance = .91
 	} else {
 		Current = Config{
-			Acceptance:       acceptance,
-			Record:           record,
-			RecordMissed:     missed,
-			RecordDuplicates: dup,
-			Stats:            stats,
-			Scores:           image.Rect(0, 0, 1100, 500),
-			Time:             image.Rect(0, 0, 300, 200),
-			Balls:            image.Rect(0, 0, 150, 100),
+			Scores: image.Rect(0, 0, 1100, 500),
+			Time:   image.Rect(0, 0, 200, 100),
+			Balls:  image.Rect(0, 0, 100, 100), // Must be square (H==W).
 			Scales: Scales{
 				Game:  1,
 				Score: 1,
 				Balls: 1,
 				Time:  1,
 			},
-			Dir:  "default",
-			load: loadDefault,
+			Dir:        "default",
+			load:       loadDefault,
+			Acceptance: .91,
 		}
-
 		Current.load()
 	}
 
@@ -122,6 +118,12 @@ func Load(acceptance float32, record, missed, dup, stats bool) error {
 func validate() {
 	Current.Templates = map[string]map[string][]template.Template{
 		"game": {
+			team.Game.Name: {},
+		},
+		"killed": {
+			team.Game.Name: {},
+		},
+		"scoring": {
 			team.Game.Name: {},
 		},
 		"scored": {
@@ -216,7 +218,12 @@ func (c Config) scoreFiles(t *team.Team) []filter.Filter {
 
 	filters := []filter.Filter{}
 	for _, file := range files {
-		if !strings.Contains(file, ".png") && !strings.Contains(file, ".PNG") {
+		if !strings.Contains(file, "score") {
+			continue
+		}
+
+		if !strings.Contains(file, ".png") &&
+			!strings.Contains(file, ".PNG") {
 			continue
 		}
 
@@ -252,7 +259,6 @@ func (c Config) pointFiles(t *team.Team) []filter.Filter {
 		v := filter.Strip(b[1])
 		if v == "" {
 			log.Warn().Str("file", file).Msg("invalid file in points directory")
-			notify.Feed(rgba.Yellow, "Invalid file in points directory: %s", file)
 			continue
 		}
 
@@ -273,22 +279,35 @@ func (c Config) pointFiles(t *team.Team) []filter.Filter {
 func Reset() error {
 	defer validate()
 
-	err := os.Remove("config.unitehud")
+	err := os.Remove(File)
 	if err != nil {
 		return err
 	}
 
-	return Load(Current.Acceptance, Current.Record, Current.RecordMissed, Current.RecordDuplicates, Current.Stats)
+	return Load(Current.Record)
 }
 
 func loadDefault() {
 	Current.Filenames = map[string]map[string][]filter.Filter{
+		"killed": {
+			team.Game.Name: {
+				filter.New(team.Game, "img/default/game/killed.png", state.Killed.Int(), false),
+				filter.New(team.Game, "img/default/game/killed_with_points.png", state.KilledWithPoints.Int(), false),
+				filter.New(team.Game, "img/default/game/killed_without_points.png", state.KilledWithoutPoints.Int(), false),
+			},
+		},
 		"game": {
 			"vs": {
-				filter.New(team.Game, "img/default/game/vs.png", 0, false),
+				filter.New(team.Game, "img/default/game/vs.png", state.MatchStarting.Int(), false),
 			},
 			"end": {
-				filter.New(team.Game, "img/default/game/end.png", 0, false),
+				filter.New(team.Game, "img/default/game/end.png", state.MatchEnding.Int(), false),
+			},
+		},
+		"scoring": {
+			team.Game.Name: {
+				filter.New(team.Game, "img/default/game/pre_scoring.png", state.PreScore.Int(), false),
+				filter.New(team.Game, "img/default/game/post_scoring.png", state.PostScore.Int(), false),
 			},
 		},
 		"scored": {
@@ -311,9 +330,8 @@ func loadDefault() {
 }
 
 func open() bool {
-	b, err := os.ReadFile("config.unitehud")
+	b, err := os.ReadFile(File)
 	if err != nil {
-		notify.Feed(rgba.DarkerYellow, "Creating default config.unitehud file. Select \"Configure\" from the main screen to customize your HUD.")
 		log.Warn().Err(err).Msg("previously saved config does not exist")
 		return false
 	}

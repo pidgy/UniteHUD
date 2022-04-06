@@ -18,10 +18,10 @@ import (
 )
 
 type Button struct {
-	Text        string
-	TextSize    unit.Value
-	TextOffset  float32
-	BorderWidth unit.Value
+	Text                          string
+	TextSize                      unit.Value
+	TextOffsetTop, TextOffsetLeft float32
+	BorderWidth                   unit.Value
 
 	Size image.Point
 
@@ -92,13 +92,13 @@ func (b *Button) uniform(gtx layout.Context) layout.Dimensions {
 
 func (b *Button) draw(gtx layout.Context) layout.Dimensions {
 	if b.BorderWidth.V == unit.Px(0).V {
-		b.BorderWidth = unit.Px(3)
+		b.BorderWidth = unit.Px(2)
 	}
 
 	widget.Border{
 		Color:        color.NRGBA{A: 0xAF},
 		Width:        b.BorderWidth,
-		CornerRadius: unit.Px(1),
+		CornerRadius: unit.Px(2),
 	}.Layout(gtx, b.uniform)
 
 	title := material.Body1(material.NewTheme(gofont.Collection()), b.Text)
@@ -117,8 +117,8 @@ func (b *Button) draw(gtx layout.Context) layout.Dimensions {
 	}
 
 	return layout.Inset{
-		Left: unit.Dp(11),
-		Top:  unit.Px(((float32(b.Size.Y) / title.TextSize.V) * 3) + b.TextOffset),
+		Left: unit.Dp(11 + b.TextOffsetLeft),
+		Top:  unit.Px(((float32(b.Size.Y) / title.TextSize.V) * 3) + b.TextOffsetTop),
 	}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 		return layout.N.Layout(gtx, title.Layout)
 	})

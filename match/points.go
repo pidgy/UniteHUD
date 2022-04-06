@@ -3,7 +3,6 @@ package match
 import (
 	"image"
 	"math"
-	"time"
 
 	"github.com/rs/zerolog/log"
 	"gocv.io/x/gocv"
@@ -19,8 +18,6 @@ func (m *Match) points(matrix gocv.Mat) (Result, int) {
 	switch m.Team.Name {
 	case team.Purple.Name, team.Orange.Name:
 		return m.regular(matrix)
-	case team.Self.Name:
-		return m.self(matrix)
 	case team.First.Name:
 		team.First.Alias = team.Purple.Name
 		if m.Point.X > m.Max.X/2 {
@@ -77,7 +74,7 @@ func (m *Match) first(matrix gocv.Mat) (Result, int) {
 			}
 
 			_, maxv, _, maxp := gocv.MinMaxLoc(results[i])
-			if !math.IsInf(float64(maxv), 1) && maxv >= m.Team.Acceptance(config.Current.Acceptance) {
+			if !math.IsInf(float64(maxv), 1) && maxv >= m.Team.Acceptance {
 				sorted.Cache(templates[i], maxp, maxv)
 
 				go stats.Average(templates[i].File, maxv)
@@ -151,7 +148,7 @@ func (m *Match) regular(matrix gocv.Mat) (Result, int) {
 			}
 
 			_, maxv, _, maxp := gocv.MinMaxLoc(results[i])
-			if maxv >= m.Team.Acceptance(config.Current.Acceptance) {
+			if maxv >= m.Team.Acceptance {
 				// fmt.Printf("#%d, %d%% %s, %s %d\n", round, int(maxv*100), templates[i].File, maxp, templates[i].Cols())
 
 				if round > 0 && maxp.X > templates[i].Mat.Cols() {
@@ -180,23 +177,6 @@ func (m *Match) regular(matrix gocv.Mat) (Result, int) {
 	}
 
 	return m.validate(matrix, p)
-}
-
-func (m *Match) self(matrix gocv.Mat) (Result, int) {
-	if team.Balls.Holding == 0 {
-		return Missed, -1
-	}
-
-	if m.Team.Duplicate.Counted && time.Since(m.Team.Duplicate.Time) < time.Second*2 {
-		return Duplicate, -1
-	}
-
-	m.Team.Duplicate.Counted = true
-	m.Team.Duplicate.Time = time.Now()
-
-	team.Balls.HoldingReset = true
-
-	return Found, team.Balls.Holding
 }
 
 func (m *Match) validate(matrix gocv.Mat, value int) (Result, int) {

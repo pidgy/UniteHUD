@@ -9,22 +9,21 @@ import (
 
 	"github.com/olekukonko/tablewriter"
 
-	"github.com/pidgy/unitehud/config"
-	"github.com/pidgy/unitehud/dev"
 	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/rgba"
 	"github.com/pidgy/unitehud/sort"
 )
 
 var (
+	averages = make(map[string]int)
+	asets    = make(map[string][]float32)
+
+	frequencies = make(map[string]float32)
+	fsets       = make(map[string][]float32)
+
 	matches = make(map[string]int)
 
-	acceptances = make(map[string]int)
-	averages    = make(map[string]int)
-	asets       = make(map[string][]float32)
-
-	frequencies = make(map[string]int)
-	fsets       = make(map[string][]float32)
+	images = make(map[string]int)
 
 	statsq = make(chan func(), 1024)
 )
@@ -58,6 +57,7 @@ func Average(stat string, maxv float32) {
 }
 
 func Clear() {
+	notify.Feed(rgba.White, "Clearing matched image template statistics")
 	statsq <- func() {
 		for stat := range matches {
 			delete(matches, stat)
@@ -70,31 +70,16 @@ func Clear() {
 }
 
 func Count(stat string) {
-	if !config.Current.Stats {
-		return
-	}
-
 	statsq <- func() {
 		matches[stat]++
 	}
 }
 
 func Data() {
-	if !config.Current.Stats {
-		return
-	}
-
-	notify.Feed(rgba.White, "Matched Template Statistics")
-	if config.Current.Record {
-		dev.Log("Matched Template Statistics")
-	}
-
 	statsq <- func() {
 		if len(matches) == 0 {
-			notify.Feed(rgba.White, "No data to display...")
-			if config.Current.Record {
-				dev.Log("No data to display...")
-			}
+			notify.Feed(rgba.White, "No matched image template statistics to display...")
+			return
 		}
 
 		buf := &bytes.Buffer{}
@@ -105,20 +90,18 @@ func Data() {
 		table.SetRowSeparator("")
 		table.SetColMinWidth(0, 10)
 		table.SetColMinWidth(1, 7)
-		table.SetColMinWidth(2, 7)
 		table.SetColMinWidth(3, 7)
 		table.SetColumnAlignment(
 			[]int{
-				tablewriter.ALIGN_CENTER,
-				tablewriter.ALIGN_CENTER,
-				tablewriter.ALIGN_CENTER,
-				tablewriter.ALIGN_CENTER,
+				tablewriter.ALIGN_LEFT,
+				tablewriter.ALIGN_LEFT,
+				tablewriter.ALIGN_LEFT,
 				tablewriter.ALIGN_LEFT,
 			},
 		)
 		table.SetBorder(false)
 
-		table.Append([]string{"Matches", "\tAvg\t", "\tFreq\t", "\tBase ", "\tFile"})
+		table.Append([]string{"Matches", "\tAvg\t", "\tFreq\t", "\tFile"})
 
 		sorted := sort.Stats{}
 		for n := range matches {
@@ -152,11 +135,10 @@ func Data() {
 
 			table.Append(
 				[]string{
-					fmt.Sprintf("\t%2d\t", s.Matches),
-					fmt.Sprintf("\t%2d%s\t", s.Average, "%%"),
-					fmt.Sprintf("\t%2d%s\t", s.Frequency, "%%"),
-					fmt.Sprintf("\t%2d%s\t", acceptances[s.Name], "%%"),
-					fmt.Sprintf("\t%s", s.Name),
+					fmt.Sprintf("\t%8d\t", s.Matches),
+					fmt.Sprintf("\t%8d%s\t", s.Average, "%%"),
+					fmt.Sprintf("\t%8.1f%s\t", s.Frequency, "%%"),
+					fmt.Sprintf("\t%10s", s.Name),
 				},
 			)
 
@@ -170,13 +152,15 @@ func Data() {
 		colors = append(colors, rgba.White)
 		colors = append(colors, rgba.Black)
 
+		notify.Feed(rgba.White, "Matched image template statistics")
+
 		lines := strings.Split(buf.String(), "\n")
 		for i := range lines {
-			notify.Append(colors[i], lines[i])
-
-			if config.Current.Record {
-				dev.Log(lines[i])
+			if lines[i] == "" {
+				continue
 			}
+
+			notify.Append(colors[i], lines[i])
 		}
 	}
 }
@@ -194,9 +178,13 @@ func Frequency(stat string, freq float32) {
 			sum += n
 		}
 
-		freq := int((sum / float32(len(fsets[stat]))) * 100)
+		freq := (sum / float32(len(fsets[stat]))) * 100
 		if freq > 0 {
 			frequencies[stat] = freq
 		}
 	}
+}
+
+func Images() {
+
 }

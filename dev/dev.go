@@ -7,87 +7,109 @@ import (
 	"os"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"github.com/skratchdot/open-golang/open"
 	"gocv.io/x/gocv"
 
 	"github.com/pidgy/unitehud/config"
-	"github.com/pidgy/unitehud/notify"
-	"github.com/pidgy/unitehud/rgba"
 	"github.com/pidgy/unitehud/team"
-	"github.com/rs/zerolog/log"
 )
 
-var logFilename = fmt.Sprintf("%d.log", time.Now().Unix())
-var lastlog = ""
-var dir = "tmp"
+var (
+	dir = "tmp"
 
-func Capture(img image.Image, mat gocv.Mat, t *team.Team, p image.Point, order string, duplicate bool, value int) {
-	subdir := fmt.Sprintf("%s/capture/%s/", dir, t.Name)
-	file := fmt.Sprintf("%s_%d-%d", order, value, time.Now().UnixNano())
+	logs    = fmt.Sprintf("%d.log", time.Now().Unix())
+	logq    = make(chan string, 1024)
+	logging = false
+)
 
-	if duplicate {
-		if !config.Current.RecordDuplicates {
-			return
-		}
-
-		file += "_duplicate"
+func Capture(img image.Image, mat gocv.Mat, t *team.Team, p image.Point, name string, value int) string {
+	if name == "" {
+		name = "capture"
 	}
 
+	subdir := fmt.Sprintf("%s/capture/%s/", dir, t.Name)
+	file := fmt.Sprintf("%d_%s-%d", value, name, time.Now().UnixNano())
 	path := fmt.Sprintf("%s/%s.png", subdir, file)
 
 	f, err := os.Create(path)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to create missed image")
-		return
+		return ""
 	}
 	defer f.Close()
 
 	err = png.Encode(f, img)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to encode missed image")
-		return
+		return ""
+	}
+
+	err = png.Encode(f, img)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to encode missed image")
+		return ""
+	}
+
+	if mat.Empty() {
+		return ""
 	}
 
 	gocv.IMWrite(fmt.Sprintf("%s/%s_crop.png", subdir, file), mat.Region(t.Crop(p)))
 
-	err = png.Encode(f, img)
-	if err != nil {
-		log.Error().Err(err).Msg("failed to encode missed image")
-		return
-	}
-
-	notify.Feed(rgba.DarkerYellow, "Saved at %s%s", subdir, file)
+	return path
 }
 
-func End() {
-	if lastlog == "end" {
-		return
-	}
-
-	Log("end")
+func Close() {
+	close(logq)
 }
 
-func Log(txt string) {
-	f, err := os.OpenFile(fmt.Sprintf("%s/log/unitehud_%s", dir, logFilename), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		log.Error().Err(err).Msg("failed to open log file")
+func Log(format string, a ...interface{}) {
+	if !config.Current.Record {
 		return
 	}
-	defer f.Close()
 
-	lastlog = txt
-
-	txt = fmt.Sprintf("%s | %s\n", time.Now().Format(time.Kitchen), txt)
-
-	_, err = f.WriteString(txt)
-	if err != nil {
-		log.Error().Err(err).Msg("failed to find working directory")
-		return
-	}
+	txt := fmt.Sprintf(format, a...)
+	logq <- fmt.Sprintf("[%s] | %s\n", time.Now().Format(time.Stamp), txt)
 }
 
-func New() error {
-	var err error
+func Open() error {
+	err := createIfNotExist()
+	if err != nil {
+		return err
+	}
+
+	return open.Run(dir)
+}
+
+func Start() error {
+	err := createIfNotExist()
+	if err != nil {
+		log.Error().Err(err).Msg("failed to create tmp directory")
+		return err
+	}
+
+	if !logging {
+		go spin()
+		logging = true
+	}
+
+	Log("Start")
+
+	return nil
+}
+
+func Stop() {
+	Log("End")
+}
+
+func createIfNotExist() error {
+	_, err := os.Stat(dir)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return err
+		}
+	}
 
 	dir, err := os.Getwd()
 	if err != nil {
@@ -114,23 +136,21 @@ func New() error {
 		}
 	}
 
-	logFilename = fmt.Sprintf("%d.log", time.Now().Unix())
-
 	return nil
 }
 
-func Open() error {
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		return fmt.Errorf("failed to find %s directory", dir)
-	}
-
-	return open.Run(dir)
-}
-
-func Start() {
-	if lastlog == "start" {
+func spin() {
+	f, err := os.OpenFile(fmt.Sprintf("%s/log/unitehud_%s", dir, logs), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to open log file")
 		return
 	}
+	defer f.Close()
 
-	Log("start")
+	for txt := range logq {
+		_, err := f.WriteString(txt)
+		if err != nil {
+			log.Error().Err(err).Str("file", logs).Msg("failed to write log")
+		}
+	}
 }

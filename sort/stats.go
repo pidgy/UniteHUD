@@ -8,10 +8,10 @@ type stat struct {
 	Name      string
 	Matches   int
 	Average   int
-	Frequency int
+	Frequency float32
 }
 
-func (s Stats) Append(name string, m, a, f int) Stats {
+func (s Stats) Append(name string, m, a int, f float32) Stats {
 	return append(s, stat{name, m, a, f})
 }
 

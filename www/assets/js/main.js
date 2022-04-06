@@ -1,5 +1,6 @@
 var loaders = [".", "..", "..."];
 var index = 0;
+var loggedError = false;
 
 function score() {
     $.ajax({
@@ -14,22 +15,12 @@ function score() {
             $('.seconds').html(data.seconds);
             $('.error').html('');
 
-            if (data.purple.value + data.orange.value + data.seconds + data.self.value == 0) {
+            loggedError = false;
+
+            if (data.purple.value + data.orange.value + data.seconds + data.self.value + data.balls == 0) {
                 $('.score').css('opacity', '0');
             } else {
                 $('.score').css('opacity', '1');
-            }
-
-            if (data.purple.value > 99) {
-                $('.purple').css("font-size", "30px");
-            } else {
-                $('.purple').css("font-size", "40px");
-            }
-
-            if (data.orange.value > 99) {
-                $('.orange').css("font-size", "30px");
-            } else {
-                $('.orange').css("font-size", "40px");
             }
         },
         error: function(err) {
@@ -41,6 +32,11 @@ function score() {
             $('.seconds').html("");
             $('.self').html("");
             $('.score').css('opacity', '0');
+
+            if (!loggedError) {
+                console.error(err);
+                loggedError = true
+            }
         },
     });
 };

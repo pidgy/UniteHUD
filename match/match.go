@@ -10,10 +10,11 @@ import (
 	"gocv.io/x/gocv"
 
 	"github.com/pidgy/unitehud/config"
-	"github.com/pidgy/unitehud/dev"
 	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/rgba"
 	"github.com/pidgy/unitehud/server"
+	"github.com/pidgy/unitehud/state"
+	"github.com/pidgy/unitehud/stats"
 	"github.com/pidgy/unitehud/team"
 	"github.com/pidgy/unitehud/template"
 )
@@ -56,10 +57,13 @@ func (m *Match) Matches(matrix gocv.Mat, img image.Image, t []template.Template)
 			continue
 		}
 
-		_, maxc, _, maxp := gocv.MinMaxLoc(mat)
-		if maxc >= config.Current.Acceptance {
+		_, maxv, _, maxp := gocv.MinMaxLoc(mat)
+		if maxv >= config.Current.Acceptance {
 			m.Template = t[i]
 			m.Point = maxp
+
+			go stats.Average(m.Template.File, maxv)
+			go stats.Count(m.Template.File)
 
 			return m.process(matrix, img)
 		}
@@ -96,6 +100,8 @@ func (m *Match) process(matrix gocv.Mat, img image.Image) (Result, int) {
 	log.Debug().Object("match", m).Int("cols", matrix.Cols()).Int("rows", matrix.Rows()).Msg("processing match")
 
 	switch m.Template.Category {
+	case "killed":
+		return Found, m.Template.Value
 	case "scored":
 		crop := m.Team.Crop(m.Point)
 		if crop.Min.X < 0 || crop.Min.Y < 0 || crop.Max.X > matrix.Cols() || crop.Max.Y > matrix.Rows() {
@@ -104,19 +110,35 @@ func (m *Match) process(matrix gocv.Mat, img image.Image) (Result, int) {
 		}
 
 		return m.points(matrix.Region(crop))
-	case "game":
-		switch m.Template.Subcategory {
-		case "vs":
-			server.Clear()
-
-			notify.Feed(team.Self.RGBA, "Match starting")
-
-			if config.Current.Record || config.Current.RecordMissed || config.Current.RecordDuplicates {
-				dev.Start()
+	case "scoring":
+		switch e := state.EventType(m.Template.Value); e {
+		case state.PreScore:
+			state.AddEvent(state.PreScore, server.Clock(), team.Balls.Holding)
+			return Found, 0
+		case state.PostScore:
+			points := team.Balls.Holding
+			if server.IsFinalStretch() {
+				points *= 2
 			}
 
+			state.AddEvent(state.PostScore, server.Clock(), points)
+			return Found, points
+		default:
+			return NotFound, -1
+		}
+	case "game":
+		switch e := state.EventType(m.Template.Value); e {
+		case state.MatchStarting:
+			if server.Clock() == "10:00" {
+				return Duplicate, 0
+			}
+
+			server.Clear()
+			notify.Feed(team.Self.RGBA, "Match starting")
+			server.Time(10, 0)
+
 			return Found, 0
-		case "end":
+		case state.MatchEnding:
 			p, o, s := server.Scores()
 			if p+o+s > 0 {
 				notify.Feed(team.Self.RGBA, "Match ended")
@@ -127,10 +149,6 @@ func (m *Match) process(matrix gocv.Mat, img image.Image) (Result, int) {
 
 			server.Clear()
 			team.Clear()
-
-			if config.Current.Record || config.Current.RecordMissed || config.Current.RecordDuplicates {
-				dev.End()
-			}
 
 			return Found, 0
 		}

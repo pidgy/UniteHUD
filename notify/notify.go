@@ -5,6 +5,9 @@ import (
 	"image"
 	"image/color"
 	"time"
+
+	"github.com/pidgy/unitehud/config"
+	"github.com/pidgy/unitehud/dev"
 )
 
 var OrangeScore image.Image
@@ -67,6 +70,10 @@ func (n *notify) log(c color.RGBA, clock bool, format string, a ...interface{}) 
 	}
 
 	n.logs = append(n.logs, p)
+
+	if config.Current.Record {
+		dev.Log(format, a...)
+	}
 }
 
 func (p Post) String() string {

@@ -28,6 +28,7 @@ type game struct {
 	Orange  Score `json:"orange"`
 	Self    Score `json:"self"`
 	Seconds int   `json:"seconds"`
+	Balls   int   `json:"balls"`
 }
 
 type Score struct {
@@ -44,20 +45,7 @@ var (
 
 func New(addr string) {
 	pipe = &Pipe{
-		game: game{
-			Purple: Score{
-				team.Purple.Name,
-				0,
-			},
-			Orange: Score{
-				team.Orange.Name,
-				0,
-			},
-			Self: Score{
-				team.Self.Name,
-				0,
-			},
-		},
+		game: newGame(),
 	}
 
 	http.Handle("/ws", websocket.Handler(score))
@@ -112,22 +100,21 @@ func New(addr string) {
 	}()
 }
 
+func Balls(b int) {
+	pipe.game.Balls = b
+}
+
 func Clear() {
-	if pipe.game.Purple.Value == 0 && pipe.game.Orange.Value == 0 {
-		return
-	}
-
 	log.Debug().Object("game", pipe.game).Msg("clearing")
-
-	pipe.game = game{
-		Purple: Score{Team: team.Purple.Name},
-		Orange: Score{Team: team.Orange.Name},
-		Self:   Score{Team: team.Self.Name},
-	}
+	pipe.game = newGame()
 }
 
 func Clock() string {
 	return fmt.Sprintf("%02d:%02d", pipe.game.Seconds/60, pipe.game.Seconds%60)
+}
+
+func IsFinalStretch() bool {
+	return pipe.game.Seconds != 0 && pipe.game.Seconds <= 120
 }
 
 func Publish(t *team.Team, value int) {
@@ -198,6 +185,26 @@ func score(ws *websocket.Conn) {
 
 	log.Debug().Str("route", "/ws").Stringer("remote", ws.RemoteAddr()).RawJSON("raw", raw).Msg("request served")
 }
+
+func newGame() game {
+	return game{
+		Purple: Score{
+			Team:  team.Purple.Name,
+			Value: 0,
+		},
+		Orange: Score{
+			Team:  team.Orange.Name,
+			Value: 0,
+		},
+		Self: Score{
+			Team:  team.Self.Name,
+			Value: 0,
+		},
+		Seconds: 0,
+	}
+}
+
+// Zerolog.
 
 func (g game) MarshalZerologObject(e *zerolog.Event) {
 	e.Object("purple", g.Purple).Object("orange", g.Orange).Int("seconds", g.Seconds)

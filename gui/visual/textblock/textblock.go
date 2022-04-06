@@ -37,7 +37,7 @@ func (t *TextBlock) Layout(gtx layout.Context, texts []notify.Post) layout.Dimen
 	th := material.NewTheme(gofont.Collection())
 	th.TextSize = unit.Sp(9)
 	Fill(gtx,
-		color.NRGBA{R: 25, G: 25, B: 100, A: 50},
+		rgba.DarkGray,
 		func(gtx layout.Context) layout.Dimensions {
 			return layout.Dimensions{Size: gtx.Constraints.Max}
 		},
