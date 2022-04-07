@@ -12,7 +12,7 @@ Pokemon Unite scoreboard HUD and extra tools running over captured game feeds us
 ![alt text](https://github.com/pidgy/unite/blob/master/data/client.gif "Client")
 
 ### Server
-![alt text](https://github.com/pidgy/unite/blob/master/data/server.gif "server")
+![alt text](https://i.imgur.com/pR525QW.png "server")
 
 ### Architecture
 
