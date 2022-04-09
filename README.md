@@ -3,7 +3,9 @@ Pokemon Unite scoreboard HUD and extra tools running over captured game feeds us
 
 ### Note
 ##### This project is currently in early Alpha stages. 
-##### A handful of matching techniques produce duplicated, unaccounted-for, and false postitive matches.
+##### It would be possible for matching techniques to produce duplicated, unaccounted-for, and false postitive matches.
+##### Winner/Loser confidence is successful ~99% of the time.
+##### Score tracking is ~90% accurate, certain game mechanics (like rotom scoring points) are extremely difficult to process.
 ##### Users are encouraged to report issues, or contribute where they can to help polish a final product.
 
 ----
