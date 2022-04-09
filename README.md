@@ -1,4 +1,4 @@
-# unite
+# unitehud
 Pokemon Unite scoreboard HUD and extra tools running over captured game feeds using OpenCV with a Gio interface.
 
 ### Note
