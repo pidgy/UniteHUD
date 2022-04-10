@@ -1,9 +1,11 @@
-# unite
+# unitehud
 Pokemon Unite scoreboard HUD and extra tools running over captured game feeds using OpenCV with a Gio interface.
 
 ### Note
 ##### This project is currently in early Alpha stages. 
-##### A handful of matching techniques produce duplicated, unaccounted-for, and false postitive matches.
+##### It would be possible for matching techniques to produce duplicated, unaccounted-for, and false postitive matches.
+##### Winner/Loser confidence is successful ~99% of the time.
+##### Score tracking is ~90% accurate, certain game mechanics (like rotom scoring points) are extremely difficult to process.
 ##### Users are encouraged to report issues, or contribute where they can to help polish a final product.
 
 ----
@@ -12,7 +14,7 @@ Pokemon Unite scoreboard HUD and extra tools running over captured game feeds us
 ![alt text](https://github.com/pidgy/unite/blob/master/data/client.gif "Client")
 
 ### Server
-![alt text](https://github.com/pidgy/unite/blob/master/data/server.gif "server")
+![alt text](https://i.imgur.com/pR525QW.png "server")
 
 ### Architecture
 
@@ -43,7 +45,4 @@ GET 127.0.0.1:17069/http
 }
 ```
 
-### TODO
-- Detect "First Goal" messages.
-- Optimize CPU usage (smaller areas, better image matching)
 - Wiki for tutorial's
