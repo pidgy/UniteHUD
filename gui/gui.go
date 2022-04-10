@@ -181,7 +181,7 @@ func (g *GUI) proc() {
 	}
 }
 func (g *GUI) main() (next string, err error) {
-	g.Window.Raise()
+	// g.Window.Raise()
 
 	split := &split.Vertical{
 		Ratio: .70,
@@ -925,6 +925,20 @@ func (g *GUI) configure() (next string, err error) {
 	timeAreaScaleScaleButtons(timeArea, timeAreaScaleUpButton, timeAreaScaleDownButton)
 	scoreAreaScaleScaleButtons(scoreArea, scoreAreaScaleUpButton, scoreAreaScaleDownButton)
 
+	/*mapArea := &area.Area{
+		Text:     "\t  Map",
+		TextSize: unit.Sp(13),
+		Min:      config.Current.Map.Min.Div(2),
+		Max:      config.Current.Map.Max.Div(2),
+		Button: &button.Button{
+			Active:   true,
+			Text:     "\t  tMap",
+			Pressed:  rgba.Background,
+			Released: rgba.DarkGray,
+			Size:     image.Pt(100, 30),
+		},
+	}
+	*/
 	saveButton := &button.Button{
 		Text:     "\t  Save",
 		Pressed:  rgba.Background,
@@ -966,6 +980,7 @@ func (g *GUI) configure() (next string, err error) {
 		config.Current.Scores = scoreArea.Rectangle()
 		config.Current.Time = timeArea.Rectangle()
 		config.Current.Balls = ballsArea.Rectangle()
+		// config.Current.Map = mapArea.Rectangle()
 
 		err := config.Current.Save()
 		if err != nil {
@@ -1071,6 +1086,7 @@ func (g *GUI) configure() (next string, err error) {
 	go g.run(func() { g.matchScore(scoreArea) }, &kill)
 	go g.run(func() { g.matchTime(timeArea) }, &kill)
 	go g.run(func() { g.matchBalls(ballsArea) }, &kill)
+	// go g.run(func() { g.matchMap(mapArea) }, &kill)
 
 	var ops op.Ops
 
@@ -1337,6 +1353,7 @@ func (g *GUI) configure() (next string, err error) {
 			scoreArea.Layout(gtx)
 			ballsArea.Layout(gtx)
 			timeArea.Layout(gtx)
+			// mapArea.Layout(gtx)
 
 			e.Frame(gtx.Ops)
 		}
@@ -1547,7 +1564,7 @@ func scoreAreaScaleScaleButtons(a *area.Area, scaleUpButton, scaleDownButton *bu
 
 func (g *GUI) matchBalls(a *area.Area) {
 	if !g.Preview {
-		a.NRGBA = color.NRGBA{A: 0x99}
+		a.NRGBA = color.NRGBA(rgba.Alpha(rgba.Black, 0x99))
 		return
 	}
 
@@ -1583,11 +1600,11 @@ func (g *GUI) matchBalls(a *area.Area) {
 
 func (g *GUI) matchScore(a *area.Area) {
 	if !g.Preview {
-		a.NRGBA = color.NRGBA{A: 0x99}
+		a.NRGBA = color.NRGBA(rgba.Alpha(rgba.Black, 0x99))
 		return
 	}
 
-	// a.NRGBA = color.NRGBA{R: 0xFF, A: 0x99}
+	// a.NRGBA = color.NRGBA(rgba.Alpha(rgba.Red, 0x99))
 	// a.Subtext = ""
 
 	img, err := screenshot.CaptureRect(a.Rectangle())
@@ -1621,13 +1638,39 @@ func (g *GUI) matchScore(a *area.Area) {
 	}
 }
 
-func (g *GUI) matchTime(a *area.Area) {
+func (g *GUI) matchMap(a *area.Area) {
 	if !g.Preview {
-		a.NRGBA = color.NRGBA{A: 0x99}
+		a.NRGBA = color.NRGBA(rgba.Alpha(rgba.Black, 0x99))
 		return
 	}
 
-	a.NRGBA = color.NRGBA{R: 0xFF, A: 0x99}
+	a.NRGBA = color.NRGBA(rgba.Alpha(rgba.Red, 0x99))
+	a.Subtext = ""
+
+	img, err := screenshot.CaptureRect(a.Rectangle())
+	if err != nil {
+		log.Fatal().Err(err).Send()
+	}
+
+	matrix, err := gocv.ImageToMatRGB(img)
+	if err != nil {
+		log.Fatal().Err(err).Send()
+	}
+
+	_, ok := match.MiniMap(matrix, img)
+	if ok {
+		a.NRGBA = color.NRGBA(rgba.Alpha(rgba.Green, 0x99))
+		a.Subtext = "(Found)"
+	}
+}
+
+func (g *GUI) matchTime(a *area.Area) {
+	if !g.Preview {
+		a.NRGBA = color.NRGBA(rgba.Alpha(rgba.Black, 0x99))
+		return
+	}
+
+	a.NRGBA = color.NRGBA(rgba.Alpha(rgba.Red, 0x99))
 	a.Subtext = "(00:00)"
 
 	img, err := screenshot.CaptureRect(a.Rectangle())
@@ -1644,7 +1687,7 @@ func (g *GUI) matchTime(a *area.Area) {
 
 	s, k := m.Time(matrix, img)
 	if s != 0 {
-		a.NRGBA = color.NRGBA{G: 0xFF, A: 0x99}
+		a.NRGBA = color.NRGBA(rgba.Alpha(rgba.Green, 0x99))
 		a.Subtext = "(" + k + ")"
 	}
 }

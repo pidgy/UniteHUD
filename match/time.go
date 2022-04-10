@@ -34,7 +34,7 @@ func (m *Match) Time(matrix gocv.Mat, img *image.RGBA) (seconds int, kitchen str
 
 		results := []gocv.Mat{}
 
-		for _, template := range config.Current.Templates["time"][team.Time.Name] {
+		for _, template := range templates {
 			if template.Mat.Cols() > region.Cols() || template.Mat.Rows() > region.Rows() {
 				log.Warn().Str("type", "time").Msg("match is outside the legal selection")
 				notify.Feed(rgba.Red, "Time match is outside the configured selection area")
@@ -56,7 +56,7 @@ func (m *Match) Time(matrix gocv.Mat, img *image.RGBA) (seconds int, kitchen str
 
 		for i := range results {
 			if results[i].Empty() {
-				log.Warn().Str("filename", m.File).Msg("empty result")
+				log.Warn().Str("filename", templates[i].File).Msg("empty result")
 				continue
 			}
 

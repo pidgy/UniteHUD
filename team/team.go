@@ -56,7 +56,8 @@ var (
 		RGBA:      rgba.White,
 		Duplicate: duplicate.New(-1, gocv.NewMat(), gocv.NewMat()),
 
-		Delay: time.Second * 5,
+		Delay:      time.Second * 5,
+		Acceptance: .8,
 	}
 
 	// Orange represents the standard Team for the Orange side.

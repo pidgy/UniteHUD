@@ -22,9 +22,10 @@ const File = "config.unitehud"
 
 type Config struct {
 	Record     bool `json:"-"` // Record all matched images and logs.
+	Balls      image.Rectangle
+	Map        image.Rectangle
 	Scores     image.Rectangle
 	Time       image.Rectangle
-	Balls      image.Rectangle
 	Filenames  map[string]map[string][]filter.Filter     `json:"-"`
 	Templates  map[string]map[string][]template.Template `json:"-"`
 	Scales     Scales
@@ -96,9 +97,10 @@ func Load(record bool) error {
 		Current.Acceptance = .91
 	} else {
 		Current = Config{
+			Balls:  image.Rect(0, 0, 100, 100), // Must be square (H==W).
+			Map:    image.Rect(0, 0, 500, 460),
 			Scores: image.Rect(0, 0, 1100, 500),
 			Time:   image.Rect(0, 0, 200, 100),
-			Balls:  image.Rect(0, 0, 100, 100), // Must be square (H==W).
 			Scales: Scales{
 				Game:  1,
 				Score: 1,
@@ -117,6 +119,9 @@ func Load(record bool) error {
 
 func validate() {
 	Current.Templates = map[string]map[string][]template.Template{
+		"goals": {
+			team.Game.Name: {},
+		},
 		"game": {
 			team.Game.Name: {},
 		},
@@ -162,7 +167,8 @@ func validate() {
 						team.Self.Name,
 						team.Orange.Name,
 						team.Purple.Name,
-						team.Balls.Name:
+						team.Balls.Name,
+						team.Game.Name:
 						transparent = true
 					}
 				case "scored":
@@ -289,6 +295,15 @@ func Reset() error {
 
 func loadDefault() {
 	Current.Filenames = map[string]map[string][]filter.Filter{
+		"goals": {
+			team.Game.Name: {
+				filter.New(team.Game, "img/default/game/purple_base_open.png", state.PurpleBaseOpen.Int(), false),
+				filter.New(team.Game, "img/default/game/orange_base_open.png", state.OrangeBaseOpen.Int(), false),
+				filter.New(team.Game, "img/default/game/purple_base_closed.png", state.PurpleBaseClosed.Int(), false),
+				filter.New(team.Game, "img/default/game/orange_base_closed.png", state.OrangeBaseClosed.Int(), false),
+				filter.New(team.Game, "img/default/game/orange_base_closed2.png", state.OrangeBaseClosed.Int(), false),
+			},
+		},
 		"killed": {
 			team.Game.Name: {
 				filter.New(team.Game, "img/default/game/killed.png", state.Killed.Int(), false),

@@ -57,10 +57,10 @@ func New(addr string) {
 		if !ok {
 			clients[req] = true
 			notify.Feed(rgba.White, "Accepting new http connection from %s", req)
+
+			log.Debug().Str("route", "/http").Str("remote", r.RemoteAddr).Msg("received")
 		}
 		clientTex.Unlock()
-
-		log.Debug().Str("route", "/http").Str("remote", r.RemoteAddr).Msg("received")
 
 		raw, err := json.Marshal(pipe.game)
 		if err != nil {
@@ -78,8 +78,6 @@ func New(addr string) {
 
 		pipe.tx += len(raw)
 		pipe.requests++
-
-		log.Debug().Str("route", "/http").Str("remote", r.RemoteAddr).RawJSON("raw", raw).Msg("served")
 	})
 
 	go func() {
@@ -111,6 +109,10 @@ func Clear() {
 
 func Clock() string {
 	return fmt.Sprintf("%02d:%02d", pipe.game.Seconds/60, pipe.game.Seconds%60)
+}
+
+func Seconds() int {
+	return pipe.game.Seconds
 }
 
 func IsFinalStretch() bool {

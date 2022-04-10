@@ -46,8 +46,8 @@ var (
 		// team.Self.Name:   make(chan image.Image, 0),
 		team.Purple.Name: make(chan image.Image, 1),
 		team.Orange.Name: make(chan image.Image, 1),
-		team.Balls.Name:  make(chan image.Image, 1),
-		team.First.Name:  make(chan image.Image, 1),
+		// team.Balls.Name:  make(chan image.Image, 1),
+		team.First.Name: make(chan image.Image, 1),
 	}
 )
 
@@ -58,7 +58,7 @@ var (
 func init() {
 	notify.Feed(rgba.White, "Pokemon Unite HUD Server")
 
-	flag.StringVar(&addr, "addr", addr, "http/websocket serve address")
+	flag.StringVar(&addr, "addr", addr, "http/websocket server address")
 	flag.BoolVar(&record, "record", record, "record data such as matched images and logs for developer-specific debugging")
 	level := flag.String("v", zerolog.LevelErrorValue, "log level (panic, fatal, error, warn, info, debug)")
 	flag.Parse()
@@ -88,6 +88,10 @@ func capture(name string, imgq chan image.Image, paused *bool) {
 	for {
 		time.Sleep(team.Delay(name))
 
+		if name == team.First.Name && (server.Seconds() > 0 || server.Seconds() < 540) {
+			continue
+		}
+
 		if *paused {
 			time.Sleep(time.Second)
 			continue
@@ -103,7 +107,7 @@ func capture(name string, imgq chan image.Image, paused *bool) {
 	}
 }
 
-func first(t []template.Template, imgq chan image.Image) {
+func points(t []template.Template, imgq chan image.Image) {
 	for img := range imgq {
 		matrix, err := gocv.ImageToMatRGB(img)
 		if err != nil {
@@ -192,6 +196,34 @@ func first(t []template.Template, imgq chan image.Image) {
 }
 
 func minimap(paused *bool) {
+	/*
+		for {
+			time.Sleep(time.Second * 2)
+			notify.Feed(rgba.Green, config.Current.Map.String())
+
+				if *paused {
+					time.Sleep(time.Second)
+					continue
+				}
+
+				img, err := screenshot.CaptureRect(config.Current.Scoring())
+				if err != nil {
+					kill(err)
+				}
+
+				matrix, err := gocv.ImageToMatRGB(img)
+				if err != nil {
+					kill(err)
+				}
+
+					m := &match.Match{}
+					r, n := m.Matches(matrix, img, config.Current.Templates["scoring"][team.Game.Name])
+					if r != match.Found {
+						matrix.Close()
+						continue
+					}
+		}
+	*/
 }
 
 func orbs(paused *bool) {
@@ -306,6 +338,65 @@ func scoring(paused *bool) {
 	}
 }
 
+func states(paused *bool) {
+	area := image.Rectangle{}
+
+	for {
+		time.Sleep(team.Game.Delay)
+
+		if *paused || gui.Window.Screen == nil {
+			time.Sleep(time.Second)
+			continue
+		}
+
+		if area.Empty() {
+			b := gui.Window.Screen.Bounds()
+			area = image.Rect(b.Max.X/3, 0, b.Max.X-b.Max.X/3, b.Max.Y)
+		}
+
+		img, err := screenshot.CaptureRect(area)
+		if err != nil {
+			kill(err)
+		}
+
+		matrix, err := gocv.ImageToMatRGB(img)
+		if err != nil {
+			kill(err)
+		}
+
+		m := &match.Match{}
+		_, e := m.Matches(matrix, img, config.Current.Templates["game"][team.Game.Name])
+		switch e := state.EventType(e); e {
+		case state.MatchStarting:
+			if server.Clock() == "10:00" {
+				matrix.Close()
+				continue
+			}
+			server.Clear()
+
+			notify.Feed(team.Self.RGBA, "Match starting")
+			server.Time(10, 0)
+
+			time.Sleep(time.Minute)
+		case state.MatchEnding:
+			p, o, s := server.Scores()
+			if p+o+s > 0 {
+				notify.Feed(team.Self.RGBA, "Match ended")
+				notify.Feed(team.Self.RGBA, "Purple Score: %d", p)
+				notify.Feed(team.Self.RGBA, "Orange Score: %d", o)
+				notify.Feed(team.Self.RGBA, "Self Score: %d", s)
+			}
+			server.Clear()
+
+			team.Clear()
+
+			time.Sleep(time.Minute)
+		}
+
+		matrix.Close()
+	}
+}
+
 func killed(paused *bool) {
 	area := image.Rectangle{}
 	modified := config.Current.Templates["killed"][team.Game.Name]
@@ -363,38 +454,6 @@ func killed(paused *bool) {
 				modified = unmodified
 			}
 		}
-
-		matrix.Close()
-	}
-}
-
-func states(paused *bool) {
-	area := image.Rectangle{}
-
-	for {
-		time.Sleep(team.Game.Delay)
-
-		if *paused || gui.Window.Screen == nil {
-			time.Sleep(time.Second)
-			continue
-		}
-
-		if area.Empty() {
-			b := gui.Window.Screen.Bounds()
-			area = image.Rect(b.Max.X/3, 0, b.Max.X-b.Max.X/3, b.Max.Y)
-		}
-
-		img, err := screenshot.CaptureRect(area)
-		if err != nil {
-			kill(err)
-		}
-
-		matrix, err := gocv.ImageToMatRGB(img)
-		if err != nil {
-			kill(err)
-		}
-
-		(&match.Match{}).Matches(matrix, img, config.Current.Templates["game"][team.Game.Name])
 
 		matrix.Close()
 	}
@@ -468,7 +527,7 @@ func main() {
 		for name := range config.Current.Templates[category] {
 			for i := 0; i < cap(imgq[name]); i++ {
 				go capture(name, imgq[name], &paused)
-				go first(config.Current.Templates[category][name], imgq[name])
+				go points(config.Current.Templates[category][name], imgq[name])
 
 				// Stagger processing for workers by sleeping.
 				time.Sleep(time.Millisecond * 250)

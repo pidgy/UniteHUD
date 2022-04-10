@@ -12,17 +12,17 @@ body {
 
 table {
     width: 100%;
-    margin-left: -1px;
+    margin-left: -1.5px;
 }
 
 td {
-    min-width: 30px;
-    max-width: 30px;
+    min-width: 31px;
+    max-width: 31px;
     font-size: 35px;
     /*border: 1px solid red;*/
 }
 
-.scoreboard {
+.top-left {
     height: 100%;
     width: 100%;
     margin-top: -40px;
@@ -43,26 +43,37 @@ td {
 
 .circle {
     border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, .3);
 }
 
 .purple {
     text-align: center;
-    background: rgba(122, 78, 234, 0.5);
-    color: white;
+    background: rgba(122, 78, 234, .5);
     min-width: 45px;
     max-width: 45px;
 }
 
 .orange {
     text-align: center;
-    background: rgba(185, 59, 0, 0.5);
-    color: white;
+    background: rgba(185, 59, 0, .5);
     min-width: 45px;
     max-width: 45px;
 }
 
+.font-red {
+    color: red;
+}
+
+.font-white {
+    color: rgba(255, 255, 255, .9);
+}
+
+.font-yellow {
+    color: rgba(248, 255, 147, 1);
+}
+
 .font-border-black {
-    text-shadow: -1px -1px 0px #000, 0px -1px 0px #000, 1px -1px 0px #000, -1px 0px 0px #000, 1px 0px 0px #000, -1px 1px 0px #000, 0px 1px 0px #000, 1px 1px 0px #000;
+    text-shadow: -1px -1px 0px rgba(0, 0, 0, .5), 0px -1px 0px rgba(0, 0, 0, .5), 1px -1px 0px rgba(0, 0, 0, .5), -1px 0px 0px rgba(0, 0, 0, .5), 1px 0px 0px rgba(0, 0, 0, .5), -1px 1px 0px rgba(0, 0, 0, .5), 0px 1px 0px rgba(0, 0, 0, .5), 1px 1px 0px rgba(0, 0, 0, .5);
 }
 
 .font-border-white {
@@ -71,22 +82,66 @@ td {
 
 .self {
     text-align: center;
-    background: rgba(255, 255, 83, 0.4);
-    color: white;
+    background: rgba(255, 255, 83, .4);
 }
 
 .seconds {
     font-size: 40px;
     padding-left: 15px;
     text-align: center;
-    color: white;
 }
 
 .error {
-    color: red;
     font-size: 35px;
     position: fixed;
     bottom: -35px;
-    left: 0;
+    left: 10px;
     opacity: .4;
+}
+
+.bottom-left {
+    position: fixed;
+    bottom: 0px;
+    left: 0px;
+    width: 10%;
+}
+
+.bottom-left table {
+    column-gap: 10px;
+}
+
+.objective {
+    min-width: 50px;
+    max-width: 50px;
+    font-size: 35px;
+}
+
+.dreadnaw-seconds {
+    text-align: center;
+}
+
+.rotom-seconds {
+    text-align: center;
+}
+
+.vespiquen-seconds {
+    text-align: center;
+}
+
+.banner {
+    font-size: 35px;
+    position: fixed;
+    bottom: 12px;
+    left: 0px;
+    opacity: 0;
+    /* Start off hidden */
+}
+
+.twitter {
+    min-width: 50px;
+    max-width: 50px;
+}
+
+.banner-table {
+    column-gap: 10px;
 }

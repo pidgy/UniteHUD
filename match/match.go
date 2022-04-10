@@ -10,7 +10,6 @@ import (
 	"gocv.io/x/gocv"
 
 	"github.com/pidgy/unitehud/config"
-	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/rgba"
 	"github.com/pidgy/unitehud/server"
 	"github.com/pidgy/unitehud/state"
@@ -127,31 +126,7 @@ func (m *Match) process(matrix gocv.Mat, img image.Image) (Result, int) {
 			return NotFound, -1
 		}
 	case "game":
-		switch e := state.EventType(m.Template.Value); e {
-		case state.MatchStarting:
-			if server.Clock() == "10:00" {
-				return Duplicate, 0
-			}
-
-			server.Clear()
-			notify.Feed(team.Self.RGBA, "Match starting")
-			server.Time(10, 0)
-
-			return Found, 0
-		case state.MatchEnding:
-			p, o, s := server.Scores()
-			if p+o+s > 0 {
-				notify.Feed(team.Self.RGBA, "Match ended")
-				notify.Feed(team.Self.RGBA, "Purple Score: %d", p)
-				notify.Feed(team.Self.RGBA, "Orange Score: %d", o)
-				notify.Feed(team.Self.RGBA, "Self Score: %d", s)
-			}
-
-			server.Clear()
-			team.Clear()
-
-			return Found, 0
-		}
+		return Found, state.EventType(m.Template.Value).Int()
 	}
 
 	return NotFound, 0

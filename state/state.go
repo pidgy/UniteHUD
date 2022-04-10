@@ -24,6 +24,10 @@ const (
 	MatchStarting       = EventType(5)
 	MatchEnding         = EventType(6)
 	HoldingBalls        = EventType(7)
+	PurpleBaseOpen      = EventType(8)
+	OrangeBaseOpen      = EventType(9)
+	PurpleBaseClosed    = EventType(10)
+	OrangeBaseClosed    = EventType(11)
 )
 
 var (
