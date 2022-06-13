@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"image/color"
@@ -10,12 +11,14 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"golang.org/x/net/websocket"
+	"nhooyr.io/websocket"
 
 	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/rgba"
 	"github.com/pidgy/unitehud/team"
 )
+
+const Address = "127.0.0.1:17069"
 
 type Pipe struct {
 	game
@@ -43,24 +46,54 @@ var (
 	clientTex = &sync.Mutex{}
 )
 
-func New(addr string) {
+func newClient(r *http.Request, key, route string) {
+	clientTex.Lock()
+	defer clientTex.Unlock()
+
+	ok := clients[key]
+	if !ok {
+		clients[key] = true
+		notify.Feed(rgba.White, "Accepting new %s connection from %s", route, key)
+
+		log.Debug().Str("route", route).Str("remote", r.RemoteAddr).Msg("received")
+	}
+}
+
+func New() {
 	pipe = &Pipe{
 		game: newGame(),
 	}
 
-	http.Handle("/ws", websocket.Handler(score))
+	http.Handle("/ws", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		newClient(r, fmt.Sprintf("%s -> %s", r.Referer(), r.URL), "/ws")
+
+		c, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+			OriginPatterns:     []string{"127.0.0.1", "localhost", "0.0.0.0"},
+			InsecureSkipVerify: true,
+		})
+		if err != nil {
+			notify.Feed(rgba.Red, err.Error())
+			return
+		}
+		defer c.Close(websocket.StatusNormalClosure, "cross origin WebSocket accepted")
+
+		raw, err := json.Marshal(pipe.game)
+		if err != nil {
+			log.Error().Err(err).Str("route", "/ws").Object("game", pipe.game).Msg("failed to marshal game update")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		err = c.Write(context.Background(), websocket.MessageText, raw)
+		if err != nil {
+			log.Error().Err(err).Str("route", "/ws").Object("game", pipe.game).Msg("failed to write game update")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}))
 
 	http.HandleFunc("/http", func(w http.ResponseWriter, r *http.Request) {
-		clientTex.Lock()
-		req := fmt.Sprintf("%s -> %s", r.RemoteAddr, r.URL)
-		ok := clients[req]
-		if !ok {
-			clients[req] = true
-			notify.Feed(rgba.White, "Accepting new http connection from %s", req)
-
-			log.Debug().Str("route", "/http").Str("remote", r.RemoteAddr).Msg("received")
-		}
-		clientTex.Unlock()
+		newClient(r, fmt.Sprintf("%s -> %s", r.RemoteAddr, r.URL), "/http")
 
 		raw, err := json.Marshal(pipe.game)
 		if err != nil {
@@ -81,9 +114,9 @@ func New(addr string) {
 	})
 
 	go func() {
-		err := http.ListenAndServe(addr, nil)
+		err := http.ListenAndServe(Address, nil)
 		if err != nil {
-			log.Fatal().Err(err).Str("addr", addr).Msg("socket server encountered a fatal error")
+			log.Fatal().Err(err).Str("addr", Address).Msg("socket server encountered a fatal error")
 		}
 	}()
 
@@ -109,10 +142,6 @@ func Clear() {
 
 func Clock() string {
 	return fmt.Sprintf("%02d:%02d", pipe.game.Seconds/60, pipe.game.Seconds%60)
-}
-
-func Seconds() int {
-	return pipe.game.Seconds
 }
 
 func IsFinalStretch() bool {
@@ -147,6 +176,14 @@ func Publish(t *team.Team, value int) {
 	}
 }
 
+func Seconds() int {
+	return pipe.game.Seconds
+}
+
+func Scores() (purple, orange, self int) {
+	return pipe.game.Purple.Value, pipe.game.Orange.Value, pipe.game.Self.Value
+}
+
 func Time(minutes, seconds int) {
 	if minutes+seconds == 0 {
 		return
@@ -155,10 +192,7 @@ func Time(minutes, seconds int) {
 	pipe.game.Seconds = minutes*60 + seconds
 }
 
-func Scores() (purple, orange, self int) {
-	return pipe.game.Purple.Value, pipe.game.Orange.Value, pipe.game.Self.Value
-}
-
+/*
 func score(ws *websocket.Conn) {
 	defer ws.Close()
 
@@ -187,7 +221,7 @@ func score(ws *websocket.Conn) {
 
 	log.Debug().Str("route", "/ws").Stringer("remote", ws.RemoteAddr()).RawJSON("raw", raw).Msg("request served")
 }
-
+*/
 func newGame() game {
 	return game{
 		Purple: Score{
@@ -203,6 +237,7 @@ func newGame() game {
 			Value: 0,
 		},
 		Seconds: 0,
+		Balls:   0,
 	}
 }
 

@@ -16,7 +16,7 @@ import (
 	"github.com/pidgy/unitehud/team"
 )
 
-func (m *Match) Time(matrix gocv.Mat, img *image.RGBA) (seconds int, kitchen string) {
+func Time(matrix gocv.Mat, img *image.RGBA) (seconds int, kitchen string) {
 	clock := [4]int{-1, -1, -1, -1}
 	locs := []int{math.MaxInt32, math.MaxInt32, math.MaxInt32, math.MaxInt32}
 	cols := []int{0, 0, 0, 0}

@@ -18,9 +18,13 @@ import (
 	"github.com/pidgy/unitehud/template"
 )
 
-const File = "config.unitehud"
+const (
+	File        = "config.unitehud"
+	MainDisplay = "Main Display"
+)
 
 type Config struct {
+	Window     string
 	Record     bool `json:"-"` // Record all matched images and logs.
 	Balls      image.Rectangle
 	Map        image.Rectangle
@@ -89,14 +93,15 @@ func (c Config) Scoring() image.Rectangle {
 	}
 }
 
-func Load(record bool) error {
+func Load() error {
 	defer validate()
 
 	if open() {
-		Current.Record = record
+		Current.Record = Current.Record
 		Current.Acceptance = .91
 	} else {
 		Current = Config{
+			Window: MainDisplay,
 			Balls:  image.Rect(0, 0, 100, 100), // Must be square (H==W).
 			Map:    image.Rect(0, 0, 500, 460),
 			Scores: image.Rect(0, 0, 1100, 500),
@@ -183,7 +188,7 @@ func validate() {
 
 				gocv.Resize(mat, &scaled, image.Pt(0, 0), scale, scale, gocv.InterpolationDefault)
 
-				template := template.New(filter, scaled, category, subcategory)
+				template := template.New(filter, scaled, category, subcategory, scale)
 				if transparent {
 					template = template.AsTransparent()
 				}
@@ -203,7 +208,7 @@ func validate() {
 					log.Fatal().Msgf("invalid scored template: %s", t.File)
 				}
 
-				log.Debug().Object("template", t).Msg("score template loaded")
+				log.Debug().Object("template", t).Msg("template loaded")
 			}
 		}
 	}
@@ -290,7 +295,7 @@ func Reset() error {
 		return err
 	}
 
-	return Load(Current.Record)
+	return Load()
 }
 
 func loadDefault() {
@@ -301,7 +306,6 @@ func loadDefault() {
 				filter.New(team.Game, "img/default/game/orange_base_open.png", state.OrangeBaseOpen.Int(), false),
 				filter.New(team.Game, "img/default/game/purple_base_closed.png", state.PurpleBaseClosed.Int(), false),
 				filter.New(team.Game, "img/default/game/orange_base_closed.png", state.OrangeBaseClosed.Int(), false),
-				filter.New(team.Game, "img/default/game/orange_base_closed2.png", state.OrangeBaseClosed.Int(), false),
 			},
 		},
 		"killed": {

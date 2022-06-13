@@ -3,7 +3,6 @@
 package main
 
 import (
-	"flag"
 	"image"
 	"image/color"
 	"os"
@@ -15,7 +14,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"gocv.io/x/gocv"
 
-	"github.com/pidgy/screenshot"
 	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/dev"
 	"github.com/pidgy/unitehud/gui"
@@ -26,6 +24,7 @@ import (
 	"github.com/pidgy/unitehud/state"
 	"github.com/pidgy/unitehud/team"
 	"github.com/pidgy/unitehud/template"
+	"github.com/pidgy/unitehud/window"
 )
 
 // windows
@@ -33,14 +32,9 @@ import (
 // go build -ldflags="-H windowsgui"
 var (
 	sigq = make(chan os.Signal, 1)
-)
 
-var (
-	record = false
-	addr   = ":17069"
-)
+	paused = true
 
-var (
 	imgq = map[string]chan image.Image{
 		team.Game.Name: make(chan image.Image, 1),
 		// team.Self.Name:   make(chan image.Image, 0),
@@ -49,19 +43,12 @@ var (
 		// team.Balls.Name:  make(chan image.Image, 1),
 		team.First.Name: make(chan image.Image, 1),
 	}
-)
 
-var (
 	empty = gocv.NewMat()
 )
 
 func init() {
 	notify.Feed(rgba.White, "Pokemon Unite HUD Server")
-
-	flag.StringVar(&addr, "addr", addr, "http/websocket server address")
-	flag.BoolVar(&record, "record", record, "record data such as matched images and logs for developer-specific debugging")
-	level := flag.String("v", zerolog.LevelErrorValue, "log level (panic, fatal, error, warn, info, debug)")
-	flag.Parse()
 
 	log.Logger = zerolog.New(
 		zerolog.ConsoleWriter{
@@ -70,21 +57,22 @@ func init() {
 		},
 	).With().Timestamp().Logger()
 
-	server.New(addr)
+	server.New()
 
-	lvl, err := zerolog.ParseLevel(*level)
-	if err != nil {
-		log.Fatal().Err(err).Send()
-	}
-	log.Logger = log.Logger.Level(lvl)
+	log.Logger = log.Logger.Level(zerolog.DebugLevel)
 
-	err = config.Load(record)
+	err := config.Load()
 	if err != nil {
 		kill(err)
 	}
+
+	err = window.Load()
+	if err != nil {
+		notify.Feed(rgba.Red, "Failed to find open windows: %v", err)
+	}
 }
 
-func capture(name string, imgq chan image.Image, paused *bool) {
+func capture(name string, imgq chan image.Image) {
 	for {
 		time.Sleep(team.Delay(name))
 
@@ -92,12 +80,12 @@ func capture(name string, imgq chan image.Image, paused *bool) {
 			continue
 		}
 
-		if *paused {
+		if paused {
 			time.Sleep(time.Second)
 			continue
 		}
 
-		img, err := screenshot.CaptureRect(config.Current.Scores)
+		img, err := window.CaptureRect(config.Current.Scores)
 		if err != nil {
 			kill(err)
 			return
@@ -107,16 +95,14 @@ func capture(name string, imgq chan image.Image, paused *bool) {
 	}
 }
 
-func points(t []template.Template, imgq chan image.Image) {
+func matching(t []template.Template, imgq chan image.Image) {
 	for img := range imgq {
 		matrix, err := gocv.ImageToMatRGB(img)
 		if err != nil {
 			kill(err)
 		}
 
-		m := &match.Match{}
-
-		r, p := m.Matches(matrix, img, t)
+		m, r, p := match.Matches(matrix, img, t)
 		if r == match.NotFound {
 			matrix.Close()
 			continue
@@ -195,49 +181,48 @@ func points(t []template.Template, imgq chan image.Image) {
 	}
 }
 
-func minimap(paused *bool) {
+func minimap() {
 	/*
 		for {
 			time.Sleep(time.Second * 2)
 			notify.Feed(rgba.Green, config.Current.Map.String())
 
-				if *paused {
-					time.Sleep(time.Second)
-					continue
-				}
+			if paused {
+				time.Sleep(time.Second)
+				continue
+			}
 
-				img, err := screenshot.CaptureRect(config.Current.Scoring())
-				if err != nil {
-					kill(err)
-				}
+			img, err := window.CaptureRect(config.Current.Scoring())
+			if err != nil {
+				kill(err)
+			}
 
-				matrix, err := gocv.ImageToMatRGB(img)
-				if err != nil {
-					kill(err)
-				}
+			matrix, err := gocv.ImageToMatRGB(img)
+			if err != nil {
+				kill(err)
+			}
 
-					m := &match.Match{}
-					r, n := m.Matches(matrix, img, config.Current.Templates["scoring"][team.Game.Name])
-					if r != match.Found {
-						matrix.Close()
-						continue
-					}
+			_, r, n := match.Matches(matrix, img, config.Current.Templates["scoring"][team.Game.Name])
+			if r != match.Found {
+				matrix.Close()
+				continue
+			}
 		}
 	*/
 }
 
-func orbs(paused *bool) {
+func orbs() {
 	assured := make(map[int]int)
 
 	for {
 		time.Sleep(team.Delay(team.Balls.Name))
 
-		if *paused {
+		if paused {
 			time.Sleep(time.Second)
 			continue
 		}
 
-		img, err := screenshot.CaptureRect(config.Current.Balls)
+		img, err := window.CaptureRect(config.Current.Balls)
 		if err != nil {
 			kill(err)
 		}
@@ -294,16 +279,16 @@ func orbs(paused *bool) {
 	}
 }
 
-func scoring(paused *bool) {
+func scoring() {
 	for {
 		time.Sleep(time.Millisecond * 1500)
 
-		if *paused {
+		if paused {
 			time.Sleep(time.Second)
 			continue
 		}
 
-		img, err := screenshot.CaptureRect(config.Current.Scoring())
+		img, err := window.CaptureRect(config.Current.Scoring())
 		if err != nil {
 			kill(err)
 		}
@@ -313,8 +298,7 @@ func scoring(paused *bool) {
 			kill(err)
 		}
 
-		m := &match.Match{}
-		r, n := m.Matches(matrix, img, config.Current.Templates["scoring"][team.Game.Name])
+		_, r, n := match.Matches(matrix, img, config.Current.Templates["scoring"][team.Game.Name])
 		if r != match.Found {
 			matrix.Close()
 			continue
@@ -338,13 +322,13 @@ func scoring(paused *bool) {
 	}
 }
 
-func states(paused *bool) {
+func states() {
 	area := image.Rectangle{}
 
 	for {
 		time.Sleep(team.Game.Delay)
 
-		if *paused || gui.Window.Screen == nil {
+		if paused || gui.Window.Screen == nil {
 			time.Sleep(time.Second)
 			continue
 		}
@@ -354,7 +338,7 @@ func states(paused *bool) {
 			area = image.Rect(b.Max.X/3, 0, b.Max.X-b.Max.X/3, b.Max.Y)
 		}
 
-		img, err := screenshot.CaptureRect(area)
+		img, err := window.CaptureRect(area)
 		if err != nil {
 			kill(err)
 		}
@@ -364,8 +348,7 @@ func states(paused *bool) {
 			kill(err)
 		}
 
-		m := &match.Match{}
-		_, e := m.Matches(matrix, img, config.Current.Templates["game"][team.Game.Name])
+		_, _, e := match.Matches(matrix, img, config.Current.Templates["game"][team.Game.Name])
 		switch e := state.EventType(e); e {
 		case state.MatchStarting:
 			if server.Clock() == "10:00" {
@@ -397,7 +380,7 @@ func states(paused *bool) {
 	}
 }
 
-func killed(paused *bool) {
+func killed() {
 	area := image.Rectangle{}
 	modified := config.Current.Templates["killed"][team.Game.Name]
 	unmodified := config.Current.Templates["killed"][team.Game.Name]
@@ -405,7 +388,7 @@ func killed(paused *bool) {
 	for {
 		time.Sleep(time.Second)
 
-		if *paused || gui.Window.Screen == nil {
+		if paused || gui.Window.Screen == nil {
 			time.Sleep(time.Second)
 			continue
 		}
@@ -415,7 +398,7 @@ func killed(paused *bool) {
 			area = image.Rect(b.Max.X/3, b.Max.Y/2, b.Max.X-b.Max.X/3, b.Max.Y-b.Max.Y/3)
 		}
 
-		img, err := screenshot.CaptureRect(area)
+		img, err := window.CaptureRect(area)
 		if err != nil {
 			kill(err)
 		}
@@ -425,11 +408,7 @@ func killed(paused *bool) {
 			kill(err)
 		}
 
-		gocv.IMWrite("killed2.png", matrix)
-
-		m := &match.Match{}
-
-		r, e := m.Matches(matrix, img, modified)
+		_, r, e := match.Matches(matrix, img, modified)
 		if r == match.Found {
 			state.AddEvent(state.EventType(e), server.Clock(), -1)
 
@@ -459,18 +438,16 @@ func killed(paused *bool) {
 	}
 }
 
-func seconds(paused *bool) {
-	m := match.Match{}
-
+func seconds() {
 	for {
 		time.Sleep(team.Delay(team.Time.Name))
 
-		if *paused {
+		if paused {
 			time.Sleep(time.Second)
 			continue
 		}
 
-		img, err := screenshot.CaptureRect(config.Current.Time)
+		img, err := window.CaptureRect(config.Current.Time)
 		if err != nil {
 			kill(err)
 		}
@@ -480,7 +457,7 @@ func seconds(paused *bool) {
 			kill(err)
 		}
 
-		rs, kitchen := m.Time(matrix, img)
+		rs, kitchen := match.Time(matrix, img)
 		if rs == 0 {
 			// Let's back off and not waste processing power.
 			time.Sleep(time.Second * 5)
@@ -502,14 +479,11 @@ func main() {
 	log.Info().
 		Bool("record", config.Current.Record).
 		Str("imgs", "img/"+config.Current.Dir+"/").
-		Str("addr", addr).
 		Msg("unitehud")
 
-	notify.Append(rgba.Green, "Server address: \"%s\"", addr)
+	notify.Append(rgba.Green, "Server address: \"%s\"", server.Address)
 	notify.Append(rgba.Bool(config.Current.Record), "Recording: %t", config.Current.Record)
 	notify.Append(rgba.Green, "Image directory: img/%s/", config.Current.Dir)
-
-	paused := true
 
 	for category := range config.Current.Templates {
 		switch category {
@@ -526,8 +500,8 @@ func main() {
 
 		for name := range config.Current.Templates[category] {
 			for i := 0; i < cap(imgq[name]); i++ {
-				go capture(name, imgq[name], &paused)
-				go points(config.Current.Templates[category][name], imgq[name])
+				go capture(name, imgq[name])
+				go matching(config.Current.Templates[category][name], imgq[name])
 
 				// Stagger processing for workers by sleeping.
 				time.Sleep(time.Millisecond * 250)
@@ -535,12 +509,13 @@ func main() {
 		}
 	}
 
-	go killed(&paused)
-	go minimap(&paused)
-	go orbs(&paused)
-	go seconds(&paused)
-	go states(&paused)
-	go scoring(&paused)
+	// Detection routines.
+	go killed()
+	go minimap()
+	go orbs()
+	go seconds()
+	go states()
+	go scoring()
 
 	go func() {
 		for action := range gui.Window.Actions {
@@ -605,6 +580,11 @@ func main() {
 				err := dev.Open()
 				if err != nil {
 					notify.Feed(rgba.Red, "%s", err.Error())
+				}
+			case gui.Refresh:
+				err := window.Load()
+				if err != nil {
+					notify.Feed(rgba.Red, "Failed to load open windows: %v", err)
 				}
 			}
 		}

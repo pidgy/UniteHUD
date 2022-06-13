@@ -38,10 +38,32 @@ var (
 	mask = gocv.NewMat()
 )
 
-func (m *Match) Matches(matrix gocv.Mat, img image.Image, t []template.Template) (Result, int) {
+func (m *Match) Identify(mat gocv.Mat, points int) (image.Image, error) {
+	clone := mat.Clone()
+	defer clone.Close()
+
+	gocv.Rectangle(&clone, m.Rectangle(), color.RGBA(rgba.Highlight), 2)
+
+	region := clone.Region(m.Team.Crop(m.Point))
+
+	p := image.Pt(10, region.Rows()-15)
+	gocv.PutText(&region, strconv.Itoa(points), p, gocv.FontHersheyPlain, 2, color.RGBA(rgba.Highlight), 3)
+
+	crop, err := region.ToImage()
+	if err != nil {
+		log.Error().Err(err).Msg("failed to convert image")
+		return nil, err
+	}
+
+	return crop, nil
+}
+
+func Matches(matrix gocv.Mat, img image.Image, t []template.Template) (*Match, Result, int) {
 	results := make([]gocv.Mat, len(t))
 
-	m.Max = img.Bounds().Max
+	m := &Match{
+		Max: img.Bounds().Max,
+	}
 
 	for i, template := range t {
 		results[i] = gocv.NewMat()
@@ -64,31 +86,13 @@ func (m *Match) Matches(matrix gocv.Mat, img image.Image, t []template.Template)
 			go stats.Average(m.Template.File, maxv)
 			go stats.Count(m.Template.File)
 
-			return m.process(matrix, img)
+			r, p := m.process(matrix, img)
+
+			return m, r, p
 		}
 	}
 
-	return NotFound, 0
-}
-
-func (m *Match) Identify(mat gocv.Mat, points int) (image.Image, error) {
-	clone := mat.Clone()
-	defer clone.Close()
-
-	gocv.Rectangle(&clone, m.Rectangle(), color.RGBA(rgba.Highlight), 2)
-
-	region := clone.Region(m.Team.Crop(m.Point))
-
-	p := image.Pt(10, region.Rows()-15)
-	gocv.PutText(&region, strconv.Itoa(points), p, gocv.FontHersheyPlain, 2, color.RGBA(rgba.Highlight), 3)
-
-	crop, err := region.ToImage()
-	if err != nil {
-		log.Error().Err(err).Msg("failed to convert image")
-		return nil, err
-	}
-
-	return crop, nil
+	return m, NotFound, 0
 }
 
 func (m *Match) Rectangle() image.Rectangle {
@@ -132,10 +136,6 @@ func (m *Match) process(matrix gocv.Mat, img image.Image) (Result, int) {
 	return NotFound, 0
 }
 
-func (m *Match) MarshalZerologObject(e *zerolog.Event) {
-	e.Object("template", m.Template).Stringer("point", m.Point).Object("duplicate", m.Duplicate).Object("team", m.Team)
-}
-
 func (r Result) String() string {
 	switch r {
 	case Duplicate:
@@ -150,4 +150,10 @@ func (r Result) String() string {
 		return "found"
 	}
 	return "unknown"
+}
+
+// Zerolog.
+
+func (m *Match) MarshalZerologObject(e *zerolog.Event) {
+	e.Object("template", m.Template).Stringer("point", m.Point).Object("duplicate", m.Duplicate).Object("team", m.Team)
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"math"
 	"runtime"
 	"strconv"
 	"syscall"
@@ -19,14 +20,15 @@ import (
 	"gioui.org/op/paint"
 	"gioui.org/text"
 	"gioui.org/unit"
+	"gioui.org/widget"
 	"gioui.org/widget/material"
 	"github.com/rs/zerolog/log"
 	"gocv.io/x/gocv"
 
-	"github.com/pidgy/screenshot"
 	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/gui/visual/area"
 	"github.com/pidgy/unitehud/gui/visual/button"
+	"github.com/pidgy/unitehud/gui/visual/dropdown"
 	"github.com/pidgy/unitehud/gui/visual/help"
 	"github.com/pidgy/unitehud/gui/visual/screen"
 	"github.com/pidgy/unitehud/gui/visual/spinner"
@@ -38,13 +40,12 @@ import (
 	"github.com/pidgy/unitehud/server"
 	"github.com/pidgy/unitehud/stats"
 	"github.com/pidgy/unitehud/team"
+	"github.com/pidgy/unitehud/window"
 )
 
 type GUI struct {
 	*app.Window
 	*screen.Screen
-
-	WindowSize image.Rectangle
 
 	Preview bool
 	open    bool
@@ -69,11 +70,12 @@ const (
 	Record  = Action("record")
 	Open    = Action("open")
 	Closing = Action("closing")
+	Refresh = Action("refresh")
 )
 
 var Window *GUI
 
-const title = "Pokemon Unite HUD Server"
+const title = "Pokemon UNITE HUD Server"
 
 func New() {
 	Window = &GUI{
@@ -180,6 +182,7 @@ func (g *GUI) proc() {
 		g.uptime = fmt.Sprintf("RUN: %02d:%02d", run.Minute(), run.Second())
 	}
 }
+
 func (g *GUI) main() (next string, err error) {
 	// g.Window.Raise()
 
@@ -658,11 +661,16 @@ func (g *GUI) display(src image.Image) {
 		ScaleY: 2,
 	}
 
-	x := unit.Px((float32(g.Screen.Bounds().Max.X) / 2) + 10)
-	y := unit.Px((float32(g.Screen.Bounds().Max.Y) / 2) + 89)
+	x := float32(math.Max(float64(g.Screen.Image.Bounds().Max.X/2), 960))
+	y := float32(math.Max(float64((g.Screen.Image.Bounds().Max.Y/2)+175), 715))
 
 	if g.open && g.resize {
-		g.Window.Option(app.Size(x, y))
+		g.Window.Option(
+			app.Size(
+				unit.Px(x),
+				unit.Px(y),
+			),
+		)
 
 		if !g.resized {
 			g.resize = false
@@ -674,11 +682,10 @@ func (g *GUI) display(src image.Image) {
 func (g *GUI) preview() {
 	for {
 		if g.Preview {
-			img, err := screenshot.CaptureScreen()
+			img, err := window.Capture()
 			if err != nil {
 				log.Fatal().Err(err).Send()
 			}
-
 			g.display(img)
 		}
 
@@ -696,7 +703,7 @@ func (g *GUI) configure() (next string, err error) {
 	}()
 
 	split := &split.Horizontal{
-		Ratio: .75,
+		Ratio: .6,
 	}
 
 	th := material.NewTheme(gofont.Collection())
@@ -925,7 +932,7 @@ func (g *GUI) configure() (next string, err error) {
 	timeAreaScaleScaleButtons(timeArea, timeAreaScaleUpButton, timeAreaScaleDownButton)
 	scoreAreaScaleScaleButtons(scoreArea, scoreAreaScaleUpButton, scoreAreaScaleDownButton)
 
-	/*mapArea := &area.Area{
+	mapArea := &area.Area{
 		Text:     "\t  Map",
 		TextSize: unit.Sp(13),
 		Min:      config.Current.Map.Min.Div(2),
@@ -938,12 +945,13 @@ func (g *GUI) configure() (next string, err error) {
 			Size:     image.Pt(100, 30),
 		},
 	}
-	*/
+
 	saveButton := &button.Button{
 		Text:     "\t  Save",
 		Pressed:  rgba.Background,
 		Released: rgba.DarkGray,
 		Active:   true,
+		Size:     image.Pt(100, 30),
 	}
 
 	cancelButton := &button.Button{
@@ -951,6 +959,7 @@ func (g *GUI) configure() (next string, err error) {
 		Pressed:  rgba.Background,
 		Released: rgba.DarkGray,
 		Active:   true,
+		Size:     image.Pt(100, 30),
 	}
 
 	cancelButton.Click = func() {
@@ -964,6 +973,8 @@ func (g *GUI) configure() (next string, err error) {
 
 		next = "main"
 		notify.Feed(rgba.White, "Configuration omitted")
+
+		g.Actions <- Refresh
 	}
 
 	saveButton.Click = func() {
@@ -980,7 +991,7 @@ func (g *GUI) configure() (next string, err error) {
 		config.Current.Scores = scoreArea.Rectangle()
 		config.Current.Time = timeArea.Rectangle()
 		config.Current.Balls = ballsArea.Rectangle()
-		// config.Current.Map = mapArea.Rectangle()
+		config.Current.Map = mapArea.Rectangle()
 
 		err := config.Current.Save()
 		if err != nil {
@@ -989,6 +1000,8 @@ func (g *GUI) configure() (next string, err error) {
 
 		next = "main"
 		notify.Feed(rgba.White, "Configuration saved to "+config.File)
+
+		g.Actions <- Refresh
 	}
 
 	screenButton := &button.Button{
@@ -996,6 +1009,7 @@ func (g *GUI) configure() (next string, err error) {
 		Pressed:  rgba.Background,
 		Released: rgba.DarkGray,
 		Active:   true,
+		Size:     image.Pt(100, 30),
 	}
 
 	screenButton.Click = func() {
@@ -1007,6 +1021,7 @@ func (g *GUI) configure() (next string, err error) {
 		Pressed:  rgba.Background,
 		Released: rgba.DarkGray,
 		Active:   true,
+		Size:     image.Pt(100, 30),
 	}
 
 	resetButton.Click = func() {
@@ -1025,56 +1040,22 @@ func (g *GUI) configure() (next string, err error) {
 		resetButton.Active = !resetButton.Active
 	}
 
-	helpButton := &button.Button{
-		Text:     "\t  Help",
-		Pressed:  rgba.Background,
-		Released: rgba.DarkGray,
-		Active:   true,
+	windowList := &dropdown.List{
+		Items: []*dropdown.Item{},
+		Callback: func(i *dropdown.Item) {
+			config.Current.Window = i.Text
+			notify.Feed(rgba.Purple, "Capture window set to \"%s\"", i.Text)
+		},
 	}
 
-	helpButton.Click = func() {
-		helpButton.Active = !helpButton.Active
-		next = "help_configure"
+	for _, win := range window.Open {
+		windowList.Items = append(windowList.Items, &dropdown.Item{Text: win})
 	}
 
-	button16x9 := &button.Button{
-		Text:          "16:9",
-		TextSize:      unit.Sp(12),
-		TextOffsetTop: -3,
-		BorderWidth:   unit.Px(1),
-		Pressed:       rgba.Background,
-		Released:      rgba.DarkGray,
-		Active:        true,
-		Size:          image.Pt(45, 18),
-	}
-
-	button4x3 := &button.Button{
-		Text:          " 4:3",
-		TextSize:      unit.Sp(12),
-		TextOffsetTop: -3,
-		BorderWidth:   unit.Px(1),
-		Pressed:       rgba.Background,
-		Released:      rgba.DarkGray,
-		Active:        true,
-		Size:          image.Pt(45, 18),
-	}
-
-	button16x9.Click = func() {
-		config.Current.Scales.To16x9()
-		ballsAreaScaleScaleButtons(ballsArea, ballsAreaScaleUpButton, ballsAreaScaleDownButton)
-		timeAreaScaleScaleButtons(timeArea, timeAreaScaleUpButton, timeAreaScaleDownButton)
-		scoreAreaScaleScaleButtons(scoreArea, scoreAreaScaleUpButton, scoreAreaScaleDownButton)
-
-		button16x9.Active = !button16x9.Active
-	}
-
-	button4x3.Click = func() {
-		config.Current.Scales.To4x3()
-		ballsAreaScaleScaleButtons(ballsArea, ballsAreaScaleUpButton, ballsAreaScaleDownButton)
-		timeAreaScaleScaleButtons(timeArea, timeAreaScaleUpButton, timeAreaScaleDownButton)
-		scoreAreaScaleScaleButtons(scoreArea, scoreAreaScaleUpButton, scoreAreaScaleDownButton)
-
-		button4x3.Active = !button4x3.Active
+	for _, item := range windowList.Items {
+		if item.Text == config.Current.Window {
+			item.Checked.Value = true
+		}
 	}
 
 	header := material.H5(th, "Pokemon Unite HUD Server")
@@ -1086,7 +1067,7 @@ func (g *GUI) configure() (next string, err error) {
 	go g.run(func() { g.matchScore(scoreArea) }, &kill)
 	go g.run(func() { g.matchTime(timeArea) }, &kill)
 	go g.run(func() { g.matchBalls(ballsArea) }, &kill)
-	// go g.run(func() { g.matchMap(mapArea) }, &kill)
+	go g.run(func() { g.matchMap(mapArea) }, &kill)
 
 	var ops op.Ops
 
@@ -1132,216 +1113,225 @@ func (g *GUI) configure() (next string, err error) {
 						func(gtx layout.Context) layout.Dimensions {
 							return Fill(gtx, color.NRGBA{R: 25, G: 25, B: 25, A: 255},
 								func(gtx layout.Context) layout.Dimensions {
-									layout.Inset{
-										Left:  unit.Px(float32(gtx.Constraints.Max.X - 110)),
-										Right: unit.Px(10),
-										Top:   unit.Px(30),
-									}.Layout(
-										gtx,
-										func(gtx layout.Context) layout.Dimensions {
-											return saveButton.Layout(gtx)
-										})
+									{
+										layout.Inset{
+											Left:  unit.Px(10),
+											Top:   unit.Px(100),
+											Right: unit.Px(10),
+										}.Layout(
+											gtx,
+											func(gtx layout.Context) layout.Dimensions {
+												return saveButton.Layout(gtx)
+											})
 
-									layout.Inset{
-										Left:  unit.Px(float32(gtx.Constraints.Max.X - 220)),
-										Right: unit.Px(10),
-										Top:   unit.Px(30),
-									}.Layout(
-										gtx,
-										func(gtx layout.Context) layout.Dimensions {
-											return cancelButton.Layout(gtx)
-										})
+										layout.Inset{
+											Left:  unit.Px(115),
+											Top:   unit.Px(100),
+											Right: unit.Px(10),
+										}.Layout(
+											gtx,
+											func(gtx layout.Context) layout.Dimensions {
+												return cancelButton.Layout(gtx)
+											})
 
-									layout.Inset{
-										Left:  unit.Px(float32(gtx.Constraints.Max.X - 330)),
-										Right: unit.Px(10),
-										Top:   unit.Px(30),
-									}.Layout(
-										gtx,
-										func(gtx layout.Context) layout.Dimensions {
-											return screenButton.Layout(gtx)
-										})
+										layout.Inset{
+											Left:  unit.Px(220),
+											Top:   unit.Px(100),
+											Right: unit.Px(10),
+										}.Layout(
+											gtx,
+											func(gtx layout.Context) layout.Dimensions {
+												return resetButton.Layout(gtx)
+											})
 
-									layout.Inset{
-										Left:  unit.Px(float32(gtx.Constraints.Max.X - 440)),
-										Right: unit.Px(10),
-										Top:   unit.Px(30),
-									}.Layout(
-										gtx,
-										func(gtx layout.Context) layout.Dimensions {
-											return resetButton.Layout(gtx)
-										})
+										layout.Inset{
+											Left:  unit.Px(325),
+											Top:   unit.Px(100),
+											Right: unit.Px(10),
+										}.Layout(
+											gtx,
+											func(gtx layout.Context) layout.Dimensions {
+												return screenButton.Layout(gtx)
+											})
+									}
 
-									layout.Inset{
-										Left:  unit.Px(float32(gtx.Constraints.Max.X - 550)),
-										Right: unit.Px(10),
-										Top:   unit.Px(30),
-									}.Layout(
-										gtx,
-										func(gtx layout.Context) layout.Dimensions {
-											return helpButton.Layout(gtx)
-										})
+									// Capture window.
+									{
+										layout.Inset{
+											Left:  unit.Px((float32(gtx.Constraints.Max.X) / 3) * 2),
+											Top:   unit.Px(3),
+											Right: unit.Px(10),
+										}.Layout(
+											gtx,
+											func(gtx layout.Context) layout.Dimensions {
+												windowListTitle := material.Label(th, unit.Px(14), "Capture Window")
+												windowListTitle.Color = color.NRGBA(rgba.SlateGray)
+												return windowListTitle.Layout(gtx)
+											})
 
-									layout.Inset{
-										Left:  unit.Px(float32(gtx.Constraints.Max.X - 607)),
-										Right: unit.Px(10),
-										Top:   unit.Px(3),
-									}.Layout(
-										gtx,
-										func(gtx layout.Context) layout.Dimensions {
-											return button16x9.Layout(gtx)
-										})
+										layout.Inset{
+											Left:   unit.Px(float32(gtx.Constraints.Max.X - 520)),
+											Top:    unit.Px(20),
+											Right:  unit.Px(10),
+											Bottom: unit.Px(3),
+										}.Layout(
+											gtx,
+											func(gtx layout.Context) layout.Dimensions {
+												return widget.Border{
+													Color: color.NRGBA{R: 100, G: 100, B: 100, A: 50},
+													Width: unit.Px(2),
+												}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+													return windowList.Layout(gtx, th)
+												})
+											})
+									}
 
-									layout.Inset{
-										Left:  unit.Px(float32(gtx.Constraints.Max.X - 607)),
-										Right: unit.Px(10),
-										Top:   unit.Px(25),
-									}.Layout(
-										gtx,
-										func(gtx layout.Context) layout.Dimensions {
-											return button4x3.Layout(gtx)
-										})
+									// Time area rectangle buttons.
+									{
+										layout.Inset{
+											Top:  unit.Px(5),
+											Left: unit.Px(220),
+										}.Layout(
+											gtx,
+											func(gtx layout.Context) layout.Dimensions {
+												return timeArea.Button.Layout(gtx)
+											})
 
-									// Time Area Rectangle Buttons
-									layout.Inset{
-										Left: unit.Px(240),
-										Top:  unit.Px(3),
-									}.Layout(
-										gtx,
-										func(gtx layout.Context) layout.Dimensions {
-											return timeArea.Button.Layout(gtx)
-										})
+										layout.Inset{
+											Top:  unit.Px(38),
+											Left: unit.Px(220),
+										}.Layout(
+											gtx,
+											func(gtx layout.Context) layout.Dimensions {
+												return timeAreaScaleDownButton.Layout(gtx)
+											})
 
-									layout.Inset{
-										Left: unit.Px(240),
-										Top:  unit.Px(35),
-									}.Layout(
-										gtx,
-										func(gtx layout.Context) layout.Dimensions {
-											return timeAreaScaleDownButton.Layout(gtx)
-										})
+										layout.Inset{
+											Left: unit.Px(255),
+											Top:  unit.Px(38),
+										}.Layout(
+											gtx,
+											func(gtx layout.Context) layout.Dimensions {
+												return timeAreaScaleText.Layout(gtx)
+											})
 
-									layout.Inset{
-										Left: unit.Px(275),
-										Top:  unit.Px(35),
-									}.Layout(
-										gtx,
-										func(gtx layout.Context) layout.Dimensions {
-											return timeAreaScaleText.Layout(gtx)
-										})
+										layout.Inset{
+											Left: unit.Px(255),
+											Top:  unit.Px(53),
+										}.Layout(
+											gtx,
+											func(gtx layout.Context) layout.Dimensions {
+												timeAreaScaleValueText.Text = fmt.Sprintf("%.2fx", config.Current.Scales.Time)
+												return timeAreaScaleValueText.Layout(gtx)
+											})
 
-									layout.Inset{
-										Left: unit.Px(275),
-										Top:  unit.Px(50),
-									}.Layout(
-										gtx,
-										func(gtx layout.Context) layout.Dimensions {
-											timeAreaScaleValueText.Text = fmt.Sprintf("%.2fx", config.Current.Scales.Time)
-											return timeAreaScaleValueText.Layout(gtx)
-										})
+										layout.Inset{
+											Left: unit.Px(290),
+											Top:  unit.Px(38),
+										}.Layout(
+											gtx,
+											func(gtx layout.Context) layout.Dimensions {
+												return timeAreaScaleUpButton.Layout(gtx)
+											})
+									}
 
-									layout.Inset{
-										Left: unit.Px(310),
-										Top:  unit.Px(35),
-									}.Layout(
-										gtx,
-										func(gtx layout.Context) layout.Dimensions {
-											return timeAreaScaleUpButton.Layout(gtx)
-										})
+									// Points area rectangle buttons.
+									{
+										layout.Inset{
+											Left: unit.Px(115),
+											Top:  unit.Px(5),
+										}.Layout(
+											gtx,
+											func(gtx layout.Context) layout.Dimensions {
+												return ballsArea.Button.Layout(gtx)
+											})
 
-									// Points Area Rectangle Buttons
-									layout.Inset{
-										Left: unit.Px(125),
-										Top:  unit.Px(3),
-									}.Layout(
-										gtx,
-										func(gtx layout.Context) layout.Dimensions {
-											return ballsArea.Button.Layout(gtx)
-										})
+										layout.Inset{
+											Left: unit.Px(115),
+											Top:  unit.Px(38),
+										}.Layout(
+											gtx,
+											func(gtx layout.Context) layout.Dimensions {
+												return ballsAreaScaleDownButton.Layout(gtx)
+											})
 
-									layout.Inset{
-										Left: unit.Px(125),
-										Top:  unit.Px(35),
-									}.Layout(
-										gtx,
-										func(gtx layout.Context) layout.Dimensions {
-											return ballsAreaScaleDownButton.Layout(gtx)
-										})
+										layout.Inset{
+											Left: unit.Px(150),
+											Top:  unit.Px(38),
+										}.Layout(
+											gtx,
+											func(gtx layout.Context) layout.Dimensions {
+												return ballsAreaScaleText.Layout(gtx)
+											})
 
-									layout.Inset{
-										Left: unit.Px(160),
-										Top:  unit.Px(35),
-									}.Layout(
-										gtx,
-										func(gtx layout.Context) layout.Dimensions {
-											return ballsAreaScaleText.Layout(gtx)
-										})
+										layout.Inset{
+											Left: unit.Px(150),
+											Top:  unit.Px(55),
+										}.Layout(
+											gtx,
+											func(gtx layout.Context) layout.Dimensions {
+												ballsAreaScaleValueText.Text = fmt.Sprintf("%.2fx", config.Current.Scales.Balls)
+												return ballsAreaScaleValueText.Layout(gtx)
+											})
 
-									layout.Inset{
-										Left: unit.Px(160),
-										Top:  unit.Px(50),
-									}.Layout(
-										gtx,
-										func(gtx layout.Context) layout.Dimensions {
-											ballsAreaScaleValueText.Text = fmt.Sprintf("%.2fx", config.Current.Scales.Balls)
-											return ballsAreaScaleValueText.Layout(gtx)
-										})
+										layout.Inset{
+											Left: unit.Px(185),
+											Top:  unit.Px(38),
+										}.Layout(
+											gtx,
+											func(gtx layout.Context) layout.Dimensions {
+												return ballsAreaScaleUpButton.Layout(gtx)
+											})
+									}
 
-									layout.Inset{
-										Left: unit.Px(195),
-										Top:  unit.Px(35),
-									}.Layout(
-										gtx,
-										func(gtx layout.Context) layout.Dimensions {
-											return ballsAreaScaleUpButton.Layout(gtx)
-										})
+									// Score area rectangle buttons.
+									{
+										layout.Inset{
+											Left: unit.Px(10),
+											Top:  unit.Px(5),
+										}.Layout(
+											gtx,
+											func(gtx layout.Context) layout.Dimensions {
+												return scoreArea.Button.Layout(gtx)
+											})
 
-									// Score Area Rectangle Buttons
-									layout.Inset{
-										Left: unit.Px(10),
-										Top:  unit.Px(3),
-									}.Layout(
-										gtx,
-										func(gtx layout.Context) layout.Dimensions {
-											return scoreArea.Button.Layout(gtx)
-										})
+										layout.Inset{
+											Left: unit.Px(10),
+											Top:  unit.Px(38),
+										}.Layout(
+											gtx,
+											func(gtx layout.Context) layout.Dimensions {
+												return scoreAreaScaleDownButton.Layout(gtx)
+											})
 
-									layout.Inset{
-										Left: unit.Px(10),
-										Top:  unit.Px(35),
-									}.Layout(
-										gtx,
-										func(gtx layout.Context) layout.Dimensions {
-											return scoreAreaScaleDownButton.Layout(gtx)
-										})
+										layout.Inset{
+											Left: unit.Px(45),
+											Top:  unit.Px(38),
+										}.Layout(
+											gtx,
+											func(gtx layout.Context) layout.Dimensions {
+												return scoreAreaScaleText.Layout(gtx)
+											})
 
-									layout.Inset{
-										Left: unit.Px(45),
-										Top:  unit.Px(35),
-									}.Layout(
-										gtx,
-										func(gtx layout.Context) layout.Dimensions {
-											return scoreAreaScaleText.Layout(gtx)
-										})
+										layout.Inset{
+											Left: unit.Px(45),
+											Top:  unit.Px(55),
+										}.Layout(
+											gtx,
+											func(gtx layout.Context) layout.Dimensions {
+												scoreAreaScaleValueText.Text = fmt.Sprintf("%.2fx", config.Current.Scales.Score)
+												return scoreAreaScaleValueText.Layout(gtx)
+											})
 
-									layout.Inset{
-										Left: unit.Px(45),
-										Top:  unit.Px(50),
-									}.Layout(
-										gtx,
-										func(gtx layout.Context) layout.Dimensions {
-											scoreAreaScaleValueText.Text = fmt.Sprintf("%.2fx", config.Current.Scales.Score)
-											return scoreAreaScaleValueText.Layout(gtx)
-										})
-
-									layout.Inset{
-										Left: unit.Px(80),
-										Top:  unit.Px(35),
-									}.Layout(
-										gtx,
-										func(gtx layout.Context) layout.Dimensions {
-											return scoreAreaScaleUpButton.Layout(gtx)
-										})
+										layout.Inset{
+											Left: unit.Px(80),
+											Top:  unit.Px(38),
+										}.Layout(
+											gtx,
+											func(gtx layout.Context) layout.Dimensions {
+												return scoreAreaScaleUpButton.Layout(gtx)
+											})
+									}
 
 									return layout.Dimensions{Size: gtx.Constraints.Max}
 								},
@@ -1353,7 +1343,7 @@ func (g *GUI) configure() (next string, err error) {
 			scoreArea.Layout(gtx)
 			ballsArea.Layout(gtx)
 			timeArea.Layout(gtx)
-			// mapArea.Layout(gtx)
+			mapArea.Layout(gtx)
 
 			e.Frame(gtx.Ops)
 		}
@@ -1570,7 +1560,7 @@ func (g *GUI) matchBalls(a *area.Area) {
 
 	a.NRGBA = color.NRGBA(rgba.Alpha(rgba.Red, 0x99))
 
-	img, err := screenshot.CaptureRect(a.Rectangle())
+	img, err := window.CaptureRect(a.Rectangle())
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
@@ -1607,7 +1597,7 @@ func (g *GUI) matchScore(a *area.Area) {
 	// a.NRGBA = color.NRGBA(rgba.Alpha(rgba.Red, 0x99))
 	// a.Subtext = ""
 
-	img, err := screenshot.CaptureRect(a.Rectangle())
+	img, err := window.CaptureRect(a.Rectangle())
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
@@ -1617,9 +1607,8 @@ func (g *GUI) matchScore(a *area.Area) {
 		log.Fatal().Err(err).Send()
 	}
 
-	m := match.Match{}
 	for _, templates := range config.Current.Templates["scored"] {
-		result, score := m.Matches(matrix, g.Image, templates)
+		_, result, score := match.Matches(matrix, g.Image, templates)
 		switch result {
 		case match.Found, match.Duplicate:
 			a.NRGBA = color.NRGBA(rgba.Alpha(rgba.Green, 0x99))
@@ -1647,7 +1636,7 @@ func (g *GUI) matchMap(a *area.Area) {
 	a.NRGBA = color.NRGBA(rgba.Alpha(rgba.Red, 0x99))
 	a.Subtext = ""
 
-	img, err := screenshot.CaptureRect(a.Rectangle())
+	img, err := window.CaptureRect(a.Rectangle())
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
@@ -1673,7 +1662,7 @@ func (g *GUI) matchTime(a *area.Area) {
 	a.NRGBA = color.NRGBA(rgba.Alpha(rgba.Red, 0x99))
 	a.Subtext = "(00:00)"
 
-	img, err := screenshot.CaptureRect(a.Rectangle())
+	img, err := window.CaptureRect(a.Rectangle())
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
@@ -1683,9 +1672,7 @@ func (g *GUI) matchTime(a *area.Area) {
 		log.Fatal().Err(err).Send()
 	}
 
-	m := match.Match{}
-
-	s, k := m.Time(matrix, img)
+	s, k := match.Time(matrix, img)
 	if s != 0 {
 		a.NRGBA = color.NRGBA(rgba.Alpha(rgba.Green, 0x99))
 		a.Subtext = "(" + k + ")"

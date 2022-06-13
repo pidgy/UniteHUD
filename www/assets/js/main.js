@@ -22,70 +22,88 @@ const bees = [
     60 + 20,
 ];
 
+function success(data) {
+    $('.purple').html(data.purple.value);
+    $('.orange').html(data.orange.value);
+    $('.self').html(data.self.value);
+    $('.error').html('');
+    $('.banner').css('opacity', '0');
+
+    loggedError = false;
+
+    if (data.purple.value + data.orange.value + data.self.value + data.seconds + data.balls == 0) {
+        $('.score').css('opacity', '0');
+    } else {
+        $('.score').css('opacity', '1');
+
+        for (var i in drednaws) {
+            var dreadRotom = data.seconds - drednaws[i];
+            if (dreadRotom > 0) {
+                $('.rotom-seconds').css('opacity', '1');
+                $('.drednaw-seconds').css('opacity', '1');
+
+                $('.rotom-seconds .objective').html(dreadRotom);
+                $('.drednaw-seconds .objective').html(dreadRotom);
+
+                break;
+            } else {
+                $('.rotom-seconds').css('opacity', '0');
+                $('.drednaw-seconds').css('opacity', '0');
+            }
+        }
+
+        for (var i in bees) {
+            var until = data.seconds - bees[i];
+            if (until > 0) {
+                $('.vespiquen-seconds').css('opacity', '1');
+                $('.vespiquen-seconds .objective').html(until);
+
+                break;
+            } else {
+                $('.vespiquen-seconds').css('opacity', '0');
+            }
+        }
+    }
+}
+
+function error(data) {
+    $('.error').html(`Unite HUD reconnecting${loaders[index]}`);
+    index = (index + 1) % loaders.length;
+    $('.banner').css('opacity', '.5');
+
+    $('.purple').html("");
+    $('.orange').html("");
+    // $('.seconds').html("");
+    $('.self').html("");
+    $('.score').css('opacity', '0');
+
+    if (!loggedError) {
+        console.error(data);
+        loggedError = true
+    }
+}
+
 function main() {
+    let socket = new WebSocket("ws://localhost:17069/ws");
+    socket.onopen = function(e) {}
+    socket.onmessage = function(event) {
+        success(JSON.parse(event.data));
+    };
+    socket.onerror = function(err) {
+        error(err.message);
+    };
+
+    return;
     $.ajax({
         type: 'GET',
         dataType: 'json',
         url: "http://localhost:17069/http",
         timeout: 1000,
         success: function(data, status) {
-            $('.purple').html(data.purple.value);
-            $('.orange').html(data.orange.value);
-            $('.self').html(data.self.value);
-            $('.error').html('');
-            $('.banner').css('opacity', '0');
-
-            loggedError = false;
-
-            if (data.purple.value + data.orange.value + data.seconds + data.self.value + data.balls == 0) {
-                $('.score').css('opacity', '0');
-            } else {
-                $('.score').css('opacity', '1');
-
-                for (var i in drednaws) {
-                    var dreadRotom = data.seconds - drednaws[i];
-                    if (dreadRotom > 0) {
-                        $('.rotom-seconds').css('opacity', '1');
-                        $('.drednaw-seconds').css('opacity', '1');
-
-                        $('.rotom-seconds .objective').html(dreadRotom);
-                        $('.drednaw-seconds .objective').html(dreadRotom);
-
-                        break;
-                    } else {
-                        $('.rotom-seconds').css('opacity', '0');
-                        $('.drednaw-seconds').css('opacity', '0');
-                    }
-                }
-
-                for (var i in bees) {
-                    var until = data.seconds - bees[i];
-                    if (until > 0) {
-                        $('.vespiquen-seconds').css('opacity', '1');
-                        $('.vespiquen-seconds .objective').html(until);
-
-                        break;
-                    } else {
-                        $('.vespiquen-seconds').css('opacity', '0');
-                    }
-                }
-            }
+            success(data);
         },
         error: function(err) {
-            $('.error').html(`Unite HUD reconnecting${loaders[index]}`);
-            index = (index + 1) % loaders.length;
-            $('.banner').css('opacity', '.5');
-
-            $('.purple').html("");
-            $('.orange').html("");
-            // $('.seconds').html("");
-            $('.self').html("");
-            $('.score').css('opacity', '0');
-
-            if (!loggedError) {
-                console.error(err);
-                loggedError = true
-            }
+            error(err);
         },
     });
 };
