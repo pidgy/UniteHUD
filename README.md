@@ -4,7 +4,7 @@ Pokemon Unite scoreboard HUD and extra tools running over captured game feeds.
 #### Want to join our Discord community? Message me on [Twitter](https://twitter.com/pidgy_)
 ----
 #### v0.9.1 Beta
-- [Download here.](https://github.com/pidgy/unitehud/releases/download/v0.9.1-beta/UniteHUD_0.9_Installer.exe)
+- [Download](https://github.com/pidgy/unitehud/releases/download/v0.9.1-beta/UniteHUD_0.9_Installer.exe)
 - Full monitor or Custom window capturing.
 - WebSocket implementation to bypass CORS issues on OBS.
 
