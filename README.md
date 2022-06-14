@@ -1,5 +1,5 @@
 # UniteHUD
-Pokemon Unite scoreboard HUD and extra tools running over captured game feeds.
+Pokemon UNITE scoreboard HUD and extra tools running over captured game feeds.
 
 #### Want to join our Discord community? Message me on [Twitter](https://twitter.com/pidgy_)
 ----
