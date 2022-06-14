@@ -11,7 +11,7 @@ Pokemon Unite scoreboard HUD and extra tools running over captured game feeds.
 ----
 
 ### Client (OBS Live)
-![alt text](https://github.com/pidgy/unite/blob/master/data/scoreboard.gif "Client")
+![alt text](https://github.com/pidgy/unite/blob/master/data/client2.gif "Client")
 
 ### Server
 ![alt text](https://i.imgur.com/X9T7vpH.png "server")
