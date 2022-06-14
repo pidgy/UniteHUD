@@ -532,7 +532,7 @@ func main() {
 	go states()
 	go scoring()
 
-	last := ""
+	lastWindow := ""
 
 	go func() {
 		for action := range gui.Window.Actions {
@@ -573,6 +573,7 @@ func main() {
 				fallthrough
 			case gui.Record:
 				config.Current.Record = !config.Current.Record
+
 				notify.Feed(rgba.Bool(config.Current.Record), "Recording images: %t", config.Current.Record)
 
 				switch config.Current.Record {
@@ -604,9 +605,9 @@ func main() {
 					notify.Feed(rgba.Red, "Failed to load open windows: %v", err)
 				}
 
-				if last != config.Current.Window {
+				if lastWindow != config.Current.Window {
 					notify.Feed(rgba.Purple, "Capturing \"%s\" window", config.Current.Window)
-					last = config.Current.Window
+					lastWindow = config.Current.Window
 				}
 			}
 		}
