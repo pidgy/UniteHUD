@@ -41,7 +41,7 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 		return captureScreenRect(rect)
 	}
 
-	return captureWindowRect(rect, 1)
+	return captureWindowRect(rect)
 }
 
 func Load() error {
@@ -51,10 +51,6 @@ func Load() error {
 	}
 
 	Open = windows
-
-	defer func() {
-		notify.Feed(rgba.Purple, "Capturing \"%s\" window", config.Current.Window)
-	}()
 
 	for _, win := range windows {
 		if config.Current.Window == win {
@@ -117,7 +113,7 @@ func captureWindow() (*image.RGBA, error) {
 		return captureScreen()
 	}
 
-	img, err := captureWindowRect(rect, 1)
+	img, err := captureWindowRect(rect)
 	if err != nil {
 		config.Current.Window = config.MainDisplay
 		notify.Feed(rgba.Red, "%v", err)
@@ -127,7 +123,7 @@ func captureWindow() (*image.RGBA, error) {
 	return img, err
 }
 
-func captureWindowRect(rect image.Rectangle, flip int) (*image.RGBA, error) {
+func captureWindowRect(rect image.Rectangle) (*image.RGBA, error) {
 	handle, err := findWindow(config.Current.Window)
 	if err != nil {
 		config.Current.Window = config.MainDisplay
@@ -158,7 +154,7 @@ func captureWindowRect(rect image.Rectangle, flip int) (*image.RGBA, error) {
 	bitmapInfo.BmiHeader = windowsBitmapInfoHeader{
 		BiSize:        uint32(reflect.TypeOf(bitmapInfo.BmiHeader).Size()),
 		BiWidth:       int32(width),
-		BiHeight:      int32(height * flip),
+		BiHeight:      int32(height),
 		BiPlanes:      1,
 		BiBitCount:    32,
 		BiCompression: 0, // BI_RGB

@@ -5,6 +5,8 @@ import (
 	"image"
 	"image/color"
 	"math"
+	"os"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"syscall"
@@ -23,6 +25,7 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 	"github.com/rs/zerolog/log"
+	"github.com/skratchdot/open-golang/open"
 	"gocv.io/x/gocv"
 
 	"github.com/pidgy/unitehud/config"
@@ -340,6 +343,44 @@ func (g *GUI) main() (next string, err error) {
 		clearStatsButton.Active = !clearStatsButton.Active
 	}
 
+	wwwButton := &button.Button{
+		Text:           "www",
+		Released:       color.NRGBA(rgba.Purple),
+		Pressed:        color.NRGBA(rgba.Purple),
+		Size:           image.Pt(35, 15),
+		TextSize:       unit.Sp(12),
+		TextOffsetTop:  -4,
+		TextOffsetLeft: -7,
+		BorderWidth:    unit.Sp(.5),
+	}
+
+	wwwButton.Click = func() {
+		wwwButton.Active = !wwwButton.Active
+
+		ex, err := os.Executable()
+		if err != nil {
+			notify.Feed(rgba.Red, "Failed to open www/ directory: %v", err)
+			return
+		}
+
+		dir := filepath.Dir(ex)
+		err = open.Run(dir + "/www")
+		if err != nil {
+			notify.Feed(rgba.Red, "Failed to open www/ directory: %v", err)
+			return
+		}
+	}
+
+	preview := &button.Image{
+		Screen: &screen.Screen{
+			Border:      true,
+			BorderColor: rgba.Background,
+		},
+	}
+	preview.Click = func() {
+		preview.Hide = !preview.Hide
+	}
+
 	var ops op.Ops
 
 	for next == "" {
@@ -372,8 +413,18 @@ func (g *GUI) main() (next string, err error) {
 						func(gtx layout.Context) layout.Dimensions {
 							layout.Inset{
 								Left: unit.Px(2),
-								Top:  unit.Px(10),
+								Top:  unit.Px(5),
 							}.Layout(gtx, header.Layout)
+
+							windowHeader := material.Caption(th, config.Current.Window)
+							windowHeader.Color = color.NRGBA(rgba.SlateGray)
+							windowHeader.Alignment = text.Middle
+							windowHeader.Font.Weight = text.Bold
+
+							layout.Inset{
+								Left: unit.Px(2),
+								Top:  unit.Px(40),
+							}.Layout(gtx, windowHeader.Layout)
 
 							cpu := material.H5(th, g.cpu)
 							cpu.Color = color.NRGBA(rgba.White)
@@ -506,7 +557,9 @@ func (g *GUI) main() (next string, err error) {
 								Left: unit.Px(float32(gtx.Constraints.Max.X - 90)),
 							}.Layout(gtx, clock.Layout)
 
-							layout.Inset{Top: unit.Px(50)}.Layout(
+							layout.Inset{
+								Top: unit.Px(60),
+							}.Layout(
 								gtx,
 								func(gtx layout.Context) layout.Dimensions {
 									return textblock.Layout(gtx, notify.Feeds())
@@ -541,6 +594,24 @@ func (g *GUI) main() (next string, err error) {
 								func(gtx layout.Context) layout.Dimensions {
 									return clearStatsButton.Layout(gtx)
 								})
+
+							layout.Inset{
+								Left: unit.Px(float32(gtx.Constraints.Max.X - wwwButton.Size.X)),
+								Top:  unit.Px(float32(gtx.Constraints.Min.Y + statsButton.Size.Y + clearStatsButton.Size.Y)),
+							}.Layout(
+								gtx,
+								func(gtx layout.Context) layout.Dimensions {
+									return wwwButton.Layout(gtx)
+								})
+
+							preview.SetImage(notify.Preview)
+
+							layout.Inset{
+								Left: unit.Px(float32(gtx.Constraints.Max.X - 125)),
+								Top:  unit.Px(float32(gtx.Constraints.Max.Y - 335)),
+							}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+								return preview.Layout(th, gtx)
+							})
 
 							layout.Inset{
 								Left: unit.Px(float32(gtx.Constraints.Max.X - 125)),
@@ -586,7 +657,8 @@ func (g *GUI) main() (next string, err error) {
 									return openButton.Layout(gtx)
 								})
 
-							if notify.PurpleScore != nil {
+							// Event images.
+							{
 								layout.Inset{
 									Top:  unit.Px(52),
 									Left: unit.Px(5),
@@ -595,8 +667,7 @@ func (g *GUI) main() (next string, err error) {
 									BorderColor: color.NRGBA(team.Purple.RGBA),
 									Image:       notify.PurpleScore,
 								}).Layout)
-							}
-							if notify.OrangeScore != nil {
+
 								layout.Inset{
 									Top:  unit.Px(112),
 									Left: unit.Px(5),
@@ -605,8 +676,7 @@ func (g *GUI) main() (next string, err error) {
 									BorderColor: color.NRGBA(team.Orange.RGBA),
 									Image:       notify.OrangeScore,
 								}).Layout)
-							}
-							if notify.Balls != nil {
+
 								layout.Inset{
 									Top:  unit.Px(172),
 									Left: unit.Px(5),
@@ -617,8 +687,7 @@ func (g *GUI) main() (next string, err error) {
 									ScaleX:      2,
 									ScaleY:      2,
 								}).Layout)
-							}
-							if notify.SelfScore != nil {
+
 								layout.Inset{
 									Top:  unit.Px(232),
 									Left: unit.Px(5),
@@ -629,8 +698,7 @@ func (g *GUI) main() (next string, err error) {
 									ScaleX:      4,
 									ScaleY:      4,
 								}).Layout)
-							}
-							if notify.Time != nil {
+
 								layout.Inset{
 									Top:  unit.Px(292),
 									Left: unit.Px(5),
@@ -1044,7 +1112,6 @@ func (g *GUI) configure() (next string, err error) {
 		Items: []*dropdown.Item{},
 		Callback: func(i *dropdown.Item) {
 			config.Current.Window = i.Text
-			notify.Feed(rgba.Purple, "Capture window set to \"%s\"", i.Text)
 		},
 	}
 

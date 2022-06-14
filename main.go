@@ -72,7 +72,7 @@ func init() {
 	}
 }
 
-func capture(name string, imgq chan image.Image) {
+func captureScores(name string, imgq chan image.Image) {
 	for {
 		time.Sleep(team.Delay(name))
 
@@ -95,7 +95,7 @@ func capture(name string, imgq chan image.Image) {
 	}
 }
 
-func matching(t []template.Template, imgq chan image.Image) {
+func captureScoresMatch(t []template.Template, imgq chan image.Image) {
 	for img := range imgq {
 		matrix, err := gocv.ImageToMatRGB(img)
 		if err != nil {
@@ -438,6 +438,20 @@ func killed() {
 	}
 }
 
+func preview() {
+	for {
+		time.Sleep(time.Second)
+
+		img, err := window.Capture()
+		if err != nil {
+			notify.Feed(rgba.Red, "Failed to capture preview (%v)", err)
+			continue
+		}
+
+		notify.Preview = img
+	}
+}
+
 func seconds() {
 	for {
 		time.Sleep(team.Delay(team.Time.Name))
@@ -500,8 +514,8 @@ func main() {
 
 		for name := range config.Current.Templates[category] {
 			for i := 0; i < cap(imgq[name]); i++ {
-				go capture(name, imgq[name])
-				go matching(config.Current.Templates[category][name], imgq[name])
+				go captureScores(name, imgq[name])
+				go captureScoresMatch(config.Current.Templates[category][name], imgq[name])
 
 				// Stagger processing for workers by sleeping.
 				time.Sleep(time.Millisecond * 250)
@@ -513,9 +527,12 @@ func main() {
 	go killed()
 	go minimap()
 	go orbs()
+	go preview()
 	go seconds()
 	go states()
 	go scoring()
+
+	last := ""
 
 	go func() {
 		for action := range gui.Window.Actions {
@@ -585,6 +602,11 @@ func main() {
 				err := window.Load()
 				if err != nil {
 					notify.Feed(rgba.Red, "Failed to load open windows: %v", err)
+				}
+
+				if last != config.Current.Window {
+					notify.Feed(rgba.Purple, "Capturing \"%s\" window", config.Current.Window)
+					last = config.Current.Window
 				}
 			}
 		}

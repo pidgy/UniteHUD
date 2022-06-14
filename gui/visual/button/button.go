@@ -47,7 +47,6 @@ func (b *Button) Layout(gtx layout.Context) layout.Dimensions {
 		b.alpha = b.Released.A
 	}
 
-	// here we loop through all the events associated with this button.
 	for _, e := range gtx.Events(b) {
 		if e, ok := e.(pointer.Event); ok {
 			switch e.Type {

@@ -134,8 +134,5 @@ func goals(matrix gocv.Mat, img *image.RGBA) (Goals, bool) {
 		}
 	}
 
-	gocv.IMWrite("map.png", matrix)
-	println("saved ----------")
-
 	return Goals{}, true
 }

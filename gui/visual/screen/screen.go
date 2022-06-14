@@ -21,7 +21,7 @@ type Screen struct {
 }
 
 func (s *Screen) Layout(gtx layout.Context) layout.Dimensions {
-	if s.Image == nil {
+	if s.Image == nil || s.Image.Bounds().Size().Eq(image.Pt(0, 0)) {
 		return layout.Dimensions{Size: gtx.Constraints.Max}
 	}
 
@@ -42,31 +42,12 @@ func (s *Screen) Layout(gtx layout.Context) layout.Dimensions {
 		s.ScaleY = s.ScaleX
 	}
 
-	if s.Border {
-		return widget.Border{
-			Color:        s.BorderColor,
-			Width:        unit.Px(3),
-			CornerRadius: unit.Px(1),
-		}.Layout(gtx, s.borderLayout)
-	}
-
 	return s.layout(gtx)
 }
 
-func (s *Screen) borderLayout(gtx layout.Context) layout.Dimensions {
-	dst := image.NewRGBA(image.Rect(0, 0, s.Image.Bounds().Max.X/s.ScaleX, s.Image.Bounds().Max.Y/s.ScaleY))
-	draw.NearestNeighbor.Scale(dst, dst.Rect, s.Image, s.Image.Bounds(), draw.Over, nil)
-
-	defer clip.Rect{Max: gtx.Constraints.Max}.Push(gtx.Ops).Pop()
-	op := paint.NewImageOp(dst)
-	op.Add(gtx.Ops)
-	paint.PaintOp{}.Add(gtx.Ops)
-
-	return layout.Dimensions{Size: s.Image.Bounds().Max.Div((s.ScaleX + s.ScaleY) / 2)}
-}
-
 func (s *Screen) layout(gtx layout.Context) layout.Dimensions {
-	dst := image.NewRGBA(image.Rect(0, 0, s.Image.Bounds().Max.X/s.ScaleX, s.Image.Bounds().Max.Y/s.ScaleY))
+	rect := image.Rect(0, 0, s.Image.Bounds().Max.X/s.ScaleX, s.Image.Bounds().Max.Y/s.ScaleY)
+	dst := image.NewRGBA(rect)
 	draw.NearestNeighbor.Scale(dst, dst.Rect, s.Image, s.Image.Bounds(), draw.Over, nil)
 
 	defer clip.Rect{Max: gtx.Constraints.Max}.Push(gtx.Ops).Pop()
@@ -74,5 +55,15 @@ func (s *Screen) layout(gtx layout.Context) layout.Dimensions {
 	op.Add(gtx.Ops)
 	paint.PaintOp{}.Add(gtx.Ops)
 
-	return layout.Dimensions{Size: gtx.Constraints.Max}
+	if !s.Border {
+		return layout.Dimensions{Size: rect.Size()}
+	}
+
+	return widget.Border{
+		Color:        s.BorderColor,
+		Width:        unit.Px(3),
+		CornerRadius: unit.Px(1),
+	}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+		return layout.Dimensions{Size: rect.Size()}
+	})
 }

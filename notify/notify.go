@@ -10,11 +10,14 @@ import (
 	"github.com/pidgy/unitehud/dev"
 )
 
-var OrangeScore image.Image
-var PurpleScore image.Image
-var SelfScore image.Image
-var Balls image.Image
-var Time image.Image
+var (
+	Preview     image.Image = image.NewRGBA(image.Rect(0, 0, 0, 0))
+	OrangeScore image.Image = image.NewRGBA(image.Rect(0, 0, 0, 0))
+	PurpleScore image.Image = image.NewRGBA(image.Rect(0, 0, 0, 0))
+	SelfScore   image.Image = image.NewRGBA(image.Rect(0, 0, 0, 0))
+	Balls       image.Image = image.NewRGBA(image.Rect(0, 0, 0, 0))
+	Time        image.Image = image.NewRGBA(image.Rect(0, 0, 0, 0))
+)
 
 type Post struct {
 	color.RGBA
