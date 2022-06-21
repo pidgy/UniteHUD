@@ -25,7 +25,8 @@ const (
 
 type Config struct {
 	Window     string
-	Record     bool `json:"-"` // Record all matched images and logs.
+	LostWindow string `json:"-"`
+	Record     bool   `json:"-"` // Record all matched images and logs.
 	Balls      image.Rectangle
 	Map        image.Rectangle
 	Scores     image.Rectangle
@@ -97,7 +98,6 @@ func Load() error {
 	defer validate()
 
 	if open() {
-		Current.Record = Current.Record
 		Current.Acceptance = .91
 	} else {
 		Current = Config{
@@ -117,6 +117,10 @@ func Load() error {
 			Acceptance: .91,
 		}
 		Current.load()
+	}
+
+	if Current.Window == "" {
+		Current.Window = MainDisplay
 	}
 
 	return Current.Save()

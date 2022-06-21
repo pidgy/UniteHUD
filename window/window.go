@@ -54,12 +54,14 @@ func Load() error {
 
 	for _, win := range windows {
 		if config.Current.Window == win {
+			config.Current.LostWindow = ""
 			return nil
 		}
 	}
 
 	notify.Feed(rgba.Red, "\"%s\" could not be found", config.Current.Window)
 
+	config.Current.LostWindow = config.Current.Window
 	config.Current.Window = config.MainDisplay
 
 	return nil

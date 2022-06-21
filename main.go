@@ -17,6 +17,7 @@ import (
 	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/dev"
 	"github.com/pidgy/unitehud/gui"
+	"github.com/pidgy/unitehud/history"
 	"github.com/pidgy/unitehud/match"
 	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/rgba"
@@ -56,8 +57,6 @@ func init() {
 			TimeFormat: time.Stamp,
 		},
 	).With().Timestamp().Logger()
-
-	server.New()
 
 	log.Logger = log.Logger.Level(zerolog.DebugLevel)
 
@@ -181,6 +180,65 @@ func captureScoresMatch(t []template.Template, imgq chan image.Image) {
 	}
 }
 
+func killed() {
+	area := image.Rectangle{}
+	modified := config.Current.Templates["killed"][team.Game.Name]
+	unmodified := config.Current.Templates["killed"][team.Game.Name]
+
+	for {
+		time.Sleep(time.Second)
+
+		if paused || gui.Window.Screen == nil {
+			time.Sleep(time.Second)
+			continue
+		}
+
+		if area.Empty() {
+			b := gui.Window.Screen.Bounds()
+			area = image.Rect(b.Max.X/3, b.Max.Y/2, b.Max.X-b.Max.X/3, b.Max.Y-b.Max.Y/3)
+		}
+
+		img, err := window.CaptureRect(area)
+		if err != nil {
+			kill(err)
+		}
+
+		matrix, err := gocv.ImageToMatRGB(img)
+		if err != nil {
+			kill(err)
+		}
+
+		_, r, e := match.Matches(matrix, img, modified)
+		switch r {
+		case match.Found:
+			state.Add(state.EventType(e), server.Clock(), -1)
+
+			switch e := state.EventType(e); e {
+			case state.Killed:
+				modified = modified[1:] // Remove killed event.
+
+				team.Self.Killed = time.Now()
+
+				notify.Feed(color.RGBA(rgba.PaleRed), "[%s] Killed", server.Clock())
+			case state.KilledWithPoints:
+				modified = modified[1:]
+
+				notify.Feed(color.RGBA(rgba.PaleRed), "[%s] Killed with %d points", server.Clock(), team.Balls.Holding)
+			case state.KilledWithoutPoints:
+				modified = modified[1:]
+
+				notify.Feed(color.RGBA(rgba.PaleRed), "[%s] Killed without points", server.Clock())
+			}
+		default:
+			if time.Since(team.Self.Killed) > time.Minute {
+				modified = unmodified
+			}
+		}
+
+		matrix.Close()
+	}
+}
+
 func minimap() {
 	/*
 		for {
@@ -263,7 +321,7 @@ func orbs() {
 
 			notify.Feed(team.Self.RGBA, "[%s] Holding %d point%s", server.Clock(), points, s)
 
-			state.AddEvent(state.HoldingBalls, server.Clock(), points)
+			state.Add(state.HoldingBalls, server.Clock(), points)
 		}
 
 		notify.Balls, err = match.IdentifyBalls(matrix, points)
@@ -276,6 +334,20 @@ func orbs() {
 		team.Balls.Holding = points
 
 		server.Balls(points)
+	}
+}
+
+func preview() {
+	for {
+		time.Sleep(time.Second)
+
+		img, err := window.Capture()
+		if err != nil {
+			notify.Feed(rgba.Red, "Failed to capture preview (%v)", err)
+			continue
+		}
+
+		notify.Preview = img
 	}
 }
 
@@ -304,7 +376,7 @@ func scoring() {
 			continue
 		}
 
-		past := state.PastEvents(state.PostScore, time.Second*3)
+		past := state.Past(state.PostScore, time.Second*3)
 		if len(past) < 2 {
 			go server.Publish(team.Self, n)
 			notify.Feed(team.Self.RGBA, "[%s] +%d (self)", server.Clock(), n)
@@ -319,6 +391,38 @@ func scoring() {
 		}
 
 		matrix.Close()
+	}
+}
+
+func seconds() {
+	for {
+		time.Sleep(team.Delay(team.Time.Name))
+
+		if paused {
+			time.Sleep(time.Second)
+			continue
+		}
+
+		img, err := window.CaptureRect(config.Current.Time)
+		if err != nil {
+			kill(err)
+		}
+
+		matrix, err := gocv.ImageToMatRGB(img)
+		if err != nil {
+			kill(err)
+		}
+
+		rs, kitchen := match.Time(matrix, img)
+		if rs == 0 {
+			// Let's back off and not waste processing power.
+			time.Sleep(time.Second * 5)
+		} else {
+			notify.Time, err = match.IdentifyTime(matrix, kitchen)
+			if err != nil {
+				log.Error().Err(err).Send()
+			}
+		}
 	}
 }
 
@@ -368,7 +472,10 @@ func states() {
 				notify.Feed(team.Self.RGBA, "Purple Score: %d", p)
 				notify.Feed(team.Self.RGBA, "Orange Score: %d", o)
 				notify.Feed(team.Self.RGBA, "Self Score: %d", s)
+
+				history.Add(p, o, s)
 			}
+
 			server.Clear()
 
 			team.Clear()
@@ -380,112 +487,10 @@ func states() {
 	}
 }
 
-func killed() {
-	area := image.Rectangle{}
-	modified := config.Current.Templates["killed"][team.Game.Name]
-	unmodified := config.Current.Templates["killed"][team.Game.Name]
-
-	for {
-		time.Sleep(time.Second)
-
-		if paused || gui.Window.Screen == nil {
-			time.Sleep(time.Second)
-			continue
-		}
-
-		if area.Empty() {
-			b := gui.Window.Screen.Bounds()
-			area = image.Rect(b.Max.X/3, b.Max.Y/2, b.Max.X-b.Max.X/3, b.Max.Y-b.Max.Y/3)
-		}
-
-		img, err := window.CaptureRect(area)
-		if err != nil {
-			kill(err)
-		}
-
-		matrix, err := gocv.ImageToMatRGB(img)
-		if err != nil {
-			kill(err)
-		}
-
-		_, r, e := match.Matches(matrix, img, modified)
-		if r == match.Found {
-			state.AddEvent(state.EventType(e), server.Clock(), -1)
-
-			switch e := state.EventType(e); e {
-			case state.Killed:
-				modified = modified[1:] // Remove killed event.
-
-				team.Self.Killed = time.Now()
-
-				notify.Feed(color.RGBA(rgba.DarkRed), "[%s] Killed", server.Clock())
-			case state.KilledWithPoints:
-				modified = modified[1:]
-
-				notify.Feed(color.RGBA(rgba.DarkRed), "[%s] Killed with %d points", server.Clock(), team.Balls.Holding)
-			case state.KilledWithoutPoints:
-				modified = modified[1:]
-
-				notify.Feed(color.RGBA(rgba.DarkRed), "[%s] Killed without points", server.Clock())
-			}
-		} else {
-			if time.Since(team.Self.Killed) > time.Minute {
-				modified = unmodified
-			}
-		}
-
-		matrix.Close()
-	}
-}
-
-func preview() {
-	for {
-		time.Sleep(time.Second)
-
-		img, err := window.Capture()
-		if err != nil {
-			notify.Feed(rgba.Red, "Failed to capture preview (%v)", err)
-			continue
-		}
-
-		notify.Preview = img
-	}
-}
-
-func seconds() {
-	for {
-		time.Sleep(team.Delay(team.Time.Name))
-
-		if paused {
-			time.Sleep(time.Second)
-			continue
-		}
-
-		img, err := window.CaptureRect(config.Current.Time)
-		if err != nil {
-			kill(err)
-		}
-
-		matrix, err := gocv.ImageToMatRGB(img)
-		if err != nil {
-			kill(err)
-		}
-
-		rs, kitchen := match.Time(matrix, img)
-		if rs == 0 {
-			// Let's back off and not waste processing power.
-			time.Sleep(time.Second * 5)
-		} else {
-			notify.Time, err = match.IdentifyTime(matrix, kitchen)
-			if err != nil {
-				log.Error().Err(err).Send()
-			}
-		}
-	}
-}
-
 func main() {
 	go signals()
+
+	go server.Start()
 
 	gui.New()
 	defer gui.Window.Open()
@@ -606,8 +611,8 @@ func main() {
 				}
 
 				if lastWindow != config.Current.Window {
-					notify.Feed(rgba.Purple, "Capturing \"%s\" window", config.Current.Window)
 					lastWindow = config.Current.Window
+					notify.Feed(rgba.Purple, "Capturing \"%s\" window", lastWindow)
 				}
 			}
 		}

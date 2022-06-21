@@ -22,7 +22,7 @@ type TextBlock struct {
 	list *widget.List
 }
 
-func (t *TextBlock) Layout(gtx layout.Context, texts []notify.Post) layout.Dimensions {
+func (t *TextBlock) Layout(gtx layout.Context, posts []notify.Post) layout.Dimensions {
 	if t.list == nil {
 		t.list = &widget.List{
 			Scrollbar: widget.Scrollbar{},
@@ -37,7 +37,7 @@ func (t *TextBlock) Layout(gtx layout.Context, texts []notify.Post) layout.Dimen
 	th := material.NewTheme(gofont.Collection())
 	th.TextSize = unit.Sp(9)
 	Fill(gtx,
-		rgba.DarkGray,
+		rgba.N(rgba.DarkGray),
 		func(gtx layout.Context) layout.Dimensions {
 			return layout.Dimensions{Size: gtx.Constraints.Max}
 		},
@@ -54,10 +54,10 @@ func (t *TextBlock) Layout(gtx layout.Context, texts []notify.Post) layout.Dimen
 		func(gtx layout.Context) layout.Dimensions {
 			return list.Layout(
 				gtx,
-				len(texts),
+				len(posts),
 				func(gtx layout.Context, index int) layout.Dimensions {
-					block := material.H5(th, texts[index].String())
-					block.Color = color.NRGBA(texts[index].RGBA)
+					block := material.H5(th, posts[index].String())
+					block.Color = color.NRGBA(posts[index].RGBA)
 					block.Alignment = text.Alignment(text.Start)
 					dim := block.Layout(gtx)
 					dim.Size.X = gtx.Constraints.Max.X
@@ -70,8 +70,8 @@ func (t *TextBlock) Layout(gtx layout.Context, texts []notify.Post) layout.Dimen
 	return layout.Dimensions{Size: gtx.Constraints.Max}
 }
 
-// ColorBox creates a widget with the specified dimensions and color.
-func ColorBox(gtx layout.Context, size image.Point, c color.NRGBA) layout.Dimensions {
+// colorBox creates a widget with the specified dimensions and color.
+func colorBox(gtx layout.Context, size image.Point, c color.NRGBA) layout.Dimensions {
 	defer clip.Rect{Max: size}.Push(gtx.Ops).Pop()
 	paint.ColorOp{Color: c}.Add(gtx.Ops)
 	paint.PaintOp{}.Add(gtx.Ops)
@@ -87,6 +87,6 @@ func ColorBox(gtx layout.Context, size image.Point, c color.NRGBA) layout.Dimens
 }
 
 func Fill(gtx layout.Context, backgroundColor color.NRGBA, w layout.Widget) layout.Dimensions {
-	ColorBox(gtx, gtx.Constraints.Max, backgroundColor)
+	colorBox(gtx, gtx.Constraints.Max, backgroundColor)
 	return layout.NW.Layout(gtx, w)
 }

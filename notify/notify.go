@@ -52,6 +52,14 @@ func Feed(c color.RGBA, format string, a ...interface{}) {
 	feed.log(c, true, format, a...)
 }
 
+func (p Post) String() string {
+	if p.count > 1 {
+		return fmt.Sprintf("%s (x%d)", p.msg, p.count)
+	}
+
+	return p.msg
+}
+
 func (n *notify) log(c color.RGBA, clock bool, format string, a ...interface{}) {
 	p := Post{
 		RGBA:  c,
@@ -77,12 +85,4 @@ func (n *notify) log(c color.RGBA, clock bool, format string, a ...interface{}) 
 	if config.Current.Record {
 		dev.Log(format, a...)
 	}
-}
-
-func (p Post) String() string {
-	if p.count > 1 {
-		return fmt.Sprintf("%s (%d)", p.msg, p.count)
-	}
-
-	return p.msg
 }

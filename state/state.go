@@ -34,11 +34,7 @@ var (
 	Events = []*Event{}
 )
 
-func Clear() {
-	Events = []*Event{}
-}
-
-func AddEvent(e EventType, clock string, points int) {
+func Add(e EventType, clock string, points int) {
 	Events = append([]*Event{
 		{
 			EventType: e,
@@ -49,7 +45,11 @@ func AddEvent(e EventType, clock string, points int) {
 	}, Events...)
 }
 
-func PastEvents(e EventType, since time.Duration) []*Event {
+func Clear() {
+	Events = []*Event{}
+}
+
+func Past(e EventType, since time.Duration) []*Event {
 	events := []*Event{}
 
 	for _, event := range Events {

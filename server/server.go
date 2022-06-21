@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"image/color"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -24,6 +25,9 @@ type Pipe struct {
 	game
 	tx       int
 	requests int
+
+	clients map[string]time.Time
+	mutex   *sync.Mutex
 }
 
 type game struct {
@@ -41,31 +45,46 @@ type Score struct {
 
 var pipe *Pipe
 
-var (
-	clients   = map[string]bool{}
-	clientTex = &sync.Mutex{}
-)
-
-func newClient(r *http.Request, key, route string) {
-	clientTex.Lock()
-	defer clientTex.Unlock()
-
-	ok := clients[key]
-	if !ok {
-		clients[key] = true
-		notify.Feed(rgba.White, "Accepting new %s connection from %s", route, key)
-
-		log.Debug().Str("route", route).Str("remote", r.RemoteAddr).Msg("received")
-	}
+func Balls(b int) {
+	pipe.game.Balls = b
 }
 
-func New() {
+func Clear() {
+	log.Debug().Object("game", pipe.game).Msg("clearing")
+	pipe.game = newGame()
+}
+
+func Clock() string {
+	return fmt.Sprintf("%02d:%02d", pipe.game.Seconds/60, pipe.game.Seconds%60)
+}
+
+func Clients() int {
+	pipe.mutex.Lock()
+	defer pipe.mutex.Unlock()
+
+	for c := range pipe.clients {
+		if time.Since(pipe.clients[c]) > time.Second*5 {
+			notify.Feed(rgba.SlateGray, "%s has disconnected", c)
+			delete(pipe.clients, c)
+		}
+	}
+
+	return len(pipe.clients)
+}
+
+func IsFinalStretch() bool {
+	return pipe.game.Seconds != 0 && pipe.game.Seconds <= 120
+}
+
+func Start() {
 	pipe = &Pipe{
-		game: newGame(),
+		game:    newGame(),
+		clients: map[string]time.Time{},
+		mutex:   &sync.Mutex{},
 	}
 
 	http.Handle("/ws", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		newClient(r, fmt.Sprintf("%s -> %s", r.Referer(), r.URL), "/ws")
+		pipe.client(r, fmt.Sprintf("%s -> %s", strings.Split(r.RemoteAddr, ":")[0], r.URL), "/ws")
 
 		c, err := websocket.Accept(w, r, &websocket.AcceptOptions{
 			OriginPatterns:     []string{"127.0.0.1", "localhost", "0.0.0.0"},
@@ -90,10 +109,13 @@ func New() {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+
+		pipe.tx += len(raw)
+		pipe.requests++
 	}))
 
 	http.HandleFunc("/http", func(w http.ResponseWriter, r *http.Request) {
-		newClient(r, fmt.Sprintf("%s -> %s", r.RemoteAddr, r.URL), "/http")
+		pipe.client(r, fmt.Sprintf("%s -> %s", r.RemoteAddr, r.URL), "/http")
 
 		raw, err := json.Marshal(pipe.game)
 		if err != nil {
@@ -114,13 +136,6 @@ func New() {
 	})
 
 	go func() {
-		err := http.ListenAndServe(Address, nil)
-		if err != nil {
-			log.Fatal().Err(err).Str("addr", Address).Msg("socket server encountered a fatal error")
-		}
-	}()
-
-	go func() {
 		for range time.NewTicker(time.Minute * 5).C {
 			if pipe.requests < 1 {
 				continue
@@ -129,23 +144,24 @@ func New() {
 			notify.Feed(color.RGBA(rgba.SlateGray), "Server is sending ~%d bytes per request", pipe.tx/pipe.requests)
 		}
 	}()
+
+	err := http.ListenAndServe(Address, nil)
+	if err != nil {
+		log.Fatal().Err(err).Str("addr", Address).Msg("socket server encountered a fatal error")
+	}
 }
 
-func Balls(b int) {
-	pipe.game.Balls = b
-}
+func (p *Pipe) client(r *http.Request, key, route string) {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
 
-func Clear() {
-	log.Debug().Object("game", pipe.game).Msg("clearing")
-	pipe.game = newGame()
-}
+	_, ok := p.clients[key]
+	if !ok {
+		notify.Feed(rgba.White, "Accepting new %s connection from %s", route, key)
+		log.Debug().Str("route", route).Str("remote", r.RemoteAddr).Msg("received")
+	}
 
-func Clock() string {
-	return fmt.Sprintf("%02d:%02d", pipe.game.Seconds/60, pipe.game.Seconds%60)
-}
-
-func IsFinalStretch() bool {
-	return pipe.game.Seconds != 0 && pipe.game.Seconds <= 120
+	p.clients[key] = time.Now()
 }
 
 func Publish(t *team.Team, value int) {
@@ -198,14 +214,14 @@ func score(ws *websocket.Conn) {
 
 	log.Debug().Str("route", "/ws").Stringer("remote", ws.RemoteAddr()).Msg("request received")
 
-	clientTex.Lock()
+	p.mutex.Lock()
 	req := fmt.Sprintf("%s -> %s", ws.RemoteAddr(), ws.Request().URL)
-	ok := clients[req]
+	ok := p.clients[req]
 	if !ok {
-		clients[req] = true
+		p.clients[req] = true
 		notify.Feed(rgba.White, "Accepting new websocket connection from %s", req)
 	}
-	clientTex.Unlock()
+	p.mutex.Unlock()
 
 	raw, err := json.Marshal(pipe.game)
 	if err != nil {

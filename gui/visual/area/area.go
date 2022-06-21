@@ -70,7 +70,7 @@ func (a *Area) Layout(gtx layout.Context) layout.Dimensions {
 				a.dragY = e.Position.Y
 
 				maxX := int(float32(gtx.Constraints.Max.X)*.99) - 1
-				maxY := int(float32(gtx.Constraints.Max.Y)*.85) - 3
+				maxY := int(float32(gtx.Constraints.Max.Y)*.75) - 3
 
 				if a.Min.X+int(deltaX) < 0 || a.Min.Y+int(deltaY) < 0 || a.Max.X+int(deltaX) > maxX || a.Max.Y+int(deltaY) > maxY {
 					break

@@ -42,7 +42,7 @@ func (m *Match) Identify(mat gocv.Mat, points int) (image.Image, error) {
 	clone := mat.Clone()
 	defer clone.Close()
 
-	gocv.Rectangle(&clone, m.Rectangle(), color.RGBA(rgba.Highlight), 2)
+	gocv.Rectangle(&clone, m.rectangle(), color.RGBA(rgba.Highlight), 2)
 
 	region := clone.Region(m.Team.Crop(m.Point))
 
@@ -95,10 +95,6 @@ func Matches(matrix gocv.Mat, img image.Image, t []template.Template) (*Match, R
 	return m, NotFound, 0
 }
 
-func (m *Match) Rectangle() image.Rectangle {
-	return image.Rect(m.Point.X, m.Point.Y, m.Point.X+m.Template.Mat.Cols(), m.Point.Y+m.Template.Mat.Rows())
-}
-
 func (m *Match) process(matrix gocv.Mat, img image.Image) (Result, int) {
 	log.Debug().Object("match", m).Int("cols", matrix.Cols()).Int("rows", matrix.Rows()).Msg("processing match")
 
@@ -116,7 +112,7 @@ func (m *Match) process(matrix gocv.Mat, img image.Image) (Result, int) {
 	case "scoring":
 		switch e := state.EventType(m.Template.Value); e {
 		case state.PreScore:
-			state.AddEvent(state.PreScore, server.Clock(), team.Balls.Holding)
+			state.Add(state.PreScore, server.Clock(), team.Balls.Holding)
 			return Found, 0
 		case state.PostScore:
 			points := team.Balls.Holding
@@ -124,7 +120,7 @@ func (m *Match) process(matrix gocv.Mat, img image.Image) (Result, int) {
 				points *= 2
 			}
 
-			state.AddEvent(state.PostScore, server.Clock(), points)
+			state.Add(state.PostScore, server.Clock(), points)
 			return Found, points
 		default:
 			return NotFound, -1
@@ -134,6 +130,10 @@ func (m *Match) process(matrix gocv.Mat, img image.Image) (Result, int) {
 	}
 
 	return NotFound, 0
+}
+
+func (m *Match) rectangle() image.Rectangle {
+	return image.Rect(m.Point.X, m.Point.Y, m.Point.X+m.Template.Mat.Cols(), m.Point.Y+m.Template.Mat.Rows())
 }
 
 func (r Result) String() string {
