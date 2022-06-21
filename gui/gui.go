@@ -433,12 +433,12 @@ func (g *GUI) main() (next string, err error) {
 									windowHeader2.Color = rgba.N(rgba.PaleRed)
 									windowHeader2.Alignment = text.Middle
 									windowHeader2.Font.Weight = text.Bold
-									windowHeaderOffset = 50
-
-									layout.Inset{
+									windowHeaderOffset = float32(layout.Inset{
 										Left: unit.Px(2),
 										Top:  unit.Px(45),
-									}.Layout(gtx, windowHeader2.Layout)
+									}.Layout(gtx, windowHeader2.Layout).Size.X) + 3
+
+									windowHeader.Text = fmt.Sprintf("» %s", config.Current.Window)
 								}
 
 								layout.Inset{
