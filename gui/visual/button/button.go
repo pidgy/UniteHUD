@@ -38,6 +38,16 @@ type Button struct {
 
 var Max = image.Pt(100, 35)
 
+func (b *Button) Error() {
+	tmp := b.Pressed
+	b.Pressed = color.NRGBA(rgba.Red)
+	b.Disabled = true
+	time.AfterFunc(time.Second*2, func() {
+		b.Pressed = tmp
+		b.Disabled = false
+	})
+}
+
 func (b *Button) Layout(gtx layout.Context) layout.Dimensions {
 	if b.Size.Eq(image.Pt(0, 0)) {
 		b.Size = Max

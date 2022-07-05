@@ -15,32 +15,6 @@ type (
 	HBITMAP HANDLE
 )
 
-type BITMAPINFO struct {
-	BmiHeader BITMAPINFOHEADER
-	BmiColors *RGBQUAD
-}
-
-type BITMAPINFOHEADER struct {
-	BiSize          uint32
-	BiWidth         int32
-	BiHeight        int32
-	BiPlanes        uint16
-	BiBitCount      uint16
-	BiCompression   uint32
-	BiSizeImage     uint32
-	BiXPelsPerMeter int32
-	BiYPelsPerMeter int32
-	BiClrUsed       uint32
-	BiClrImportant  uint32
-}
-
-type RGBQUAD struct {
-	RgbBlue     byte
-	RgbGreen    byte
-	RgbRed      byte
-	RgbReserved byte
-}
-
 const (
 	HORZRES          = 8
 	VERTRES          = 10
@@ -65,7 +39,7 @@ func captureScreenRect(rect image.Rectangle) (*image.RGBA, error) {
 
 	x, y := rect.Dx(), rect.Dy()
 
-	bt := BITMAPINFO{}
+	bt := windowsBitmapInfo{}
 	bt.BmiHeader.BiSize = uint32(reflect.TypeOf(bt.BmiHeader).Size())
 	bt.BmiHeader.BiWidth = int32(x)
 	bt.BmiHeader.BiHeight = int32(-y)
@@ -150,7 +124,7 @@ func createCompatibleDC(hdc HDC) HDC {
 	return HDC(ret)
 }
 
-func createDIBSection(hdc HDC, pbmi *BITMAPINFO, iUsage uint, ppvBits *unsafe.Pointer, hSection HANDLE, dwOffset uint) HBITMAP {
+func createDIBSection(hdc HDC, pbmi *windowsBitmapInfo, iUsage uint, ppvBits *unsafe.Pointer, hSection HANDLE, dwOffset uint) HBITMAP {
 	ret, _, _ := procCreateDIBSection.Call(
 		uintptr(hdc),
 		uintptr(unsafe.Pointer(pbmi)),

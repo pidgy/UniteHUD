@@ -183,7 +183,11 @@ func (g *GUI) proc() {
 		g.ram = fmt.Sprintf("RAM: %d%s", (m.Sys / 1024 / 1024), "MB")
 
 		run := time.Time{}.Add(time.Since(g.time))
-		g.uptime = fmt.Sprintf("RUN: %02d:%02d", run.Minute(), run.Second())
+		if run.Hour() > 0 {
+			g.uptime = fmt.Sprintf("RUN: %1d:%02d:%02d", run.Hour(), run.Minute(), run.Second())
+		} else {
+			g.uptime = fmt.Sprintf("RUN: %02d:%02d", run.Minute(), run.Second())
+		}
 
 		clients := server.Clients()
 		g.clients = fmt.Sprintf("OBS: %01d", clients)
@@ -1056,6 +1060,25 @@ func (g *GUI) configure() (next string, err error) {
 		},
 	}
 
+	resizeButton := &button.Button{
+		Text:     "\tResize",
+		Pressed:  rgba.N(rgba.Background),
+		Released: rgba.N(rgba.DarkGray),
+		Active:   true,
+		Size:     image.Pt(100, 30),
+	}
+
+	resizeButton.Click = func() {
+		resizeButton.Active = !resizeButton.Active
+
+		err := window.Resize16x9()
+		if err != nil {
+			resizeButton.Error()
+			notify.Append(rgba.PaleRed, "%v", err)
+			return
+		}
+	}
+
 	saveButton := &button.Button{
 		Text:     "\t  Save",
 		Pressed:  rgba.N(rgba.Background),
@@ -1246,6 +1269,16 @@ func (g *GUI) configure() (next string, err error) {
 											gtx,
 											func(gtx layout.Context) layout.Dimensions {
 												return cancelButton.Layout(gtx)
+											})
+
+										layout.Inset{
+											Top:   unit.Px(5),
+											Left:  unit.Px(325),
+											Right: unit.Px(10),
+										}.Layout(
+											gtx,
+											func(gtx layout.Context) layout.Dimensions {
+												return resizeButton.Layout(gtx)
 											})
 
 										layout.Inset{
@@ -1457,7 +1490,7 @@ func (g *GUI) configure() (next string, err error) {
 			scoreArea.Layout(gtx)
 			ballsArea.Layout(gtx)
 			timeArea.Layout(gtx)
-			mapArea.Layout(gtx)
+			// mapArea.Layout(gtx)
 
 			e.Frame(gtx.Ops)
 		}

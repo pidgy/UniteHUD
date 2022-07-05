@@ -7,10 +7,12 @@ import (
 	"fmt"
 	"image"
 	"reflect"
+	"sync"
 	"syscall"
 	"unsafe"
 
 	"github.com/disintegration/gift"
+	"github.com/rs/zerolog/log"
 
 	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/notify"
@@ -19,6 +21,9 @@ import (
 
 var (
 	Open = []string{config.MainDisplay}
+
+	handles = []syscall.Handle{}
+	lock    = &sync.Mutex{}
 )
 
 func init() {
@@ -53,8 +58,10 @@ func Load() error {
 	Open = windows
 
 	for _, win := range windows {
-		if config.Current.Window == win {
-			config.Current.LostWindow = ""
+		if win == config.Current.Window {
+			if config.Current.Window != config.MainDisplay {
+				config.Current.LostWindow = ""
+			}
 			return nil
 		}
 	}
@@ -67,43 +74,85 @@ func Load() error {
 	return nil
 }
 
-func list() ([]string, []syscall.Handle, error) {
-	windows := []string{config.MainDisplay}
-	handles := []syscall.Handle{}
+func Reattach() error {
+	windows, _, err := list()
+	if err != nil {
+		return err
+	}
 
-	cb := syscall.NewCallback(func(h syscall.Handle, p uintptr) uintptr {
+	log.Debug().Str("lost", config.Current.LostWindow).Strs("windows", windows).Msg("reattaching window")
 
-		found, _, _ := syscall.Syscall(procIsWindowVisible.Addr(), 1, uintptr(h), uintptr(0), uintptr(0))
-		if found == 0 {
-			return 1
+	for _, win := range windows {
+		if win == config.Current.LostWindow {
+			config.Current.Window = win
+			if config.Current.Window != config.MainDisplay {
+				config.Current.LostWindow = ""
+			}
+
+			notify.Feed(rgba.Seafoam, "Found \"%s\" window", config.Current.Window)
+
+			return nil
 		}
+	}
 
-		b := make([]uint16, 200)
-		_, err := getWindowText(h, &b[0], int32(len(b)))
-		if err != nil {
-			return 1 // continue enumeration
-		}
+	return nil
+}
 
-		windows = append(windows, syscall.UTF16ToString(b))
-		handles = append(handles, h)
+func Resize16x9() error {
+	h, err := findWindow(config.Current.Window)
+	if err != nil {
+		return err
+	}
+	ret, _, _ := procMoveWindow.Call(
+		uintptr(h),
+		uintptr(0),
+		uintptr(0),
+		uintptr(1920),
+		uintptr(1080),
+		uintptr(1),
+	)
+	if ret == 0 {
+		return fmt.Errorf("failed to resize \"%s\"", config.Current.Window)
+	}
+	return nil
+}
 
+var callback = syscall.NewCallback(func(h syscall.Handle, p uintptr) uintptr {
+	found, _, _ := syscall.Syscall(procIsWindowVisible.Addr(), 1, uintptr(h), uintptr(0), uintptr(0))
+	if found == 0 {
+		return 1
+	}
+
+	b := make([]uint16, 200)
+	_, err := getWindowText(h, &b[0], int32(len(b)))
+	if err != nil {
 		return 1 // continue enumeration
-	})
+	}
 
-	err := enumWindows(cb, 0)
+	Open = append(Open, syscall.UTF16ToString(b))
+	handles = append(handles, h)
+
+	return 1 // continue enumeration
+})
+
+func list() ([]string, []syscall.Handle, error) {
+	lock.Lock()
+	defer lock.Unlock()
+
+	Open = []string{}
+
+	err := enumWindows(callback, 0)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return windows, handles, nil
+	return Open, handles, nil
 }
 
 // captureWindow captures the desired area from a Window and returns an image.
 func captureWindow() (*image.RGBA, error) {
 	handle, err := findWindow(config.Current.Window)
 	if err != nil {
-		config.Current.Window = config.MainDisplay
-		notify.Feed(rgba.Red, "%v", err)
 		return captureScreen()
 	}
 
@@ -128,8 +177,6 @@ func captureWindow() (*image.RGBA, error) {
 func captureWindowRect(rect image.Rectangle) (*image.RGBA, error) {
 	handle, err := findWindow(config.Current.Window)
 	if err != nil {
-		config.Current.Window = config.MainDisplay
-		notify.Feed(rgba.Red, "%v", err)
 		return captureScreenRect(rect)
 	}
 
@@ -226,7 +273,14 @@ func findWindow(name string) (syscall.Handle, error) {
 	// ret, _, _ := procFindWindow.Call(0, uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr("AppName"))))
 	ret, _, _ := procFindWindow.Call(0, uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(name))))
 	if ret == 0 {
-		return handle, fmt.Errorf("Failed to find \"%s\"", config.Current.Window)
+		err := fmt.Errorf("Failed to find \"%s\"", config.Current.Window)
+
+		config.Current.LostWindow = config.Current.Window
+		config.Current.Window = config.MainDisplay
+
+		notify.Feed(rgba.PaleRed, err.Error())
+
+		return handle, err
 	}
 
 	return syscall.Handle(ret), nil

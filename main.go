@@ -3,6 +3,7 @@
 package main
 
 import (
+	"flag"
 	"image"
 	"image/color"
 	"os"
@@ -15,7 +16,7 @@ import (
 	"gocv.io/x/gocv"
 
 	"github.com/pidgy/unitehud/config"
-	"github.com/pidgy/unitehud/dev"
+	"github.com/pidgy/unitehud/debug"
 	"github.com/pidgy/unitehud/gui"
 	"github.com/pidgy/unitehud/history"
 	"github.com/pidgy/unitehud/match"
@@ -63,11 +64,6 @@ func init() {
 	err := config.Load()
 	if err != nil {
 		kill(err)
-	}
-
-	err = window.Load()
-	if err != nil {
-		notify.Feed(rgba.Red, "Failed to find open windows: %v", err)
 	}
 }
 
@@ -118,13 +114,13 @@ func captureScoresMatch(t []template.Template, imgq chan image.Image) {
 			go server.Publish(m.Team, p)
 
 			if config.Current.Record {
-				loc := dev.Capture(img, matrix, m.Team, m.Point, "capture", p)
-				dev.Log("matched points for %s (%d)", m.Team.Name, p)
-				dev.Log("Saved at %s", loc)
+				loc := debug.Capture(img, matrix, m.Team, m.Point, "capture", p)
+				debug.Log("matched points for %s (%d)", m.Team.Name, p)
+				debug.Log("Saved at %s", loc)
 
 				if m.Team == team.Self {
-					loc := dev.Capture(notify.Balls, empty, m.Team, m.Point, "capture", p)
-					dev.Log("Saved at %s", loc)
+					loc := debug.Capture(notify.Balls, empty, m.Team, m.Point, "capture", p)
+					debug.Log("Saved at %s", loc)
 				}
 			}
 
@@ -163,7 +159,7 @@ func captureScoresMatch(t []template.Template, imgq chan image.Image) {
 			notify.Feed(rgba.Red, "Missed points matched for %s! (%d?)", m.Team.Name, p)
 
 			if config.Current.Record {
-				dev.Capture(img, matrix, m.Team, m.Point, "missed", p)
+				debug.Capture(img, matrix, m.Team, m.Point, "missed", p)
 			} else {
 				notify.Feed(rgba.Red, "Select the \"Record\" button to view missed points in /tmp")
 			}
@@ -171,8 +167,8 @@ func captureScoresMatch(t []template.Template, imgq chan image.Image) {
 			notify.Feed(rgba.Red, "Scored match is outside the configured selection area")
 		case match.Duplicate:
 			if config.Current.Record {
-				dev.Capture(img, matrix, m.Team, m.Point, "duplicate", p)
-				dev.Log("duplicate points matched for %s (%d)", m.Team.Name, p)
+				debug.Capture(img, matrix, m.Team, m.Point, "duplicate", p)
+				debug.Log("duplicate points matched for %s (%d)", m.Team.Name, p)
 			}
 		}
 
@@ -487,13 +483,34 @@ func states() {
 	}
 }
 
+func windows() {
+	for {
+		time.Sleep(time.Second * 2)
+
+		if config.Current.LostWindow == "" {
+			continue
+		}
+
+		err := window.Reattach()
+		if err != nil {
+			notify.Append(rgba.PaleRed, "Failed to reattach window")
+		}
+	}
+}
+
 func main() {
 	go signals()
 
-	go server.Start()
+	profile := flag.Bool("profile", false, "start a memory/cpu profiler")
+	flag.Parse()
 
-	gui.New()
-	defer gui.Window.Open()
+	if *profile {
+		log.Debug().Str("cpu", "cpu.prof").Str("mem", "mem.prof").Msg("starting profile")
+		debug.ProfileStart()
+		defer debug.ProfileStop()
+	}
+
+	go server.Start()
 
 	log.Info().
 		Bool("record", config.Current.Record).
@@ -506,6 +523,11 @@ func main() {
 
 	for category := range config.Current.Templates {
 		switch category {
+		case "killed":
+			// Ignore first-stage matching for killed-in-game events.
+		case "goals":
+			// Ignore first-stage matching for minimap.
+			continue
 		case "game":
 			// Ignore first-stage matching for game.
 			continue
@@ -530,20 +552,23 @@ func main() {
 
 	// Detection routines.
 	go killed()
-	go minimap()
+	// go minimap()
 	go orbs()
 	go preview()
 	go seconds()
 	go states()
 	go scoring()
+	go windows()
 
 	lastWindow := ""
+
+	gui.New()
 
 	go func() {
 		for action := range gui.Window.Actions {
 			switch action {
 			case gui.Closing:
-				dev.Close()
+				debug.Close()
 				os.Exit(0)
 				return
 			case gui.Start:
@@ -583,7 +608,7 @@ func main() {
 
 				switch config.Current.Record {
 				case true:
-					err := dev.Start()
+					err := debug.LoggingStart()
 					if err != nil {
 						kill(err)
 					}
@@ -597,10 +622,10 @@ func main() {
 				case false:
 					notify.Feed(rgba.White, "Closing open files in tmp/")
 
-					dev.Stop()
+					debug.LoggingStop()
 				}
 			case gui.Open:
-				err := dev.Open()
+				err := debug.Open()
 				if err != nil {
 					notify.Feed(rgba.Red, "%s", err.Error())
 				}
@@ -619,6 +644,8 @@ func main() {
 	}()
 
 	notify.Feed(rgba.White, "Not started")
+
+	gui.Window.Open()
 }
 
 func signals() {

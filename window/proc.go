@@ -21,6 +21,7 @@ var (
 
 	modUser32         = syscall.NewLazyDLL("User32.dll")
 	procFindWindow    = modUser32.NewProc("FindWindowW")
+	procMoveWindow    = modUser32.NewProc("MoveWindow")
 	procGetClientRect = modUser32.NewProc("GetClientRect")
 	procGetDC         = modUser32.NewProc("GetDC")
 	procReleaseDC     = modUser32.NewProc("ReleaseDC")

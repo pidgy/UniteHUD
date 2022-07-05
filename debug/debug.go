@@ -1,10 +1,12 @@
-package dev
+package debug
 
 import (
 	"fmt"
 	"image"
 	"image/png"
 	"os"
+	"runtime"
+	"runtime/pprof"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -21,6 +23,8 @@ var (
 	logs    = fmt.Sprintf("%d.log", time.Now().Unix())
 	logq    = make(chan string, 1024)
 	logging = false
+
+	cpu, ram *os.File
 )
 
 func Capture(img image.Image, mat gocv.Mat, t *team.Team, p image.Point, name string, value int) string {
@@ -82,7 +86,7 @@ func Open() error {
 	return open.Run(dir)
 }
 
-func Start() error {
+func LoggingStart() error {
 	err := createIfNotExist()
 	if err != nil {
 		log.Error().Err(err).Msg("failed to create tmp directory")
@@ -99,8 +103,40 @@ func Start() error {
 	return nil
 }
 
-func Stop() {
+func LoggingStop() {
 	Log("End")
+}
+
+func ProfileStart() {
+	var err error
+
+	cpu, err = os.Create("cpu.prof")
+	if err != nil {
+		log.Panic().Err(err).Msg("failed to create cpu profile")
+	}
+
+	err = pprof.StartCPUProfile(cpu)
+	if err != nil {
+		log.Panic().Err(err).Msg("failed to start CPU profile")
+	}
+
+	ram, err = os.Create("mem.prof")
+	if err != nil {
+		log.Panic().Err(err).Msg("failed to create RAM profile")
+	}
+
+	runtime.GC()
+
+	err = pprof.WriteHeapProfile(ram)
+	if err != nil {
+		log.Panic().Err(err).Msg("failed to write RAM profile")
+	}
+}
+
+func ProfileStop() {
+	pprof.StopCPUProfile()
+	cpu.Close()
+	ram.Close()
 }
 
 func createIfNotExist() error {

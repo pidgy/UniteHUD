@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/pidgy/unitehud/config"
-	"github.com/pidgy/unitehud/dev"
+	"github.com/pidgy/unitehud/debug"
 )
 
 var (
@@ -83,6 +83,6 @@ func (n *notify) log(c color.RGBA, clock bool, format string, a ...interface{}) 
 	n.logs = append(n.logs, p)
 
 	if config.Current.Record {
-		dev.Log(format, a...)
+		debug.Log(format, a...)
 	}
 }
