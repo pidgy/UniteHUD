@@ -4,7 +4,7 @@ Pokemon UNITE scoreboard HUD and extra tools running over captured game feeds.
 #### Want to join our Discord community? Message me on [Twitter](https://twitter.com/pidgy_)
 ----
 ### v0.9.3 Beta Released
-- [Download](https://github.com/pidgy/unitehud/releases/download/v0.9.4-beta/UniteHUD_0.9.3_Installer.exe)
+- [Download](https://github.com/pidgy/UniteHUD/releases/download/v0.9.3-beta/UniteHUD_0.9.3_Installer.exe)
 - See Release Notes for changelogs across beta versions.
 
 
