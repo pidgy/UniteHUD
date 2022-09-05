@@ -139,7 +139,7 @@ func list() ([]string, []syscall.Handle, error) {
 	lock.Lock()
 	defer lock.Unlock()
 
-	Open = []string{}
+	Open = []string{config.MainDisplay}
 
 	err := enumWindows(callback, 0)
 	if err != nil {
@@ -273,11 +273,10 @@ func findWindow(name string) (syscall.Handle, error) {
 	// ret, _, _ := procFindWindow.Call(0, uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr("AppName"))))
 	ret, _, _ := procFindWindow.Call(0, uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(name))))
 	if ret == 0 {
-		err := fmt.Errorf("Failed to find \"%s\"", config.Current.Window)
-
 		config.Current.LostWindow = config.Current.Window
 		config.Current.Window = config.MainDisplay
 
+		err := fmt.Errorf("Failed to find \"%s\"", config.Current.LostWindow)
 		notify.Feed(rgba.PaleRed, err.Error())
 
 		return handle, err

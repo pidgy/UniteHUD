@@ -42,6 +42,7 @@ import (
 	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/rgba"
 	"github.com/pidgy/unitehud/server"
+	"github.com/pidgy/unitehud/state"
 	"github.com/pidgy/unitehud/stats"
 	"github.com/pidgy/unitehud/team"
 	"github.com/pidgy/unitehud/window"
@@ -79,7 +80,7 @@ const (
 
 var Window *GUI
 
-const title = "Pokemon UNITE HUD Server"
+const title = "Pokémon Unite HUD Server"
 
 func New() {
 	Window = &GUI{
@@ -95,6 +96,7 @@ func New() {
 func (g *GUI) Open() {
 	time.AfterFunc(time.Second, func() {
 		g.open = true
+		g.Actions <- Refresh
 	})
 
 	go g.preview()
@@ -332,6 +334,7 @@ func (g *GUI) main() (next string, err error) {
 
 	statsButton.Click = func() {
 		stats.Data()
+		state.Dump()
 		statsButton.Active = !statsButton.Active
 	}
 
@@ -744,7 +747,7 @@ func (g *GUI) main() (next string, err error) {
 								}).Layout)
 
 								layout.Inset{
-									Top:  unit.Px(292),
+									Top:  unit.Px(250),
 									Left: unit.Px(5),
 								}.Layout(gtx, (&screen.Screen{
 									Image:       notify.Time,
@@ -806,7 +809,7 @@ func (g *GUI) preview() {
 		// Redraw the image.
 		g.Invalidate()
 
-		time.Sleep(time.Second / 2)
+		time.Sleep(time.Millisecond * 100)
 	}
 }
 
@@ -1079,6 +1082,29 @@ func (g *GUI) configure() (next string, err error) {
 		}
 	}
 
+	defaultButton := &button.Button{
+		Text:     "\tDefault",
+		Pressed:  rgba.N(rgba.Background),
+		Released: rgba.N(rgba.DarkGray),
+		Active:   true,
+		Size:     image.Pt(100, 30),
+	}
+
+	defaultButton.Click = func() {
+		defaultButton.Active = !defaultButton.Active
+
+		config.Current.ApplyDefaults()
+
+		ballsArea.Min = config.Current.Balls.Min.Div(2)
+		ballsArea.Max = config.Current.Balls.Max.Div(2)
+		scoreArea.Min = config.Current.Scores.Min.Div(2)
+		scoreArea.Max = config.Current.Scores.Max.Div(2)
+		mapArea.Min = config.Current.Map.Min.Div(2)
+		mapArea.Max = config.Current.Map.Max.Div(2)
+		timeArea.Min = config.Current.Time.Min.Div(2)
+		timeArea.Max = config.Current.Time.Max.Div(2)
+	}
+
 	saveButton := &button.Button{
 		Text:     "\t  Save",
 		Pressed:  rgba.N(rgba.Background),
@@ -1195,7 +1221,7 @@ func (g *GUI) configure() (next string, err error) {
 		}
 	}
 
-	header := material.H5(th, "Pokemon Unite HUD Server")
+	header := material.H5(th, "Pokémon Unite HUD Server")
 	header.Color = color.NRGBA{R: 0, G: 0, B: 0, A: 255}
 	header.Alignment = text.Middle
 
@@ -1279,6 +1305,16 @@ func (g *GUI) configure() (next string, err error) {
 											gtx,
 											func(gtx layout.Context) layout.Dimensions {
 												return resizeButton.Layout(gtx)
+											})
+
+										layout.Inset{
+											Top:   unit.Px(38),
+											Left:  unit.Px(325),
+											Right: unit.Px(10),
+										}.Layout(
+											gtx,
+											func(gtx layout.Context) layout.Dimensions {
+												return defaultButton.Layout(gtx)
 											})
 
 										layout.Inset{
@@ -1722,7 +1758,6 @@ func (g *GUI) matchBalls(a *area.Area) {
 	case match.Found, match.Duplicate:
 		a.NRGBA = rgba.N(rgba.Alpha(rgba.Green, 0x99))
 		a.Text = fmt.Sprintf("\t%d", score)
-		return
 	case match.NotFound:
 		a.NRGBA = rgba.N(rgba.Alpha(rgba.Red, 0x99))
 		a.Text = "\tBalls"
@@ -1732,6 +1767,16 @@ func (g *GUI) matchBalls(a *area.Area) {
 	case match.Invalid:
 		a.NRGBA = rgba.N(rgba.Alpha(rgba.Red, 0x99))
 		a.Text = "\tBalls"
+	}
+
+	result, score = match.SelfScore(matrix, img)
+	switch result {
+	case match.Found:
+		a.NRGBA = rgba.N(rgba.Alpha(rgba.Green, 0x99))
+		a.Text = fmt.Sprintf("\tScored %d", score)
+	case match.Invalid:
+		a.NRGBA = rgba.N(rgba.Alpha(rgba.Red, 0x99))
+		a.Text = "\tInvalid Balls"
 	}
 }
 

@@ -36,6 +36,7 @@ function success(data) {
     } else {
         $('.score').css('opacity', '1');
 
+        /*
         for (var i in drednaws) {
             var dreadRotom = data.seconds - drednaws[i];
             if (dreadRotom > 0) {
@@ -63,6 +64,7 @@ function success(data) {
                 $('.vespiquen-seconds').css('opacity', '0');
             }
         }
+        */
     }
 }
 

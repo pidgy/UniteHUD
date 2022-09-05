@@ -2,6 +2,8 @@ package state
 
 import (
 	"time"
+
+	"github.com/rs/zerolog/log"
 )
 
 type Event struct {
@@ -30,6 +32,39 @@ const (
 	OrangeBaseClosed    = EventType(11)
 )
 
+func (e EventType) String() string {
+	switch e {
+	case Nothing:
+		return "Nothing"
+	case PreScore:
+		return "PreScore"
+	case PostScore:
+		return "PostScore"
+	case Killed:
+		return "Killed"
+	case KilledWithPoints:
+		return "KilledWithPoints"
+	case KilledWithoutPoints:
+		return "KilledWithoutPoints"
+	case MatchStarting:
+		return "MatchStarting"
+	case MatchEnding:
+		return "MatchEnding"
+	case HoldingBalls:
+		return "HoldingBalls"
+	case PurpleBaseOpen:
+		return "PurpleBaseOpen"
+	case OrangeBaseOpen:
+		return "OrangeBaseOpen"
+	case PurpleBaseClosed:
+		return "PurpleBaseClosed"
+	case OrangeBaseClosed:
+		return "OrangeBaseClosed"
+	default:
+		return "Unknown"
+	}
+}
+
 var (
 	Events = []*Event{}
 )
@@ -47,6 +82,17 @@ func Add(e EventType, clock string, points int) {
 
 func Clear() {
 	Events = []*Event{}
+}
+
+func Dump() {
+	for _, e := range Events {
+		log.Debug().
+			Stringer("type", e.EventType).
+			Str("clock", e.Clock).
+			Int("value", e.Value).
+			Bool("veto", e.Vetoed).
+			Msgf("%d:%d:%02d", e.Time.Hour(), e.Time.Minute(), e.Time.Second())
+	}
 }
 
 func Past(e EventType, since time.Duration) []*Event {

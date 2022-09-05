@@ -12,7 +12,7 @@ import (
 	"github.com/pidgy/unitehud/rgba"
 )
 
-// Team represents a team side in Pokemon Unite.
+// Team represents a team side in Pokémon Unite.
 type Team struct {
 	Name                 string `json:"name"`
 	Alias                string `json:"-"`
@@ -39,7 +39,7 @@ var (
 		HoldingReset: true,
 
 		Acceptance: .7,
-		Delay:      time.Second * 2,
+		Delay:      time.Second,
 	}
 
 	First = &Team{

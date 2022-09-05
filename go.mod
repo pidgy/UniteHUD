@@ -7,6 +7,7 @@ require (
 	github.com/disintegration/gift v1.2.1
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/klauspost/compress v1.15.6 // indirect
+	github.com/micmonay/keybd_event v1.1.1 // indirect
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/rs/zerolog v1.25.0
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966

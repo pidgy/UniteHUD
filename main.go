@@ -50,7 +50,7 @@ var (
 )
 
 func init() {
-	notify.Feed(rgba.White, "Pokemon Unite HUD Server")
+	notify.Feed(rgba.White, "Pokémon Unite HUD Server")
 
 	log.Logger = zerolog.New(
 		zerolog.ConsoleWriter{
@@ -272,7 +272,7 @@ func orbs() {
 		time.Sleep(team.Delay(team.Balls.Name))
 
 		if paused {
-			time.Sleep(time.Second)
+			time.Sleep(time.Millisecond * 500)
 			continue
 		}
 
@@ -333,23 +333,9 @@ func orbs() {
 	}
 }
 
-func preview() {
+func orbsScoring() {
 	for {
-		time.Sleep(time.Second)
-
-		img, err := window.Capture()
-		if err != nil {
-			notify.Feed(rgba.Red, "Failed to capture preview (%v)", err)
-			continue
-		}
-
-		notify.Preview = img
-	}
-}
-
-func scoring() {
-	for {
-		time.Sleep(time.Millisecond * 1500)
+		time.Sleep(team.Delay(team.Balls.Name))
 
 		if paused {
 			time.Sleep(time.Second)
@@ -366,27 +352,31 @@ func scoring() {
 			kill(err)
 		}
 
-		_, r, n := match.Matches(matrix, img, config.Current.Templates["scoring"][team.Game.Name])
-		if r != match.Found {
-			matrix.Close()
-			continue
-		}
-
-		past := state.Past(state.PostScore, time.Second*3)
-		if len(past) < 2 {
+		r, n := match.SelfScore(matrix, img)
+		switch r {
+		case match.Found:
 			go server.Publish(team.Self, n)
 			notify.Feed(team.Self.RGBA, "[%s] +%d (self)", server.Clock(), n)
-		} else {
-			total := 0
-			for _, event := range past[1:] {
-				total -= event.Value
-			}
-
-			go server.Publish(team.Self, total)
-			notify.Feed(team.Self.RGBA, "[%s] %d (invalid self)", server.Clock(), total)
+		case match.Invalid:
+			go server.Publish(team.Self, n)
+			notify.Feed(team.Self.RGBA, "[%s] %d (invalid self)", server.Clock(), n)
 		}
 
 		matrix.Close()
+	}
+}
+
+func preview() {
+	for {
+		time.Sleep(time.Second)
+
+		img, err := window.Capture()
+		if err != nil {
+			notify.Feed(rgba.Red, "Failed to capture preview (%v)", err)
+			continue
+		}
+
+		notify.Preview = img
 	}
 }
 
@@ -554,15 +544,16 @@ func main() {
 	go killed()
 	// go minimap()
 	go orbs()
+	go orbsScoring()
 	go preview()
 	go seconds()
 	go states()
-	go scoring()
 	go windows()
 
 	lastWindow := ""
 
 	gui.New()
+	defer gui.Window.Open()
 
 	go func() {
 		for action := range gui.Window.Actions {
@@ -644,8 +635,6 @@ func main() {
 	}()
 
 	notify.Feed(rgba.White, "Not started")
-
-	gui.Window.Open()
 }
 
 func signals() {

@@ -5,12 +5,14 @@ import (
 	"image/color"
 	"math"
 	"strconv"
+	"time"
 
 	"github.com/rs/zerolog/log"
 	"gocv.io/x/gocv"
 
 	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/rgba"
+	"github.com/pidgy/unitehud/state"
 	"github.com/pidgy/unitehud/stats"
 	"github.com/pidgy/unitehud/team"
 )
@@ -218,4 +220,23 @@ func IdentifyBalls(mat gocv.Mat, points int) (image.Image, error) {
 	}
 
 	return crop, nil
+}
+
+func SelfScore(matrix gocv.Mat, img image.Image) (Result, int) {
+	_, r, n := Matches(matrix, img, config.Current.Templates["scoring"][team.Game.Name])
+	if r != Found {
+		return r, 0
+	}
+
+	// Verify the same event has not occured.
+	past := state.Past(state.PostScore, time.Second*3)
+	if len(past) > 2 {
+		n = 0
+		for _, event := range past[1:] {
+			n -= event.Value
+		}
+		return Invalid, n
+	}
+
+	return Found, n
 }

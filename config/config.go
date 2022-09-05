@@ -48,20 +48,11 @@ type Scales struct {
 
 var Current Config
 
-func (s Scales) Is16x9() bool {
-	return s.Balls+s.Game+s.Score+s.Time == 4
-}
-
-func (s *Scales) To16x9() {
-	s.Balls, s.Game, s.Score, s.Time = 1, 1, 1, 1
-}
-
-func (s Scales) Is4x3() bool {
-	return s.Balls == 0.4 && s.Game == 0.4 && s.Score == 0.4 && s.Time == 0.4
-}
-
-func (s *Scales) To4x3() {
-	s.Balls, s.Game, s.Score, s.Time = 0.4, 0.4, 0.4, 0.4
+func (c *Config) ApplyDefaults() {
+	c.Balls = image.Rect(887, 776, 1036, 926)
+	c.Map = image.Rect(0, 0, 500, 460)
+	c.Scores = image.Rect(418, 48, 1518, 548)
+	c.Time = image.Rect(846, 0, 1046, 100)
 }
 
 func (c Config) Reload() {
@@ -300,6 +291,22 @@ func Reset() error {
 	}
 
 	return Load()
+}
+
+func (s Scales) Is16x9() bool {
+	return s.Balls+s.Game+s.Score+s.Time == 4
+}
+
+func (s *Scales) To16x9() {
+	s.Balls, s.Game, s.Score, s.Time = 1, 1, 1, 1
+}
+
+func (s Scales) Is4x3() bool {
+	return s.Balls == 0.4 && s.Game == 0.4 && s.Score == 0.4 && s.Time == 0.4
+}
+
+func (s *Scales) To4x3() {
+	s.Balls, s.Game, s.Score, s.Time = 0.4, 0.4, 0.4, 0.4
 }
 
 func loadDefault() {

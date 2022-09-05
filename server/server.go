@@ -84,7 +84,9 @@ func Start() {
 	}
 
 	http.Handle("/ws", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		pipe.client(r, fmt.Sprintf("%s -> %s", strings.Split(r.RemoteAddr, ":")[0], r.URL), "/ws")
+		// Split the port to keep the request info unique, client uses a new port every request.
+		remote := strings.Split(r.RemoteAddr, ":")[0]
+		pipe.client(r, fmt.Sprintf("%s -> %s", remote, r.URL), "/ws")
 
 		c, err := websocket.Accept(w, r, &websocket.AcceptOptions{
 			OriginPatterns:     []string{"127.0.0.1", "localhost", "0.0.0.0"},
