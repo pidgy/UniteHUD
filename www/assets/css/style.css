@@ -5,7 +5,6 @@
 
 body {
     font-family: "switch";
-    font-size: 45px;
     font-weight: bolder;
     background: rgba(0, 0, 0, 0);
 }
@@ -22,62 +21,208 @@ td {
     /*border: 1px solid red;*/
 }
 
-.top-left {
-    height: 100%;
-    width: 100%;
-    margin-top: -40px;
-}
-
-.separator {
-    min-width: 198px;
-}
-
-.padder {
-    min-width: 50px;
-}
-
-.score {
-    padding-top: 40px;
-    vertical-align: bottom;
-}
-
-.circle {
-    border-radius: 20px;
-    border: 1px solid rgba(255, 255, 255, .3);
-}
-
-.purple {
+.teamscore {
     text-align: center;
-    background: rgba(122, 78, 234, .5);
-    min-width: 45px;
-    max-width: 45px;
+    vertical-align: middle;
+    text-shadow: -2px 0 black, 0 2px black, 2px 0 black, 0 -2px black;
+    transform: none;
+    color: white;
+    font-family: "switch";
+    font-size: 40px;
+    font-weight: bolder;
+    background: rgba(0, 0, 0, 0);
+}
+
+.teamregis-container {
+    position: absolute;
+    top: 15px;
 }
 
 .orange {
+    position: absolute;
+    left: 1020px;
     text-align: center;
     background: rgba(185, 59, 0, .5);
     min-width: 45px;
     max-width: 45px;
 }
 
-.font-red {
-    color: red;
+.orangescore-bg {
+    position: absolute;
+    background: rgba(232, 137, 0, .7);
+    transform: scaleX(-1) skew(20deg);
+    width: 125px;
+    height: 60px;
+    border-radius: 5px;
 }
 
-.font-white {
-    color: rgba(255, 255, 255, .9);
+.orangescore {
+    top: 5px;
+    position: absolute;
+    width: 125px;
+    /* font */
 }
 
-.font-yellow {
-    color: rgba(248, 255, 147, 1);
+.orangeregis-container {
+    left: 1125px;
+    text-align: right;
 }
 
-.font-border-black {
-    text-shadow: -1px -1px 0px rgba(0, 0, 0, .5), 0px -1px 0px rgba(0, 0, 0, .5), 1px -1px 0px rgba(0, 0, 0, .5), -1px 0px 0px rgba(0, 0, 0, .5), 1px 0px 0px rgba(0, 0, 0, .5), -1px 1px 0px rgba(0, 0, 0, .5), 0px 1px 0px rgba(0, 0, 0, .5), 1px 1px 0px rgba(0, 0, 0, .5);
+.orangeregis {
+    position: relative;
+    background-color: none;
+    color: white;
+    font-size: 40px;
+    text-align: right;
 }
 
-.font-border-white {
-    text-shadow: -1px -1px 0px #fff, 0px -1px 0px #fff, 1px -1px 0px #fff, -1px 0px 0px #fff, 1px 0px 0px #fff, -1px 1px 0px #fff, 0px 1px 0px #fff, 1px 1px 0px #fff;
+.purple {
+    position: absolute;
+    left: 759px;
+    text-align: center;
+    background: rgba(122, 78, 234, .5);
+    min-width: 45px;
+    max-width: 45px;
+}
+
+.purplescore-bg {
+    position: absolute;
+    background: rgba(123, 78, 233, .7);
+    transform: skew(20deg);
+    width: 125px;
+    height: 60px;
+    border-radius: 5px;
+}
+
+.purplescore {
+    top: 5px;
+    position: absolute;
+    width: 125px;
+}
+
+.purpleregis-container {
+    left: 770px;
+}
+
+.purpleregis {
+    font-size: 40px;
+    color: white;
+}
+
+.self {
+    position: absolute;
+    right: 115px;
+}
+
+.selfscore-bg {
+    position: absolute;
+    background: rgba(166, 139, 224, .8);
+    transform: skew(20deg);
+    width: 125px;
+    height: 60px;
+    border-radius: 5px;
+}
+
+.selfscore {
+    top: 5px;
+    position: absolute;
+    width: 125px;
+    /* font */
+}
+
+.regis {
+    position: absolute;
+    left: -25px;
+    top: -17px;
+}
+
+.regis-bg {
+    position: absolute;
+    background: rgba(50, 50, 50, .7);
+    transform: scaleX(-1);
+    width: 115px;
+    height: 148px;
+    border-radius: 5px;
+}
+
+.regis-circle-purple {
+    position: absolute;
+    background-color: #a376fe;
+    border: 3px solid rgba(170, 170, 250);
+    height: 25px;
+    width: 25px;
+    border-radius: 50%;
+    -moz-border-radius: 50%;
+    -webkit-border-radius: 50%;
+}
+
+.regis-circle-orange {
+    position: absolute;
+    background-color: #ed8c44;
+    border: 3px solid #ecc565;
+    height: 25px;
+    width: 25px;
+    border-radius: 50%;
+    -moz-border-radius: 50%;
+    -webkit-border-radius: 50%;
+    opacity: .9;
+}
+
+.regis-circle-none {
+    position: absolute;
+    background-color: #2e2c2b;
+    border: 3px solid #545454;
+    height: 25px;
+    width: 25px;
+    border-radius: 50%;
+    -moz-border-radius: 50%;
+    -webkit-border-radius: 50%;
+    opacity: .9;
+}
+
+.regis-1 {
+    position: absolute;
+    left: 75px;
+    top: 30px;
+}
+
+.regis-2 {
+    position: absolute;
+    left: 75px;
+    top: 67px;
+}
+
+.regis-3 {
+    position: absolute;
+    left: 75px;
+    top: 104px;
+}
+
+.regis-img-1 {
+    position: absolute;
+    border-radius: 50%;
+    transform: none;
+    height: 35px;
+    left: 30px;
+    top: 27px;
+}
+
+.regis-img-2 {
+    position: absolute;
+    border-radius: 50%;
+    transform: none;
+    height: 35px;
+    left: 30px;
+    top: 64px;
+}
+
+.regis-img-3 {
+    position: absolute;
+    border-radius: 50%;
+    transform: none;
+    height: 35px;
+    left: 30px;
+    top: 101px;
 }
 
 .self {
@@ -85,63 +230,67 @@ td {
     background: rgba(255, 255, 83, .4);
 }
 
-.seconds {
-    font-size: 40px;
-    padding-left: 15px;
-    text-align: center;
-}
-
-.error {
-    font-size: 35px;
-    position: fixed;
-    bottom: -35px;
-    left: 10px;
-    opacity: .4;
-}
-
-.bottom-left {
-    position: fixed;
-    bottom: 0px;
-    left: 0px;
-    width: 10%;
-}
-
-.bottom-left table {
-    column-gap: 10px;
-}
-
-.objective {
-    min-width: 50px;
-    max-width: 50px;
-    font-size: 35px;
-}
-
-.dreadnaw-seconds {
-    text-align: center;
-}
-
-.rotom-seconds {
-    text-align: center;
-}
-
-.vespiquen-seconds {
-    text-align: center;
-}
-
 .banner {
     font-size: 35px;
     position: fixed;
     bottom: 12px;
     left: 0px;
-    opacity: 0;
-    /* Start off hidden */
-}
-
-.twitter {
-    min-width: 50px;
-    max-width: 50px;
+    opacity: 0.5;
 }
 
 .banner-table {
     column-gap: 10px;
+}
+
+.logo {
+    min-width: 47px;
+    max-width: 47px;
+    position: fixed;
+    bottom: 3px;
+    left: 4px;
+    opacity: .5;
+}
+
+.error {
+    font-size: 20px;
+    position: fixed;
+    bottom: -20px;
+    left: 54px;
+    opacity: .2;
+    font-weight: 300;
+    color: white;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+.stacks-container {
+    position: absolute;
+    right: 4px;
+    top: 28px;
+}
+
+.stacks {
+    position: relative;
+    background-color: none;
+    color: white;
+    font-size: 27px;
+}
+
+@keyframes shake {
+    10%,
+    90% {
+        transform: translate3d(-1px, 0, 0);
+    }
+    20%,
+    80% {
+        transform: translate3d(2px, 0, 0);
+    }
+    30%,
+    50%,
+    70% {
+        transform: translate3d(-4px, 0, 0);
+    }
+    40%,
+    60% {
+        transform: translate3d(4px, 0, 0);
+    }
 }

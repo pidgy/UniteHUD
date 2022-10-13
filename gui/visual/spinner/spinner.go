@@ -9,6 +9,14 @@ type Spinner struct {
 	ready  bool
 }
 
+func Running() *Spinner {
+	return defaultWithBytes([]string{"» ", " »", "  ", " «", "« ", "  "})
+}
+
+func Recording() *Spinner {
+	return withDelayAndBytes(time.Millisecond*500, []string{"•", " "})
+}
+
 func (s *Spinner) Stop() {
 	s.ticker.Stop()
 }
@@ -16,14 +24,6 @@ func (s *Spinner) Stop() {
 func (s *Spinner) Next() string {
 	s.ready = true
 	return s.bytes[s.pos]
-}
-
-func Running() *Spinner {
-	return defaultWithBytes([]string{"« ", " «", "  ", " »", "» ", "  "})
-}
-
-func Recording() *Spinner {
-	return withDelayAndBytes(time.Millisecond*200, []string{"•", " "})
 }
 
 func Stopped() *Spinner {
@@ -42,7 +42,7 @@ func withDelayAndBytes(d time.Duration, b []string) *Spinner {
 }
 
 func defaultWithBytes(b []string) *Spinner {
-	return withDelayAndBytes(time.Millisecond*100, b)
+	return withDelayAndBytes(time.Millisecond*500, b)
 }
 
 func (s *Spinner) spin() {

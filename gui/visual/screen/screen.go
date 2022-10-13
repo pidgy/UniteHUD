@@ -21,7 +21,7 @@ type Screen struct {
 }
 
 func (s *Screen) Layout(gtx layout.Context) layout.Dimensions {
-	if s.Image == nil || s.Image.Bounds().Size().Eq(image.Pt(0, 0)) {
+	if s == nil || s.Image == nil || s.Image.Bounds().Size().Eq(image.Pt(0, 0)) {
 		return layout.Dimensions{Size: gtx.Constraints.Max}
 	}
 

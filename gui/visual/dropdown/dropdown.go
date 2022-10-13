@@ -12,15 +12,18 @@ import (
 )
 
 type List struct {
-	Items    []*Item
-	Callback func(i *Item)
+	Items         []*Item
+	Callback      func(i *Item)
+	WidthModifier int
 
 	list *widget.List
 }
 
 type Item struct {
-	Text    string
-	Checked widget.Bool
+	Text     string
+	Checked  widget.Bool
+	Value    int
+	Disabled bool
 }
 
 // Layout handles drawing the letters view.
@@ -46,26 +49,42 @@ func (l *List) Layout(gtx layout.Context, th *material.Theme) layout.Dimensions 
 		check.Color = color.NRGBA(rgba.White)
 		check.Size = unit.Dp(14)
 
-		if item.Checked.Changed() && item.Checked.Value {
-			for i := range l.Items {
-				if i != index {
-					l.Items[i].Checked.Value = false
-					continue
-				}
+		if item.Checked.Changed() {
+			if item.Checked.Value {
+				for i := range l.Items {
+					if i != index {
+						l.Items[i].Checked.Value = false
+						continue
+					}
 
-				if l.Callback != nil {
-					l.Callback(l.Items[i])
+					if l.Callback != nil {
+						l.Callback(l.Items[i])
+					}
 				}
+			} else {
+				item.Checked.Value = true
 			}
+		}
+
+		if item.Disabled {
+			check.Color = color.NRGBA(rgba.System)
 		}
 
 		if item.Checked.Value {
 			check.Color = color.NRGBA(rgba.Green)
+
+			if item.Text == "Disabled" {
+				check.Color = color.NRGBA(rgba.PaleRed)
+			}
+		}
+
+		if l.WidthModifier == 0 {
+			l.WidthModifier = 1
 		}
 
 		return layout.S.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 			dim := check.Layout(gtx)
-			dim.Size.X = gtx.Constraints.Max.X
+			dim.Size.X = gtx.Constraints.Max.X / l.WidthModifier
 			return dim
 		})
 	})

@@ -3,8 +3,10 @@ package textblock
 import (
 	"image"
 	"image/color"
+	"os"
 
 	"gioui.org/font/gofont"
+	"gioui.org/font/opentype"
 	"gioui.org/layout"
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
@@ -20,6 +22,48 @@ import (
 type TextBlock struct {
 	Text string
 	list *widget.List
+
+	collection []text.FontFace
+}
+
+func (t *TextBlock) Collection() []text.FontFace {
+	return t.collection
+}
+
+func NewCascadiaCode() (*TextBlock, error) {
+	return New("fonts/CascadiaCode-Regular.otf", "Cascadia")
+}
+
+func NewCascadiaCodeSemiBold() (*TextBlock, error) {
+	return New("fonts/CascadiaCodePL-SemiBold.otf", "Cascadia")
+}
+
+func NewCombo() (*TextBlock, error) {
+	return New("fonts/Combo-Regular.ttf", "Combo")
+}
+
+func NewNotoSans() (*TextBlock, error) {
+	return New("fonts/NotoSansJP-Regular.otf", "NotoSansJP")
+}
+
+func NewRoboto() (*TextBlock, error) {
+	return New("fonts/Roboto-Regular.ttf", "Roboto")
+}
+
+func New(file, face string) (*TextBlock, error) {
+	bytes, err := os.ReadFile(file)
+	if err != nil {
+		return nil, err
+	}
+
+	custom, err := opentype.Parse(bytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return &TextBlock{
+		collection: []text.FontFace{{Font: text.Font{Typeface: text.Typeface(face)}, Face: custom}},
+	}, nil
 }
 
 func (t *TextBlock) Layout(gtx layout.Context, posts []notify.Post) layout.Dimensions {
@@ -34,8 +78,12 @@ func (t *TextBlock) Layout(gtx layout.Context, posts []notify.Post) layout.Dimen
 		}
 	}
 
-	th := material.NewTheme(gofont.Collection())
+	th := material.NewTheme(t.collection)
+	if len(t.collection) == 0 {
+		t.collection = gofont.Collection()
+	}
 	th.TextSize = unit.Sp(9)
+
 	Fill(gtx,
 		rgba.N(rgba.DarkGray),
 		func(gtx layout.Context) layout.Dimensions {
@@ -44,7 +92,7 @@ func (t *TextBlock) Layout(gtx layout.Context, posts []notify.Post) layout.Dimen
 	)
 
 	list := material.List(th, t.list)
-	list.Track.Color = color.NRGBA(rgba.Purple)
+	list.Track.Color = color.NRGBA(rgba.PurpleBlue)
 	list.Track.Color.A = 0xF
 	layout.Inset{
 		Bottom: unit.Px(5),

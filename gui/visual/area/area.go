@@ -14,6 +14,7 @@ import (
 	"gioui.org/widget/material"
 
 	"github.com/pidgy/unitehud/gui/visual/button"
+	"github.com/pidgy/unitehud/video"
 )
 
 type Area struct {
@@ -21,6 +22,7 @@ type Area struct {
 	TextSize unit.Value
 	Subtext  string
 	Hidden   bool
+	Theme    *material.Theme
 
 	*button.Button
 
@@ -34,7 +36,12 @@ type Area struct {
 }
 
 func (a *Area) Rectangle() image.Rectangle {
-	return image.Rect(a.Min.X*2, a.Min.Y*2, a.Max.X*2, a.Max.Y*2)
+	return toScale(image.Rectangle{a.Min, a.Max})
+	// return image.Rect(a.Min.X*2, a.Min.Y*2, a.Max.X*2, a.Max.Y*2)
+}
+
+func toScale(r image.Rectangle) image.Rectangle {
+	return image.Rectangle{r.Min.Mul(2), r.Max.Mul(2)}
 }
 
 func (a *Area) Layout(gtx layout.Context) layout.Dimensions {
@@ -69,10 +76,13 @@ func (a *Area) Layout(gtx layout.Context) layout.Dimensions {
 				deltaY := e.Position.Y - a.dragY
 				a.dragY = e.Position.Y
 
-				maxX := int(float32(gtx.Constraints.Max.X)*.99) - 1
-				maxY := int(float32(gtx.Constraints.Max.Y)*.75) - 3
+				// maxX := int(float32(gtx.Constraints.Max.X)*.99) - 1
+				// maxY := int(float32(gtx.Constraints.Max.Y)*.75) - 3
 
-				if a.Min.X+int(deltaX) < 0 || a.Min.Y+int(deltaY) < 0 || a.Max.X+int(deltaX) > maxX || a.Max.Y+int(deltaY) > maxY {
+				if !toScale(image.Rectangle{
+					a.Min.Add(image.Pt(int(deltaX), int(deltaY))),
+					a.Max.Add(image.Pt(int(deltaX), int(deltaY))),
+				}).In(video.HD1080) {
 					break
 				}
 
@@ -123,13 +133,17 @@ func (a *Area) Layout(gtx layout.Context) layout.Dimensions {
 				})
 		})
 
+	if a.Theme == nil {
+		a.Theme = material.NewTheme(gofont.Collection())
+	}
+
 	return layout.Inset{
 		Left: unit.Px(float32(a.Min.X)),
 		Top:  unit.Px(float32(a.Min.Y)),
 	}.Layout(
 		gtx,
 		func(gtx layout.Context) layout.Dimensions {
-			title := material.Body1(material.NewTheme(gofont.Collection()), a.Text+" "+a.Subtext)
+			title := material.Body1(a.Theme, a.Text+" "+a.Subtext)
 			title.Color = color.NRGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0xFF}
 			title.TextSize = a.TextSize
 

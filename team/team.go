@@ -19,10 +19,10 @@ type Team struct {
 	color.RGBA           `json:"-"`
 	*duplicate.Duplicate `json:"-"`
 
-	Killed       time.Time
-	Holding      int  `json:"-"`
-	HoldingMax   int  `json:"-"`
-	HoldingReset bool `json:"-"`
+	Killed           time.Time
+	KilledWithPoints bool
+	Holding          int `json:"-"`
+	HoldingMax       int `json:"-"`
 
 	Acceptance float32
 	Delay      time.Duration
@@ -35,10 +35,9 @@ var (
 		RGBA:      rgba.Purple,
 		Duplicate: duplicate.New(-1, gocv.NewMat(), gocv.NewMat()),
 
-		HoldingMax:   50,
-		HoldingReset: true,
+		HoldingMax: 50,
 
-		Acceptance: .7,
+		Acceptance: .8,
 		Delay:      time.Second,
 	}
 
@@ -47,8 +46,8 @@ var (
 		RGBA:      color.RGBA(rgba.LightPurple),
 		Duplicate: duplicate.New(-1, gocv.NewMat(), gocv.NewMat()),
 
-		Acceptance: .8,
-		Delay:      time.Second / 4,
+		Acceptance: .64,
+		Delay:      time.Second,
 	}
 
 	Game = &Team{
@@ -56,8 +55,14 @@ var (
 		RGBA:      rgba.White,
 		Duplicate: duplicate.New(-1, gocv.NewMat(), gocv.NewMat()),
 
-		Delay:      time.Second * 5,
+		Delay:      time.Second * 2,
 		Acceptance: .8,
+	}
+
+	None = &Team{
+		Name:      "none",
+		RGBA:      rgba.SlateGray,
+		Duplicate: duplicate.New(-1, gocv.NewMat(), gocv.NewMat()),
 	}
 
 	// Orange represents the standard Team for the Orange side.
@@ -66,8 +71,11 @@ var (
 		RGBA:      rgba.Orange,
 		Duplicate: duplicate.New(-1, gocv.NewMat(), gocv.NewMat()),
 
-		Acceptance: .8,
-		Delay:      time.Second,
+		Acceptance: .84,
+
+		// Greater than 1s to reduce duplication errors.
+		// Less than 2s to avoid missing difficult capture windows.
+		Delay: time.Millisecond * 1500,
 	}
 
 	// Purple represents the standard Team for the Purple side.
@@ -76,14 +84,14 @@ var (
 		RGBA:      rgba.Purple,
 		Duplicate: duplicate.New(-1, gocv.NewMat(), gocv.NewMat()),
 
-		Acceptance: .8,
-		Delay:      time.Second,
+		Acceptance: Orange.Acceptance,
+		Delay:      Orange.Delay,
 	}
 
 	// Self represents a wrapper Team for the Purple side.
 	Self = &Team{
 		Name:      "self",
-		RGBA:      rgba.Yellow,
+		RGBA:      rgba.User,
 		Duplicate: duplicate.New(-1, gocv.NewMat(), gocv.NewMat()),
 
 		Acceptance: .75,
@@ -115,9 +123,22 @@ var (
 func Clear() {
 	for _, t := range Teams {
 		t.Holding = 0
-		t.HoldingReset = true
 		t.Duplicate = duplicate.New(-1, gocv.NewMat(), gocv.NewMat())
 		t.Killed = time.Time{}
+		t.Counted = false
+	}
+}
+
+func Color(name string) color.RGBA {
+	switch name {
+	case Self.Name:
+		return Self.RGBA
+	case Orange.Name:
+		return Orange.RGBA
+	case Purple.Name:
+		return Purple.RGBA
+	default:
+		return None.RGBA
 	}
 }
 
@@ -131,7 +152,7 @@ func (t Team) Comparable(mat gocv.Mat) gocv.Mat {
 	case Time.Name:
 		return mat.Region(image.Rect(15, 30, 100, 60))
 	default:
-		return mat.Region(image.Rect(0, 30, 100, 60))
+		return mat.Region(image.Rect(0, 30, 120, 60))
 	}
 }
 

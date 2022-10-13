@@ -37,7 +37,7 @@ func Time(matrix gocv.Mat, img *image.RGBA) (seconds int, kitchen string) {
 		for _, template := range templates {
 			if template.Mat.Cols() > region.Cols() || template.Mat.Rows() > region.Rows() {
 				log.Warn().Str("type", "time").Msg("match is outside the legal selection")
-				notify.Feed(rgba.Red, "Time match is outside the configured selection area")
+				notify.Error("Time match is outside the configured selection area")
 
 				if config.Current.Record {
 					// dev.Capture(img, region, team.Time.Name, "missed-"+template.Name, false, template.Value)
@@ -61,9 +61,15 @@ func Time(matrix gocv.Mat, img *image.RGBA) (seconds int, kitchen string) {
 			}
 
 			_, maxv, _, maxp := gocv.MinMaxLoc(results[i])
+			if math.IsInf(float64(maxv), 1) {
+				continue
+			}
+
+			go stats.Frequency(templates[i].Truncated(), maxv)
+
 			if maxv >= team.Time.Acceptance {
-				go stats.Average(templates[i].File, maxv)
-				go stats.Count(templates[i].File)
+				go stats.Average(templates[i].Truncated(), maxv)
+				go stats.Count(templates[i].Truncated())
 
 				if maxp.X < locs[c] {
 					locs[c] = maxp.X
@@ -72,7 +78,7 @@ func Time(matrix gocv.Mat, img *image.RGBA) (seconds int, kitchen string) {
 				}
 			}
 
-			go stats.Frequency(templates[i].File, 1)
+			go stats.Frequency(templates[i].Truncated(), 1)
 		}
 
 		if clock[c] == -1 {
@@ -91,7 +97,7 @@ func Time(matrix gocv.Mat, img *image.RGBA) (seconds int, kitchen string) {
 	kitchen = fmt.Sprintf("%d%d:%d%d", clock[0], clock[1], clock[2], clock[3])
 
 	if clock[0] != 0 || minutes > 9 {
-		notify.Feed(rgba.Red, "Invalid time detected %s", kitchen)
+		notify.Error("Invalid time detected %s", kitchen)
 		return 0, "00:00"
 	}
 
@@ -104,10 +110,18 @@ func IdentifyTime(mat gocv.Mat, kitchen string) (image.Image, error) {
 	clone := mat.Clone()
 	defer clone.Close()
 
-	region := clone.Region(image.Rect(clone.Cols()/4, 0, clone.Cols(), clone.Rows()))
+	rect := image.Rect(clone.Cols()/4, 0, clone.Cols()-25, clone.Rows())
+	region := clone.Region(rect)
 
-	// p := image.Pt(10, region.Rows()-15)
-	// gocv.PutText(&region, kitchen, p, gocv.FontHersheyPlain, 2, color.RGBA(rgba.Highlight), 3)
+	gocv.PutText(
+		&region,
+		kitchen,
+		image.Pt(15, 75),
+		gocv.FontHersheySimplex,
+		1,
+		rgba.White,
+		4,
+	)
 
 	crop, err := region.ToImage()
 	if err != nil {

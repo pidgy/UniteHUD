@@ -14,10 +14,10 @@ type match struct {
 
 var history = []match{}
 
-func Add(purple, orange, self int) {
+func Add(orange, purple, self int) {
 	history = append(history, match{
-		purple: purple,
 		orange: orange,
+		purple: purple,
 		self:   self,
 		Time:   time.Now(),
 	})
@@ -25,11 +25,11 @@ func Add(purple, orange, self int) {
 
 func Dump() {
 	if len(history) == 0 {
-		notify.Feed(rgba.White, "No match history currently exists...")
+		notify.Warn("No recent game history to display...")
 		return
 	}
 
-	notify.Feed(rgba.White, "Match History")
+	notify.System("Match History")
 
 	for _, h := range history {
 		color := rgba.Green

@@ -103,8 +103,8 @@ func goals(matrix gocv.Mat, img *image.RGBA) (Goals, bool) {
 
 			_, maxv, _, maxp := gocv.MinMaxLoc(results[i])
 			if maxv >= .9 {
-				go stats.Average(templates[i].File, maxv)
-				go stats.Count(templates[i].File)
+				go stats.Average(templates[i].Truncated(), maxv)
+				go stats.Count(templates[i].Truncated())
 
 				switch e := state.EventType(templates[i].Value); e {
 				case state.PurpleBaseOpen:
@@ -130,7 +130,7 @@ func goals(matrix gocv.Mat, img *image.RGBA) (Goals, bool) {
 				}
 			}
 
-			go stats.Frequency(templates[i].File, 1)
+			go stats.Frequency(templates[i].Truncated(), 1)
 		}
 	}
 

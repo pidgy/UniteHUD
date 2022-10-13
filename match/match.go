@@ -10,8 +10,8 @@ import (
 	"gocv.io/x/gocv"
 
 	"github.com/pidgy/unitehud/config"
+	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/rgba"
-	"github.com/pidgy/unitehud/server"
 	"github.com/pidgy/unitehud/state"
 	"github.com/pidgy/unitehud/stats"
 	"github.com/pidgy/unitehud/team"
@@ -22,9 +22,9 @@ type Match struct {
 	image.Point
 	template.Template
 	Max image.Point
-}
 
-type Result int
+	Points []image.Point
+}
 
 const (
 	Duplicate Result = -3
@@ -32,6 +32,7 @@ const (
 	Missed    Result = -1
 	NotFound  Result = 0
 	Found     Result = 1
+	Override  Result = 2
 )
 
 var (
@@ -46,8 +47,15 @@ func (m *Match) Identify(mat gocv.Mat, points int) (image.Image, error) {
 
 	region := clone.Region(m.Team.Crop(m.Point))
 
-	p := image.Pt(10, region.Rows()-15)
-	gocv.PutText(&region, strconv.Itoa(points), p, gocv.FontHersheyPlain, 2, color.RGBA(rgba.Highlight), 3)
+	gocv.PutText(
+		&region,
+		strconv.Itoa(points),
+		image.Pt(region.Cols()/3*2-25, region.Rows()/2+7),
+		gocv.FontHersheySimplex,
+		1,
+		rgba.White,
+		4,
+	)
 
 	crop, err := region.ToImage()
 	if err != nil {
@@ -58,33 +66,51 @@ func (m *Match) Identify(mat gocv.Mat, points int) (image.Image, error) {
 	return crop, nil
 }
 
-func Matches(matrix gocv.Mat, img image.Image, t []template.Template) (*Match, Result, int) {
-	results := make([]gocv.Mat, len(t))
+func Matches(matrix gocv.Mat, img image.Image, templates []template.Template) (*Match, Result, int) {
+	return MatchesWithAcceptance(matrix, img, templates, config.Current.Acceptance)
+}
+
+func MatchesWithAcceptance(matrix gocv.Mat, img image.Image, templates []template.Template, acceptance float32) (*Match, Result, int) {
+	results := make([]gocv.Mat, len(templates))
 
 	m := &Match{
 		Max: img.Bounds().Max,
 	}
 
-	for i, template := range t {
+	for i, template := range templates {
 		results[i] = gocv.NewMat()
 		defer results[i].Close()
+
+		if template.Mat.Rows() > matrix.Rows() || template.Mat.Cols() > matrix.Cols() {
+			log.Warn().Str("type", "time").Msg("match is outside the legal selection")
+			notify.Error("Match is outside the configured selection area")
+
+			if config.Current.Record {
+				// dev.Capture(img, region, team.Time.Name, "missed-"+template.Name, false, template.Value)
+			}
+
+			continue
+		}
 
 		gocv.MatchTemplate(matrix, template.Mat, &results[i], gocv.TmCcoeffNormed, template.Mask)
 	}
 
 	for i, mat := range results {
 		if mat.Empty() {
-			log.Warn().Str("filename", t[i].File).Msg("empty result")
+			log.Warn().Str("filename", templates[i].Truncated()).Msg("empty result")
 			continue
 		}
 
 		_, maxv, _, maxp := gocv.MinMaxLoc(mat)
-		if maxv >= config.Current.Acceptance {
-			m.Template = t[i]
+
+		go stats.Frequency(templates[i].Truncated(), maxv)
+
+		if maxv >= acceptance {
+			m.Template = templates[i]
 			m.Point = maxp
 
-			go stats.Average(m.Template.File, maxv)
-			go stats.Count(m.Template.File)
+			go stats.Average(m.Template.Truncated(), maxv)
+			go stats.Count(m.Template.Truncated())
 
 			r, p := m.process(matrix, img)
 
@@ -96,12 +122,16 @@ func Matches(matrix gocv.Mat, img image.Image, t []template.Template) (*Match, R
 }
 
 func (m *Match) process(matrix gocv.Mat, img image.Image) (Result, int) {
-	log.Debug().Object("match", m).Int("cols", matrix.Cols()).Int("rows", matrix.Rows()).Msg("processing match")
+	log.Debug().
+		Object("match", m).
+		Int("cols", matrix.Cols()).
+		Int("rows", matrix.Rows()).
+		Msg("processing match")
 
 	switch m.Template.Category {
 	case "killed":
-		return Found, m.Template.Value
-	case "scored":
+		return Found, team.Balls.Holding
+	case "scored": // Orange, Purple scoring.
 		crop := m.Team.Crop(m.Point)
 		if crop.Min.X < 0 || crop.Min.Y < 0 || crop.Max.X > matrix.Cols() || crop.Max.Y > matrix.Rows() {
 			log.Error().Object("match", m).Msg("cropped image is outside the legal selection")
@@ -109,47 +139,17 @@ func (m *Match) process(matrix gocv.Mat, img image.Image) (Result, int) {
 		}
 
 		return m.points(matrix.Region(crop))
-	case "scoring":
-		switch e := state.EventType(m.Template.Value); e {
-		case state.PreScore:
-			state.Add(state.PreScore, server.Clock(), team.Balls.Holding)
-			return Found, 0
-		case state.PostScore:
-			points := team.Balls.Holding
-			if server.IsFinalStretch() {
-				points *= 2
-			}
-
-			state.Add(state.PostScore, server.Clock(), points)
-			return Found, points
-		default:
-			return NotFound, -1
-		}
+	case "scoring": // Self scoring.
+		return Found, m.Template.Value // Use team.Balls.Holding.
 	case "game":
 		return Found, state.EventType(m.Template.Value).Int()
+	default:
+		return Found, m.Template.Value
 	}
-
-	return NotFound, 0
 }
 
 func (m *Match) rectangle() image.Rectangle {
 	return image.Rect(m.Point.X, m.Point.Y, m.Point.X+m.Template.Mat.Cols(), m.Point.Y+m.Template.Mat.Rows())
-}
-
-func (r Result) String() string {
-	switch r {
-	case Duplicate:
-		return "duplicate"
-	case Invalid:
-		return "invalid"
-	case Missed:
-		return "missed"
-	case NotFound:
-		return "not found"
-	case Found:
-		return "found"
-	}
-	return "unknown"
 }
 
 // Zerolog.

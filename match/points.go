@@ -9,9 +9,12 @@ import (
 
 	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/duplicate"
+	"github.com/pidgy/unitehud/global"
+	"github.com/pidgy/unitehud/server"
 	"github.com/pidgy/unitehud/sort"
 	"github.com/pidgy/unitehud/stats"
 	"github.com/pidgy/unitehud/team"
+	"github.com/pidgy/unitehud/template"
 )
 
 func (m *Match) points(matrix gocv.Mat) (Result, int) {
@@ -36,15 +39,29 @@ func (m *Match) first(matrix gocv.Mat) (Result, int) {
 
 	inset := 0
 
-	mins := []int{math.MaxInt32, math.MaxInt32, math.MaxInt32}
 	points := []int{-1, -1}
+	mins := []int{math.MaxInt32, math.MaxInt32, math.MaxInt32}
+	maxs := []float32{0, 0, 0}
+	lefts := []int{math.MaxInt32, math.MaxInt32, math.MaxInt32}
 
-	templates := config.Current.Templates["points"][m.Team.Name]
+	templatesWithZero := config.Current.Templates["points"][m.Team.Name]
+	templatesWithoutZero := []template.Template{}
+	for _, t := range templatesWithZero {
+		if t.Value == 0 {
+			continue
+		}
+		templatesWithoutZero = append(templatesWithoutZero, t)
+	}
 
 	// Collect matched templates, exit early if we detect different images once.
 	sorted := sort.NewTemplates()
 
 	for round := 0; round < len(points); round++ {
+		templates := templatesWithoutZero
+		if round != 0 {
+			templates = templatesWithZero
+		}
+
 		region := matrix.Region(
 			image.Rectangle{
 				Min: image.Pt(inset, 0),
@@ -74,25 +91,53 @@ func (m *Match) first(matrix gocv.Mat) (Result, int) {
 			}
 
 			_, maxv, _, maxp := gocv.MinMaxLoc(results[i])
-			if !math.IsInf(float64(maxv), 1) && maxv >= m.Team.Acceptance {
+			if math.IsInf(float64(maxv), 1) {
+				continue
+			}
+
+			go stats.Frequency(templates[i].Truncated(), maxv)
+
+			if maxv >= m.Team.Acceptance {
 				sorted.Cache(templates[i], maxp, maxv)
 
-				go stats.Average(templates[i].File, maxv)
-				go stats.Count(templates[i].File)
+				go stats.Average(templates[i].Truncated(), maxv)
+				go stats.Count(templates[i].Truncated())
 
-				if maxp.X < mins[round] {
+				// Select the left-most image first, when the difference is small enough,
+				// use the highest template-match value to break the tie.
+				leftmost := maxp.X < lefts[round]
+				if delta(maxp.X, lefts[round]) < 3 {
+					leftmost = maxv > maxs[round]
+				}
+
+				log.Debug().
+					Bool("check1", maxp.X < lefts[round]).
+					Bool("check2", maxv > maxs[round]).
+					Int("delta", delta(maxp.X, lefts[round])).
+					Int("distance", maxp.X).
+					Bool("leftmost", leftmost).
+					Stringer("maxp", maxp).
+					Float32("maxv", maxv).
+					Int("min", mins[round]).
+					Int("round", round).
+					Object("t", templates[i]).
+					Msgf("%d", templates[i].Value)
+
+				if leftmost {
+					lefts[round] = maxp.X
+					maxs[round] = maxv
 					mins[round] = maxp.X
 					points[round] = templates[i].Value
 				}
 			}
-
-			go stats.Frequency(templates[i].File, maxv)
 		}
 
 		// If the first round of matching justifies quick sorting, we can exit early.
-		if sort.ByLocation(sorted) || sort.ByValues(sorted) {
-			return m.validate(matrix, sorted.Value())
-		}
+		/*
+			if sort.ByLocation(sorted) || sort.ByValues(sorted) {
+				return m.validate(matrix, sorted.Value())
+			}
+		*/
 
 		inset += mins[round] + 15
 		if inset > matrix.Cols() {
@@ -100,7 +145,7 @@ func (m *Match) first(matrix gocv.Mat) (Result, int) {
 		}
 	}
 
-	r, p := pointSlice(points)
+	r, p := sliceToValue(points)
 	if r != Found {
 		return r, p
 	}
@@ -109,22 +154,45 @@ func (m *Match) first(matrix gocv.Mat) (Result, int) {
 }
 
 func (m *Match) regular(matrix gocv.Mat) (Result, int) {
+	m.Points = []image.Point{image.Pt(0, 0), image.Pt(0, 0), image.Pt(0, 0)}
+
 	inset := 0
 
-	mins := []int{math.MaxInt32, math.MaxInt32, math.MaxInt32}
-	points := []int{-1, -1, -1}
+	mins := []int{math.MaxInt32, math.MaxInt32}
+	maxs := []float32{0, 0}
+	lefts := []int{math.MaxInt32, math.MaxInt32}
+	points := []int{-1, -1}
 
-	templates := config.Current.Templates["points"][m.Team.Name]
+	if server.IsFinalStretch() || global.DebugMode {
+		mins = []int{math.MaxInt32, math.MaxInt32, math.MaxInt32}
+		maxs = []float32{0, 0, 0}
+		lefts = []int{math.MaxInt32, math.MaxInt32, math.MaxInt32}
+		points = []int{-1, -1, -1}
+	}
+
+	templates2ndRound := config.Current.Templates["points"][m.Team.Name]
+	templates1stRound := config.TemplatesFirstRound(templates2ndRound)
 
 	for round := 0; round < len(mins); round++ {
+		templates := templates2ndRound
+		if round == 0 {
+			templates = templates1stRound
+		}
+
+		// Cut the image in half to prevent double numbers from matching the right-most first.
+		max := image.Pt(matrix.Cols(), matrix.Rows())
+		if round == 0 {
+			max = image.Pt(matrix.Cols()/2+5, matrix.Rows())
+		}
+
 		region := matrix.Region(
 			image.Rectangle{
 				Min: image.Pt(inset, 0),
-				Max: image.Pt(matrix.Cols(), matrix.Rows()),
+				Max: max,
 			},
 		)
 
-		// gocv.IMWrite(fmt.Sprintf("region-%d.png", round), region)
+		// gocv.IMWrite(fmt.Sprintf("round_%d.png", round), region)
 
 		results := make([]gocv.Mat, len(templates))
 
@@ -148,30 +216,57 @@ func (m *Match) regular(matrix gocv.Mat) (Result, int) {
 			}
 
 			_, maxv, _, maxp := gocv.MinMaxLoc(results[i])
-			if maxv >= m.Team.Acceptance {
-				// fmt.Printf("#%d, %d%% %s, %s %d\n", round, int(maxv*100), templates[i].File, maxp, templates[i].Cols())
+			if math.IsInf(float64(maxv), 1) {
+				continue
+			}
 
+			go stats.Frequency(templates[i].Truncated(), maxv)
+
+			if maxv >= m.Team.Acceptance {
 				if round > 0 && maxp.X > templates[i].Mat.Cols() {
 					maxp.X = 0
 				}
 
-				go stats.Average(templates[i].File, maxv)
-				go stats.Count(templates[i].File)
+				// Select the left-most image first, when the difference is small enough,
+				// use the highest template-match value to break the tie.
+				leftmost := maxp.X < lefts[round]
+				if delta(maxp.X, lefts[round]) < 5 {
+					leftmost = maxv > maxs[round]
+				}
 
-				if maxp.X < mins[round] {
+				log.Debug().
+					Bool("check1", maxp.X < lefts[round]).
+					Bool("check2", maxv > maxs[round]).
+					Int("delta", delta(maxp.X, lefts[round])).
+					Int("distance", maxp.X).
+					Bool("leftmost", leftmost).
+					Stringer("maxp", maxp).
+					Float32("maxv", maxv).
+					Int("min", mins[round]).
+					Int("round", round).
+					Object("t", templates[i]).
+					Msgf("%d", templates[i].Value)
+
+				if leftmost {
+					m.Points[round] = maxp
+					lefts[round] = maxp.X
+					maxs[round] = maxv
 					mins[round] = maxp.X + templates[i].Mat.Cols() - 1
 					points[round] = templates[i].Value
 				}
+
+				go stats.Average(templates[i].Truncated(), maxv)
+				go stats.Count(templates[i].Truncated())
 			}
 		}
 
-		inset += mins[round]
+		inset += mins[round] - 5
 		if inset > matrix.Cols() {
 			break
 		}
 	}
 
-	r, p := pointSlice(points)
+	r, p := sliceToValue(points)
 	if r != Found {
 		return r, p
 	}
@@ -179,9 +274,16 @@ func (m *Match) regular(matrix gocv.Mat) (Result, int) {
 	return m.validate(matrix, p)
 }
 
+func delta(a, b int) int {
+	if a > b {
+		return a - b
+	}
+	return b - a
+}
+
 func (m *Match) validate(matrix gocv.Mat, value int) (Result, int) {
 	if value < 1 || value > 100 {
-		return Missed, value
+		return Invalid, value
 	}
 
 	latest := duplicate.New(value, matrix, m.Team.Comparable(matrix))
@@ -192,16 +294,20 @@ func (m *Match) validate(matrix gocv.Mat, value int) (Result, int) {
 	}()
 
 	dup := m.Team.Duplicate.Of(latest)
-	if dup {
+	switch {
+	case latest.Overrides(m.Team.Duplicate):
+		latest.Counted = true
+		return Override, value
+	case dup:
 		return Duplicate, value
+	default:
+		latest.Counted = true
+		return Found, value
 	}
-
-	latest.Counted = true
-
-	return Found, value
 }
 
-func pointSlice(points []int) (Result, int) {
+func sliceToValue(points []int) (Result, int) {
+	// Enforce a length 3 array to validate checks below.
 	if len(points) == 2 {
 		points = append(points, -1)
 	}
@@ -209,7 +315,7 @@ func pointSlice(points []int) (Result, int) {
 	switch {
 	case points[0]+points[1]+points[2] == -3:
 		// Zero digits.
-		return NotFound, 0
+		return Missed, 0
 	case points[1]+points[2] == -2:
 		// Single digit only found at index 0.
 		return Found, points[0]

@@ -3,10 +3,11 @@ package debug
 import (
 	"fmt"
 	"image"
-	"image/png"
 	"os"
 	"runtime"
 	"runtime/pprof"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -14,54 +15,51 @@ import (
 	"gocv.io/x/gocv"
 
 	"github.com/pidgy/unitehud/config"
+	"github.com/pidgy/unitehud/match"
+	"github.com/pidgy/unitehud/notify"
+	"github.com/pidgy/unitehud/server"
 	"github.com/pidgy/unitehud/team"
 )
 
 var (
-	dir = "tmp"
+	Dir = fmt.Sprintf("tmp/%d_%02d_%02d_%02d_%02d/", now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute())
+
+	now = time.Now()
 
 	logs    = fmt.Sprintf("%d.log", time.Now().Unix())
 	logq    = make(chan string, 1024)
 	logging = false
 
 	cpu, ram *os.File
+
+	counts     = map[string]int64{}
+	countsLock = &sync.Mutex{}
 )
 
-func Capture(img image.Image, mat gocv.Mat, t *team.Team, p image.Point, name string, value int) string {
-	if name == "" {
-		name = "capture"
-	}
-
-	subdir := fmt.Sprintf("%s/capture/%s/", dir, t.Name)
-	file := fmt.Sprintf("%d_%s-%d", value, name, time.Now().UnixNano())
-	path := fmt.Sprintf("%s/%s.png", subdir, file)
-
-	f, err := os.Create(path)
-	if err != nil {
-		log.Error().Err(err).Msg("failed to create missed image")
-		return ""
-	}
-	defer f.Close()
-
-	err = png.Encode(f, img)
-	if err != nil {
-		log.Error().Err(err).Msg("failed to encode missed image")
-		return ""
-	}
-
-	err = png.Encode(f, img)
-	if err != nil {
-		log.Error().Err(err).Msg("failed to encode missed image")
-		return ""
-	}
-
+func Capture(img image.Image, mat gocv.Mat, t *team.Team, p image.Point, value int, r match.Result) string {
 	if mat.Empty() {
 		return ""
 	}
 
-	gocv.IMWrite(fmt.Sprintf("%s/%s_crop.png", subdir, file), mat.Region(t.Crop(p)))
+	subdir := fmt.Sprintf("%s/capture/%s", Dir, t.Name)
+	err := createDirIfNotExist(subdir)
+	if err != nil {
+		notify.Error("[DEBUG] failed to create directory \"%s\" (%v)", subdir, err)
+		return ""
+	}
 
-	return path
+	subdir = fmt.Sprintf("%s/%s", subdir, r.String())
+	err = createDirIfNotExist(subdir)
+	if err != nil {
+		notify.Error("[DEBUG] failed to create directory \"%s\" (%v)", subdir, err)
+		return ""
+	}
+
+	file := filename(t.Name, subdir, value)
+
+	gocv.IMWrite(file, mat.Region(t.Crop(p)))
+
+	return file
 }
 
 func Close() {
@@ -78,18 +76,18 @@ func Log(format string, a ...interface{}) {
 }
 
 func Open() error {
-	err := createIfNotExist()
+	err := createTmpIfNotExist()
 	if err != nil {
 		return err
 	}
 
-	return open.Run(dir)
+	return open.Run("tmp")
 }
 
 func LoggingStart() error {
-	err := createIfNotExist()
+	err := createAllIfNotExist()
 	if err != nil {
-		log.Error().Err(err).Msg("failed to create tmp directory")
+		log.Error().Err(err).Msgf("failed to create %s directory", Dir)
 		return err
 	}
 
@@ -139,8 +137,28 @@ func ProfileStop() {
 	ram.Close()
 }
 
-func createIfNotExist() error {
-	_, err := os.Stat(dir)
+func createAllIfNotExist() error {
+	err := createTmpIfNotExist()
+	if err != nil {
+		return err
+	}
+
+	for _, subdir := range []string{
+		"/",
+		"/log",
+		"/capture",
+	} {
+		err := createDirIfNotExist(Dir + subdir)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func createDirIfNotExist(subdir string) error {
+	_, err := os.Stat(Dir)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			return err
@@ -153,30 +171,56 @@ func createIfNotExist() error {
 		return err
 	}
 
-	for _, subdir := range []string{
-		"/tmp",
-		"/tmp/log",
-		"/tmp/capture",
-		"/tmp/capture/purple",
-		"/tmp/capture/orange",
-		"/tmp/capture/self",
-		"/tmp/capture/time",
-		"/tmp/capture/first",
-	} {
-		err := os.Mkdir(dir+subdir, 0755)
-		if err != nil {
-			if os.IsExist(err) {
-				continue
-			}
-			return err
+	err = os.Mkdir(dir+"/"+subdir, 0755)
+	if err != nil {
+		if os.IsExist(err) {
+			return nil
 		}
+
+		return err
 	}
 
 	return nil
 }
 
+func createTmpIfNotExist() error {
+	dir, err := os.Getwd()
+	if err != nil {
+		log.Error().Err(err).Msg("failed to find working directory")
+		return err
+	}
+
+	err = os.Mkdir(fmt.Sprintf("%s/tmp", dir), 0755)
+	if err != nil {
+		if os.IsExist(err) {
+			return nil
+		}
+
+		return err
+	}
+
+	return nil
+}
+
+func filename(name, subdir string, value int) string {
+	countsLock.Lock()
+	defer countsLock.Unlock()
+
+	counts[name]++
+
+	p := fmt.Sprintf(
+		"%s/%d@%s_#%d.png",
+		subdir,
+		value,
+		strings.ReplaceAll(server.Clock(), ":", ""),
+		counts[name],
+	)
+
+	return p
+}
+
 func spin() {
-	f, err := os.OpenFile(fmt.Sprintf("%s/log/unitehud_%s", dir, logs), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(fmt.Sprintf("%s/log/unitehud_%s", Dir, logs), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to open log file")
 		return

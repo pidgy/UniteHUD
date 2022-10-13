@@ -31,8 +31,10 @@ type Button struct {
 	LastPressed       time.Time
 	Pressed, Released color.NRGBA
 
-	Click func()
+	Click       func()
+	SingleClick bool // Toggle the Active field on Click events.
 
+	hover bool
 	alpha uint8
 }
 
@@ -62,14 +64,23 @@ func (b *Button) Layout(gtx layout.Context) layout.Dimensions {
 			switch e.Type {
 			case pointer.Enter:
 				b.Released = color.NRGBA(rgba.Alpha(color.RGBA(b.Released), 0x50))
+				b.hover = true
+			case pointer.Release:
+				if b.hover && b.Click != nil {
+					b.Click()
+					if b.SingleClick {
+						b.Active = !b.Active
+					}
+				} else {
+					b.Active = !b.Active
+				}
 			case pointer.Leave:
 				b.Released = color.NRGBA(rgba.Alpha(color.RGBA(b.Released), b.alpha))
+				b.hover = false
 			case pointer.Press:
 				b.Active = !b.Active
-			case pointer.Release:
-				if b.Click != nil {
-					b.Click()
-				}
+			case pointer.Move:
+				println("Move")
 			}
 		}
 	}

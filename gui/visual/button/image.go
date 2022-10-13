@@ -23,6 +23,10 @@ type Image struct {
 func (i *Image) Layout(th *material.Theme, gtx layout.Context) layout.Dimensions {
 	tmp := i.Screen.Image
 
+	if i.Screen.Image == nil {
+		i.Screen.Image = image.NewRGBA(image.Rect(0, 0, 1920, 1080))
+	}
+
 	if i.Hide {
 		i.Screen.Image = image.NewRGBA(i.Screen.Bounds())
 
