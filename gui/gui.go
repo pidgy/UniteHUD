@@ -89,9 +89,9 @@ const (
 	Idle    = Action("idle")
 )
 
-var Window *GUI
-
 const Title = "UniteHUD Server (" + global.Version + ")"
+
+var Window *GUI
 
 func New() {
 	Window = &GUI{

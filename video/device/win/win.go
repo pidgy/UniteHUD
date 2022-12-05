@@ -12,6 +12,7 @@ import (
 	"strings"
 )
 
+// Get the friendly device name of a video capture device using opencv-style indexes 0-9.
 func VideoCaptureDeviceName(index int) string {
 	len := C.int(0)
 	v := C.GetVideoCaptureDeviceName(C.int(index), &len)
