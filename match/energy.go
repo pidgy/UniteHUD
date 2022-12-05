@@ -134,7 +134,7 @@ func IdentifyBalls(mat gocv.Mat, points int) (image.Image, error) {
 
 	crop, err := clone.ToImage()
 	if err != nil {
-		log.Error().Err(err).Msg("failed to convert image")
+		log.Err(err).Msg("failed to convert image")
 		return nil, err
 	}
 

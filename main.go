@@ -8,11 +8,13 @@ import (
 	"image"
 	"os"
 	"os/signal"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
 
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/diode"
 	"github.com/rs/zerolog/log"
 	"gocv.io/x/gocv"
 
@@ -54,11 +56,12 @@ func init() {
 	notify.System("Initializing...")
 
 	log.Logger = zerolog.New(
-		zerolog.ConsoleWriter{
+		diode.NewWriter(zerolog.ConsoleWriter{
 			Out:        os.Stderr,
 			TimeFormat: time.Stamp,
-		},
-	).With().Timestamp().Logger()
+		}, 4096, time.Nanosecond, func(missed int) {
+			println("diode is falling behind")
+		})).With().Timestamp().Logger()
 
 	log.Logger = log.Logger.Level(zerolog.DebugLevel)
 
@@ -99,7 +102,7 @@ func captureClock() {
 
 		notify.Time, err = match.IdentifyTime(matrix, kitchen)
 		if err != nil {
-			log.Error().Err(err).Send()
+			log.Err(err).Send()
 		}
 	}
 }
@@ -651,7 +654,59 @@ func captureWindows() {
 	}
 }
 
+func handleCrash() {
+	for range time.NewTicker(time.Second * 5).C {
+		err := window.StartingWith(gui.Title)
+		if err != nil {
+			kill(err)
+		}
+	}
+}
+
+func kill(errs ...error) {
+	if len(errs) > 0 {
+		config.Current.Report(errs[0].Error())
+	}
+
+	for _, err := range errs {
+		log.Err(err).Msg(gui.Title)
+	}
+
+	time.Sleep(time.Second)
+
+	sig := os.Kill
+	if len(errs) == 0 {
+		sig = os.Interrupt
+	}
+
+	sigq <- sig
+}
+
+func s(size int) string {
+	if size == 1 {
+		return ""
+	}
+	return "s"
+}
+
+func signals() {
+	signal.Notify(sigq, syscall.SIGINT, syscall.SIGTERM)
+	s := <-sigq
+
+	log.Info().Stringer("signal", s).Msg("closing...")
+	closing()
+	os.Exit(1)
+}
+
+func closing() {
+	debug.Close()
+	video.Close()
+	os.Exit(0)
+}
+
 func main() {
+	runtime.LockOSThread()
+
 	go signals()
 
 	err := config.Load()
@@ -664,7 +719,10 @@ func main() {
 		notify.Error("Failed to load windows (%v)", err)
 	}
 
-	go server.Start()
+	err = server.Start()
+	if err != nil {
+		kill(err)
+	}
 
 	log.Info().
 		Bool("record", config.Current.Record).
@@ -689,6 +747,7 @@ func main() {
 	go captureScores(team.Purple.Name, config.Current.Templates["scored"])
 	go captureScores(team.Orange.Name, config.Current.Templates["scored"])
 	go captureScores(team.First.Name, config.Current.Templates["scored"])
+	go handleCrash()
 
 	lastWindow := ""
 
@@ -811,41 +870,4 @@ func main() {
 	}()
 
 	notify.System("Initialized")
-}
-
-func kill(errs ...error) {
-	for _, err := range errs {
-		log.Error().Err(err).Msg("killing unitehud")
-	}
-
-	time.Sleep(time.Second)
-
-	sig := os.Kill
-	if len(errs) == 0 {
-		sig = os.Interrupt
-	}
-
-	sigq <- sig
-}
-
-func s(size int) string {
-	if size == 1 {
-		return ""
-	}
-	return "s"
-}
-
-func signals() {
-	signal.Notify(sigq, syscall.SIGINT, syscall.SIGTERM)
-	s := <-sigq
-
-	log.Info().Stringer("signal", s).Msg("closing...")
-	closing()
-	os.Exit(1)
-}
-
-func closing() {
-	debug.Close()
-	video.Close()
-	os.Exit(0)
 }

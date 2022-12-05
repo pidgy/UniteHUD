@@ -87,7 +87,7 @@ func Open() error {
 func LoggingStart() error {
 	err := createAllIfNotExist()
 	if err != nil {
-		log.Error().Err(err).Msgf("failed to create %s directory", Dir)
+		log.Err(err).Msgf("failed to create %s directory", Dir)
 		return err
 	}
 
@@ -167,7 +167,7 @@ func createDirIfNotExist(subdir string) error {
 
 	dir, err := os.Getwd()
 	if err != nil {
-		log.Error().Err(err).Msg("failed to find working directory")
+		log.Err(err).Msg("failed to find working directory")
 		return err
 	}
 
@@ -186,7 +186,7 @@ func createDirIfNotExist(subdir string) error {
 func createTmpIfNotExist() error {
 	dir, err := os.Getwd()
 	if err != nil {
-		log.Error().Err(err).Msg("failed to find working directory")
+		log.Err(err).Msg("failed to find working directory")
 		return err
 	}
 
@@ -222,7 +222,7 @@ func filename(name, subdir string, value int) string {
 func spin() {
 	f, err := os.OpenFile(fmt.Sprintf("%s/log/unitehud_%s", Dir, logs), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to open log file")
+		log.Err(err).Msg("failed to open log file")
 		return
 	}
 	defer f.Close()
@@ -230,7 +230,7 @@ func spin() {
 	for txt := range logq {
 		_, err := f.WriteString(txt)
 		if err != nil {
-			log.Error().Err(err).Str("file", logs).Msg("failed to write log")
+			log.Err(err).Str("file", logs).Msg("failed to write log")
 		}
 	}
 }

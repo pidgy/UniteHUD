@@ -125,7 +125,7 @@ func IdentifyTime(mat gocv.Mat, kitchen string) (image.Image, error) {
 
 	crop, err := region.ToImage()
 	if err != nil {
-		log.Error().Err(err).Msg("failed to convert image")
+		log.Err(err).Msg("failed to convert image")
 		return nil, err
 	}
 

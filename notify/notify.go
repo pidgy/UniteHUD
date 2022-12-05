@@ -80,6 +80,15 @@ func Feed(c color.RGBA, format string, a ...interface{}) {
 	feed.log(c, true, false, format, a...)
 }
 
+func LastSystem() string {
+	for i := len(feed.logs) - 1; i >= 0; i-- {
+		if feed.logs[i].RGBA == rgba.System {
+			return feed.logs[i].orig
+		}
+	}
+	return "..."
+}
+
 func (p Post) String() string {
 	if p.count > 1 {
 		return fmt.Sprintf("%s (x%d)", p.msg, p.count)

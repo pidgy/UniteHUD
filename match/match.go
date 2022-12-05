@@ -59,7 +59,7 @@ func (m *Match) Identify(mat gocv.Mat, points int) (image.Image, error) {
 
 	crop, err := region.ToImage()
 	if err != nil {
-		log.Error().Err(err).Msg("failed to convert image")
+		log.Err(err).Msg("failed to convert image")
 		return nil, err
 	}
 

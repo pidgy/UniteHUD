@@ -14,7 +14,7 @@ type match struct {
 
 var history = []match{}
 
-func Add(orange, purple, self int) {
+func Add(purple, orange, self int) {
 	history = append(history, match{
 		orange: orange,
 		purple: purple,

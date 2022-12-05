@@ -66,16 +66,16 @@ func (l *List) Layout(gtx layout.Context, th *material.Theme) layout.Dimensions 
 			}
 		}
 
-		if item.Disabled {
-			check.Color = color.NRGBA(rgba.System)
-		}
-
 		if item.Checked.Value {
 			check.Color = color.NRGBA(rgba.Green)
 
 			if item.Text == "Disabled" {
 				check.Color = color.NRGBA(rgba.PaleRed)
 			}
+		}
+
+		if item.Disabled {
+			check.Color = color.NRGBA(rgba.System)
 		}
 
 		if l.WidthModifier == 0 {

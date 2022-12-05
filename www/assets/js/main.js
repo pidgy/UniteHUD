@@ -1,3 +1,4 @@
+const version = "v1.0beta";
 const urlWS = "ws://127.0.0.1:17069/ws";
 const urlHTTP = "http://127.0.0.1:17069/http";
 
@@ -7,31 +8,34 @@ var loggedError = false;
 
 var lastShake = 0;
 
-function error(err) {
-    $('.error').html(`Connecting${loaders[index]}`);
-    index = (index + 1) % loaders.length;
-
-    $('.twitter').css('opacity', '0');
-    $('.logo').css('opacity', '.5');
-
-    $('.purplescore').html("");
-    $('.orangescore').html("");
-    $('.selfscore').html("");
-
+function clear() {
     $('.purple').css('opacity', 0);
     $('.orange').css('opacity', 0);
     $('.self').css('opacity', 0);
     $('.regis').css('opacity', 0);
+    $('.error').css('opacity', '.9');
+}
 
-    if (!loggedError) {
-        loggedError = true
+function error(err) {
+    clear();
 
-        console.error(`${err}`);
+    if (typeof err === "string") {
+        $('.error').html(`${err}`);
 
-        setTimeout(() => {
-            loggedError = false;
-        }, 3600000);
+        if (!loggedError) {
+            loggedError = true
+
+            console.error(`${err}`);
+
+            setTimeout(() => {
+                loggedError = false;
+            }, 3600000);
+        }
+    } else {
+        $('.error').html(`Connecting${loaders[index]}`);
     }
+
+    index = (index + 1) % loaders.length;
 
     return shake();
 }
@@ -45,9 +49,7 @@ function http() {
         success: function(data, status) {
             success(data);
         },
-        error: function(err) {
-            error(`[UniteHUD] failed to connect to server at ${urlHTTP} (${err})`);
-        },
+        error: error(),
     });
 };
 
@@ -78,22 +80,16 @@ function success(data) {
 
     console.log(JSON.stringify(data))
 
-    if (data.version != "v1.0beta") {
-        $('.error').html(`${data.version} Client required`);
+    if (data.version != version) {
+        error(`${data.version} client required`);
         return shake();
     }
 
     if (!data.started) {
-        $('.purple').css('opacity', 0);
-        $('.orange').css('opacity', 0);
-        $('.self').css('opacity', 0);
-        $('.regis').css('opacity', 0);
-        $('.logo').css('opacity', '.5');
-        $('.error').html(`${data.version}`);
+        clear();
+        $('.error').html(`${version}`);
         return shake();
     }
-
-    $('.error').html(``);
 
     if (data.seconds > 0) {
         $('.purple').css('opacity', 1);
@@ -104,77 +100,54 @@ function success(data) {
         $('.purplescore').html(data.purple.value);
         $('.orangescore').html(data.orange.value);
         $('.selfscore').html(data.self.value);
-
-        if (data.seconds < 120) {
-            $('.purple').css('left', '750px');
-            $('.orange').css('left', '1028px');
-        } else {
-            $('.purple').css('left', '759px');
-            $('.orange').css('left', '1020px');
-        }
     } else {
-        $('.purple').css('opacity', 0);
-        $('.orange').css('opacity', 0);
-        $('.self').css('opacity', 0);
-        $('.regis').css('opacity', 0);
-        $('.logo').css('opacity', '.5');
+        clear();
         $('.error').html(``);
     }
 
-    $('.stacks').html("_ ".repeat(data.stacks));
+    $('.stacks').html(data.stacks);
 
-    var purpleregis = "";
-    var orangeregis = "";
-    var reg = "_ ";
+    var cache = {
+        "none": ["none", "orange", "purple"],
+        "purple": ["purple", "orange", "none"],
+        "orange": ["orange", "purple", "none"],
+    }
 
     for (var i in data.regis) {
-        var teams = ["none", "orange", "purple"];
-
-        switch (data.regis[i]) {
-            case "purple":
-                teams = ["purple", "orange", "none"];
-                purpleregis += reg
-                break;
-            case "orange":
-                teams = ["orange", "purple", "none"];
-                orangeregis += reg
-                break;
-        }
-
-        $(`.regis-${i+1} .regis-circle-${teams[0]}`).css('opacity', 1);
-        $(`.regis-${i+1} .regis-circle-${teams[1]}`).css('opacity', 0);
-        $(`.regis-${i+1} .regis-circle-${teams[2]}`).css('opacity', 0);
+        $(`.regis-${parseInt(i)+1} .regis-circle-${cache[data.regis[i]][0]}`).css('opacity', 1);
+        $(`.regis-${parseInt(i)+1} .regis-circle-${cache[data.regis[i]][1]}`).css('opacity', 0);
+        $(`.regis-${parseInt(i)+1} .regis-circle-${cache[data.regis[i]][2]}`).css('opacity', 0);
     }
-
-    switch (occurences(orangeregis, "_")) {
-        case 0:
-        case 1:
-            $('.orangeregis-container').css("left", "1115px");
-            break;
-        case 2:
-            $('.orangeregis-container').css("left", "1090px");
-            break;
-        case 3:
-            $('.orangeregis-container').css("left", "1065px");
-            break;
-    }
-
-    $(`.orangeregis`).html(orangeregis);
-    $(`.purpleregis`).html(purpleregis);
 }
 
 function websocket() {
     let socket = new WebSocket(urlWS);
-    socket.onopen = function(e) {}
     socket.onmessage = function(event) {
         success(JSON.parse(event.data));
     };
-    socket.onerror = function(err) {
-        error(`[UniteHUD] failed to connect to server at ${urlWS} (${JSON.stringify(err)})`);
-    };
+    socket.onerror = error;
 }
 
+const test = false;
+
 $(document).ready(() => {
+    clear();
+
+    if (test) {
+        $('.error').html(``);
+
+        return success({
+            "regis": ["purple", "orange", "none"],
+            "version": version,
+            "started": true,
+            "seconds": 360,
+            "purple": { "value": 195 },
+            "orange": { "value": 102 },
+            "self": { "value": 132 },
+            "stacks": 6,
+        });
+    }
+
     const query = window.location.search;
     var args = query.split("?");
 

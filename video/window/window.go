@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"image"
 	"reflect"
+	"strings"
 	"sync"
 	"syscall"
+	"time"
 	"unsafe"
 
 	"github.com/disintegration/gift"
@@ -33,6 +35,17 @@ func init() {
 	// tell us the scale factor for our screen so that our screenshot works
 	// on hi-res displays.
 	proc.SetProcessDpiAwareness.Call(uintptr(2)) // PROCESS_PER_MONITOR_DPI_AWARE
+
+	go func() {
+		for range time.NewTicker(time.Second * 5).C {
+			windows, _, err := list()
+			if err != nil {
+				log.Err(err).Msg("failed to load open windows")
+			}
+
+			Sources = windows
+		}
+	}()
 }
 
 func scaled(img *image.RGBA) *image.RGBA {
@@ -47,7 +60,7 @@ func scaled(img *image.RGBA) *image.RGBA {
 
 // Capture captures the desired area from a Window and returns an image.
 func Capture() (*image.RGBA, error) {
-	handle, err := findWindow(config.Current.Window)
+	handle, err := find(config.Current.Window)
 	if err != nil {
 		notify.Error("Failed to find %s (%v)", config.Current.Window, err)
 		if config.Current.LostWindow == "" {
@@ -82,7 +95,7 @@ func Capture() (*image.RGBA, error) {
 }
 
 func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
-	handle, err := findWindow(config.Current.Window)
+	handle, err := find(config.Current.Window)
 	if err != nil {
 		notify.Error("Failed to find %s (%v)", config.Current.Window, err)
 		return screen.CaptureRect(rect)
@@ -258,7 +271,7 @@ func Reattach() error {
 }
 
 func Resize16x9() error {
-	h, err := findWindow(config.Current.Window)
+	h, err := find(config.Current.Window)
 	if err != nil {
 		return err
 	}
@@ -274,6 +287,21 @@ func Resize16x9() error {
 		return fmt.Errorf("failed to resize \"%s\"", config.Current.Window)
 	}
 	return nil
+}
+
+func StartingWith(name string) error {
+	windows, _, err := list()
+	if err != nil {
+		return err
+	}
+
+	for _, w := range windows {
+		if strings.HasPrefix(w, name) {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("Failed to find window starting with \"%s\"", name)
 }
 
 var callback = syscall.NewCallback(func(h syscall.Handle, p uintptr) uintptr {
@@ -293,6 +321,18 @@ var callback = syscall.NewCallback(func(h syscall.Handle, p uintptr) uintptr {
 	return 1 // continue enumeration
 })
 
+func enumWindows(enumFunc uintptr, lparam uintptr) (err error) {
+	r1, _, e1 := syscall.Syscall(proc.EnumWindows.Addr(), 2, uintptr(enumFunc), uintptr(lparam), 0)
+	if r1 == 0 {
+		if e1 != 0 {
+			err = error(e1)
+		} else {
+			err = syscall.EINVAL
+		}
+	}
+	return
+}
+
 func list() ([]string, []syscall.Handle, error) {
 	lock.Lock()
 	defer lock.Unlock()
@@ -307,20 +347,8 @@ func list() ([]string, []syscall.Handle, error) {
 	return Sources, handles, nil
 }
 
-func enumWindows(enumFunc uintptr, lparam uintptr) (err error) {
-	r1, _, e1 := syscall.Syscall(proc.EnumWindows.Addr(), 2, uintptr(enumFunc), uintptr(lparam), 0)
-	if r1 == 0 {
-		if e1 != 0 {
-			err = error(e1)
-		} else {
-			err = syscall.EINVAL
-		}
-	}
-	return
-}
-
-// findWindow finds the handle to the window.
-func findWindow(name string) (syscall.Handle, error) {
+// find finds the handle to the window.
+func find(name string) (syscall.Handle, error) {
 	var handle syscall.Handle
 
 	// First look for the normal window
@@ -330,7 +358,7 @@ func findWindow(name string) (syscall.Handle, error) {
 		config.Current.LostWindow = config.Current.Window
 		config.Current.Window = config.MainDisplay
 
-		err := fmt.Errorf("Failed to find \"%s\"", config.Current.LostWindow)
+		err := fmt.Errorf("Failed to find \"%s\"", name)
 		notify.Error("%v", err)
 
 		return handle, err

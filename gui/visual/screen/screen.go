@@ -6,6 +6,7 @@ import (
 
 	"gioui.org/unit"
 	"gioui.org/widget"
+	"github.com/rs/zerolog/log"
 	"golang.org/x/image/draw"
 
 	"gioui.org/layout"
@@ -21,6 +22,13 @@ type Screen struct {
 }
 
 func (s *Screen) Layout(gtx layout.Context) layout.Dimensions {
+	defer func() {
+		r := recover()
+		if r != nil {
+			log.Error().Err(r.(error)).Msg("layout failed")
+		}
+	}()
+
 	if s == nil || s.Image == nil || s.Image.Bounds().Size().Eq(image.Pt(0, 0)) {
 		return layout.Dimensions{Size: gtx.Constraints.Max}
 	}

@@ -40,7 +40,11 @@ func Close() {
 }
 
 func Load() error {
-	device.Load()
+	err := device.Load()
+	if err != nil {
+		return err
+	}
+
 	return window.Load()
 }
 

@@ -1,10 +1,10 @@
 @font-face {
-    font-family: "switch";
+    font-family: switch;
     src: url("../font/switch-bold.ttf");
 }
 
 body {
-    font-family: "switch";
+    font-family: switch;
     font-weight: bolder;
     background: rgba(0, 0, 0, 0);
 }
@@ -27,10 +27,21 @@ td {
     text-shadow: -2px 0 black, 0 2px black, 2px 0 black, 0 -2px black;
     transform: none;
     color: white;
-    font-family: "switch";
-    font-size: 40px;
+    font-family: switch;
+    font-size: 33px;
     font-weight: bolder;
     background: rgba(0, 0, 0, 0);
+    top: 6px;
+}
+
+.userscore {
+    font-size: 30px;
+    text-shadow: -2px 0 rgba(0, 0, 0, .9), 0 2px rgba(0, 0, 0, .9), 2px 0 rgba(0, 0, 0, .9), 0 -2px rgba(0, 0, 0, .9);
+    transform: none;
+    color: rgb(196, 211, 85);
+    font-weight: bolder;
+    background: rgba(0, 0, 0, 0);
+    transform: skew(-10deg);
 }
 
 .teamregis-container {
@@ -38,29 +49,34 @@ td {
     top: 15px;
 }
 
-.orange {
+.score-container {
     position: absolute;
-    left: 1020px;
-    text-align: center;
-    background: rgba(185, 59, 0, .5);
-    min-width: 45px;
-    max-width: 45px;
+    top: 0px;
+    left: 5px;
+    min-width: inherit;
+    max-width: inherit;
+}
+
+.score-bg {
+    position: absolute;
+    width: 80px;
+    height: 45px;
+    border-top: 5px solid rgba(0, 0, 0, .5);
+}
+
+.orange {
+    left: 453px;
 }
 
 .orangescore-bg {
-    position: absolute;
     background: rgba(232, 137, 0, .7);
     transform: scaleX(-1) skew(20deg);
-    width: 125px;
-    height: 60px;
     border-radius: 5px;
 }
 
 .orangescore {
-    top: 5px;
     position: absolute;
-    width: 125px;
-    /* font */
+    width: 80px;
 }
 
 .orangeregis-container {
@@ -77,27 +93,18 @@ td {
 }
 
 .purple {
-    position: absolute;
-    left: 759px;
-    text-align: center;
-    background: rgba(122, 78, 234, .5);
-    min-width: 45px;
-    max-width: 45px;
-}
-
-.purplescore-bg {
-    position: absolute;
-    background: rgba(123, 78, 233, .7);
-    transform: skew(20deg);
-    width: 125px;
-    height: 60px;
-    border-radius: 5px;
+    left: 5px;
 }
 
 .purplescore {
-    top: 5px;
     position: absolute;
-    width: 125px;
+    width: 80px;
+}
+
+.purplescore-bg {
+    background: rgba(123, 78, 233, .7);
+    transform: skew(20deg);
+    border-radius: 5px;
 }
 
 .purpleregis-container {
@@ -111,46 +118,59 @@ td {
 
 .self {
     position: absolute;
-    right: 115px;
+    left: 275px;
+    bottom: 30px;
+    position: absolute;
+    background: rgba(0, 0, 0, .6);
+    width: 210px;
+    height: 50px;
+    border-radius: 15px;
 }
 
-.selfscore-bg {
+.aeos-img {
     position: absolute;
-    background: rgba(166, 139, 224, .8);
-    transform: skew(20deg);
-    width: 125px;
-    height: 60px;
-    border-radius: 5px;
+    top: 10px;
+    left: 11px;
+    height: 30px;
 }
 
 .selfscore {
-    top: 5px;
     position: absolute;
+    top: 7px;
+    left: 55px;
     width: 125px;
-    /* font */
+}
+
+.attack-weight-img {
+    position: absolute;
+    top: 13px;
+    left: 120px;
+    height: 25px;
+    border-radius: 50%;
+}
+
+.stacks {
+    position: absolute;
+    top: 7px;
+    left: 175px;
 }
 
 .regis {
     position: absolute;
-    left: -25px;
-    top: -17px;
-}
-
-.regis-bg {
-    position: absolute;
-    background: rgba(50, 50, 50, .7);
-    transform: scaleX(-1);
-    width: 115px;
-    height: 148px;
-    border-radius: 5px;
+    left: 15px;
+    top: 745px;
+    background: rgba(0, 0, 0, .6);
+    width: 95px;
+    height: 127px;
+    border-radius: 15px;
 }
 
 .regis-circle-purple {
     position: absolute;
     background-color: #a376fe;
-    border: 3px solid rgba(170, 170, 250);
-    height: 25px;
-    width: 25px;
+    border: 4px solid rgba(170, 170, 250);
+    height: 22px;
+    width: 22px;
     border-radius: 50%;
     -moz-border-radius: 50%;
     -webkit-border-radius: 50%;
@@ -159,9 +179,9 @@ td {
 .regis-circle-orange {
     position: absolute;
     background-color: #ed8c44;
-    border: 3px solid #ecc565;
-    height: 25px;
-    width: 25px;
+    border: 4px solid #ecc565;
+    height: 22px;
+    width: 22px;
     border-radius: 50%;
     -moz-border-radius: 50%;
     -webkit-border-radius: 50%;
@@ -171,63 +191,51 @@ td {
 .regis-circle-none {
     position: absolute;
     background-color: #2e2c2b;
-    border: 3px solid #545454;
-    height: 25px;
-    width: 25px;
+    border: 4px solid #545454;
+    height: 22px;
+    width: 22px;
     border-radius: 50%;
     -moz-border-radius: 50%;
     -webkit-border-radius: 50%;
     opacity: .9;
 }
 
-.regis-1 {
+.regis-n {
     position: absolute;
-    left: 75px;
-    top: 30px;
+    left: 55px;
+}
+
+.regis-1 {
+    top: 10px;
 }
 
 .regis-2 {
-    position: absolute;
-    left: 75px;
-    top: 67px;
+    top: 47px;
 }
 
 .regis-3 {
+    top: 86px;
+}
+
+.regis-img {
     position: absolute;
-    left: 75px;
-    top: 104px;
+    left: 10px;
+    transform: none;
+    transform: scaleX(-1);
+    border-radius: 50%;
+    height: 35px;
 }
 
 .regis-img-1 {
-    position: absolute;
-    border-radius: 50%;
-    transform: none;
-    height: 35px;
-    left: 30px;
-    top: 27px;
+    top: 9px;
 }
 
 .regis-img-2 {
-    position: absolute;
-    border-radius: 50%;
-    transform: none;
-    height: 35px;
-    left: 30px;
-    top: 64px;
+    top: 46px;
 }
 
 .regis-img-3 {
-    position: absolute;
-    border-radius: 50%;
-    transform: none;
-    height: 35px;
-    left: 30px;
-    top: 101px;
-}
-
-.self {
-    text-align: center;
-    background: rgba(255, 255, 83, .4);
+    top: 83px;
 }
 
 .banner {
@@ -248,15 +256,13 @@ td {
     position: fixed;
     bottom: 3px;
     left: 4px;
-    opacity: .5;
 }
 
 .error {
     font-size: 20px;
     position: fixed;
     bottom: -20px;
-    left: 54px;
-    opacity: .2;
+    left: 55px;
     font-weight: 300;
     color: white;
     font-family: Arial, Helvetica, sans-serif;
@@ -266,13 +272,6 @@ td {
     position: absolute;
     right: 4px;
     top: 28px;
-}
-
-.stacks {
-    position: relative;
-    background-color: none;
-    color: white;
-    font-size: 27px;
 }
 
 @keyframes shake {

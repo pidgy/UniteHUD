@@ -42,7 +42,10 @@ type Config struct {
 	Shift              Shift
 	Dir                string
 	Acceptance         float32
-	load               func()
+
+	Crashed string
+
+	load func()
 }
 
 type Shift struct {
@@ -55,6 +58,14 @@ func (c Config) Reload() {
 	defer validate()
 }
 
+func (c *Config) Report(crash string) {
+	c.Crashed = crash
+
+	err := c.Save()
+	if err != nil {
+		log.Panic().Err(err).Msg("failed to save crash report")
+	}
+}
 func (c Config) Save() error {
 	f, err := os.Create(File)
 	if err != nil {

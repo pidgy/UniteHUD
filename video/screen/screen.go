@@ -122,23 +122,17 @@ func createDIBSection(hdc proc.HDC, pbmi *proc.WindowsBitmapInfo, iUsage uint, p
 }
 
 func deleteDC(hdc proc.HDC) bool {
-	ret, _, _ := proc.DeleteDC.Call(
-		uintptr(hdc))
-
+	ret, _, _ := proc.DeleteDC.Call(uintptr(hdc))
 	return ret != 0
 }
 
 func deleteObject(hObject proc.HGDIOBJ) bool {
-	ret, _, _ := proc.DeleteObject.Call(
-		uintptr(hObject))
-
+	ret, _, _ := proc.DeleteObject.Call(uintptr(hObject))
 	return ret != 0
 }
 
 func getDC(hwnd proc.HWND) proc.HDC {
-	ret, _, _ := proc.GetDC.Call(
-		uintptr(hwnd))
-
+	ret, _, _ := proc.GetDC.Call(uintptr(hwnd))
 	return proc.HDC(ret)
 }
 
@@ -156,10 +150,7 @@ func getLastError() uint32 {
 }
 
 func releaseDC(hwnd proc.HWND, hDC proc.HDC) bool {
-	ret, _, _ := proc.ReleaseDC.Call(
-		uintptr(hwnd),
-		uintptr(hDC))
-
+	ret, _, _ := proc.ReleaseDC.Call(uintptr(hwnd), uintptr(hDC))
 	return ret != 0
 }
 

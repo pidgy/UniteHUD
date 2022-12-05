@@ -1,6 +1,8 @@
 package proc
 
-import "syscall"
+import (
+	"syscall"
+)
 
 type (
 	HANDLE  uintptr
@@ -26,38 +28,40 @@ const (
 )
 
 var (
-	user32          = syscall.MustLoadDLL("user32.dll")
-	EnumWindows     = user32.MustFindProc("EnumWindows")
-	GetWindowTextW  = user32.MustFindProc("GetWindowTextW")
-	IsWindowVisible = user32.MustFindProc("IsWindowVisible")
-	UpdateWindow    = user32.MustFindProc("UpdateWindow")
-	SetWindowLongA  = user32.MustFindProc("SetWindowLongA")
-	GetTopWindow    = user32.MustFindProc("GetTopWindow")
+	psapi32                 = syscall.MustLoadDLL("psapi.dll")
+	EnumDeviceDrivers       = psapi32.MustFindProc("EnumDeviceDrivers")
+	GetDeviceDriverBaseName = psapi32.MustFindProc("GetDeviceDriverBaseNameW")
 
-	modUser32                    = syscall.NewLazyDLL("User32.dll")
-	FindWindow                   = modUser32.NewProc("FindWindowW")
-	MoveWindow                   = modUser32.NewProc("MoveWindow")
-	GetClientRect                = modUser32.NewProc("GetClientRect")
-	GetDC                        = modUser32.NewProc("GetDC")
-	GetWindowDC                  = modUser32.NewProc("GetWindowDC")
-	ReleaseDC                    = modUser32.NewProc("ReleaseDC")
-	SetThreadDpiAwarenessContext = modUser32.NewProc("GetThreadDpiAwarenessContext")
-	SetForegroundWindow          = modUser32.NewProc("SetForegroundWindow")
-	SetWindowPlacement           = modUser32.NewProc("SetWindowPlacement")
-	GetWindowPlacement           = modUser32.NewProc("GetWindowPlacement")
+	user32                       = syscall.MustLoadDLL("user32.dll")
+	EnumWindows                  = user32.MustFindProc("EnumWindows")
+	GetWindowTextW               = user32.MustFindProc("GetWindowTextW")
+	IsWindowVisible              = user32.MustFindProc("IsWindowVisible")
+	UpdateWindow                 = user32.MustFindProc("UpdateWindow")
+	SetWindowLongA               = user32.MustFindProc("SetWindowLongA")
+	GetTopWindow                 = user32.MustFindProc("GetTopWindow")
+	FindWindow                   = user32.MustFindProc("FindWindowW")
+	MoveWindow                   = user32.MustFindProc("MoveWindow")
+	GetClientRect                = user32.MustFindProc("GetClientRect")
+	GetDC                        = user32.MustFindProc("GetDC")
+	GetWindowDC                  = user32.MustFindProc("GetWindowDC")
+	ReleaseDC                    = user32.MustFindProc("ReleaseDC")
+	SetThreadDpiAwarenessContext = user32.MustFindProc("GetThreadDpiAwarenessContext")
+	SetForegroundWindow          = user32.MustFindProc("SetForegroundWindow")
+	SetWindowPlacement           = user32.MustFindProc("SetWindowPlacement")
+	GetWindowPlacement           = user32.MustFindProc("GetWindowPlacement")
 
-	modGdi32               = syscall.NewLazyDLL("Gdi32.dll")
-	BitBlt                 = modGdi32.NewProc("BitBlt")
-	CreateCompatibleBitmap = modGdi32.NewProc("CreateCompatibleBitmap")
-	CreateCompatibleDC     = modGdi32.NewProc("CreateCompatibleDC")
-	CreateDIBSection       = modGdi32.NewProc("CreateDIBSection")
-	DeleteDC               = modGdi32.NewProc("DeleteDC")
-	DeleteObject           = modGdi32.NewProc("DeleteObject")
-	GetDeviceCaps          = modGdi32.NewProc("GetDeviceCaps")
-	GetDIBits              = modGdi32.NewProc("GetDIBits")
-	SelectObject           = modGdi32.NewProc("SelectObject")
+	gdi32                  = syscall.MustLoadDLL("gdi32.dll")
+	BitBlt                 = gdi32.MustFindProc("BitBlt")
+	CreateCompatibleBitmap = gdi32.MustFindProc("CreateCompatibleBitmap")
+	CreateCompatibleDC     = gdi32.MustFindProc("CreateCompatibleDC")
+	CreateDIBSection       = gdi32.MustFindProc("CreateDIBSection")
+	DeleteDC               = gdi32.MustFindProc("DeleteDC")
+	DeleteObject           = gdi32.MustFindProc("DeleteObject")
+	GetDeviceCaps          = gdi32.MustFindProc("GetDeviceCaps")
+	GetDIBits              = gdi32.MustFindProc("GetDIBits")
+	SelectObject           = gdi32.MustFindProc("SelectObject")
 
-	modShcore              = syscall.NewLazyDLL("Shcore.dll")
+	modShcore              = syscall.NewLazyDLL("shcore.dll")
 	SetProcessDpiAwareness = modShcore.NewProc("SetProcessDpiAwareness")
 
 	modKernel32  = syscall.NewLazyDLL("kernel32.dll")

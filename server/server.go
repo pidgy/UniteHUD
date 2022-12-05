@@ -91,7 +91,7 @@ func (p *Pipe) client(r *http.Request, route string, raw []byte) {
 	defer p.mutex.Unlock()
 
 	ip := strings.Split(r.RemoteAddr, ":")[0]
-	key := fmt.Sprintf("%s -> %s -> %s", ip, r.URL, r.Header.Get("Sec-Websocket-Protocol"))
+	key := fmt.Sprintf("%s -> %s", ip, r.URL)
 
 	_, ok := p.clients[key]
 	if !ok {
@@ -189,7 +189,7 @@ func Scores() (orange, purple, self int) {
 	return pipe.game.Orange.Value, pipe.game.Purple.Value, pipe.game.Self.Value
 }
 
-func Start() {
+func Start() error {
 	pipe = &Pipe{
 		game:    newGame(),
 		clients: map[string]time.Time{},
@@ -264,10 +264,14 @@ func Start() {
 
 	state.Add(state.ServerStarted, Clock(), -1)
 
-	err := http.ListenAndServe(Address, nil)
-	if err != nil {
-		log.Fatal().Err(err).Str("addr", Address).Msg("socket server encountered a fatal error")
-	}
+	errq := make(chan error)
+	go func() {
+		errq <- http.ListenAndServe(Address, nil)
+	}()
+
+	time.AfterFunc(time.Second, func() { errq <- nil })
+
+	return <-errq
 }
 
 func Started(s bool) {
