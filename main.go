@@ -201,12 +201,11 @@ func capturePressButtonToScore() {
 			kill(err)
 		}
 
-		m, r := match.SelfScoreOption(matrix, img)
+		_, r := match.SelfScoreOption(matrix, img)
 		if r != match.Found {
 			matrix.Close()
 			continue
 		}
-		println(fmt.Sprintf("%.5f\n", m.Accepted*100))
 
 		state.Add(state.PressButtonToScore, server.Clock(), team.Balls.Holding)
 
