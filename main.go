@@ -201,13 +201,12 @@ func capturePressButtonToScore() {
 			kill(err)
 		}
 
-		// gocv.IMWrite("press.png", matrix)
-
-		_, r := match.SelfScoreOption(matrix, img)
+		m, r := match.SelfScoreOption(matrix, img)
 		if r != match.Found {
 			matrix.Close()
 			continue
 		}
+		println(fmt.Sprintf("%.5f\n", m.Accepted*100))
 
 		state.Add(state.PressButtonToScore, server.Clock(), team.Balls.Holding)
 
@@ -654,8 +653,22 @@ func captureWindows() {
 	}
 }
 
+var closed = false
+
+func handleClosing() {
+	closed = true
+
+	debug.Close()
+	video.Close()
+	os.Exit(0)
+}
+
 func handleCrash() {
 	for range time.NewTicker(time.Second * 5).C {
+		if closed {
+			return
+		}
+
 		err := window.StartingWith(gui.Title)
 		if err != nil {
 			kill(err)
@@ -694,14 +707,10 @@ func signals() {
 	s := <-sigq
 
 	log.Info().Stringer("signal", s).Msg("closing...")
-	closing()
-	os.Exit(1)
-}
 
-func closing() {
-	debug.Close()
-	video.Close()
-	os.Exit(0)
+	handleClosing()
+
+	os.Exit(1)
 }
 
 func main() {
@@ -758,7 +767,7 @@ func main() {
 		for action := range gui.Window.Actions {
 			switch action {
 			case gui.Closing:
-				closing()
+				handleClosing()
 				return
 			case gui.Start:
 				if !stopped {

@@ -182,6 +182,6 @@ func SelfScoreOption(matrix gocv.Mat, img image.Image) (*Match, Result) {
 			templates = append(templates, t)
 		}
 	}
-	m, r, _ := Matches(matrix, img, templates)
+	m, r, _ := MatchesWithAcceptance(matrix, img, templates, .85)
 	return m, r
 }

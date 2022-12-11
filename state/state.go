@@ -189,14 +189,6 @@ func Last(e EventType, since time.Duration) *Event {
 	return nil
 }
 
-func Since() time.Duration {
-	if len(Events) == 0 {
-		return 0
-	}
-
-	return time.Since(Events[0].Time)
-}
-
 func LastAny(since time.Duration, any ...EventType) *Event {
 	for _, event := range Events {
 		// Have we gone too far?
@@ -263,4 +255,12 @@ func ScoreMissedBy(name string) EventType {
 		return PurpleScoreMissed
 	}
 	return Nothing
+}
+
+func Since() time.Duration {
+	if len(Events) == 0 {
+		return 0
+	}
+
+	return time.Since(Events[0].Time)
 }

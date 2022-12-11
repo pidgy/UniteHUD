@@ -229,10 +229,11 @@ func (c Config) scoreFiles(t *team.Team) []filter.Filter {
 				notify.SystemWarn("Skipping \"%s%s\"", root, info.Name())
 				return filepath.SkipDir
 			}
-			notify.System("Loading \"%s\"", path)
+			notify.System("Loading templates from %s", path)
 		}
 
 		files = append(files, path)
+
 		return nil
 	})
 	if err != nil {
@@ -264,10 +265,10 @@ func (c Config) pointFiles(t *team.Team) []filter.Filter {
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if info.IsDir() {
 			if info.Name() != "points" {
-				notify.SystemWarn("Skipping \"%s%s\"", root, info.Name())
+				notify.SystemWarn("Skipping templates from %s%s", root, info.Name())
 				return filepath.SkipDir
 			}
-			notify.System("Loading \"%s\"", path)
+			notify.System("Loading templates from %s", path)
 		}
 
 		files = append(files, path)

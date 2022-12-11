@@ -45,7 +45,7 @@ GET 127.0.0.1:17069/ws
     "regis":["none","none","none"],
     "seconds":0,
     "self":{
-    "team":"self",
+        "team":"self",
         "value":0
     },
     "stacks":0,

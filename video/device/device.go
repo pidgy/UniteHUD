@@ -108,7 +108,7 @@ func closeCaptureDevice() {
 
 	running = false
 	for !stopped {
-		time.Sleep(time.Millisecond)
+		time.Sleep(time.Nanosecond)
 	}
 
 	log.Debug().Int("device", config.Current.VideoCaptureDevice).Msg("closed capture device")
@@ -153,6 +153,7 @@ func sources() ([]int, []string) {
 
 func startCaptureDevice(errq chan error) {
 	running = true
+
 	stopped = false
 	defer func() {
 		stopped = true
@@ -162,6 +163,7 @@ func startCaptureDevice(errq chan error) {
 	name := Name(config.Current.VideoCaptureDevice)
 
 	notify.System("Capturing from %s", name)
+
 	log.Debug().Str("name", name).Int("device", config.Current.VideoCaptureDevice).Msg("starting capture")
 
 	device, err := gocv.OpenVideoCaptureWithAPI(config.Current.VideoCaptureDevice, gocv.VideoCaptureDshow)

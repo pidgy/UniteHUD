@@ -48,16 +48,6 @@ func init() {
 	}()
 }
 
-func scaled(img *image.RGBA) *image.RGBA {
-	if config.Current.Scale < 1 || img == nil {
-		return img
-	}
-
-	x := float64(img.Rect.Max.X) * config.Current.Scale
-
-	return resize.Resize(uint(x), 0, img, resize.Lanczos3).(*image.RGBA)
-}
-
 // Capture captures the desired area from a Window and returns an image.
 func Capture() (*image.RGBA, error) {
 	handle, err := find(config.Current.Window)
@@ -384,6 +374,16 @@ func getWindowText(hwnd syscall.Handle) (name string, err error) {
 	}
 
 	return syscall.UTF16ToString(b), err
+}
+
+func scaled(img *image.RGBA) *image.RGBA {
+	if config.Current.Scale < 1 || img == nil {
+		return img
+	}
+
+	x := float64(img.Rect.Max.X) * config.Current.Scale
+
+	return resize.Resize(uint(x), 0, img, resize.Lanczos3).(*image.RGBA)
 }
 
 // windowRect gets the dimensions for a Window handle.

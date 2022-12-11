@@ -21,7 +21,8 @@ import (
 type Match struct {
 	image.Point
 	template.Template
-	Max image.Point
+	Max      image.Point
+	Accepted float32
 
 	Points []image.Point
 }
@@ -108,6 +109,7 @@ func MatchesWithAcceptance(matrix gocv.Mat, img image.Image, templates []templat
 		if maxv >= acceptance {
 			m.Template = templates[i]
 			m.Point = maxp
+			m.Accepted = maxv
 
 			go stats.Average(m.Template.Truncated(), maxv)
 			go stats.Count(m.Template.Truncated())

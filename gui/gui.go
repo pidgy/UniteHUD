@@ -73,6 +73,8 @@ type GUI struct {
 	toastActive    bool
 	lastToastError error
 	lastToastTime  time.Time
+
+	ecoMode bool
 }
 
 type Action string
@@ -105,6 +107,7 @@ func New() {
 		Preview: true,
 		Actions: make(chan Action, 1024),
 		resize:  true,
+		ecoMode: true,
 	}
 
 	cas, err := textblock.NewCascadiaCode()
@@ -390,7 +393,7 @@ func (g *GUI) main() (next string, err error) {
 		Text:           "¼",
 		Released:       rgba.N(rgba.CoolBlue),
 		Pressed:        rgba.N(rgba.DarkGray),
-		Size:           image.Pt(30, 15),
+		Size:           image.Pt(30, 16),
 		TextSize:       unit.Sp(12),
 		TextOffsetTop:  -4,
 		TextOffsetLeft: 0,
@@ -412,8 +415,8 @@ func (g *GUI) main() (next string, err error) {
 
 	historyButton := &button.Button{
 		Text:           "±",
-		Released:       rgba.N(rgba.Seafoam),
-		Pressed:        rgba.N(rgba.DarkSeafoam),
+		Released:       rgba.N(rgba.BloodOrange),
+		Pressed:        rgba.N(rgba.DarkGray),
 		Size:           image.Pt(30, 15),
 		TextSize:       unit.Sp(14),
 		TextOffsetTop:  -6,
@@ -432,7 +435,7 @@ func (g *GUI) main() (next string, err error) {
 		Pressed:        rgba.N(rgba.Purple),
 		Size:           image.Pt(30, 15),
 		TextSize:       unit.Sp(12),
-		TextOffsetTop:  -4,
+		TextOffsetTop:  -5,
 		TextOffsetLeft: -5,
 		BorderWidth:    unit.Sp(.5),
 	}
@@ -453,7 +456,8 @@ func (g *GUI) main() (next string, err error) {
 				notify.Error("Failed to open www/ directory: %v", err)
 				return
 			}
-		})
+		},
+		)
 	}
 
 	clearButton := &button.Button{
@@ -471,6 +475,29 @@ func (g *GUI) main() (next string, err error) {
 		clearButton.Active = !clearButton.Active
 
 		notify.CLS()
+	}
+
+	ecoButton := &button.Button{
+		Text:           "eco",
+		Released:       rgba.N(rgba.ForestGreen),
+		Pressed:        rgba.N(rgba.DarkGray),
+		Size:           image.Pt(30, 15),
+		TextSize:       unit.Sp(12),
+		TextOffsetTop:  -4,
+		TextOffsetLeft: -6,
+		BorderWidth:    unit.Sp(.5),
+		Active:         !g.ecoMode,
+	}
+
+	ecoButton.Click = func() {
+		g.ecoMode = !g.ecoMode
+		ecoButton.Active = !g.ecoMode
+
+		if g.ecoMode {
+			notify.System("Resource saver has been enabled")
+		} else {
+			notify.System("Resource saver has been disabled")
+		}
 	}
 
 	preview := &button.Image{
@@ -496,8 +523,7 @@ func (g *GUI) main() (next string, err error) {
 			config.Current.Report("")
 		}
 
-		// Prevent stale sessions from consuming CPU.
-		if state.Since() > time.Minute*30 && !stopButton.Disabled {
+		if g.ecoMode && state.Since() > time.Minute*30 && !stopButton.Disabled {
 			notify.System("Idling for 30 minutes without activity, stopping to save resources")
 			stopButton.Click()
 		}
@@ -756,7 +782,8 @@ func (g *GUI) main() (next string, err error) {
 									gtx,
 									func(gtx layout.Context) layout.Dimensions {
 										return notifyFeedTextBlock.Layout(gtx, notify.Feeds())
-									})
+									},
+								)
 							}
 
 							return layout.Dimensions{Size: gtx.Constraints.Max}
@@ -774,39 +801,53 @@ func (g *GUI) main() (next string, err error) {
 
 								layout.Inset{
 									Left: unit.Px(float32(gtx.Constraints.Max.X - statsButton.Size.X - 2)),
-									Top:  unit.Px(float32(gtx.Constraints.Min.Y + 3)),
+									Top:  unit.Px(float32(gtx.Constraints.Min.Y + 2)),
 								}.Layout(
 									gtx,
 									func(gtx layout.Context) layout.Dimensions {
 										return statsButton.Layout(gtx)
-									})
+									},
+								)
 
 								layout.Inset{
-									Left: unit.Px(float32(gtx.Constraints.Max.X - historyButton.Size.X - 2)),
-									Top:  unit.Px(float32(gtx.Constraints.Min.Y + statsButton.Size.Y + 3)),
+									Left: unit.Px(float32(gtx.Constraints.Max.X - historyButton.Size.X*2 - 2)),
+									Top:  unit.Px(float32(gtx.Constraints.Min.Y + 2)),
 								}.Layout(
 									gtx,
 									func(gtx layout.Context) layout.Dimensions {
 										return historyButton.Layout(gtx)
-									})
+									},
+								)
 
 								layout.Inset{
 									Left: unit.Px(float32(gtx.Constraints.Max.X - obsButton.Size.X - 2)),
-									Top:  unit.Px(float32(gtx.Constraints.Min.Y + statsButton.Size.Y*2 + 3)),
+									Top:  unit.Px(float32(gtx.Constraints.Min.Y + obsButton.Size.Y + 2)),
 								}.Layout(
 									gtx,
 									func(gtx layout.Context) layout.Dimensions {
 										return obsButton.Layout(gtx)
-									})
+									},
+								)
 
 								layout.Inset{
-									Left: unit.Px(float32(gtx.Constraints.Max.X - historyButton.Size.X - 2)),
-									Top:  unit.Px(float32(gtx.Constraints.Min.Y + statsButton.Size.Y*3 + 3)),
+									Left: unit.Px(float32(gtx.Constraints.Max.X - clearButton.Size.X*2 - 2)),
+									Top:  unit.Px(float32(gtx.Constraints.Min.Y + clearButton.Size.Y + 2)),
 								}.Layout(
 									gtx,
 									func(gtx layout.Context) layout.Dimensions {
 										return clearButton.Layout(gtx)
-									})
+									},
+								)
+
+								layout.Inset{
+									Left: unit.Px(float32(gtx.Constraints.Max.X - ecoButton.Size.X - 2)),
+									Top:  unit.Px(float32(gtx.Constraints.Min.Y + ecoButton.Size.Y*2 + 2)),
+								}.Layout(
+									gtx,
+									func(gtx layout.Context) layout.Dimensions {
+										return ecoButton.Layout(gtx)
+									},
+								)
 							}
 							// Right-side buttons.
 							{
@@ -818,7 +859,8 @@ func (g *GUI) main() (next string, err error) {
 									preview.SetImage(notify.Preview)
 
 									return preview.Layout(g.cascadia, gtx)
-								})
+								},
+								)
 
 								if global.DebugMode {
 									layout.Inset{
@@ -828,7 +870,8 @@ func (g *GUI) main() (next string, err error) {
 										gtx,
 										func(gtx layout.Context) layout.Dimensions {
 											return reloadButton.Layout(gtx)
-										})
+										},
+									)
 								}
 
 								layout.Inset{
@@ -838,7 +881,8 @@ func (g *GUI) main() (next string, err error) {
 									gtx,
 									func(gtx layout.Context) layout.Dimensions {
 										return startButton.Layout(gtx)
-									})
+									},
+								)
 
 								layout.Inset{
 									Left: unit.Px(float32(gtx.Constraints.Max.X - 125)),
@@ -847,7 +891,8 @@ func (g *GUI) main() (next string, err error) {
 									gtx,
 									func(gtx layout.Context) layout.Dimensions {
 										return stopButton.Layout(gtx)
-									})
+									},
+								)
 
 								layout.Inset{
 									Left: unit.Px(float32(gtx.Constraints.Max.X - 125)),
@@ -855,7 +900,8 @@ func (g *GUI) main() (next string, err error) {
 								}.Layout(gtx,
 									func(gtx layout.Context) layout.Dimensions {
 										return configButton.Layout(gtx)
-									})
+									},
+								)
 
 								layout.Inset{
 									Left: unit.Px(float32(gtx.Constraints.Max.X - 125)),
@@ -864,7 +910,8 @@ func (g *GUI) main() (next string, err error) {
 									gtx,
 									func(gtx layout.Context) layout.Dimensions {
 										return recordButton.Layout(gtx)
-									})
+									},
+								)
 
 								layout.Inset{
 									Left: unit.Px(float32(gtx.Constraints.Max.X - 125)),
@@ -873,7 +920,8 @@ func (g *GUI) main() (next string, err error) {
 									gtx,
 									func(gtx layout.Context) layout.Dimensions {
 										return openButton.Layout(gtx)
-									})
+									},
+								)
 							}
 							// Event images.
 							{
@@ -930,8 +978,10 @@ func (g *GUI) main() (next string, err error) {
 							}
 
 							return layout.Dimensions{Size: gtx.Constraints.Max}
-						})
-				})
+						},
+					)
+				},
+			)
 
 			e.Frame(gtx.Ops)
 		}
@@ -1367,7 +1417,8 @@ func (g *GUI) configure() (next string, err error) {
 				next = "main"
 			}, func() {
 				cancelButton.Active = !cancelButton.Active
-			})
+			},
+		)
 	}
 
 	saveButton.Click = func() {
@@ -1400,7 +1451,8 @@ func (g *GUI) configure() (next string, err error) {
 				next = "main"
 			}, func() {
 				saveButton.Active = !saveButton.Active
-			})
+			},
+		)
 	}
 
 	screenButton := &button.Button{
@@ -1474,10 +1526,10 @@ func (g *GUI) configure() (next string, err error) {
 
 	deviceList := &dropdown.List{}
 
-	populateDevices := func() {
+	populateDevices := func(videoCaptureDisabledEvent bool) {
 		_, devices := video.Sources()
 
-		if len(devices)+1 == len(deviceList.Items) {
+		if len(devices)+1 == len(deviceList.Items) && !videoCaptureDisabledEvent {
 			return
 		}
 
@@ -1492,7 +1544,8 @@ func (g *GUI) configure() (next string, err error) {
 			deviceList.Items = append(deviceList.Items, &dropdown.Item{
 				Text:  device.Name(d),
 				Value: d,
-			})
+			},
+			)
 		}
 
 		for _, i := range deviceList.Items {
@@ -1534,8 +1587,9 @@ func (g *GUI) configure() (next string, err error) {
 
 					config.Current.Window = config.MainDisplay
 					config.Current.VideoCaptureDevice = config.NoVideoCaptureDevice
+
 					populateWindows(true)
-					populateDevices()
+					populateDevices(true)
 					return
 				}
 			}()
@@ -1543,7 +1597,7 @@ func (g *GUI) configure() (next string, err error) {
 		WidthModifier: 1,
 	}
 
-	populateDevices()
+	populateDevices(false)
 
 	resetButton := &button.Button{
 		Text:     "\t Reset",
@@ -1571,12 +1625,13 @@ func (g *GUI) configure() (next string, err error) {
 			scoreArea.Min, scoreArea.Max = config.Current.Scores.Min.Div(2), config.Current.Scores.Max.Div(2)
 
 			populateWindows(true)
-			populateDevices()
+			populateDevices(true)
 
 			saveButton.Click()
 		}, func() {
 			resetButton.Active = !resetButton.Active
-		})
+		},
+		)
 	}
 
 	header := material.H5(g.cascadia, Title)
@@ -1600,7 +1655,7 @@ func (g *GUI) configure() (next string, err error) {
 		}
 
 		populateWindows(false)
-		populateDevices()
+		populateDevices(false)
 
 		e := <-g.Events()
 		switch e := e.(type) {
@@ -1630,7 +1685,8 @@ func (g *GUI) configure() (next string, err error) {
 								gtx,
 								color.NRGBA{R: 25, G: 25, B: 25, A: 255},
 								g.Screen.Layout)
-						})
+						},
+					)
 				},
 
 				func(gtx layout.Context) layout.Dimensions {
@@ -1647,7 +1703,8 @@ func (g *GUI) configure() (next string, err error) {
 											gtx,
 											func(gtx layout.Context) layout.Dimensions {
 												return saveButton.Layout(gtx)
-											})
+											},
+										)
 
 										layout.Inset{
 											Left:  unit.Px(115),
@@ -1657,7 +1714,8 @@ func (g *GUI) configure() (next string, err error) {
 											gtx,
 											func(gtx layout.Context) layout.Dimensions {
 												return cancelButton.Layout(gtx)
-											})
+											},
+										)
 
 										layout.Inset{
 											Top:   unit.Px(5),
@@ -1667,7 +1725,8 @@ func (g *GUI) configure() (next string, err error) {
 											gtx,
 											func(gtx layout.Context) layout.Dimensions {
 												return resizeButton.Layout(gtx)
-											})
+											},
+										)
 
 										layout.Inset{
 											Top:   unit.Px(37),
@@ -1677,7 +1736,8 @@ func (g *GUI) configure() (next string, err error) {
 											gtx,
 											func(gtx layout.Context) layout.Dimensions {
 												return defaultButton.Layout(gtx)
-											})
+											},
+										)
 
 										layout.Inset{
 											Left:  unit.Px(220),
@@ -1687,7 +1747,8 @@ func (g *GUI) configure() (next string, err error) {
 											gtx,
 											func(gtx layout.Context) layout.Dimensions {
 												return resetButton.Layout(gtx)
-											})
+											},
+										)
 
 										layout.Inset{
 											Left:  unit.Px(325),
@@ -1697,7 +1758,8 @@ func (g *GUI) configure() (next string, err error) {
 											gtx,
 											func(gtx layout.Context) layout.Dimensions {
 												return openConfigFileButton.Layout(gtx)
-											})
+											},
+										)
 
 										layout.Inset{
 											Left:  unit.Px(325),
@@ -1707,7 +1769,8 @@ func (g *GUI) configure() (next string, err error) {
 											gtx,
 											func(gtx layout.Context) layout.Dimensions {
 												return screenButton.Layout(gtx)
-											})
+											},
+										)
 									}
 
 									// Capture video.
@@ -1722,7 +1785,8 @@ func (g *GUI) configure() (next string, err error) {
 												windowListTitle := material.Label(g.cascadia, unit.Px(14), "Window")
 												windowListTitle.Color = rgba.N(rgba.SlateGray)
 												return windowListTitle.Layout(gtx)
-											})
+											},
+										)
 
 										layout.Inset{
 											Left:   unit.Px(float32(gtx.Constraints.Max.X - 520)),
@@ -1737,8 +1801,10 @@ func (g *GUI) configure() (next string, err error) {
 													Width: unit.Px(2),
 												}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 													return windowList.Layout(gtx, g.normal)
-												})
-											})
+												},
+												)
+											},
+										)
 									}
 
 									{
@@ -1752,7 +1818,8 @@ func (g *GUI) configure() (next string, err error) {
 												deviceListTitle := material.Label(g.cascadia, unit.Px(14), "Video Capture Device")
 												deviceListTitle.Color = rgba.N(rgba.SlateGray)
 												return deviceListTitle.Layout(gtx)
-											})
+											},
+										)
 
 										layout.Inset{
 											Left:   unit.Px(float32(gtx.Constraints.Max.X - 250)),
@@ -1767,8 +1834,10 @@ func (g *GUI) configure() (next string, err error) {
 													Width: unit.Px(2),
 												}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 													return deviceList.Layout(gtx, g.normal)
-												})
-											})
+												},
+												)
+											},
+										)
 									}
 
 									// Time area rectangle buttons.
@@ -1780,7 +1849,8 @@ func (g *GUI) configure() (next string, err error) {
 											gtx,
 											func(gtx layout.Context) layout.Dimensions {
 												return timeArea.Button.Layout(gtx)
-											})
+											},
+										)
 									}
 
 									layout.Inset{
@@ -1790,7 +1860,8 @@ func (g *GUI) configure() (next string, err error) {
 										gtx,
 										func(gtx layout.Context) layout.Dimensions {
 											return captureButton.Layout(gtx)
-										})
+										},
+									)
 
 									// Balls area rectangle buttons.
 									{
@@ -1801,7 +1872,8 @@ func (g *GUI) configure() (next string, err error) {
 											gtx,
 											func(gtx layout.Context) layout.Dimensions {
 												return ballsArea.Button.Layout(gtx)
-											})
+											},
+										)
 									}
 
 									// Score area rectangle buttons.
@@ -1825,7 +1897,8 @@ func (g *GUI) configure() (next string, err error) {
 											gtx,
 											func(gtx layout.Context) layout.Dimensions {
 												return scoreArea.Button.Layout(gtx)
-											})
+											},
+										)
 
 										layout.Inset{
 											Left: unit.Px(10),
@@ -1834,7 +1907,8 @@ func (g *GUI) configure() (next string, err error) {
 											gtx,
 											func(gtx layout.Context) layout.Dimensions {
 												return scaleDownButton.Layout(gtx)
-											})
+											},
+										)
 
 										layout.Inset{
 											Left: unit.Px(45),
@@ -1843,7 +1917,8 @@ func (g *GUI) configure() (next string, err error) {
 											gtx,
 											func(gtx layout.Context) layout.Dimensions {
 												return scaleText.Layout(gtx)
-											})
+											},
+										)
 
 										layout.Inset{
 											Left: unit.Px(45),
@@ -1858,7 +1933,8 @@ func (g *GUI) configure() (next string, err error) {
 												}
 
 												return scaleValueText.Layout(gtx)
-											})
+											},
+										)
 
 										layout.Inset{
 											Left: unit.Px(80),
@@ -1867,7 +1943,8 @@ func (g *GUI) configure() (next string, err error) {
 											gtx,
 											func(gtx layout.Context) layout.Dimensions {
 												return scaleUpButton.Layout(gtx)
-											})
+											},
+										)
 									}
 
 									// Shift N,E,S,W
@@ -1893,7 +1970,8 @@ func (g *GUI) configure() (next string, err error) {
 											gtx,
 											func(gtx layout.Context) layout.Dimensions {
 												return nButton.Layout(gtx)
-											})
+											},
+										)
 
 										layout.Inset{
 											Left: unit.Px(184),
@@ -1902,7 +1980,8 @@ func (g *GUI) configure() (next string, err error) {
 											gtx,
 											func(gtx layout.Context) layout.Dimensions {
 												return eButton.Layout(gtx)
-											})
+											},
+										)
 
 										layout.Inset{
 											Left: unit.Px(150),
@@ -1911,7 +1990,8 @@ func (g *GUI) configure() (next string, err error) {
 											gtx,
 											func(gtx layout.Context) layout.Dimensions {
 												return sButton.Layout(gtx)
-											})
+											},
+										)
 
 										layout.Inset{
 											Left: unit.Px(118),
@@ -1920,7 +2000,8 @@ func (g *GUI) configure() (next string, err error) {
 											gtx,
 											func(gtx layout.Context) layout.Dimensions {
 												return wButton.Layout(gtx)
-											})
+											},
+										)
 
 										layout.Inset{
 											Left: unit.Px(150),
@@ -1929,13 +2010,15 @@ func (g *GUI) configure() (next string, err error) {
 											gtx,
 											func(gtx layout.Context) layout.Dimensions {
 												return shiftText.Layout(gtx)
-											})
+											},
+										)
 									}
 
 									return layout.Dimensions{Size: gtx.Constraints.Max}
 								},
 							)
-						})
+						},
+					)
 				},
 			)
 
@@ -2032,7 +2115,8 @@ func (g *GUI) configurationHelpDialog(h *help.Help, widget layout.Widget) (next 
 							return layout.Inset{Top: unit.Px(50)}.Layout(gtx,
 								func(gtx layout.Context) layout.Dimensions {
 									return widget(gtx)
-								})
+								},
+							)
 						},
 					)
 				},
@@ -2057,7 +2141,8 @@ func (g *GUI) configurationHelpDialog(h *help.Help, widget layout.Widget) (next 
 							}.Layout(gtx,
 								func(gtx layout.Context) layout.Dimensions {
 									return backwardButton.Layout(gtx)
-								})
+								},
+							)
 
 							layout.Inset{
 								Left: unit.Px(float32(gtx.Constraints.Max.X - 65)),
@@ -2065,7 +2150,8 @@ func (g *GUI) configurationHelpDialog(h *help.Help, widget layout.Widget) (next 
 							}.Layout(gtx,
 								func(gtx layout.Context) layout.Dimensions {
 									return forwardButton.Layout(gtx)
-								})
+								},
+							)
 
 							layout.Inset{
 								Left: unit.Px(float32(gtx.Constraints.Max.X - 125)),
@@ -2073,11 +2159,14 @@ func (g *GUI) configurationHelpDialog(h *help.Help, widget layout.Widget) (next 
 							}.Layout(gtx,
 								func(gtx layout.Context) layout.Dimensions {
 									return returnButton.Layout(gtx)
-								})
+								},
+							)
 
 							return layout.Dimensions{Size: gtx.Constraints.Max}
-						})
-				})
+						},
+					)
+				},
+			)
 
 			e.Frame(gtx.Ops)
 		}
@@ -2095,7 +2184,8 @@ func (g *GUI) buttonSpam(b *button.Button) {
 			config.Current.Reload()
 			g.Preview = true
 		}
-	})
+	},
+	)
 }
 
 func (g *GUI) ToastCrash(msg, reason string, callbacks ...func()) {
@@ -2141,14 +2231,16 @@ func (g *GUI) ToastCrash(msg, reason string, callbacks ...func()) {
 				}.Layout(gtx,
 					func(gtx layout.Context) layout.Dimensions {
 						return m.Layout(gtx)
-					})
+					},
+				)
 
 				layout.Inset{
 					Top: unit.Px(40),
 				}.Layout(gtx,
 					func(gtx layout.Context) layout.Dimensions {
 						return c.Layout(gtx)
-					})
+					},
+				)
 
 				w.Center()
 				w.Raise()
@@ -2213,7 +2305,8 @@ func (g *GUI) ToastOK(title, msg string, callbacks ...func()) {
 				}.Layout(gtx,
 					func(gtx layout.Context) layout.Dimensions {
 						return m.Layout(gtx)
-					})
+					},
+				)
 
 				layout.Inset{
 					Left: unit.Px(float32(gtx.Constraints.Max.X/3 + 15)),
@@ -2221,7 +2314,8 @@ func (g *GUI) ToastOK(title, msg string, callbacks ...func()) {
 				}.Layout(gtx,
 					func(gtx layout.Context) layout.Dimensions {
 						return okButton.Layout(gtx)
-					})
+					},
+				)
 
 				w.Center()
 				w.Raise()
@@ -2299,7 +2393,8 @@ func (g *GUI) ToastYesNo(title, msg string, y, n func()) {
 				}.Layout(gtx,
 					func(gtx layout.Context) layout.Dimensions {
 						return m.Layout(gtx)
-					})
+					},
+				)
 
 				layout.Inset{
 					Left: unit.Px(float32(gtx.Constraints.Max.X/2 - 115)),
@@ -2307,7 +2402,8 @@ func (g *GUI) ToastYesNo(title, msg string, y, n func()) {
 				}.Layout(gtx,
 					func(gtx layout.Context) layout.Dimensions {
 						return yButton.Layout(gtx)
-					})
+					},
+				)
 
 				layout.Inset{
 					Left: unit.Px(float32(gtx.Constraints.Max.X/2 + 15)),
@@ -2315,7 +2411,8 @@ func (g *GUI) ToastYesNo(title, msg string, y, n func()) {
 				}.Layout(gtx,
 					func(gtx layout.Context) layout.Dimensions {
 						return nButton.Layout(gtx)
-					})
+					},
+				)
 
 				w.Center()
 				w.Raise()
