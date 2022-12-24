@@ -38,15 +38,10 @@ td {
     font-size: 30px;
     text-shadow: -2px 0 rgba(0, 0, 0, .9), 0 2px rgba(0, 0, 0, .9), 2px 0 rgba(0, 0, 0, .9), 0 -2px rgba(0, 0, 0, .9);
     transform: none;
-    color: rgb(196, 211, 85);
+    color: rgb(238, 255, 109);
     font-weight: bolder;
     background: rgba(0, 0, 0, 0);
     transform: skew(-10deg);
-}
-
-.teamregis-container {
-    position: absolute;
-    top: 15px;
 }
 
 .score-container {
@@ -79,17 +74,13 @@ td {
     width: 80px;
 }
 
-.orangeregis-container {
-    left: 1125px;
-    text-align: right;
-}
-
-.orangeregis {
-    position: relative;
-    background-color: none;
-    color: white;
-    font-size: 40px;
-    text-align: right;
+.orangescore span {
+    position: absolute;
+    left: -8px;
+    bottom: -15px;
+    font-size: 8px;
+    text-shadow: none;
+    opacity: .7;
 }
 
 .purple {
@@ -101,67 +92,68 @@ td {
     width: 80px;
 }
 
+.purplescore span {
+    position: absolute;
+    left: 10px;
+    bottom: -15px;
+    font-size: 8px;
+    text-shadow: none;
+    opacity: .7;
+}
+
 .purplescore-bg {
     background: rgba(123, 78, 233, .7);
     transform: skew(20deg);
     border-radius: 5px;
 }
 
-.purpleregis-container {
-    left: 770px;
-}
-
-.purpleregis {
-    font-size: 40px;
-    color: white;
-}
-
 .self {
     position: absolute;
-    left: 275px;
-    bottom: 30px;
-    position: absolute;
+    left: 15px;
+    bottom: 210px;
     background: rgba(0, 0, 0, .6);
-    width: 210px;
-    height: 50px;
+    width: 120px;
+    height: 90px;
     border-radius: 15px;
 }
 
 .aeos-img {
     position: absolute;
     top: 10px;
-    left: 11px;
+    left: 15px;
     height: 30px;
 }
 
 .selfscore {
     position: absolute;
-    top: 7px;
-    left: 55px;
+    top: 6px;
+    left: 60px;
     width: 125px;
+    text-align: left;
 }
 
 .attack-weight-img {
     position: absolute;
-    top: 13px;
-    left: 120px;
-    height: 25px;
+    top: 55px;
+    left: 8px;
+    height: 23px;
     border-radius: 50%;
 }
 
 .stacks {
     position: absolute;
-    top: 7px;
-    left: 175px;
+    top: 47px;
+    left: 58px;
 }
 
 .regis {
     position: absolute;
-    left: 15px;
-    top: 745px;
+    left: 310px;
+    bottom: 30px;
+    position: absolute;
     background: rgba(0, 0, 0, .6);
-    width: 95px;
-    height: 127px;
+    width: 150px;
+    height: 80px;
     border-radius: 15px;
 }
 
@@ -203,23 +195,25 @@ td {
 .regis-n {
     position: absolute;
     left: 55px;
+    top: 45px;
 }
 
 .regis-1 {
-    top: 10px;
+    left: 12px;
 }
 
 .regis-2 {
-    top: 47px;
+    left: 61px;
 }
 
 .regis-3 {
-    top: 86px;
+    left: 110px;
 }
 
 .regis-img {
     position: absolute;
     left: 10px;
+    top: 5px;
     transform: none;
     transform: scaleX(-1);
     border-radius: 50%;
@@ -227,15 +221,101 @@ td {
 }
 
 .regis-img-1 {
-    top: 9px;
+    left: 9px;
 }
 
 .regis-img-2 {
-    top: 46px;
+    left: 58px;
 }
 
 .regis-img-3 {
-    top: 83px;
+    left: 107px;
+}
+
+.regis-bottom {
+    position: absolute;
+    right: 263px;
+    bottom: 30px;
+    position: absolute;
+    background: rgba(0, 0, 0, .6);
+    width: 150px;
+    height: 80px;
+    border-radius: 15px;
+}
+
+.regis-bottom-circle-purple {
+    position: absolute;
+    background-color: #a376fe;
+    border: 4px solid rgba(170, 170, 250);
+    height: 22px;
+    width: 22px;
+    border-radius: 50%;
+    -moz-border-radius: 50%;
+    -webkit-border-radius: 50%;
+}
+
+.regis-bottom-circle-orange {
+    position: absolute;
+    background-color: #ed8c44;
+    border: 4px solid #ecc565;
+    height: 22px;
+    width: 22px;
+    border-radius: 50%;
+    -moz-border-radius: 50%;
+    -webkit-border-radius: 50%;
+    opacity: .9;
+}
+
+.regis-bottom-circle-none {
+    position: absolute;
+    background-color: #2e2c2b;
+    border: 4px solid #545454;
+    height: 22px;
+    width: 22px;
+    border-radius: 50%;
+    -moz-border-radius: 50%;
+    -webkit-border-radius: 50%;
+    opacity: .9;
+}
+
+.regis-bottom-n {
+    position: absolute;
+    left: 55px;
+    top: 45px;
+}
+
+.regis-bottom-1 {
+    left: 12px;
+}
+
+.regis-bottom-2 {
+    left: 61px;
+}
+
+.regis-bottom-3 {
+    left: 110px;
+}
+
+.regis-bottom-img {
+    position: absolute;
+    left: 10px;
+    top: 5px;
+    transform: none;
+    transform: scaleX(-1);
+    border-radius: 50%;
+    height: 35px;
+}
+
+.regis-bottom-img-1 {
+    left: 9px;
+}
+
+.regis-bottom-img-2 {
+    left: 58px;
+}
+
+.regis-bottom-img-3 {
+    left: 107px;
 }
 
 .banner {
@@ -262,10 +342,11 @@ td {
     font-size: 20px;
     position: fixed;
     bottom: -20px;
-    left: 55px;
-    font-weight: 300;
+    left: 60px;
+    font-weight: 400;
     color: white;
     font-family: Arial, Helvetica, sans-serif;
+    color: rgba(255, 255, 255, .7);
 }
 
 .stacks-container {

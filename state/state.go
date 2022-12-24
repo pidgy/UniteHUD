@@ -20,32 +20,43 @@ type Event struct {
 type EventType int
 
 const (
-	Nothing                 = EventType(-1)
-	PreScore                = EventType(0)
-	PostScore               = EventType(1)
-	Killed                  = EventType(2)
-	KilledWithPoints        = EventType(3)
-	KilledWithoutPoints     = EventType(4)
-	MatchStarting           = EventType(5)
-	MatchEnding             = EventType(6)
-	HoldingEnergy           = EventType(7)
-	PurpleBaseOpen          = EventType(8)
-	OrangeBaseOpen          = EventType(9)
-	PurpleBaseClosed        = EventType(10)
-	OrangeBaseClosed        = EventType(11)
-	OrangeScore             = EventType(12)
-	PurpleScore             = EventType(13)
-	FirstScored             = EventType(14)
-	OrangeScoreMissed       = EventType(15)
-	PurpleScoreMissed       = EventType(16)
-	RegielekiAdvancingAlly  = EventType(17)
-	RegielekiAdvancingEnemy = EventType(18)
-	PressButtonToScore      = EventType(19)
-	ScoreOverride           = EventType(20)
-	ObjectivePresent        = EventType(21)
-	ObjectiveReachedOrange  = EventType(22)
-	ObjectiveReachedPurple  = EventType(23)
-	ServerStarted           = EventType(24)
+	Nothing                = EventType(-1)
+	PreScore               = EventType(0)
+	PostScore              = EventType(1)
+	Killed                 = EventType(2)
+	KilledWithPoints       = EventType(3)
+	KilledWithoutPoints    = EventType(4)
+	MatchStarting          = EventType(5)
+	MatchEnding            = EventType(6)
+	HoldingEnergy          = EventType(7)
+	PurpleBaseOpen         = EventType(8)
+	OrangeBaseOpen         = EventType(9)
+	PurpleBaseClosed       = EventType(10)
+	OrangeBaseClosed       = EventType(11)
+	OrangeScore            = EventType(12)
+	PurpleScore            = EventType(13)
+	FirstScored            = EventType(14)
+	OrangeScoreMissed      = EventType(15)
+	PurpleScoreMissed      = EventType(16)
+	RegielekiSecureEnemy   = EventType(17)
+	RegielekiSecureAlly    = EventType(18)
+	PressButtonToScore     = EventType(19)
+	ScoreOverride          = EventType(20)
+	ObjectivePresent       = EventType(21)
+	ObjectiveReachedOrange = EventType(22)
+	ObjectiveReachedPurple = EventType(23)
+	ServerStarted          = EventType(24)
+	ServerStopped          = EventType(25)
+	RegiceSecureEnemy      = EventType(26)
+	RegiceSecureAlly       = EventType(27)
+	RegirockSecureEnemy    = EventType(28)
+	RegirockSecureAlly     = EventType(29)
+	RegisteelSecureEnemy   = EventType(30)
+	RegisteelSecureAlly    = EventType(31)
+	KOAlly                 = EventType(32)
+	KOStreakAlly           = EventType(33)
+	KOEnemy                = EventType(34)
+	KOStreakEnemy          = EventType(35)
 )
 
 var (
@@ -65,11 +76,11 @@ func (e EventType) String() string {
 	case PostScore:
 		return "Post score"
 	case Killed:
-		return "Killed"
+		return "Defeated"
 	case KilledWithPoints:
-		return "Killed with points"
+		return "Defeated with points"
 	case KilledWithoutPoints:
-		return "Killed without points"
+		return "Defeated without points"
 	case MatchStarting:
 		return "Match starting"
 	case MatchEnding:
@@ -94,10 +105,22 @@ func (e EventType) String() string {
 		return "Orange score missed"
 	case PurpleScoreMissed:
 		return "Purple score missed"
-	case RegielekiAdvancingAlly:
-		return "Regieleki enemy secure"
-	case RegielekiAdvancingEnemy:
+	case RegielekiSecureEnemy:
 		return "Regieleki ally secure"
+	case RegielekiSecureAlly:
+		return "Regieleki enemy secure"
+	case RegiceSecureEnemy:
+		return "Regice ally secure"
+	case RegiceSecureAlly:
+		return "Regice enemy secure"
+	case RegirockSecureEnemy:
+		return "Regirock ally secure"
+	case RegirockSecureAlly:
+		return "Regirock enemy secure"
+	case RegisteelSecureEnemy:
+		return "Registeel ally secure"
+	case RegisteelSecureAlly:
+		return "Registeel enemy secure"
 	case PressButtonToScore:
 		return "Press button to score"
 	case ScoreOverride:
@@ -110,6 +133,16 @@ func (e EventType) String() string {
 		return "Objective reached purple base"
 	case ServerStarted:
 		return "Server Started"
+	case ServerStopped:
+		return "Server Stopped"
+	case KOAlly:
+		return "Ally KO"
+	case KOEnemy:
+		return "Enemy KO"
+	case KOStreakAlly:
+		return "Ally KO streak"
+	case KOStreakEnemy:
+		return "Enemy KO streak"
 	default:
 		return fmt.Sprintf("Unknown (%d)", e.Int())
 	}
@@ -139,7 +172,7 @@ func Dump() (string, bool) {
 	for i := len(Events) - 1; i >= 0; i-- {
 		e := Events[i]
 
-		str += fmt.Sprintf("\n[%02d:%02d:%02d] [Event] [%s] %s", e.Time.Hour(), e.Time.Minute(), e.Time.Second(), e.Clock, e.EventType)
+		str = fmt.Sprintf("%s\n%s", str, e.String())
 		if e.Value != -1 {
 			str += fmt.Sprintf(" (%d)", e.Value)
 		}
@@ -163,6 +196,14 @@ func (e *Event) Eq(e2 *Event) bool {
 		e.Value == e2.Value &&
 		e.Vetoed == e2.Vetoed &&
 		e.Verified == e2.Verified
+}
+
+func (e *Event) String() string {
+	return fmt.Sprintf("[%02d:%02d:%02d] [Event] [%s] %s", e.Time.Hour(), e.Time.Minute(), e.Time.Second(), e.Clock, e.EventType)
+}
+
+func (e *Event) Strip() string {
+	return fmt.Sprintf("[%s] %s", e.Clock, e.EventType)
 }
 
 func First(e EventType, since time.Duration) *Event {
@@ -263,4 +304,17 @@ func Since() time.Duration {
 	}
 
 	return time.Since(Events[0].Time)
+}
+
+func Strings(since time.Duration) []string {
+	s := []string{}
+
+	for _, event := range Events {
+		if time.Since(event.Time) > since {
+			return s
+		}
+		s = append(s, event.Strip())
+	}
+
+	return s
 }

@@ -80,7 +80,6 @@ func (b *Button) Layout(gtx layout.Context) layout.Dimensions {
 			case pointer.Press:
 				b.Active = !b.Active
 			case pointer.Move:
-				println("Move")
 			}
 		}
 	}

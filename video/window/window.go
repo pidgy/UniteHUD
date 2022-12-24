@@ -24,10 +24,28 @@ import (
 )
 
 var (
-	Sources = []string{config.MainDisplay}
+	Sources = screen.Sources
 
 	handles = []syscall.Handle{}
 	lock    = &sync.Mutex{}
+
+	callback = syscall.NewCallback(func(h syscall.Handle, p uintptr) uintptr {
+		found, _, _ := syscall.Syscall(proc.IsWindowVisible.Addr(), 1, uintptr(h), uintptr(0), uintptr(0))
+		if found == 0 {
+			return 1
+		}
+
+		name, err := getWindowText(h) //, &b[0], int32(len(b)))
+		if err != nil {
+			// notify.Error("Failed to find a window title (%v)", err)
+			return 1
+		}
+
+		Sources = append(Sources, name)
+		handles = append(handles, h)
+
+		return 1
+	})
 )
 
 func init() {
@@ -87,7 +105,7 @@ func Capture() (*image.RGBA, error) {
 func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 	handle, err := find(config.Current.Window)
 	if err != nil {
-		notify.Error("Failed to find %s (%v)", config.Current.Window, err)
+		notify.Error("%v", err)
 		return screen.CaptureRect(rect)
 	}
 
@@ -252,6 +270,7 @@ func Reattach() error {
 			}
 
 			notify.Announce("Found \"%s\" window", config.Current.Window)
+			config.Current.LostWindow = ""
 
 			return nil
 		}
@@ -294,23 +313,6 @@ func StartingWith(name string) error {
 	return fmt.Errorf("Failed to find window starting with \"%s\"", name)
 }
 
-var callback = syscall.NewCallback(func(h syscall.Handle, p uintptr) uintptr {
-	found, _, _ := syscall.Syscall(proc.IsWindowVisible.Addr(), 1, uintptr(h), uintptr(0), uintptr(0))
-	if found == 0 {
-		return 1
-	}
-
-	name, err := getWindowText(h) //, &b[0], int32(len(b)))
-	if err != nil {
-		return 1 // continue enumeration
-	}
-
-	Sources = append(Sources, name)
-	handles = append(handles, h)
-
-	return 1 // continue enumeration
-})
-
 func enumWindows(enumFunc uintptr, lparam uintptr) (err error) {
 	r1, _, e1 := syscall.Syscall(proc.EnumWindows.Addr(), 2, uintptr(enumFunc), uintptr(lparam), 0)
 	if r1 == 0 {
@@ -327,7 +329,7 @@ func list() ([]string, []syscall.Handle, error) {
 	lock.Lock()
 	defer lock.Unlock()
 
-	Sources = []string{config.MainDisplay}
+	Sources = screen.Sources
 
 	err := enumWindows(callback, 0)
 	if err != nil {
@@ -348,10 +350,7 @@ func find(name string) (syscall.Handle, error) {
 		config.Current.LostWindow = config.Current.Window
 		config.Current.Window = config.MainDisplay
 
-		err := fmt.Errorf("Failed to find \"%s\"", name)
-		notify.Error("%v", err)
-
-		return handle, err
+		return handle, fmt.Errorf("Failed to find \"%s\"", name)
 	}
 
 	return syscall.Handle(ret), nil

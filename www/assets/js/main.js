@@ -8,31 +8,39 @@ var loggedError = false;
 
 var lastShake = 0;
 
-function clear() {
+function clear(err = '') {
     $('.purple').css('opacity', 0);
     $('.orange').css('opacity', 0);
     $('.self').css('opacity', 0);
     $('.regis').css('opacity', 0);
+    $('.regis-bottom').css('opacity', 0);
     $('.error').css('opacity', '.9');
+    $('.error').html(err);
+
+    for (var i = 1; i <= 3; i++) {
+        $(`.regis-bottom-${i} .regis-bottom-circle-purple`).css('opacity', 0);
+        $(`.regis-bottom-${i} .regis-bottom-circle-orange`).css('opacity', 0);
+        $(`.regis-bottom-img-${i}`).attr('src', 'assets/img/objective.png');
+    }
 }
 
 function error(err) {
-    clear();
+    switch (typeof err) {
+        case "string":
+            clear(`${err}`);
 
-    if (typeof err === "string") {
-        $('.error').html(`${err}`);
+            if (!loggedError) {
+                loggedError = true
 
-        if (!loggedError) {
-            loggedError = true
+                console.error(`${err}`);
 
-            console.error(`${err}`);
-
-            setTimeout(() => {
-                loggedError = false;
-            }, 3600000);
-        }
-    } else {
-        $('.error').html(`Connecting${loaders[index]}`);
+                setTimeout(() => {
+                    loggedError = false;
+                }, 3600000);
+            }
+            break;
+        default:
+            clear(`Connecting${loaders[index]}`);
     }
 
     index = (index + 1) % loaders.length;
@@ -86,8 +94,7 @@ function success(data) {
     }
 
     if (!data.started) {
-        clear();
-        $('.error').html(`${version}`);
+        clear(`Press Start`);
         return shake();
     }
 
@@ -96,13 +103,23 @@ function success(data) {
         $('.orange').css('opacity', 1);
         $('.self').css('opacity', 1);
         $('.regis').css('opacity', 1);
+        $('.regis-bottom').css('opacity', 1);
 
-        $('.purplescore').html(data.purple.value);
-        $('.orangescore').html(data.orange.value);
+        var p = '';
+        var o = '';
+        for (var i in data.regis) {
+            if (data.regis[i] == "purple") {
+                p += '&#128995;';
+            } else if (data.regis[i] == "orange") {
+                o += '&#128992;';
+            }
+        }
+
+        $('.purplescore').html(`${data.purple.value} <span>${p}</span>`);
+        $('.orangescore').html(`${data.orange.value} <span>${o}</span>`);
         $('.selfscore').html(data.self.value);
     } else {
         clear();
-        $('.error').html(``);
     }
 
     $('.stacks').html(data.stacks);
@@ -118,6 +135,12 @@ function success(data) {
         $(`.regis-${parseInt(i)+1} .regis-circle-${cache[data.regis[i]][1]}`).css('opacity', 0);
         $(`.regis-${parseInt(i)+1} .regis-circle-${cache[data.regis[i]][2]}`).css('opacity', 0);
     }
+
+    for (var i = 0; i < data.bottom.length; i++) {
+        var obj = data.bottom[i];
+        $(`.regis-bottom-${i+1} .regis-bottom-circle-${obj.team}`).css('opacity', 1);
+        $(`.regis-bottom-img-${i+1}`).attr('src', `assets/img/${obj.name}.png`);
+    }
 }
 
 function websocket() {
@@ -128,24 +151,29 @@ function websocket() {
     socket.onerror = error;
 }
 
-const test = false;
-
 $(document).ready(() => {
     clear();
 
-    if (test) {
-        $('.error').html(``);
-
-        return success({
-            "regis": ["purple", "orange", "none"],
-            "version": version,
-            "started": true,
-            "seconds": 360,
-            "purple": { "value": 195 },
-            "orange": { "value": 102 },
-            "self": { "value": 132 },
-            "stacks": 6,
-        });
+    // Test.
+    if (false) {
+        return setInterval(() => {
+            success({
+                "version": version,
+                "started": true,
+                "seconds": 360,
+                "purple": { "value": 195 },
+                "orange": { "value": 102 },
+                "self": { "value": 132 },
+                "stacks": 6,
+                "regis": ["purple", "orange", "purple"],
+                "bottom": [
+                    { "name": "registeel", "team": "purple" },
+                    { "name": "regirock", "team": "orange" },
+                    { "name": "registeel", "team": "purple" },
+                    { "name": "regice", "team": "orange" },
+                ],
+            });
+        }, 1000);
     }
 
     const query = window.location.search;

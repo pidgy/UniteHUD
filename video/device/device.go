@@ -10,7 +10,7 @@ import (
 
 	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/notify"
-	"github.com/pidgy/unitehud/video/device/win"
+	"github.com/pidgy/unitehud/video/device/win32"
 )
 
 var (
@@ -20,7 +20,6 @@ var (
 	HD1080 = image.Rect(0, 0, 1920, 1080)
 
 	active = config.NoVideoCaptureDevice
-	area   = HD1080
 	base   = gocv.IMRead("img/splash/paused2.png", gocv.IMReadColor) // Global matrix is more efficient?
 	mat    = base.Clone()
 
@@ -45,8 +44,8 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 		return nil, nil
 	}
 
-	if !rect.In(area) {
-		return nil, fmt.Errorf("Requested capture area is outside of the legal capture area %s > %s", rect, area)
+	if !rect.In(HD1080) {
+		return nil, fmt.Errorf("Requested capture area is outside of the legal capture area %s > %s", rect, HD1080)
 	}
 
 	i, err := convert(mat.Region(rect))
@@ -139,7 +138,7 @@ func sources() ([]int, []string) {
 	n := []string{}
 
 	for i := 0; i < 10; i++ {
-		name := win.VideoCaptureDeviceName(i)
+		name := win32.VideoCaptureDeviceName(i)
 		if name == "" {
 			break
 		}

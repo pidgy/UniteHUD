@@ -35,6 +35,10 @@ func (d *Duplicate) Region() gocv.Mat {
 }
 
 func (d *Duplicate) Close() {
+	if d == nil {
+		return
+	}
+
 	err := d.Mat.Close()
 	if err != nil {
 		log.Warn().Err(err).Object("duplicate", d).Msg("failed to close duplicate matrix")
@@ -47,6 +51,41 @@ func (d *Duplicate) Close() {
 }
 
 const delay = time.Second * 3
+
+func (d *Duplicate) Of(d2 *Duplicate) bool {
+	if d2.Value == 0 {
+		notify.SystemWarn("[Duplicate] 0")
+		return false
+	}
+
+	if d == nil || d2 == nil {
+		return false
+	}
+
+	if d.Empty() || d2.Empty() {
+		return false
+	}
+
+	// Fallacy to think we'll capture the same values everytime... maybe one day.
+	// if d.Value != d2.Value {
+	// 	return false
+	// }
+
+	// Cursed, but same scores 3 seconds apart are 99% duplicate.
+	if d.Value != -1 && d.Value == d2.Value && d.Counted && d2.Time.Sub(d.Time) < delay {
+		return true
+	}
+
+	/*
+		// If were not debugging, no scores *should* ever be the same after two iterations.
+		if d2.Time.Sub(d.Time) > delay*2 && !global.DebugMode {
+			notify.Warn("[Duplicate] +%d -%d Potential false positive", d.Value, d2.Value)
+			return false
+		}
+	*/
+
+	return d.Pixels(d2)
+}
 
 func (d *Duplicate) Overrides(prev *Duplicate) bool {
 	switch {
@@ -70,43 +109,20 @@ func (d *Duplicate) Overrides(prev *Duplicate) bool {
 	}
 }
 
-func (d *Duplicate) Of(d2 *Duplicate) bool {
-	if d2.Value == 0 {
-		notify.SystemWarn("[Duplicate] 0")
-		return false
-	}
-
+func (d *Duplicate) Pixels(d2 *Duplicate) bool {
 	if d == nil || d2 == nil {
 		return false
 	}
-
-	if d.Empty() || d2.Empty() {
+	if d.Value == 0 || d2.Value == 0 {
 		return false
 	}
-
-	// Fallacy to think we'll capture the same values everytime... maybe one day.
-	// if d.Value != d2.Value {
-	// 	return false
-	// }
-
-	// Cursed, but same scores 3 seconds apart are 99% duplicate.
-	if d.Value == d2.Value && d.Counted && d2.Time.Sub(d.Time) < delay {
-		return true
-	}
-
-	/*
-		// If were not debugging, no scores *should* ever be the same after two iterations.
-		if d2.Time.Sub(d.Time) > delay*2 && !global.DebugMode {
-			notify.Warn("[Duplicate] +%d -%d Potential false positive", d.Value, d2.Value)
-			return false
-		}
-	*/
 
 	mat := gocv.NewMat()
 	defer mat.Close()
 
 	gocv.MatchTemplate(d.region, d2.region, &mat, gocv.TmCcoeffNormed, gocv.NewMat())
 	_, maxc, _, _ := gocv.MinMaxLoc(mat)
+
 	return maxc > 0.91
 }
 

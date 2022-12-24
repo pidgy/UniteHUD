@@ -190,9 +190,9 @@ func Data() {
 			case strings.Contains(lines[i], team.Balls.Name):
 				notify.Append(rgba.DarkYellow, lines[i])
 			case strings.Contains(lines[i], team.Time.Name):
-				notify.Append(rgba.SlateGray, lines[i])
+				notify.Append(rgba.Slate, lines[i])
 			case strings.Contains(lines[i], team.Game.Name):
-				notify.Append(rgba.Background, lines[i])
+				notify.Append(rgba.Gray, lines[i])
 			default:
 				notify.SystemAppend(lines[i])
 			}

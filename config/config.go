@@ -24,6 +24,8 @@ var File = strings.ReplaceAll(global.Version, ".", "-") + "-config.unitehud"
 
 const (
 	MainDisplay          = "Main Display"
+	LeftDisplay          = "Left Display"
+	RightDisplay         = "Right Display"
 	NoVideoCaptureDevice = -1
 )
 
@@ -140,6 +142,9 @@ func validate() {
 			team.Game.Name: {},
 		},
 		"game": {
+			team.Game.Name: {},
+		},
+		"ko": {
 			team.Game.Name: {},
 		},
 		"objective": {
@@ -351,8 +356,22 @@ func loadDefault() {
 		},
 		"secure": {
 			team.Game.Name: {
-				filter.New(team.Game, "img/default/game/regieleki_ally.png", state.RegielekiAdvancingAlly.Int(), false),
-				filter.New(team.Game, "img/default/game/regieleki_enemy.png", state.RegielekiAdvancingEnemy.Int(), false),
+				filter.New(team.Game, "img/default/game/regieleki_ally.png", state.RegielekiSecureAlly.Int(), false),
+				filter.New(team.Game, "img/default/game/regieleki_enemy.png", state.RegielekiSecureEnemy.Int(), false),
+				filter.New(team.Game, "img/default/game/regice_ally.png", state.RegiceSecureAlly.Int(), false),
+				filter.New(team.Game, "img/default/game/regice_enemy.png", state.RegiceSecureEnemy.Int(), false),
+				filter.New(team.Game, "img/default/game/regirock_ally.png", state.RegirockSecureAlly.Int(), false),
+				filter.New(team.Game, "img/default/game/regirock_enemy.png", state.RegirockSecureEnemy.Int(), false),
+				filter.New(team.Game, "img/default/game/registeel_ally.png", state.RegisteelSecureAlly.Int(), false),
+				filter.New(team.Game, "img/default/game/registeel_enemy.png", state.RegisteelSecureEnemy.Int(), false),
+			},
+		},
+		"ko": {
+			team.Game.Name: {
+				filter.New(team.Game, "img/default/game/ko_ally.png", state.KOAlly.Int(), false),
+				filter.New(team.Game, "img/default/game/ko_streak_ally.png", state.KOStreakAlly.Int(), false),
+				filter.New(team.Game, "img/default/game/ko_enemy.png", state.KOEnemy.Int(), false),
+				filter.New(team.Game, "img/default/game/ko_streak_enemy.png", state.KOStreakEnemy.Int(), false),
 			},
 		},
 		"objective": {
@@ -365,6 +384,7 @@ func loadDefault() {
 		"game": {
 			"vs": {
 				filter.New(team.Game, "img/default/game/vs.png", state.MatchStarting.Int(), false),
+				filter.New(team.Game, "img/default/game/vs_alt.png", state.MatchStarting.Int(), false),
 			},
 			"end": {
 				filter.New(team.Game, "img/default/game/end.png", state.MatchEnding.Int(), false),

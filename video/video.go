@@ -9,18 +9,18 @@ import (
 	"github.com/pidgy/unitehud/video/window"
 )
 
-var HD1080 = device.HD1080
-
 func Capture() (img *image.RGBA, err error) {
 	if config.Current.VideoCaptureDevice != config.NoVideoCaptureDevice {
 		return device.Capture()
 	}
 
-	if config.Current.Window == config.MainDisplay {
-		return screen.Capture()
+	for _, s := range window.Sources {
+		if config.Current.Window == s {
+			return window.Capture()
+		}
 	}
 
-	return window.Capture()
+	return screen.Capture()
 }
 
 func CaptureRect(rect image.Rectangle) (img *image.RGBA, err error) {

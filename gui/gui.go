@@ -89,6 +89,7 @@ const (
 	Refresh = Action("refresh")
 	Debug   = Action("debug")
 	Idle    = Action("idle")
+	Config  = Action("Config")
 )
 
 const Title = "UniteHUD Server (" + global.Version + ")"
@@ -259,7 +260,7 @@ func (g *GUI) main() (next string, err error) {
 
 	configButton := &button.Button{
 		Text:     " Configure",
-		Released: rgba.N(rgba.Background),
+		Released: rgba.N(rgba.Gray),
 		Pressed:  rgba.N(rgba.DarkGray),
 	}
 
@@ -279,7 +280,7 @@ func (g *GUI) main() (next string, err error) {
 
 	reloadButton := &button.Button{
 		Text:     "\tReload",
-		Released: rgba.N(rgba.Background),
+		Released: rgba.N(rgba.Gray),
 		Pressed:  rgba.N(rgba.DarkGray),
 	}
 
@@ -290,7 +291,7 @@ func (g *GUI) main() (next string, err error) {
 
 	startButton := &button.Button{
 		Text:     "\t  Start",
-		Released: rgba.N(rgba.Background),
+		Released: rgba.N(rgba.Gray),
 		Pressed:  rgba.N(rgba.DarkGray),
 	}
 
@@ -316,7 +317,7 @@ func (g *GUI) main() (next string, err error) {
 
 		stopButton.Active = false
 		stopButton.Disabled = false
-		stopButton.Released = rgba.N(rgba.Background)
+		stopButton.Released = rgba.N(rgba.Gray)
 
 		startButton.Active = false
 		startButton.Disabled = true
@@ -324,9 +325,9 @@ func (g *GUI) main() (next string, err error) {
 
 		recordButton.Active = false
 		recordButton.Disabled = false
-		recordButton.Released = rgba.N(rgba.Background)
+		recordButton.Released = rgba.N(rgba.Gray)
 
-		g.Actions <- Start
+		g.Actions <- Config
 		g.Running = true
 	}
 
@@ -335,7 +336,7 @@ func (g *GUI) main() (next string, err error) {
 
 		configButton.Active = false
 		configButton.Disabled = false
-		configButton.Released = rgba.N(rgba.Background)
+		configButton.Released = rgba.N(rgba.Gray)
 
 		stopButton.Active = false
 		stopButton.Disabled = true
@@ -343,7 +344,7 @@ func (g *GUI) main() (next string, err error) {
 
 		startButton.Active = false
 		startButton.Disabled = false
-		startButton.Released = rgba.N(rgba.Background)
+		startButton.Released = rgba.N(rgba.Gray)
 
 		recordButton.Active = false
 		recordButton.Disabled = true
@@ -359,7 +360,7 @@ func (g *GUI) main() (next string, err error) {
 			recordButton.Released = rgba.N(rgba.DarkRed)
 		} else {
 			recordButton.Text = "\tRecord"
-			recordButton.Released = rgba.N(rgba.Background)
+			recordButton.Released = rgba.N(rgba.Gray)
 			if recordButton.Disabled {
 				recordButton.Released = rgba.N(rgba.Disabled)
 			}
@@ -373,7 +374,7 @@ func (g *GUI) main() (next string, err error) {
 
 	openButton := &button.Button{
 		Text:     "\t  Open",
-		Released: rgba.N(rgba.Background),
+		Released: rgba.N(rgba.Gray),
 		Pressed:  rgba.N(rgba.DarkGray),
 	}
 
@@ -503,7 +504,7 @@ func (g *GUI) main() (next string, err error) {
 	preview := &button.Image{
 		Screen: &screen.Screen{
 			Border:      true,
-			BorderColor: rgba.N(rgba.Background),
+			BorderColor: rgba.N(rgba.Gray),
 		},
 	}
 	preview.Click = func() {
@@ -542,7 +543,7 @@ func (g *GUI) main() (next string, err error) {
 			background := clip.Rect{
 				Max: gtx.Constraints.Max,
 			}.Push(gtx.Ops)
-			paint.ColorOp{Color: rgba.N(rgba.Background)}.Add(gtx.Ops)
+			paint.ColorOp{Color: rgba.N(rgba.Gray)}.Add(gtx.Ops)
 			paint.PaintOp{}.Add(gtx.Ops)
 			background.Pop()
 
@@ -590,7 +591,7 @@ func (g *GUI) main() (next string, err error) {
 								}.Layout(gtx, cpu.Layout)
 
 								cpuGraph := material.H5(g.cascadia, stats.CPUData())
-								cpuGraph.Color = rgba.N(rgba.Background)
+								cpuGraph.Color = rgba.N(rgba.Gray)
 								cpuGraph.TextSize = unit.Sp(9)
 
 								layout.Inset{
@@ -609,7 +610,7 @@ func (g *GUI) main() (next string, err error) {
 								}.Layout(gtx, ram.Layout)
 
 								ramGraph := material.H5(g.cascadia, stats.RAMData())
-								ramGraph.Color = rgba.N(rgba.Background)
+								ramGraph.Color = rgba.N(rgba.Gray)
 								ramGraph.TextSize = unit.Sp(9)
 
 								layout.Inset{
@@ -618,7 +619,7 @@ func (g *GUI) main() (next string, err error) {
 								}.Layout(gtx, ramGraph.Layout)
 
 								uptime := material.H5(g.normal, g.uptime)
-								uptime.Color = rgba.N(rgba.SlateGray)
+								uptime.Color = rgba.N(rgba.Slate)
 								uptime.Alignment = text.Middle
 								uptime.TextSize = unit.Sp(12)
 
@@ -645,12 +646,12 @@ func (g *GUI) main() (next string, err error) {
 								symbol.Alignment = text.Middle
 								symbol.TextSize = unit.Sp(14)
 								symbol.Font.Weight = text.ExtraBold
-								symbol.Color = rgba.N(rgba.SlateGray)
+								symbol.Color = rgba.N(rgba.Slate)
 
 								acronym := material.H5(g.normal, "STP")
 								acronym.Alignment = text.Middle
 								acronym.TextSize = unit.Sp(11)
-								acronym.Color = rgba.N(rgba.SlateGray)
+								acronym.Color = rgba.N(rgba.Slate)
 
 								down := float32(1)
 								left := 1
@@ -1009,7 +1010,7 @@ func (g *GUI) display(src image.Image) {
 
 func (g *GUI) preview() {
 	once := true
-	for {
+	for range time.NewTicker(time.Millisecond * 100).C {
 		if g.Preview {
 			img, err := video.Capture()
 			if err != nil {
@@ -1024,12 +1025,12 @@ func (g *GUI) preview() {
 
 		// Redraw the image.
 		g.Invalidate()
-
-		time.Sleep(time.Millisecond * 100)
 	}
 }
 
 func (g *GUI) configure() (next string, err error) {
+	defer server.SetConfig(false)
+
 	g.Preview = true
 	device.Hide = false
 	defer func() {
@@ -1050,7 +1051,7 @@ func (g *GUI) configure() (next string, err error) {
 		Button: &button.Button{
 			Active:   true,
 			Text:     "\t  Balls",
-			Pressed:  rgba.N(rgba.Background),
+			Pressed:  rgba.N(rgba.Gray),
 			Released: rgba.N(rgba.DarkGray),
 			Size:     image.Pt(100, 30),
 		},
@@ -1077,7 +1078,7 @@ func (g *GUI) configure() (next string, err error) {
 		Button: &button.Button{
 			Active:   true,
 			Text:     "\t  Time",
-			Pressed:  rgba.N(rgba.Background),
+			Pressed:  rgba.N(rgba.Gray),
 			Released: rgba.N(rgba.DarkGray),
 			Size:     image.Pt(100, 30),
 		},
@@ -1105,7 +1106,7 @@ func (g *GUI) configure() (next string, err error) {
 		Button: &button.Button{
 			Active:   true,
 			Text:     "\t Score",
-			Pressed:  rgba.N(rgba.Background),
+			Pressed:  rgba.N(rgba.Gray),
 			Released: rgba.N(rgba.DarkGray),
 			Size:     image.Pt(100, 30),
 		},
@@ -1228,7 +1229,7 @@ func (g *GUI) configure() (next string, err error) {
 	captureButton := &button.Button{
 		Active:      true,
 		Text:        "\tCapture",
-		Pressed:     rgba.N(rgba.Background),
+		Pressed:     rgba.N(rgba.Gray),
 		Released:    rgba.N(rgba.DarkGray),
 		Size:        image.Pt(100, 30),
 		SingleClick: true,
@@ -1298,7 +1299,7 @@ func (g *GUI) configure() (next string, err error) {
 		Button: &button.Button{
 			Active:   true,
 			Text:     "\t  tMap",
-			Pressed:  rgba.N(rgba.Background),
+			Pressed:  rgba.N(rgba.Gray),
 			Released: rgba.N(rgba.DarkGray),
 			Size:     image.Pt(100, 30),
 		},
@@ -1306,7 +1307,7 @@ func (g *GUI) configure() (next string, err error) {
 
 	resizeButton := &button.Button{
 		Text:     "\tResize",
-		Pressed:  rgba.N(rgba.Background),
+		Pressed:  rgba.N(rgba.Gray),
 		Released: rgba.N(rgba.DarkGray),
 		Active:   true,
 		Size:     image.Pt(100, 30),
@@ -1325,7 +1326,7 @@ func (g *GUI) configure() (next string, err error) {
 
 	defaultButton := &button.Button{
 		Text:     "\tDefault",
-		Pressed:  rgba.N(rgba.Background),
+		Pressed:  rgba.N(rgba.Gray),
 		Released: rgba.N(rgba.DarkGray),
 		Active:   true,
 		Size:     image.Pt(100, 30),
@@ -1348,7 +1349,7 @@ func (g *GUI) configure() (next string, err error) {
 
 	openConfigFileButton := &button.Button{
 		Text:     "\t   Edit",
-		Pressed:  rgba.N(rgba.Background),
+		Pressed:  rgba.N(rgba.Gray),
 		Released: rgba.N(rgba.DarkGray),
 		Active:   true,
 		Size:     image.Pt(100, 30),
@@ -1374,7 +1375,7 @@ func (g *GUI) configure() (next string, err error) {
 
 	saveButton := &button.Button{
 		Text:     "\t  Save",
-		Pressed:  rgba.N(rgba.Background),
+		Pressed:  rgba.N(rgba.Gray),
 		Released: rgba.N(rgba.DarkGray),
 		Active:   true,
 		Size:     image.Pt(100, 30),
@@ -1382,7 +1383,7 @@ func (g *GUI) configure() (next string, err error) {
 
 	cancelButton := &button.Button{
 		Text:     "\tCancel",
-		Pressed:  rgba.N(rgba.Background),
+		Pressed:  rgba.N(rgba.Gray),
 		Released: rgba.N(rgba.DarkGray),
 		Active:   true,
 		Size:     image.Pt(100, 30),
@@ -1457,7 +1458,7 @@ func (g *GUI) configure() (next string, err error) {
 
 	screenButton := &button.Button{
 		Text:     "\tPreview",
-		Pressed:  rgba.N(rgba.Background),
+		Pressed:  rgba.N(rgba.Gray),
 		Released: rgba.N(rgba.DarkGray),
 		Active:   true,
 		Size:     image.Pt(100, 30),
@@ -1592,6 +1593,8 @@ func (g *GUI) configure() (next string, err error) {
 					populateDevices(true)
 					return
 				}
+
+				config.Current.LostWindow = ""
 			}()
 		},
 		WidthModifier: 1,
@@ -1601,7 +1604,7 @@ func (g *GUI) configure() (next string, err error) {
 
 	resetButton := &button.Button{
 		Text:     "\t Reset",
-		Pressed:  rgba.N(rgba.Background),
+		Pressed:  rgba.N(rgba.Gray),
 		Released: rgba.N(rgba.DarkGray),
 		Active:   true,
 		Size:     image.Pt(100, 30),
@@ -1669,7 +1672,7 @@ func (g *GUI) configure() (next string, err error) {
 			pointer.CursorNameOp{Name: pointer.CursorGrab}.Add(gtx.Ops)
 
 			background := clip.Rect{Max: gtx.Constraints.Max}.Push(gtx.Ops)
-			paint.ColorOp{Color: rgba.N(rgba.Background)}.Add(gtx.Ops)
+			paint.ColorOp{Color: rgba.N(rgba.Gray)}.Add(gtx.Ops)
 			paint.PaintOp{}.Add(gtx.Ops)
 			background.Pop()
 
@@ -1783,7 +1786,7 @@ func (g *GUI) configure() (next string, err error) {
 											gtx,
 											func(gtx layout.Context) layout.Dimensions {
 												windowListTitle := material.Label(g.cascadia, unit.Px(14), "Window")
-												windowListTitle.Color = rgba.N(rgba.SlateGray)
+												windowListTitle.Color = rgba.N(rgba.Slate)
 												return windowListTitle.Layout(gtx)
 											},
 										)
@@ -1816,7 +1819,7 @@ func (g *GUI) configure() (next string, err error) {
 											gtx,
 											func(gtx layout.Context) layout.Dimensions {
 												deviceListTitle := material.Label(g.cascadia, unit.Px(14), "Video Capture Device")
-												deviceListTitle.Color = rgba.N(rgba.SlateGray)
+												deviceListTitle.Color = rgba.N(rgba.Slate)
 												return deviceListTitle.Layout(gtx)
 											},
 										)
@@ -1879,8 +1882,8 @@ func (g *GUI) configure() (next string, err error) {
 									// Score area rectangle buttons.
 									{
 										if config.Current.VideoCaptureDevice != config.NoVideoCaptureDevice || config.Current.Window == config.MainDisplay {
-											scaleText.Color = rgba.N(rgba.SlateGray)
-											scaleValueText.Color = rgba.N(rgba.SlateGray)
+											scaleText.Color = rgba.N(rgba.Slate)
+											scaleValueText.Color = rgba.N(rgba.Slate)
 											scaleUpButton.Disabled = true
 											scaleDownButton.Disabled = true
 										} else {
@@ -1954,7 +1957,7 @@ func (g *GUI) configure() (next string, err error) {
 											eButton.Disabled = true
 											sButton.Disabled = true
 											wButton.Disabled = true
-											shiftText.Color = rgba.N(rgba.SlateGray)
+											shiftText.Color = rgba.N(rgba.Slate)
 										} else {
 											nButton.Disabled = false
 											eButton.Disabled = false
@@ -2045,7 +2048,7 @@ func (g *GUI) configurationHelpDialog(h *help.Help, widget layout.Widget) (next 
 
 	backwardButton := &button.Button{
 		Text:     " <",
-		Released: rgba.N(rgba.SlateGray),
+		Released: rgba.N(rgba.Slate),
 		Pressed:  rgba.N(rgba.DarkGray),
 		Size:     image.Pt(40, 35),
 	}
@@ -2059,7 +2062,7 @@ func (g *GUI) configurationHelpDialog(h *help.Help, widget layout.Widget) (next 
 
 	forwardButton := &button.Button{
 		Text:     " >",
-		Released: rgba.N(rgba.SlateGray),
+		Released: rgba.N(rgba.Slate),
 		Pressed:  rgba.N(rgba.DarkGray),
 		Size:     image.Pt(40, 35),
 	}
@@ -2073,7 +2076,7 @@ func (g *GUI) configurationHelpDialog(h *help.Help, widget layout.Widget) (next 
 
 	returnButton := &button.Button{
 		Text:     "\t  Back",
-		Released: rgba.N(rgba.SlateGray),
+		Released: rgba.N(rgba.Slate),
 		Pressed:  rgba.N(rgba.DarkGray),
 	}
 
@@ -2098,7 +2101,7 @@ func (g *GUI) configurationHelpDialog(h *help.Help, widget layout.Widget) (next 
 			pointer.CursorNameOp{Name: pointer.CursorGrab}.Add(gtx.Ops)
 
 			background := clip.Rect{Max: gtx.Constraints.Max}.Push(gtx.Ops)
-			paint.ColorOp{Color: rgba.N(rgba.Background)}.Add(gtx.Ops)
+			paint.ColorOp{Color: rgba.N(rgba.Gray)}.Add(gtx.Ops)
 			paint.PaintOp{}.Add(gtx.Ops)
 			background.Pop()
 
@@ -2244,6 +2247,7 @@ func (g *GUI) ToastCrash(msg, reason string, callbacks ...func()) {
 
 				w.Center()
 				w.Raise()
+				w.Invalidate()
 
 				e.Frame(gtx.Ops)
 			}
@@ -2275,7 +2279,7 @@ func (g *GUI) ToastOK(title, msg string, callbacks ...func()) {
 
 		okButton := &button.Button{
 			Text:     "\t    OK",
-			Released: rgba.N(rgba.Background),
+			Released: rgba.N(rgba.Gray),
 			Pressed:  rgba.N(rgba.DarkGray),
 		}
 		okButton.Click = func() {
@@ -2319,6 +2323,7 @@ func (g *GUI) ToastOK(title, msg string, callbacks ...func()) {
 
 				w.Center()
 				w.Raise()
+				w.Invalidate()
 
 				e.Frame(gtx.Ops)
 			}
@@ -2351,7 +2356,7 @@ func (g *GUI) ToastYesNo(title, msg string, y, n func()) {
 
 		yButton := &button.Button{
 			Text:     "\t   Yes",
-			Released: rgba.N(rgba.Background),
+			Released: rgba.N(rgba.Gray),
 			Pressed:  rgba.N(rgba.DarkGray),
 		}
 		yButton.Click = func() {
@@ -2363,7 +2368,7 @@ func (g *GUI) ToastYesNo(title, msg string, y, n func()) {
 
 		nButton := &button.Button{
 			Text:     "\t    No",
-			Released: rgba.N(rgba.Background),
+			Released: rgba.N(rgba.Gray),
 			Pressed:  rgba.N(rgba.DarkGray),
 		}
 		nButton.Click = func() {
@@ -2383,7 +2388,6 @@ func (g *GUI) ToastYesNo(title, msg string, y, n func()) {
 				}
 			case system.FrameEvent:
 				gtx := layout.NewContext(&ops, e)
-
 				ops.Reset()
 
 				ColorBox(gtx, gtx.Constraints.Max, color.NRGBA{R: 25, G: 25, B: 25, A: 255})
@@ -2416,6 +2420,7 @@ func (g *GUI) ToastYesNo(title, msg string, y, n func()) {
 
 				w.Center()
 				w.Raise()
+				w.Invalidate()
 
 				e.Frame(gtx.Ops)
 			}

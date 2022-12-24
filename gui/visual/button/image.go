@@ -36,8 +36,8 @@ func (i *Image) Layout(th *material.Theme, gtx layout.Context) layout.Dimensions
 		hidden.TextSize = unit.Sp(12)
 
 		layout.Inset{
-			Top:  unit.Px(20),
-			Left: unit.Px(30),
+			Top:  unit.Px(18),
+			Left: unit.Px(29),
 		}.Layout(gtx, hidden.Layout)
 	}
 

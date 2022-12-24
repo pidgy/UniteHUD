@@ -34,7 +34,8 @@ func (l *List) Layout(gtx layout.Context, th *material.Theme) layout.Dimensions 
 			List: layout.List{
 				Axis:      layout.Vertical,
 				Alignment: layout.Middle,
-			}}
+			},
+		}
 	}
 
 	style := material.List(th, l.list)

@@ -6,7 +6,12 @@ import (
 	"reflect"
 	"unsafe"
 
+	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/video/proc"
+)
+
+var (
+	Sources = []string{config.MainDisplay, config.LeftDisplay, config.RightDisplay}
 )
 
 func Capture() (*image.RGBA, error) {
@@ -160,9 +165,20 @@ func monitorRect() (image.Rectangle, error) {
 		return image.Rectangle{}, fmt.Errorf("Could not Get primary display err:%d\n", getLastError())
 	}
 	defer releaseDC(0, hDC)
-	x := getDeviceCaps(hDC, proc.HorzRes)
-	y := getDeviceCaps(hDC, proc.VertRes)
-	return image.Rect(0, 0, x, y), nil
+
+	x0, y0 := 0, 0
+	x1, y1 := getDeviceCaps(hDC, proc.HorzRes), getDeviceCaps(hDC, proc.VertRes)
+
+	switch config.Current.Window {
+	case config.LeftDisplay:
+		x0, y0 = -100, -100
+		x1, y1 = x1-100, y1-100
+	case config.RightDisplay:
+		x0, y0 = x1, y1
+		x1, y1 = x1*2, y1*2
+	}
+
+	return image.Rect(x0, y0, x1, y1), nil
 }
 
 func selectObject(hdc proc.HDC, hgdiobj proc.HGDIOBJ) proc.HGDIOBJ {

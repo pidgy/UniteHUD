@@ -92,8 +92,8 @@ func (t *TextBlock) Layout(gtx layout.Context, posts []notify.Post) layout.Dimen
 	)
 
 	list := material.List(th, t.list)
-	list.Track.Color = color.NRGBA(rgba.PurpleBlue)
-	list.Track.Color.A = 0xF
+	list.Track.Color = color.NRGBA(rgba.Slate)
+	list.Track.Color.A = 0x0F
 	layout.Inset{
 		Bottom: unit.Px(5),
 		Left:   unit.Px(5),

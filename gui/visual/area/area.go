@@ -14,7 +14,7 @@ import (
 	"gioui.org/widget/material"
 
 	"github.com/pidgy/unitehud/gui/visual/button"
-	"github.com/pidgy/unitehud/video"
+	"github.com/pidgy/unitehud/video/device"
 )
 
 type Area struct {
@@ -82,7 +82,7 @@ func (a *Area) Layout(gtx layout.Context) layout.Dimensions {
 				if !toScale(image.Rectangle{
 					a.Min.Add(image.Pt(int(deltaX), int(deltaY))),
 					a.Max.Add(image.Pt(int(deltaX), int(deltaY))),
-				}).In(video.HD1080) {
+				}).In(device.HD1080) {
 					break
 				}
 

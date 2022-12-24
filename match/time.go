@@ -101,7 +101,7 @@ func Time(matrix gocv.Mat, img *image.RGBA) (seconds int, kitchen string) {
 		return 0, "00:00"
 	}
 
-	server.Time(minutes, secs)
+	server.SetTime(minutes, secs)
 
 	return minutes*60 + secs, kitchen
 }

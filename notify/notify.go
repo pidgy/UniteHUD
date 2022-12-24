@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/rgba"
 )
 
@@ -24,10 +23,11 @@ type Post struct {
 	color.RGBA
 	time.Time
 
-	msg   string
-	orig  string
-	count int
-	dedup bool
+	msg    string
+	orig   string
+	count  int
+	dedup  bool
+	unique bool
 }
 
 type notify struct {
@@ -37,15 +37,15 @@ type notify struct {
 var feed = &notify{}
 
 func Announce(format string, a ...interface{}) {
-	feed.log(rgba.Announce, true, false, fmt.Sprintf("[%s] %s", global.Version, format), a...)
+	feed.log(rgba.Announce, true, false, false, fmt.Sprintf("%s", format), a...)
 }
 
 func Append(c color.RGBA, format string, a ...interface{}) {
-	feed.log(c, false, false, format, a...)
+	feed.log(c, false, false, false, format, a...)
 }
 
 func Bool(b bool, format string, a ...interface{}) {
-	feed.log(rgba.Bool(b), false, false, format, a...)
+	feed.log(rgba.Bool(b), false, false, false, format, a...)
 }
 
 func Clear() {
@@ -61,15 +61,15 @@ func CLS() {
 }
 
 func Dedup(c color.RGBA, format string, a ...interface{}) {
-	feed.log(c, true, true, format, a...)
+	feed.log(c, true, true, false, format, a...)
 }
 
 func Denounce(format string, a ...interface{}) {
-	feed.log(rgba.Denounce, true, false, fmt.Sprintf("[%s] %s", global.Version, format), a...)
+	feed.log(rgba.Denounce, true, false, false, fmt.Sprintf("%s", format), a...)
 }
 
 func Error(format string, a ...interface{}) {
-	feed.log(rgba.DarkRed, true, false, fmt.Sprintf("[%s] %s", global.Version, format), a...)
+	feed.log(rgba.DarkRed, true, false, false, fmt.Sprintf("%s", format), a...)
 }
 
 func Feeds() []Post {
@@ -77,7 +77,7 @@ func Feeds() []Post {
 }
 
 func Feed(c color.RGBA, format string, a ...interface{}) {
-	feed.log(c, true, false, format, a...)
+	feed.log(c, true, false, false, format, a...)
 }
 
 func LastSystem() string {
@@ -110,29 +110,34 @@ func Remove(r string) {
 }
 
 func System(format string, a ...interface{}) {
-	feed.log(rgba.System, true, false, fmt.Sprintf("[%s] %s", global.Version, format), a...)
+	feed.log(rgba.System, true, false, false, fmt.Sprintf("%s", format), a...)
 }
 
 func SystemAppend(format string, a ...interface{}) {
-	feed.log(rgba.System, false, false, format, a...)
+	feed.log(rgba.System, false, false, false, format, a...)
 }
 
 func SystemWarn(format string, a ...interface{}) {
-	feed.log(rgba.Pinkity, true, false, fmt.Sprintf("[%s] %s", global.Version, format), a...)
+	feed.log(rgba.Pinkity, true, false, false, fmt.Sprintf("%s", format), a...)
+}
+
+func Unique(c color.RGBA, format string, a ...interface{}) {
+	feed.log(c, true, false, true, fmt.Sprintf("%s", format), a...)
 }
 
 func Warn(format string, a ...interface{}) {
-	feed.log(rgba.Pinkity, true, false, format, a...)
+	feed.log(rgba.Pinkity, true, false, false, format, a...)
 }
 
-func (n *notify) log(c color.RGBA, clock, dedup bool, format string, a ...interface{}) {
+func (n *notify) log(c color.RGBA, clock, dedup, unique bool, format string, a ...interface{}) {
 	p := Post{
 		RGBA: c,
 		Time: time.Now(),
 
-		orig:  fmt.Sprintf(format, a...),
-		count: 1,
-		dedup: dedup,
+		orig:   fmt.Sprintf(format, a...),
+		count:  1,
+		dedup:  dedup,
+		unique: unique,
 	}
 
 	if clock {
@@ -150,7 +155,7 @@ func (n *notify) log(c color.RGBA, clock, dedup bool, format string, a ...interf
 		walked++
 
 		// Dont consolidate score updates.
-		if strings.Contains(p.msg, "+") {
+		if strings.Contains(p.msg, "+") || unique {
 			break
 		}
 

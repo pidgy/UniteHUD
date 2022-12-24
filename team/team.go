@@ -61,7 +61,7 @@ var (
 
 	None = &Team{
 		Name:      "none",
-		RGBA:      rgba.SlateGray,
+		RGBA:      rgba.Slate,
 		Duplicate: duplicate.New(-1, gocv.NewMat(), gocv.NewMat()),
 	}
 

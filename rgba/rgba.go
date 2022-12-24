@@ -8,7 +8,6 @@ import (
 
 var (
 	Announce     = color.RGBA{202, 222, 212, 255}
-	Background   = color.RGBA{R: 75, G: 75, B: 75, A: 255}
 	Black        = color.RGBA{0, 0, 0, 255}
 	BloodOrange  = color.RGBA{252, 72, 35, 255}
 	CoolBlue     = color.RGBA{R: 71, G: 163, B: 255, A: 255}
@@ -25,6 +24,7 @@ var (
 	DreamyBlue   = color.RGBA{115, 119, 250, 255}
 	DreamyPurple = color.RGBA{143, 152, 247, 255}
 	ForestGreen  = color.RGBA{R: 0xF, G: 0xFF, B: 0xF, A: 0x3F}
+	Gray         = color.RGBA{R: 75, G: 75, B: 75, A: 255}
 	Green        = color.RGBA{G: 0xFF, A: 0xFF}
 	Highlight    = color.RGBA{255, 255, 255, 255}
 	LightPurple  = color.RGBA{204, 0, 204, 255}
@@ -36,7 +36,7 @@ var (
 	Red          = color.RGBA{R: 0xFF, A: 0xFF}
 	SeaBlue      = color.RGBA{115, 165, 240, 255}
 	Seafoam      = color.RGBA{R: 46, G: 204, B: 113, A: 0xFF}
-	SlateGray    = color.RGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0x3F}
+	Slate        = color.RGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0x3F}
 	System       = color.RGBA{R: 95, G: 95, B: 95, A: 255}
 	User         = color.RGBA{166, 139, 224, 255}
 	White        = color.RGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0xFF}
@@ -56,8 +56,8 @@ func Bool(b bool) color.RGBA {
 	return Alpha(System, 255/2)
 }
 
-// Gray returns a new grayscale image
-func Gray(img *image.RGBA) *image.Gray {
+// Grayscale returns a new grayscale image
+func Grayscale(img *image.RGBA) *image.Gray {
 	bounds := img.Bounds()
 	w, h := bounds.Max.X, bounds.Max.Y
 	gray := image.NewGray(image.Rectangle{image.Point{0, 0}, image.Point{w, h}})
