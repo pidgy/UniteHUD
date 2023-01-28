@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"gocv.io/x/gocv"
 
 	"github.com/pidgy/unitehud/config"
@@ -22,7 +23,6 @@ import (
 	"github.com/pidgy/unitehud/template"
 	"github.com/pidgy/unitehud/video"
 	"github.com/pidgy/unitehud/video/window"
-	"github.com/rs/zerolog/log"
 )
 
 var (
@@ -59,6 +59,15 @@ func Clock() {
 	}
 }
 
+func Close() {
+	closed = true
+
+	debug.Close()
+	video.Close()
+
+	os.Exit(0)
+}
+
 func Crash() {
 	for range time.NewTicker(time.Second * 5).C {
 		if closed {
@@ -71,15 +80,6 @@ func Crash() {
 			continue
 		}
 	}
-}
-
-func Close() {
-	closed = true
-
-	debug.Close()
-	video.Close()
-
-	os.Exit(0)
 }
 
 func Defeated() {
@@ -151,14 +151,14 @@ func Energy() {
 	confirmScore := -1
 
 	for {
-		time.Sleep(team.Balls.Delay)
+		time.Sleep(team.Energy.Delay)
 
 		if Stopped {
 			confirmScore = -1
 			continue
 		}
 
-		matrix, img, err := capture(config.Current.Balls)
+		matrix, img, err := capture(config.Current.Energy)
 		if err != nil {
 			notify.Error("Failed to capture energy area (%v)", err)
 			continue
@@ -179,13 +179,13 @@ func Energy() {
 		assured[points]++
 
 		threshold := 1
-		if points != team.Balls.Holding {
+		if points != team.Energy.Holding {
 			threshold = 2
 		}
 		/*
-			if team.Balls.Holding == 0 {
+			if team.Energy.Holding == 0 {
 				threshold = 3
-			} else if team.Balls.Holding != 0 && points != team.Balls.Holding {
+			} else if team.Energy.Holding != 0 && points != team.Energy.Holding {
 				threshold = 2
 			}
 		*/
@@ -198,19 +198,19 @@ func Energy() {
 			notify.Feed(team.Self.RGBA, "[%s] [Self] Holding %d point%s", server.Clock(), points, s(points))
 			state.Add(state.HoldingEnergy, server.Clock(), points)
 
-			server.SetBalls(points)
+			server.SetEnergy(points)
 
-			notify.Balls, err = match.IdentifyBalls(matrix, points)
+			notify.Energy, err = match.IdentifyEnergy(matrix, points)
 			if err != nil {
 				notify.Warn("[Self] Failed to identify energy (%v)", err)
 			}
 
 			// Can we assume change from n, where n > 0, to 0 means a goal without being defeated?
-			if points == 0 || points < team.Balls.Holding {
-				confirmScore = team.Balls.Holding
+			if points == 0 || points < team.Energy.Holding {
+				confirmScore = team.Energy.Holding
 			}
 
-			team.Balls.Holding = points
+			team.Energy.Holding = points
 		}
 
 		matrix.Close()
@@ -224,8 +224,6 @@ func KOs() {
 		config.Current.Scores.Max.X-340,
 		config.Current.Scores.Max.Y-45,
 	)
-
-	templates := config.Current.Templates["ko"][team.Game.Name]
 
 	var last *duplicate.Duplicate
 
@@ -242,7 +240,7 @@ func KOs() {
 			continue
 		}
 
-		_, r, e := match.Matches(matrix, img, templates)
+		_, r, e := match.Matches(matrix, img, config.Current.Templates["ko"][team.Game.Name])
 		if r != match.Found {
 			matrix.Close()
 			continue
@@ -262,8 +260,10 @@ func KOs() {
 		switch e := state.EventType(e); e {
 		case state.KOAlly, state.KOStreakAlly:
 			notify.Feed(team.Purple.RGBA, "[%s] %s", server.Clock(), e)
+			server.SetKO(team.Purple)
 		case state.KOEnemy, state.KOStreakEnemy:
 			notify.Feed(team.Orange.RGBA, "[%s] %s", server.Clock(), e)
+			server.SetKO(team.Orange)
 		}
 	}
 }
@@ -345,11 +345,16 @@ func Objectives() {
 				server.SetRegieleki(team.Orange)
 				top = time.Now()
 
+				matrix.Close()
+				continue
 			case state.RegielekiSecureAlly:
 				state.Add(e, server.Clock(), 0)
 				notify.Feed(team.Purple.RGBA, "[%s] [%s] Regieleki secured", server.Clock(), strings.Title(team.Purple.Name))
 				server.SetRegieleki(team.Purple)
 				top = time.Now()
+
+				matrix.Close()
+				continue
 			}
 		}
 
@@ -360,6 +365,7 @@ func Objectives() {
 				notify.Feed(team.Orange.RGBA, "[%s] [%s] Regice secured", server.Clock(), strings.Title(team.Orange.Name))
 				server.SetRegice(team.Orange)
 				bottom = time.Now()
+
 			case state.RegiceSecureAlly:
 				state.Add(e, server.Clock(), 0)
 				notify.Feed(team.Purple.RGBA, "[%s] [%s] Regice secured", server.Clock(), strings.Title(team.Purple.Name))
@@ -417,9 +423,9 @@ func PressButtonToScore() {
 			continue
 		}
 
-		state.Add(state.PressButtonToScore, server.Clock(), team.Balls.Holding)
+		state.Add(state.PressButtonToScore, server.Clock(), team.Energy.Holding)
 
-		notify.Feed(team.Self.RGBA, "[%s] [Self] Score option present (%d)", server.Clock(), team.Balls.Holding)
+		notify.Feed(team.Self.RGBA, "[%s] [Self] Score option present (%d)", server.Clock(), team.Energy.Holding)
 
 		matrix.Close()
 	}
@@ -586,9 +592,10 @@ func States() {
 
 				// Purple score and objective results.
 				regielekis, regices, regirocks, registeels := server.Objectives(team.Purple)
-				result := fmt.Sprintf("[%s] %d [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s]",
+				result := fmt.Sprintf("[%s] %d [+%d KO%s] [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s]",
 					strings.Title(team.Purple.Name),
 					p,
+					server.KOs(team.Purple), s(server.KOs(team.Purple)),
 					regielekis, s(regielekis),
 					regices, s(regices),
 					regirocks, s(regirocks),
@@ -598,9 +605,10 @@ func States() {
 
 				// Orange score and objective results.
 				regielekis, regices, regirocks, registeels = server.Objectives(team.Orange)
-				result = fmt.Sprintf("[%s] %d [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s]",
+				result = fmt.Sprintf("[%s] %d [+%d KO%s] [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s]",
 					strings.Title(team.Orange.Name),
 					o,
+					server.KOs(team.Orange), s(server.KOs(team.Orange)),
 					regielekis, s(regielekis),
 					regices, s(regices),
 					regirocks, s(regirocks),

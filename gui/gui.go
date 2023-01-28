@@ -628,8 +628,8 @@ func (g *GUI) main() (next string, err error) {
 									Top:  unit.Px(34),
 								}.Layout(gtx, uptime.Layout)
 
-								h := fmt.Sprintf("%d/%2d", team.Balls.Holding, team.Balls.HoldingMax)
-								if team.Balls.Holding < 10 {
+								h := fmt.Sprintf("%d/%2d", team.Energy.Holding, team.Energy.HoldingMax)
+								if team.Energy.Holding < 10 {
 									h = "0" + h
 								}
 								holding := material.H5(g.normal, h)
@@ -950,7 +950,7 @@ func (g *GUI) main() (next string, err error) {
 								}.Layout(gtx, (&screen.Screen{
 									Border:      true,
 									BorderColor: rgba.N(team.Self.RGBA),
-									Image:       notify.Balls,
+									Image:       notify.Energy,
 									ScaleX:      2,
 									ScaleY:      2,
 								}).Layout)
@@ -1043,14 +1043,14 @@ func (g *GUI) configure() (next string, err error) {
 	}
 
 	ballsArea := &area.Area{
-		Text:     "\tBalls",
+		Text:     "\tEnergy",
 		TextSize: unit.Sp(13),
-		Min:      config.Current.Balls.Min.Div(2),
-		Max:      config.Current.Balls.Max.Div(2),
+		Min:      config.Current.Energy.Min.Div(2),
+		Max:      config.Current.Energy.Max.Div(2),
 
 		Button: &button.Button{
 			Active:   true,
-			Text:     "\t  Balls",
+			Text:     "\t  Energy",
 			Pressed:  rgba.N(rgba.Gray),
 			Released: rgba.N(rgba.DarkGray),
 			Size:     image.Pt(100, 30),
@@ -1059,14 +1059,14 @@ func (g *GUI) configure() (next string, err error) {
 
 	ballsArea.Button.Click = func() {
 		if !ballsArea.Button.Active {
-			ballsArea.Text = "\tBalls (Locked)"
+			ballsArea.Text = "\tEnergy (Locked)"
 			ballsArea.Button.Text = "\tLocked"
 			ballsArea.NRGBA.A = 0x9
 			return
 		}
 
-		ballsArea.Text = "\tBalls"
-		ballsArea.Button.Text = "\t  Balls"
+		ballsArea.Text = "\tEnergy"
+		ballsArea.Button.Text = "\t  Energy"
 		ballsArea.NRGBA.A = 0x4F
 	}
 
@@ -1247,7 +1247,7 @@ func (g *GUI) configure() (next string, err error) {
 			}{
 				{"entire area", "screen_area.png", g.Screen.Bounds()},
 				{"Score area", "score_area.png", scoreArea.Rectangle()},
-				{"Balls area", "balls_area.png", ballsArea.Rectangle()},
+				{"Energy area", "balls_area.png", ballsArea.Rectangle()},
 				{"Time area", "time_area.png", timeArea.Rectangle()},
 			} {
 				noq := make(chan bool)
@@ -1337,8 +1337,8 @@ func (g *GUI) configure() (next string, err error) {
 
 		config.Current.SetDefaultAreas()
 
-		ballsArea.Min = config.Current.Balls.Min.Div(2)
-		ballsArea.Max = config.Current.Balls.Max.Div(2)
+		ballsArea.Min = config.Current.Energy.Min.Div(2)
+		ballsArea.Max = config.Current.Energy.Max.Div(2)
 		scoreArea.Min = config.Current.Scores.Min.Div(2)
 		scoreArea.Max = config.Current.Scores.Max.Div(2)
 		mapArea.Min = config.Current.Map.Min.Div(2)
@@ -1437,7 +1437,7 @@ func (g *GUI) configure() (next string, err error) {
 
 				config.Current.Scores = scoreArea.Rectangle()
 				config.Current.Time = timeArea.Rectangle()
-				config.Current.Balls = ballsArea.Rectangle()
+				config.Current.Energy = ballsArea.Rectangle()
 				config.Current.Map = mapArea.Rectangle()
 
 				err := config.Current.Save()
@@ -1623,7 +1623,7 @@ func (g *GUI) configure() (next string, err error) {
 
 			config.Current.Reload()
 
-			ballsArea.Min, ballsArea.Max = config.Current.Balls.Min.Div(2), config.Current.Balls.Max.Div(2)
+			ballsArea.Min, ballsArea.Max = config.Current.Energy.Min.Div(2), config.Current.Energy.Max.Div(2)
 			timeArea.Min, timeArea.Max = config.Current.Time.Min.Div(2), config.Current.Time.Max.Div(2)
 			scoreArea.Min, scoreArea.Max = config.Current.Scores.Min.Div(2), config.Current.Scores.Max.Div(2)
 
@@ -1646,7 +1646,7 @@ func (g *GUI) configure() (next string, err error) {
 	defer func() { pauseMatchingRoutines = true }()
 	go g.while(func() { g.matchScore(scoreArea) }, &pauseMatchingRoutines)
 	go g.while(func() { g.matchTime(timeArea) }, &pauseMatchingRoutines)
-	go g.while(func() { g.matchBalls(ballsArea) }, &pauseMatchingRoutines)
+	go g.while(func() { g.matchEnergy(ballsArea) }, &pauseMatchingRoutines)
 	// go g.run(func() { g.matchMap(mapArea) }, &kill)
 
 	var ops op.Ops
@@ -1866,7 +1866,7 @@ func (g *GUI) configure() (next string, err error) {
 										},
 									)
 
-									// Balls area rectangle buttons.
+									// Energy area rectangle buttons.
 									{
 										layout.Inset{
 											Left: unit.Px(115),
@@ -1909,6 +1909,11 @@ func (g *GUI) configure() (next string, err error) {
 										}.Layout(
 											gtx,
 											func(gtx layout.Context) layout.Dimensions {
+												scaleDownButton.Disabled = false
+												if config.Current.Scale == 1 {
+													scaleDownButton.Disabled = true
+												}
+
 												return scaleDownButton.Layout(gtx)
 											},
 										)
@@ -2456,7 +2461,7 @@ func (g *GUI) ToastErrorForce(err error) {
 	g.ToastOK("Error", strings.Join(es, " "))
 }
 
-func (g *GUI) matchBalls(a *area.Area) {
+func (g *GUI) matchEnergy(a *area.Area) {
 	defer func() {
 		r := recover()
 		if r != nil {
@@ -2491,13 +2496,13 @@ func (g *GUI) matchBalls(a *area.Area) {
 		a.Text = fmt.Sprintf("\t%d", score)
 	case match.NotFound:
 		a.NRGBA = rgba.N(rgba.Alpha(rgba.Red, 0x99))
-		a.Text = "\tBalls"
+		a.Text = "\tEnergy"
 	case match.Missed:
 		a.NRGBA = rgba.N(rgba.Alpha(rgba.DarkerYellow, 0x99))
 		a.Text = fmt.Sprintf("\t%d?", score)
 	case match.Invalid:
 		a.NRGBA = rgba.N(rgba.Alpha(rgba.Red, 0x99))
-		a.Text = "\tBalls"
+		a.Text = "\tEnergy"
 	}
 
 	m, result := match.SelfScore(matrix, img)
@@ -2512,7 +2517,7 @@ func (g *GUI) matchBalls(a *area.Area) {
 		}
 	case match.Invalid:
 		a.NRGBA = rgba.N(rgba.Alpha(rgba.Red, 0x99))
-		a.Text = "\tInvalid Balls"
+		a.Text = "\tInvalid Energy"
 	}
 }
 

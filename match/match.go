@@ -132,7 +132,7 @@ func (m *Match) process(matrix gocv.Mat, img image.Image) (Result, int) {
 
 	switch m.Template.Category {
 	case "killed":
-		return Found, team.Balls.Holding
+		return Found, team.Energy.Holding
 	case "scored": // Orange, Purple scoring.
 		crop := m.Team.Crop(m.Point)
 		if crop.Min.X < 0 || crop.Min.Y < 0 || crop.Max.X > matrix.Cols() || crop.Max.Y > matrix.Rows() {
@@ -142,7 +142,7 @@ func (m *Match) process(matrix gocv.Mat, img image.Image) (Result, int) {
 
 		return m.points(matrix.Region(crop))
 	case "scoring": // Self scoring.
-		return Found, m.Template.Value // Use team.Balls.Holding.
+		return Found, m.Template.Value // Use team.Energy.Holding.
 	case "game":
 		return Found, state.EventType(m.Template.Value).Int()
 	default:

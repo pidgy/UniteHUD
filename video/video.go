@@ -14,13 +14,18 @@ func Capture() (img *image.RGBA, err error) {
 		return device.Capture()
 	}
 
-	for _, s := range window.Sources {
-		if config.Current.Window == s {
-			return window.Capture()
-		}
+	if config.Current.Window == config.MainDisplay {
+		return screen.Capture()
 	}
 
-	return screen.Capture()
+	/*
+		for _, s := range window.Sources {
+			if config.Current.Window == s {
+			}
+		}
+	*/
+
+	return window.Capture()
 }
 
 func CaptureRect(rect image.Rectangle) (img *image.RGBA, err error) {

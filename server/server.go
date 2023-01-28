@@ -27,7 +27,7 @@ type game struct {
 	Orange    score       `json:"orange"`
 	Self      score       `json:"self"`
 	Seconds   int         `json:"seconds"`
-	Balls     int         `json:"balls"`
+	Energy    int         `json:"balls"`
 	Regilekis []string    `json:"regis"`
 	Bottom    []objective `json:"bottom"`
 	Started   bool        `json:"started"`
@@ -61,6 +61,7 @@ type objective struct {
 type score struct {
 	Team  string `json:"team"`
 	Value int    `json:"value"`
+	KOs   int    `json:"kos"`
 }
 
 var current = &info{
@@ -96,11 +97,22 @@ func Clients() int {
 }
 
 func Holding() int {
-	return current.game.Balls
+	return current.game.Energy
 }
 
 func IsFinalStretch() bool {
 	return current.game.Seconds != 0 && current.game.Seconds <= 120
+}
+
+func KOs(t *team.Team) int {
+	switch t.Name {
+	case team.Purple.Name:
+		return current.game.Purple.KOs
+	case team.Orange.Name:
+		return current.game.Orange.KOs
+	default:
+		return 0
+	}
 }
 
 func Listen() error {
@@ -265,8 +277,8 @@ func Seconds() int {
 	return current.game.Seconds
 }
 
-func SetBalls(b int) {
-	current.game.Balls = b
+func SetEnergy(b int) {
+	current.game.Energy = b
 }
 
 func SetConfig(c bool) {
@@ -275,6 +287,15 @@ func SetConfig(c bool) {
 
 func SetDefeated() {
 	current.game.Defeated = append(current.game.Defeated, current.game.Seconds)
+}
+
+func SetKO(t *team.Team) {
+	switch t.Name {
+	case team.Purple.Name:
+		current.game.Purple.KOs++
+	case team.Orange.Name:
+		current.game.Orange.KOs++
+	}
 }
 
 func SetRegice(t *team.Team) {
@@ -385,7 +406,7 @@ func reset() game {
 			Value: 0,
 		},
 		Seconds:   0,
-		Balls:     0,
+		Energy:    0,
 		Regilekis: []string{team.None.Name, team.None.Name, team.None.Name},
 		Bottom:    []objective{},
 		Version:   global.Version,

@@ -118,6 +118,9 @@ function success(data) {
         $('.purplescore').html(`${data.purple.value} <span>${p}</span>`);
         $('.orangescore').html(`${data.orange.value} <span>${o}</span>`);
         $('.selfscore').html(data.self.value);
+
+        $('.purplekos').html(data.purple.kos);
+        $('.orangekos').html(data.orange.kos);
     } else {
         clear();
     }
@@ -161,9 +164,9 @@ $(document).ready(() => {
                 "version": version,
                 "started": true,
                 "seconds": 360,
-                "purple": { "value": 195 },
-                "orange": { "value": 102 },
-                "self": { "value": 132 },
+                "purple": { "value": 195, "kos": 1 },
+                "orange": { "value": 102, "kos": 1 },
+                "self": { "value": 132, "kos": 1 },
                 "stacks": 6,
                 "regis": ["purple", "orange", "purple"],
                 "bottom": [

@@ -3,7 +3,6 @@
 package main
 
 import (
-	"image"
 	"os"
 	"os/signal"
 	"runtime"
@@ -20,6 +19,7 @@ import (
 	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/gui"
 	"github.com/pidgy/unitehud/notify"
+	"github.com/pidgy/unitehud/process"
 	"github.com/pidgy/unitehud/server"
 	"github.com/pidgy/unitehud/state"
 	"github.com/pidgy/unitehud/stats"
@@ -30,18 +30,7 @@ import (
 // windows
 // cls && go build && unitehud.exe
 // go build -ldflags="-H windowsgui"
-var (
-	sigq = make(chan os.Signal, 1)
-
-	imgq = map[string]chan image.Image{
-		team.Game.Name: make(chan image.Image, 1),
-		// team.Self.Name:   make(chan image.Image, 0),
-		team.Purple.Name: make(chan image.Image, 1),
-		team.Orange.Name: make(chan image.Image, 1),
-		// team.Balls.Name:  make(chan image.Image, 1),
-		team.First.Name: make(chan image.Image, 1),
-	}
-)
+var sigq = make(chan os.Signal, 1)
 
 func init() {
 	notify.System("Initializing...")
@@ -90,7 +79,12 @@ func main() {
 
 	go signals()
 
-	err := config.Load()
+	err := process.Replace()
+	if err != nil {
+		notify.Error("Failed to kill previous UniteHUD (%v)", err)
+	}
+
+	err = config.Load()
 	if err != nil {
 		kill(err)
 	}
@@ -172,7 +166,7 @@ func main() {
 				notify.Denounce("Stopping %s...", gui.Title)
 
 				// Wait for the capture routines to go idle.
-				time.Sleep(time.Second * 2)
+				// time.Sleep(time.Second * 2)
 
 				notify.Denounce("Stopped %s", gui.Title)
 
@@ -196,6 +190,7 @@ func main() {
 				}
 
 				notify.System("%s template match results in %s", str, debug.Dir)
+
 				switch config.Current.Record {
 				case true:
 					err := debug.LoggingStart()

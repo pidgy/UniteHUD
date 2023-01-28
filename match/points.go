@@ -132,8 +132,8 @@ func (m *Match) first(matrix gocv.Mat) (Result, int) {
 			}
 		}
 
-		// If the first round of matching justifies quick sorting, we can exit early.
 		/*
+			// If the first round of matching justifies quick sorting, we can exit early.
 			if sort.ByLocation(sorted) || sort.ByValues(sorted) {
 				return m.validate(matrix, sorted.Value())
 			}

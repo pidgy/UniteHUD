@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	Sources = []string{config.MainDisplay, config.LeftDisplay, config.RightDisplay}
+	Sources = []string{config.MainDisplay}
 )
 
 func Capture() (*image.RGBA, error) {
@@ -25,7 +25,7 @@ func Capture() (*image.RGBA, error) {
 func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 	hDC := getDC(0)
 	if hDC == 0 {
-		return nil, fmt.Errorf("failed to find primary display (%d)", getLastError())
+		return nil, fmt.Errorf("Failed to find primary display (%d)", getLastError())
 	}
 	defer releaseDC(0, hDC)
 
@@ -169,14 +169,16 @@ func monitorRect() (image.Rectangle, error) {
 	x0, y0 := 0, 0
 	x1, y1 := getDeviceCaps(hDC, proc.HorzRes), getDeviceCaps(hDC, proc.VertRes)
 
-	switch config.Current.Window {
-	case config.LeftDisplay:
-		x0, y0 = -100, -100
-		x1, y1 = x1-100, y1-100
-	case config.RightDisplay:
-		x0, y0 = x1, y1
-		x1, y1 = x1*2, y1*2
-	}
+	/*
+		switch config.Current.Window {
+		case config.LeftDisplay:
+			x0, y0 = -100, -100
+			x1, y1 = x1-100, y1-100
+		case config.RightDisplay:
+			x0, y0 = x1, y1
+			x1, y1 = x1*2, y1*2
+		}
+	*/
 
 	return image.Rect(x0, y0, x1, y1), nil
 }

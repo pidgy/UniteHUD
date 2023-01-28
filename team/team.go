@@ -29,8 +29,8 @@ type Team struct {
 }
 
 var (
-	// Balls represents the number of balls held by self.
-	Balls = &Team{
+	// Energy represents the number of balls held by self.
+	Energy = &Team{
 		Name:      "balls",
 		RGBA:      rgba.Purple,
 		Duplicate: duplicate.New(-1, gocv.NewMat(), gocv.NewMat()),
@@ -107,13 +107,13 @@ var (
 		Delay:      time.Second,
 	}
 
-	Teams = []*Team{Orange, Purple, Self, Balls, Game, Time, First}
+	Teams = []*Team{Orange, Purple, Self, Energy, Game, Time, First}
 
 	cache = map[string]*Team{
 		Orange.Name: Orange,
 		Purple.Name: Purple,
 		Self.Name:   Self,
-		Balls.Name:  Balls,
+		Energy.Name: Energy,
 		Game.Name:   Game,
 		Time.Name:   Time,
 		First.Name:  First,

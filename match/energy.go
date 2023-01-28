@@ -25,7 +25,7 @@ func Energy(matrix gocv.Mat, img image.Image) (Result, []int, int) {
 	points := []int{-1, -1}
 	matched := []image.Rectangle{{}, {}}
 
-	templates := config.Current.Templates["points"][team.Balls.Name]
+	templates := config.Current.Templates["points"][team.Energy.Name]
 
 	region := matrix.Clone()
 
@@ -58,7 +58,7 @@ func Energy(matrix gocv.Mat, img image.Image) (Result, []int, int) {
 
 			go stats.Frequency(templates[i].Truncated(), maxv)
 
-			if maxv >= team.Balls.Acceptance {
+			if maxv >= team.Energy.Acceptance {
 				go stats.Average(templates[i].Truncated(), maxv)
 				go stats.Count(templates[i].Truncated())
 
@@ -125,7 +125,7 @@ func Energy(matrix gocv.Mat, img image.Image) (Result, []int, int) {
 	}
 }
 
-func IdentifyBalls(mat gocv.Mat, points int) (image.Image, error) {
+func IdentifyEnergy(mat gocv.Mat, points int) (image.Image, error) {
 	clone := mat.Clone()
 	defer clone.Close()
 

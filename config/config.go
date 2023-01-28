@@ -24,8 +24,6 @@ var File = strings.ReplaceAll(global.Version, ".", "-") + "-config.unitehud"
 
 const (
 	MainDisplay          = "Main Display"
-	LeftDisplay          = "Left Display"
-	RightDisplay         = "Right Display"
 	NoVideoCaptureDevice = -1
 )
 
@@ -34,7 +32,7 @@ type Config struct {
 	VideoCaptureDevice int
 	LostWindow         string `json:"-"`
 	Record             bool   `json:"-"` // Record all matched images and logs.
-	Balls              image.Rectangle
+	Energy             image.Rectangle
 	Map                image.Rectangle
 	Scores             image.Rectangle
 	Time               image.Rectangle
@@ -68,6 +66,7 @@ func (c *Config) Report(crash string) {
 		log.Panic().Err(err).Msg("failed to save crash report")
 	}
 }
+
 func (c Config) Save() error {
 	f, err := os.Create(File)
 	if err != nil {
@@ -89,23 +88,36 @@ func (c Config) Save() error {
 
 func (c Config) Scoring() image.Rectangle {
 	return image.Rectangle{
-		Min: image.Pt(c.Balls.Min.X-50, c.Balls.Min.Y),
-		Max: image.Pt(c.Balls.Max.X+50, c.Balls.Max.Y+100),
+		Min: image.Pt(c.Energy.Min.X-50, c.Energy.Min.Y),
+		Max: image.Pt(c.Energy.Max.X+50, c.Energy.Max.Y+100),
 	}
 }
 
 func (c Config) ScoringOption() image.Rectangle {
 	return image.Rectangle{
-		Min: image.Pt(c.Balls.Min.X-100, c.Balls.Min.Y-100),
-		Max: image.Pt(c.Balls.Max.X+100, c.Balls.Max.Y-100),
+		Min: image.Pt(c.Energy.Min.X-100, c.Energy.Min.Y-100),
+		Max: image.Pt(c.Energy.Max.X+100, c.Energy.Max.Y-100),
 	}
 }
 
 func (c *Config) SetDefaultAreas() {
-	c.Balls = image.Rect(910, 756, 1010, 856)
-	c.Map = image.Rect(70, 100, 470, 250)
-	c.Scores = image.Rect(500, 50, 1500, 250)
-	c.Time = image.Rect(846, 0, 1046, 100)
+	energy := image.Rect(908, 764, 1008, 864)
+	minimap := image.Rect(70, 100, 470, 250)
+	scores := image.Rect(500, 50, 1500, 250)
+	time := image.Rect(846, 0, 1046, 100)
+
+	if !c.Energy.Eq(energy) {
+		c.Energy = energy
+	}
+	if !c.Map.Eq(minimap) {
+		c.Map = minimap
+	}
+	if !c.Scores.Eq(scores) {
+		c.Scores = scores
+	}
+	if !c.Time.Eq(time) {
+		c.Time = time
+	}
 }
 
 func Load() error {
@@ -170,7 +182,7 @@ func validate() {
 			team.Purple.Name: {},
 			team.Self.Name:   {},
 			team.First.Name:  {},
-			team.Balls.Name:  {},
+			team.Energy.Name: {},
 		},
 		"time": {
 			team.Time.Name: {},
@@ -191,7 +203,7 @@ func validate() {
 						team.Self.Name,
 						team.Orange.Name,
 						team.Purple.Name,
-						team.Balls.Name,
+						team.Energy.Name,
 						team.Game.Name:
 						transparent = true
 					}
@@ -410,7 +422,7 @@ func loadDefault() {
 			team.Orange.Name: Current.pointFiles(team.Orange),
 			team.Self.Name:   Current.pointFiles(team.Self),
 			team.First.Name:  Current.pointFiles(team.First),
-			team.Balls.Name:  Current.pointFiles(team.Balls),
+			team.Energy.Name: Current.pointFiles(team.Energy),
 		},
 		"time": {
 			team.Time.Name: Current.pointFiles(team.Time),

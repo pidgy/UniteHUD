@@ -15,7 +15,7 @@ var (
 	OrangeScore image.Image = image.NewRGBA(image.Rect(0, 0, 0, 0))
 	PurpleScore image.Image = image.NewRGBA(image.Rect(0, 0, 0, 0))
 	SelfScore   image.Image = image.NewRGBA(image.Rect(0, 0, 0, 0))
-	Balls       image.Image = image.NewRGBA(image.Rect(0, 0, 0, 0))
+	Energy      image.Image = image.NewRGBA(image.Rect(0, 0, 0, 0))
 	Time        image.Image = image.NewRGBA(image.Rect(0, 0, 0, 0))
 )
 
@@ -52,7 +52,7 @@ func Clear() {
 	OrangeScore = nil
 	PurpleScore = nil
 	SelfScore = nil
-	Balls = nil
+	Energy = nil
 	Time = nil
 }
 

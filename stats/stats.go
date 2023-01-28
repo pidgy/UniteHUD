@@ -187,7 +187,7 @@ func Data() {
 				notify.Append(team.Purple.RGBA, lines[i])
 			case strings.Contains(lines[i], team.First.Name):
 				notify.Append(team.First.RGBA, lines[i])
-			case strings.Contains(lines[i], team.Balls.Name):
+			case strings.Contains(lines[i], team.Energy.Name):
 				notify.Append(rgba.DarkYellow, lines[i])
 			case strings.Contains(lines[i], team.Time.Name):
 				notify.Append(rgba.Slate, lines[i])
