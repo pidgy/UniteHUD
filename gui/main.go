@@ -48,10 +48,6 @@ func (g *GUI) main() (next string, err error) {
 		Ratio: .70,
 	}
 
-	header := material.H5(g.normal, Title())
-	header.Color = rgba.N(rgba.White)
-	header.Alignment = text.Middle
-
 	configButton := &button.Button{
 		Text:     " Configure",
 		Released: rgba.N(rgba.Gray),
@@ -399,6 +395,10 @@ func (g *GUI) main() (next string, err error) {
 						color.NRGBA{R: 25, G: 25, B: 25, A: 255},
 						func(gtx layout.Context) layout.Dimensions {
 							{
+								header := material.H6(g.normal, Title())
+								header.Color = rgba.N(rgba.White)
+								header.Alignment = text.Middle
+
 								layout.Inset{
 									Left: unit.Px(2),
 									Top:  unit.Px(5),
