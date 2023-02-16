@@ -34,7 +34,7 @@ func Clock() {
 	for {
 		time.Sleep(team.Delay(team.Time.Name))
 
-		if Stopped {
+		if Stopped || config.Current.DisableTime {
 			continue
 		}
 
@@ -90,7 +90,9 @@ func Defeated() {
 	for {
 		time.Sleep(time.Second)
 
-		if Stopped || gui.Window.Screen == nil {
+		if Stopped || gui.Window.Screen == nil || config.Current.DisableDefeated {
+			modified = config.Current.Templates["killed"][team.Game.Name]
+			unmodified = config.Current.Templates["killed"][team.Game.Name]
 			continue
 		}
 
@@ -153,7 +155,8 @@ func Energy() {
 	for {
 		time.Sleep(team.Energy.Delay)
 
-		if Stopped {
+		if Stopped || config.Current.DisableEnergy {
+			assured = make(map[int]int)
 			confirmScore = -1
 			continue
 		}
@@ -230,7 +233,8 @@ func KOs() {
 	for {
 		time.Sleep(time.Second)
 
-		if Stopped || gui.Window.Screen == nil {
+		if Stopped || gui.Window.Screen == nil || config.Current.DisableKOs {
+			last = nil
 			continue
 		}
 
@@ -321,7 +325,8 @@ func Objectives() {
 	for {
 		time.Sleep(time.Second)
 
-		if Stopped || gui.Window.Screen == nil {
+		if Stopped || gui.Window.Screen == nil || config.Current.DisableObjectives {
+			top, bottom = time.Time{}, time.Time{}
 			continue
 		}
 
@@ -393,9 +398,6 @@ func Objectives() {
 				notify.Feed(team.Purple.RGBA, "[%s] [%s] Registeel secured", server.Clock(), strings.Title(team.Purple.Name))
 				server.SetRegisteel(team.Purple)
 				bottom = time.Now()
-
-			default:
-				notify.Warn("Unknown objective secured for event (%s)", e)
 			}
 		}
 
@@ -445,7 +447,9 @@ func Preview() {
 	}
 }
 
-func Scores(name string, t []template.Template) {
+func Scores(name string) {
+	t := config.Current.Templates["scored"][name]
+
 	withFirst := t
 	withoutFirst := []template.Template{}
 	for _, temp := range t {
@@ -457,7 +461,7 @@ func Scores(name string, t []template.Template) {
 	for {
 		time.Sleep(team.Delay(name))
 
-		if Stopped {
+		if Stopped || config.Current.DisableScoring {
 			continue
 		}
 
@@ -539,7 +543,6 @@ func Scores(name string, t []template.Template) {
 
 func States() {
 	area := image.Rectangle{}
-	templates := config.Current.Templates["game"][team.Game.Name]
 
 	for {
 		time.Sleep(time.Second * 2)
@@ -560,7 +563,7 @@ func States() {
 			continue
 		}
 
-		m, r, e := match.Matches(matrix, img, templates)
+		m, r, e := match.Matches(matrix, img, config.Current.Templates["game"][team.Game.Name])
 		if r != match.Found {
 			matrix.Close()
 			continue

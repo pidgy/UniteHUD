@@ -15,6 +15,8 @@ type List struct {
 	Items         []*Item
 	Callback      func(i *Item)
 	WidthModifier int
+	Radio         bool
+	TextSize      float32
 
 	list *widget.List
 }
@@ -45,25 +47,33 @@ func (l *List) Layout(gtx layout.Context, th *material.Theme) layout.Dimensions 
 	return style.Layout(gtx, len(l.Items), func(gtx layout.Context, index int) layout.Dimensions {
 		item := l.Items[index]
 
+		if l.TextSize == 0 {
+			l.TextSize = 12
+		}
+
 		check := material.CheckBox(th, &item.Checked, item.Text)
-		check.TextSize = unit.Dp(12)
+		check.TextSize = unit.Dp(l.TextSize)
 		check.Color = color.NRGBA(rgba.White)
 		check.Size = unit.Dp(14)
 
 		if item.Checked.Changed() {
-			if item.Checked.Value {
-				for i := range l.Items {
-					if i != index {
-						l.Items[i].Checked.Value = false
-						continue
-					}
-
-					if l.Callback != nil {
-						l.Callback(l.Items[i])
-					}
-				}
+			if l.Radio && l.Callback != nil {
+				l.Callback(item)
 			} else {
-				item.Checked.Value = true
+				if item.Checked.Value {
+					for i := range l.Items {
+						if i != index {
+							l.Items[i].Checked.Value = false
+							continue
+						}
+
+						if l.Callback != nil {
+							l.Callback(l.Items[i])
+						}
+					}
+				} else {
+					item.Checked.Value = true
+				}
 			}
 		}
 

@@ -115,12 +115,19 @@ func (b *Button) draw(gtx layout.Context) layout.Dimensions {
 		b.BorderWidth = unit.Px(2)
 	}
 
-	widget.Border{
-		Color:        color.NRGBA{A: 0xAF},
-		Width:        b.BorderWidth,
-		CornerRadius: unit.Px(2),
-	}.Layout(gtx, b.uniform)
-
+	if b.hover {
+		widget.Border{
+			Color:        rgba.N(rgba.White),
+			Width:        unit.Dp(1),
+			CornerRadius: unit.Px(2),
+		}.Layout(gtx, b.uniform)
+	} else {
+		widget.Border{
+			Color:        color.NRGBA{A: 0xAF},
+			Width:        b.BorderWidth,
+			CornerRadius: unit.Px(2),
+		}.Layout(gtx, b.uniform)
+	}
 	title := material.Body1(material.NewTheme(gofont.Collection()), b.Text)
 	title.Color = color.NRGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0xFF}
 	if b.Active && b.Click != nil {

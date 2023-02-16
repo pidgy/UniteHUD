@@ -444,7 +444,12 @@ func (g *GUI) main() (next string, err error) {
 	obsButton.Click = func() {
 		obsButton.Active = !obsButton.Active
 
-		g.ToastOK("UniteHUD Overlay", "Drag \"UniteHUD Client\" into any OBS scene.", func() {
+		drag := "Drag \"UniteHUD Client\" into any OBS scene."
+		if config.Current.Profile == config.ProfileBroadcaster {
+			drag = "Drag \"UniteHUD Broadcaster\" into any OBS scene."
+		}
+
+		g.ToastOK("UniteHUD Overlay", drag, func() {
 			ex, err := os.Executable()
 			if err != nil {
 				notify.Error("Failed to open www/ directory: %v", err)
@@ -476,6 +481,7 @@ func (g *GUI) main() (next string, err error) {
 		clearButton.Active = !clearButton.Active
 
 		notify.CLS()
+		notify.System("Cleared")
 	}
 
 	ecoButton := &button.Button{
@@ -509,6 +515,58 @@ func (g *GUI) main() (next string, err error) {
 	}
 	preview.Click = func() {
 		preview.Hide = !preview.Hide
+	}
+
+	profileList := &dropdown.List{
+		Radio: true,
+		Items: []*dropdown.Item{
+			{
+				Text: strings.Title(config.ProfilePlayer),
+				Checked: widget.Bool{
+					Value: config.Current.Profile == config.ProfilePlayer,
+				},
+			},
+			{
+				Text: strings.Title(config.ProfileBroadcaster),
+				Checked: widget.Bool{
+					Value: config.Current.Profile == config.ProfileBroadcaster,
+				},
+			},
+		},
+	}
+
+	profileList.Callback = func(i *dropdown.Item) {
+		config.Current.Profile = strings.ToLower(i.Text)
+
+		for item := range profileList.Items {
+			if profileList.Items[item].Text == i.Text {
+				profileList.Items[item].Checked.Value = true
+			} else {
+				profileList.Items[item].Checked.Value = false
+			}
+		}
+
+		if startButton.Disabled {
+			stopButton.Click()
+			defer startButton.Click()
+		}
+
+		apply := config.Current.SetProfilePlayer
+		switch i.Text {
+		case strings.Title(config.ProfilePlayer):
+			apply = config.Current.SetProfilePlayer
+		case strings.Title(config.ProfileBroadcaster):
+			apply = config.Current.SetProfileBroadcaster
+		}
+		err = apply()
+		if err != nil {
+			notify.Error("Failed to apply profile settings for %s (%v)", i.Text, err)
+			return
+		}
+
+		reloadButton.Click()
+
+		notify.Announce("Profile set to %s mode", i.Text)
 	}
 
 	var ops op.Ops
@@ -850,8 +908,33 @@ func (g *GUI) main() (next string, err error) {
 									},
 								)
 							}
-							// Right-side buttons.
+							// Right-side criteria.
 							{
+								{ // Matching check boxes.
+									left := 125
+									layout.Inset{
+										Left: unit.Px(float32(gtx.Constraints.Max.X - left)),
+										Top:  unit.Px(float32(gtx.Constraints.Max.Y - 400)),
+									}.Layout(
+										gtx,
+										func(gtx layout.Context) layout.Dimensions {
+											profileListTitle := material.Label(g.normal, unit.Px(12), "Profile")
+											profileListTitle.Color = rgba.N(rgba.Slate)
+											return profileListTitle.Layout(gtx)
+										},
+									)
+
+									layout.Inset{
+										Left: unit.Px(float32(gtx.Constraints.Max.X - left)),
+										Top:  unit.Px(float32(gtx.Constraints.Max.Y - 380)),
+									}.Layout(
+										gtx,
+										func(gtx layout.Context) layout.Dimensions {
+											return profileList.Layout(gtx, g.normal)
+										},
+									)
+								}
+
 								layout.Inset{
 									Left: unit.Px(float32(gtx.Constraints.Max.X - 125)),
 									Top:  unit.Px(float32(gtx.Constraints.Max.Y - 335)),
@@ -1042,43 +1125,49 @@ func (g *GUI) configure() (next string, err error) {
 		Ratio: .6,
 	}
 
-	ballsArea := &area.Area{
-		Text:     "\tEnergy",
+	energyAreaText := "\t Energy"
+	timeAreaText := "\t Time"
+	scoreAreaText := "\t Score"
+	lockedAreaText := func(a string) string { return fmt.Sprintf("%s (Locked)", a) }
+	lockedAreaButtonText := "\tLocked"
+
+	energyArea := &area.Area{
+		Text:     energyAreaText,
 		TextSize: unit.Sp(13),
 		Min:      config.Current.Energy.Min.Div(2),
 		Max:      config.Current.Energy.Max.Div(2),
 
 		Button: &button.Button{
 			Active:   true,
-			Text:     "\t  Energy",
-			Pressed:  rgba.N(rgba.Gray),
+			Text:     energyAreaText,
+			Pressed:  rgba.N(rgba.Night),
 			Released: rgba.N(rgba.DarkGray),
 			Size:     image.Pt(100, 30),
 		},
 	}
 
-	ballsArea.Button.Click = func() {
-		if !ballsArea.Button.Active {
-			ballsArea.Text = "\tEnergy (Locked)"
-			ballsArea.Button.Text = "\tLocked"
-			ballsArea.NRGBA.A = 0x9
+	energyArea.Button.Click = func() {
+		if !energyArea.Button.Active {
+			energyArea.Text = lockedAreaText(energyAreaText)
+			energyArea.Button.Text = lockedAreaButtonText
+			energyArea.NRGBA.A = 0x9
 			return
 		}
 
-		ballsArea.Text = "\tEnergy"
-		ballsArea.Button.Text = "\t  Energy"
-		ballsArea.NRGBA.A = 0x4F
+		energyArea.Text = energyAreaText
+		energyArea.Button.Text = energyAreaText
+		energyArea.NRGBA.A = 0x4F
 	}
 
 	timeArea := &area.Area{
-		Text:     "\tTime",
+		Text:     timeAreaText,
 		TextSize: unit.Sp(13),
 		Min:      config.Current.Time.Min.Div(2),
 		Max:      config.Current.Time.Max.Div(2),
 		Button: &button.Button{
 			Active:   true,
-			Text:     "\t  Time",
-			Pressed:  rgba.N(rgba.Gray),
+			Text:     timeAreaText,
+			Pressed:  rgba.N(rgba.Night),
 			Released: rgba.N(rgba.DarkGray),
 			Size:     image.Pt(100, 30),
 		},
@@ -1086,27 +1175,27 @@ func (g *GUI) configure() (next string, err error) {
 
 	timeArea.Button.Click = func() {
 		if !timeArea.Button.Active {
-			timeArea.Text = "Time (Locked)"
-			timeArea.Button.Text = "\tLocked"
+			timeArea.Text = lockedAreaText(timeAreaText)
+			timeArea.Button.Text = lockedAreaButtonText
 			timeArea.NRGBA.A = 0x9
 			return
 		}
 
-		timeArea.Text = "\tTime"
-		timeArea.Button.Text = "\t  Time"
+		timeArea.Text = timeAreaText
+		timeArea.Button.Text = timeAreaText
 		timeArea.NRGBA.A = 0x4F
 	}
 
 	scoreArea := &area.Area{
-		Text:  "Score",
+		Text:  scoreAreaText,
 		Min:   config.Current.Scores.Min.Div(2),
 		Max:   config.Current.Scores.Max.Div(2),
 		Theme: g.normal,
 
 		Button: &button.Button{
 			Active:   true,
-			Text:     "\t Score",
-			Pressed:  rgba.N(rgba.Gray),
+			Text:     scoreAreaText,
+			Pressed:  rgba.N(rgba.Night),
 			Released: rgba.N(rgba.DarkGray),
 			Size:     image.Pt(100, 30),
 		},
@@ -1114,14 +1203,14 @@ func (g *GUI) configure() (next string, err error) {
 
 	scoreArea.Button.Click = func() {
 		if !scoreArea.Button.Active {
-			scoreArea.Text = "Score (Locked)"
-			scoreArea.Button.Text = "\tLocked"
+			scoreArea.Text = lockedAreaText(scoreAreaText)
+			scoreArea.Button.Text = lockedAreaButtonText
 			scoreArea.NRGBA.A = 0x9
 			return
 		}
 
-		scoreArea.Text = "Score"
-		scoreArea.Button.Text = "\t Score"
+		scoreArea.Text = scoreAreaText
+		scoreArea.Button.Text = scoreAreaText
 		scoreArea.NRGBA.A = 0x4F
 	}
 
@@ -1226,6 +1315,18 @@ func (g *GUI) configure() (next string, err error) {
 	shiftText.Alignment = text.Middle
 	shiftText.TextSize = unit.Sp(11)
 
+	assetsButton := &button.Button{
+		Active:      true,
+		Text:        "\tAssets",
+		Pressed:     rgba.N(rgba.Gray),
+		Released:    rgba.N(rgba.DarkGray),
+		Size:        image.Pt(100, 30),
+		SingleClick: true,
+		Click: func() {
+			exec.Command(`explorer`, config.Current.ProfileAssets()).Run()
+		},
+	}
+
 	captureButton := &button.Button{
 		Active:      true,
 		Text:        "\tCapture",
@@ -1247,7 +1348,7 @@ func (g *GUI) configure() (next string, err error) {
 			}{
 				{"entire area", "screen_area.png", g.Screen.Bounds()},
 				{"Score area", "score_area.png", scoreArea.Rectangle()},
-				{"Energy area", "balls_area.png", ballsArea.Rectangle()},
+				{"Energy area", "balls_area.png", energyArea.Rectangle()},
 				{"Time area", "time_area.png", timeArea.Rectangle()},
 			} {
 				noq := make(chan bool)
@@ -1337,8 +1438,8 @@ func (g *GUI) configure() (next string, err error) {
 
 		config.Current.SetDefaultAreas()
 
-		ballsArea.Min = config.Current.Energy.Min.Div(2)
-		ballsArea.Max = config.Current.Energy.Max.Div(2)
+		energyArea.Min = config.Current.Energy.Min.Div(2)
+		energyArea.Max = config.Current.Energy.Max.Div(2)
 		scoreArea.Min = config.Current.Scores.Min.Div(2)
 		scoreArea.Max = config.Current.Scores.Max.Div(2)
 		mapArea.Min = config.Current.Map.Min.Div(2)
@@ -1375,7 +1476,7 @@ func (g *GUI) configure() (next string, err error) {
 
 	saveButton := &button.Button{
 		Text:     "\t  Save",
-		Pressed:  rgba.N(rgba.Gray),
+		Pressed:  rgba.N(rgba.ForestGreen),
 		Released: rgba.N(rgba.DarkGray),
 		Active:   true,
 		Size:     image.Pt(100, 30),
@@ -1383,7 +1484,7 @@ func (g *GUI) configure() (next string, err error) {
 
 	cancelButton := &button.Button{
 		Text:     "\tCancel",
-		Pressed:  rgba.N(rgba.Gray),
+		Pressed:  rgba.N(rgba.Alpha(rgba.BloodOrange, 0x5F)),
 		Released: rgba.N(rgba.DarkGray),
 		Active:   true,
 		Size:     image.Pt(100, 30),
@@ -1401,7 +1502,7 @@ func (g *GUI) configure() (next string, err error) {
 
 				cancelButton.Disabled = true
 				saveButton.Disabled = true
-				ballsArea.Button.Disabled = true
+				energyArea.Button.Disabled = true
 				timeArea.Button.Disabled = true
 				scoreArea.Button.Disabled = true
 
@@ -1431,13 +1532,13 @@ func (g *GUI) configure() (next string, err error) {
 
 				cancelButton.Disabled = true
 				saveButton.Disabled = true
-				ballsArea.Button.Disabled = true
+				energyArea.Button.Disabled = true
 				timeArea.Button.Disabled = true
 				scoreArea.Button.Disabled = true
 
 				config.Current.Scores = scoreArea.Rectangle()
 				config.Current.Time = timeArea.Rectangle()
-				config.Current.Energy = ballsArea.Rectangle()
+				config.Current.Energy = energyArea.Rectangle()
 				config.Current.Map = mapArea.Rectangle()
 
 				err := config.Current.Save()
@@ -1604,7 +1705,7 @@ func (g *GUI) configure() (next string, err error) {
 
 	resetButton := &button.Button{
 		Text:     "\t Reset",
-		Pressed:  rgba.N(rgba.Gray),
+		Pressed:  rgba.N(rgba.DarkRed),
 		Released: rgba.N(rgba.DarkGray),
 		Active:   true,
 		Size:     image.Pt(100, 30),
@@ -1623,7 +1724,7 @@ func (g *GUI) configure() (next string, err error) {
 
 			config.Current.Reload()
 
-			ballsArea.Min, ballsArea.Max = config.Current.Energy.Min.Div(2), config.Current.Energy.Max.Div(2)
+			energyArea.Min, energyArea.Max = config.Current.Energy.Min.Div(2), config.Current.Energy.Max.Div(2)
 			timeArea.Min, timeArea.Max = config.Current.Time.Min.Div(2), config.Current.Time.Max.Div(2)
 			scoreArea.Min, scoreArea.Max = config.Current.Scores.Min.Div(2), config.Current.Scores.Max.Div(2)
 
@@ -1646,7 +1747,7 @@ func (g *GUI) configure() (next string, err error) {
 	defer func() { pauseMatchingRoutines = true }()
 	go g.while(func() { g.matchScore(scoreArea) }, &pauseMatchingRoutines)
 	go g.while(func() { g.matchTime(timeArea) }, &pauseMatchingRoutines)
-	go g.while(func() { g.matchEnergy(ballsArea) }, &pauseMatchingRoutines)
+	go g.while(func() { g.matchEnergy(energyArea) }, &pauseMatchingRoutines)
 	// go g.run(func() { g.matchMap(mapArea) }, &kill)
 
 	var ops op.Ops
@@ -1857,6 +1958,16 @@ func (g *GUI) configure() (next string, err error) {
 									}
 
 									layout.Inset{
+										Top:  unit.Px(37),
+										Left: unit.Px(220),
+									}.Layout(
+										gtx,
+										func(gtx layout.Context) layout.Dimensions {
+											return assetsButton.Layout(gtx)
+										},
+									)
+
+									layout.Inset{
 										Top:  unit.Px(69),
 										Left: unit.Px(220),
 									}.Layout(
@@ -1874,7 +1985,7 @@ func (g *GUI) configure() (next string, err error) {
 										}.Layout(
 											gtx,
 											func(gtx layout.Context) layout.Dimensions {
-												return ballsArea.Button.Layout(gtx)
+												return energyArea.Button.Layout(gtx)
 											},
 										)
 									}
@@ -2031,7 +2142,7 @@ func (g *GUI) configure() (next string, err error) {
 			)
 
 			scoreArea.Layout(gtx)
-			ballsArea.Layout(gtx)
+			energyArea.Layout(gtx)
 			timeArea.Layout(gtx)
 			// mapArea.Layout(gtx)
 

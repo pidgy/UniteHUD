@@ -28,6 +28,7 @@ var (
 	Green        = color.RGBA{G: 0xFF, A: 0xFF}
 	Highlight    = color.RGBA{255, 255, 255, 255}
 	LightPurple  = color.RGBA{204, 0, 204, 255}
+	Night        = color.RGBA{50, 50, 0xFF, 0x3F}
 	Orange       = color.RGBA{255, 165, 0, 255}
 	Purple       = color.RGBA{161, 76, 252, 255}
 	PurpleBlue   = color.RGBA{83, 94, 255, 255}

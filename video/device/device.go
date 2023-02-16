@@ -20,7 +20,7 @@ var (
 	HD1080 = image.Rect(0, 0, 1920, 1080)
 
 	active = config.NoVideoCaptureDevice
-	base   = gocv.IMRead("img/splash/paused2.png", gocv.IMReadColor) // Global matrix is more efficient?
+	base   = gocv.IMRead(fmt.Sprintf(`%s/splash/paused2.png`, config.Current.Assets()), gocv.IMReadColor) // Global matrix is more efficient?
 	mat    = base.Clone()
 
 	running = false

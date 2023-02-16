@@ -25,6 +25,9 @@ var File = strings.ReplaceAll(global.Version, ".", "-") + "-config.unitehud"
 const (
 	MainDisplay          = "Main Display"
 	NoVideoCaptureDevice = -1
+
+	ProfilePlayer      = "player"
+	ProfileBroadcaster = "broadcaster"
 )
 
 type Config struct {
@@ -40,8 +43,10 @@ type Config struct {
 	Templates          map[string]map[string][]template.Template `json:"-"`
 	Scale              float64
 	Shift              Shift
-	Dir                string
 	Acceptance         float32
+	Profile            string
+
+	DisableScoring, DisableTime, DisableObjectives, DisableEnergy, DisableDefeated, DisableKOs bool
 
 	Crashed string
 
@@ -53,6 +58,26 @@ type Shift struct {
 }
 
 var Current Config
+
+func (c Config) Assets() string {
+	e, err := os.Executable()
+	if err != nil {
+		notify.Error("Failed to find profile directory (%v)", err)
+		return ""
+	}
+
+	return fmt.Sprintf(`%s\assets`, filepath.Dir(e))
+}
+
+func (c Config) ProfileAssets() string {
+	e, err := os.Executable()
+	if err != nil {
+		notify.Error("Failed to find profile directory (%v)", err)
+		return ""
+	}
+
+	return fmt.Sprintf(`%s\assets\profiles\%s`, filepath.Dir(e), c.Profile)
+}
 
 func (c Config) Reload() {
 	defer validate()
@@ -120,6 +145,30 @@ func (c *Config) SetDefaultAreas() {
 	}
 }
 
+func (c *Config) SetProfileBroadcaster() error {
+	c.Profile = ProfileBroadcaster
+	c.load = loadProfileAssetsBroadcaster
+	c.DisableDefeated = false
+	c.DisableEnergy = true
+	c.DisableObjectives = false
+	c.DisableScoring = true
+	c.DisableTime = false
+	c.DisableKOs = false
+	return c.Save()
+}
+
+func (c *Config) SetProfilePlayer() error {
+	c.Profile = ProfilePlayer
+	c.load = loadProfileAssetsPlayer
+	c.DisableDefeated = false
+	c.DisableEnergy = false
+	c.DisableObjectives = false
+	c.DisableScoring = false
+	c.DisableTime = false
+	c.DisableKOs = false
+	return c.Save()
+}
+
 func Load() error {
 	defer validate()
 
@@ -130,8 +179,8 @@ func Load() error {
 			VideoCaptureDevice: NoVideoCaptureDevice,
 			Scale:              1,
 			Shift:              Shift{},
-			Dir:                "default",
-			load:               loadDefault,
+			Profile:            ProfilePlayer,
+			load:               loadProfileAssetsPlayer,
 			Acceptance:         .91,
 		}
 		Current.SetDefaultAreas()
@@ -239,14 +288,16 @@ func validate() {
 func (c Config) scoreFiles(t *team.Team) []filter.Filter {
 	var files []string
 
-	root := fmt.Sprintf("img/%s/%s/score/", c.Dir, t.Name)
+	root := fmt.Sprintf("%s/%s/score/", c.ProfileAssets(), t.Name)
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if info == nil {
+			return fmt.Errorf("Directory does not exist")
+		}
 		if info.IsDir() {
 			if info.Name() != "score" {
 				notify.SystemWarn("Skipping \"%s%s\"", root, info.Name())
 				return filepath.SkipDir
 			}
-			notify.System("Loading templates from %s", path)
 		}
 
 		files = append(files, path)
@@ -278,14 +329,16 @@ func (c Config) scoreFiles(t *team.Team) []filter.Filter {
 func (c Config) pointFiles(t *team.Team) []filter.Filter {
 	var files []string
 
-	root := fmt.Sprintf("img/%s/%s/points/", c.Dir, t.Name)
+	root := fmt.Sprintf("%s/%s/points/", c.ProfileAssets(), t.Name)
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if info == nil {
+			return fmt.Errorf("Directory does not exist")
+		}
 		if info.IsDir() {
 			if info.Name() != "points" {
 				notify.SystemWarn("Skipping templates from %s%s", root, info.Name())
 				return filepath.SkipDir
 			}
-			notify.System("Loading templates from %s", path)
 		}
 
 		files = append(files, path)
@@ -349,66 +402,122 @@ func TemplatesFirstRound(t1 []template.Template) []template.Template {
 	return t2
 }
 
-func loadDefault() {
+func loadProfileAssetsBroadcaster() {
 	Current.Filenames = map[string]map[string][]filter.Filter{
 		"goals": {
 			team.Game.Name: {
-				filter.New(team.Game, "img/default/game/purple_base_open.png", state.PurpleBaseOpen.Int(), false),
-				filter.New(team.Game, "img/default/game/orange_base_open.png", state.OrangeBaseOpen.Int(), false),
-				filter.New(team.Game, "img/default/game/purple_base_closed.png", state.PurpleBaseClosed.Int(), false),
-				filter.New(team.Game, "img/default/game/orange_base_closed.png", state.OrangeBaseClosed.Int(), false),
+				filter.New(team.Game, "assets/profiles/broadcaster/game/purple_base_open.png", state.PurpleBaseOpen.Int(), false),
+				filter.New(team.Game, "assets/profiles/broadcaster/game/orange_base_open.png", state.OrangeBaseOpen.Int(), false),
+				filter.New(team.Game, "assets/profiles/broadcaster/game/purple_base_closed.png", state.PurpleBaseClosed.Int(), false),
+				filter.New(team.Game, "assets/profiles/broadcaster/game/orange_base_closed.png", state.OrangeBaseClosed.Int(), false),
 			},
 		},
-		"killed": {
-			team.Game.Name: {
-				filter.New(team.Game, "img/default/game/killed.png", state.Killed.Int(), false),
-				filter.New(team.Game, "img/default/game/killed_with_points.png", state.KilledWithPoints.Int(), false),
-				filter.New(team.Game, "img/default/game/killed_without_points.png", state.KilledWithoutPoints.Int(), false),
-			},
-		},
+		"killed": {},
 		"secure": {
 			team.Game.Name: {
-				filter.New(team.Game, "img/default/game/regieleki_ally.png", state.RegielekiSecureAlly.Int(), false),
-				filter.New(team.Game, "img/default/game/regieleki_enemy.png", state.RegielekiSecureEnemy.Int(), false),
-				filter.New(team.Game, "img/default/game/regice_ally.png", state.RegiceSecureAlly.Int(), false),
-				filter.New(team.Game, "img/default/game/regice_enemy.png", state.RegiceSecureEnemy.Int(), false),
-				filter.New(team.Game, "img/default/game/regirock_ally.png", state.RegirockSecureAlly.Int(), false),
-				filter.New(team.Game, "img/default/game/regirock_enemy.png", state.RegirockSecureEnemy.Int(), false),
-				filter.New(team.Game, "img/default/game/registeel_ally.png", state.RegisteelSecureAlly.Int(), false),
-				filter.New(team.Game, "img/default/game/registeel_enemy.png", state.RegisteelSecureEnemy.Int(), false),
+				filter.New(team.Game, "assets/profiles/broadcaster/game/regice_ally.png", state.RegiceSecureAlly.Int(), false),
+				filter.New(team.Game, "assets/profiles/broadcaster/game/regice_enemy.png", state.RegiceSecureEnemy.Int(), false),
+				filter.New(team.Game, "assets/profiles/broadcaster/game/regirock_ally.png", state.RegirockSecureAlly.Int(), false),
+				filter.New(team.Game, "assets/profiles/broadcaster/game/regirock_enemy.png", state.RegirockSecureEnemy.Int(), false),
+				filter.New(team.Game, "assets/profiles/broadcaster/game/registeel_ally.png", state.RegisteelSecureAlly.Int(), false),
+				filter.New(team.Game, "assets/profiles/broadcaster/game/registeel_enemy.png", state.RegisteelSecureEnemy.Int(), false),
+				filter.New(team.Game, "assets/profiles/broadcaster/game/regieleki_ally.png", state.RegielekiSecureAlly.Int(), false),
+				filter.New(team.Game, "assets/profiles/broadcaster/game/regieleki_enemy.png", state.RegielekiSecureEnemy.Int(), false),
 			},
 		},
 		"ko": {
 			team.Game.Name: {
-				filter.New(team.Game, "img/default/game/ko_ally.png", state.KOAlly.Int(), false),
-				filter.New(team.Game, "img/default/game/ko_streak_ally.png", state.KOStreakAlly.Int(), false),
-				filter.New(team.Game, "img/default/game/ko_enemy.png", state.KOEnemy.Int(), false),
-				filter.New(team.Game, "img/default/game/ko_streak_enemy.png", state.KOStreakEnemy.Int(), false),
+				filter.New(team.Game, "assets/profiles/broadcaster/game/ko_ally.png", state.KOAlly.Int(), false),
+				filter.New(team.Game, "assets/profiles/broadcaster/game/ko_streak_ally.png", state.KOStreakAlly.Int(), false),
+				filter.New(team.Game, "assets/profiles/broadcaster/game/ko_enemy.png", state.KOEnemy.Int(), false),
+				filter.New(team.Game, "assets/profiles/broadcaster/game/ko_streak_enemy.png", state.KOStreakEnemy.Int(), false),
 			},
 		},
 		"objective": {
 			team.Game.Name: {
-				filter.New(team.Game, "img/default/game/objective.png", state.ObjectivePresent.Int(), false),
-				filter.New(team.Game, "img/default/game/objective_half.png", state.ObjectivePresent.Int(), false),
-				filter.New(team.Game, "img/default/game/objective_orange_base.png", state.ObjectiveReachedOrange.Int(), false),
+				filter.New(team.Game, "assets/profiles/broadcaster/game/objective.png", state.ObjectivePresent.Int(), false),
+				filter.New(team.Game, "assets/profiles/broadcaster/game/objective_half.png", state.ObjectivePresent.Int(), false),
+				filter.New(team.Game, "assets/profiles/broadcaster/game/objective_orange_base.png", state.ObjectiveReachedOrange.Int(), false),
 			},
 		},
 		"game": {
 			"vs": {
-				filter.New(team.Game, "img/default/game/vs.png", state.MatchStarting.Int(), false),
-				filter.New(team.Game, "img/default/game/vs_alt.png", state.MatchStarting.Int(), false),
+				filter.New(team.Game, "assets/profiles/broadcaster/game/vs.png", state.MatchStarting.Int(), false),
+				filter.New(team.Game, "assets/profiles/broadcaster/game/vs_alt.png", state.MatchStarting.Int(), false),
 			},
 			"end": {
-				filter.New(team.Game, "img/default/game/end.png", state.MatchEnding.Int(), false),
+				filter.New(team.Game, "assets/profiles/broadcaster/game/end.png", state.MatchEnding.Int(), false),
+			},
+		},
+		"scoring": {},
+		"scored":  {},
+		"points":  {},
+		"time": {
+			team.Time.Name: Current.pointFiles(team.Time),
+		},
+	}
+}
+
+func loadProfileAssetsPlayer() {
+	Current.Filenames = map[string]map[string][]filter.Filter{
+		"goals": {
+			team.Game.Name: {
+				filter.New(team.Game, "assets/profiles/player/game/purple_base_open.png", state.PurpleBaseOpen.Int(), false),
+				filter.New(team.Game, "assets/profiles/player/game/orange_base_open.png", state.OrangeBaseOpen.Int(), false),
+				filter.New(team.Game, "assets/profiles/player/game/purple_base_closed.png", state.PurpleBaseClosed.Int(), false),
+				filter.New(team.Game, "assets/profiles/player/game/orange_base_closed.png", state.OrangeBaseClosed.Int(), false),
+			},
+		},
+		"killed": {
+			team.Game.Name: {
+				filter.New(team.Game, "assets/profiles/player/game/killed.png", state.Killed.Int(), false),
+				filter.New(team.Game, "assets/profiles/player/game/killed_with_points.png", state.KilledWithPoints.Int(), false),
+				filter.New(team.Game, "assets/profiles/player/game/killed_without_points.png", state.KilledWithoutPoints.Int(), false),
+			},
+		},
+		"secure": {
+			team.Game.Name: {
+				filter.New(team.Game, "assets/profiles/player/game/regieleki_ally.png", state.RegielekiSecureAlly.Int(), false),
+				filter.New(team.Game, "assets/profiles/player/game/regieleki_enemy.png", state.RegielekiSecureEnemy.Int(), false),
+				filter.New(team.Game, "assets/profiles/player/game/regice_ally.png", state.RegiceSecureAlly.Int(), false),
+				filter.New(team.Game, "assets/profiles/player/game/regice_enemy.png", state.RegiceSecureEnemy.Int(), false),
+				filter.New(team.Game, "assets/profiles/player/game/regirock_ally.png", state.RegirockSecureAlly.Int(), false),
+				filter.New(team.Game, "assets/profiles/player/game/regirock_enemy.png", state.RegirockSecureEnemy.Int(), false),
+				filter.New(team.Game, "assets/profiles/player/game/registeel_ally.png", state.RegisteelSecureAlly.Int(), false),
+				filter.New(team.Game, "assets/profiles/player/game/registeel_enemy.png", state.RegisteelSecureEnemy.Int(), false),
+			},
+		},
+		"ko": {
+			team.Game.Name: {
+				filter.New(team.Game, "assets/profiles/player/game/ko_ally.png", state.KOAlly.Int(), false),
+				filter.New(team.Game, "assets/profiles/player/game/ko_streak_ally.png", state.KOStreakAlly.Int(), false),
+				filter.New(team.Game, "assets/profiles/player/game/ko_enemy.png", state.KOEnemy.Int(), false),
+				filter.New(team.Game, "assets/profiles/player/game/ko_streak_enemy.png", state.KOStreakEnemy.Int(), false),
+			},
+		},
+		"objective": {
+			team.Game.Name: {
+				filter.New(team.Game, "assets/profiles/player/game/objective.png", state.ObjectivePresent.Int(), false),
+				filter.New(team.Game, "assets/profiles/player/game/objective_half.png", state.ObjectivePresent.Int(), false),
+				filter.New(team.Game, "assets/profiles/player/game/objective_orange_base.png", state.ObjectiveReachedOrange.Int(), false),
+			},
+		},
+		"game": {
+			"vs": {
+				filter.New(team.Game, "assets/profiles/player/game/vs.png", state.MatchStarting.Int(), false),
+				filter.New(team.Game, "assets/profiles/player/game/vs_alt.png", state.MatchStarting.Int(), false),
+			},
+			"end": {
+				filter.New(team.Game, "assets/profiles/player/game/end.png", state.MatchEnding.Int(), false),
 			},
 		},
 		"scoring": {
 			team.Game.Name: {
-				filter.New(team.Game, "img/default/game/pre_scoring_alt_alt.png", state.PreScore.Int(), false),
-				filter.New(team.Game, "img/default/game/pre_scoring_alt.png", state.PreScore.Int(), false),
-				filter.New(team.Game, "img/default/game/pre_scoring.png", state.PreScore.Int(), false),
-				filter.New(team.Game, "img/default/game/post_scoring.png", state.PostScore.Int(), false),
-				filter.New(team.Game, "img/default/game/press_button_to_score.png", state.PressButtonToScore.Int(), false),
+				filter.New(team.Game, "assets/profiles/player/game/pre_scoring_alt_alt.png", state.PreScore.Int(), false),
+				filter.New(team.Game, "assets/profiles/player/game/pre_scoring_alt.png", state.PreScore.Int(), false),
+				filter.New(team.Game, "assets/profiles/player/game/pre_scoring.png", state.PreScore.Int(), false),
+				filter.New(team.Game, "assets/profiles/player/game/post_scoring.png", state.PostScore.Int(), false),
+				filter.New(team.Game, "assets/profiles/player/game/press_button_to_score.png", state.PressButtonToScore.Int(), false),
 			},
 		},
 		"scored": {
@@ -437,7 +546,7 @@ func open() bool {
 	}
 
 	c := Config{
-		load: loadDefault,
+		load: loadProfileAssetsPlayer,
 	}
 
 	err = json.Unmarshal(b, &c)
@@ -445,8 +554,22 @@ func open() bool {
 		return false
 	}
 
+	switch c.Profile {
+	case ProfilePlayer:
+		err := c.SetProfilePlayer()
+		if err != nil {
+			return false
+		}
+	case ProfileBroadcaster:
+		err := c.SetProfileBroadcaster()
+		if err != nil {
+			return false
+		}
+	}
+
 	Current = c
-	defer Current.load()
+
+	Current.load()
 
 	return true
 }

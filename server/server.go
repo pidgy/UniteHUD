@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 	"strings"
 	"sync"
@@ -13,6 +14,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"nhooyr.io/websocket"
 
+	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/rgba"
@@ -35,8 +37,8 @@ type game struct {
 	Defeated  []int       `json:"defeated"`
 	Match     bool        `json:"match"`
 	Config    bool        `json:"config"`
-
-	Version string `json:"version"`
+	Profile   string      `json:"profile"`
+	Version   string      `json:"version"`
 
 	Events []string `json:"events"`
 }
@@ -127,6 +129,7 @@ func Listen() error {
 		}
 		defer c.Close(websocket.StatusNormalClosure, "cross origin WebSocket accepted")
 
+		current.game.Profile = config.Current.Profile
 		current.game.Events = state.Strings(time.Second * 5)
 
 		raw, err := json.Marshal(current.game)
@@ -150,6 +153,7 @@ func Listen() error {
 	}))
 
 	http.HandleFunc("/http", func(w http.ResponseWriter, r *http.Request) {
+		current.game.Profile = config.Current.Profile
 		current.game.Events = state.Strings(time.Second * 5)
 
 		raw, err := json.Marshal(current.game)
@@ -177,12 +181,20 @@ func Listen() error {
 	})
 
 	go func() {
-		for range time.NewTicker(time.Minute * 5).C {
+		last := 0
+
+		for range time.NewTicker(time.Minute).C {
 			if current.requests < 1 {
 				continue
 			}
 
-			notify.System("Server is sending an average of %d bytes per request", current.tx/current.requests)
+			diff := float64(last - (current.tx / current.requests))
+			if math.Abs(diff) < 10 {
+				continue
+			}
+			last = current.tx / current.requests
+
+			notify.System("Server is sending an average of %d bytes per request", last)
 		}
 	}()
 

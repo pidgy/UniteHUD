@@ -59,7 +59,6 @@ func kill(errs ...error) {
 	if len(errs) == 0 {
 		sig = os.Interrupt
 	}
-
 	sigq <- sig
 }
 
@@ -76,6 +75,7 @@ func signals() {
 
 func main() {
 	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
 
 	go signals()
 
@@ -101,16 +101,18 @@ func main() {
 
 	log.Info().
 		Bool("record", config.Current.Record).
-		Str("imgs", "img/"+config.Current.Dir+"/").
+		Str("assets", config.Current.Assets()).
+		Str("profile", config.Current.Profile).
 		Msg("unitehud")
 
 	notify.System("Debug Mode: %t", global.DebugMode)
 	notify.System("Server address: \"%s\"", server.Address)
 	notify.System("Recording: %t", config.Current.Record)
-	notify.System("Image directory: img/%s/", config.Current.Dir)
+	notify.System("Profile: %s", config.Current.Profile)
+	notify.System("Assets: %s", config.Current.Assets())
 
 	go detect.Clock()
-	go detect.Crash()
+	// go detect.Crash()
 	go detect.Energy()
 	go detect.Defeated()
 	go detect.KOs()
@@ -120,16 +122,16 @@ func main() {
 	go detect.Preview()
 	go detect.States()
 	go detect.Window()
-	go detect.Scores(team.Purple.Name, config.Current.Templates["scored"][team.Purple.Name])
-	go detect.Scores(team.Orange.Name, config.Current.Templates["scored"][team.Orange.Name])
-	go detect.Scores(team.First.Name, config.Current.Templates["scored"][team.First.Name])
-
-	lastWindow := ""
+	go detect.Scores(team.Purple.Name)
+	go detect.Scores(team.Orange.Name)
+	go detect.Scores(team.First.Name)
 
 	gui.New()
 	defer gui.Window.Open()
 
 	go func() {
+		lastWindow := ""
+
 		for action := range gui.Window.Actions {
 			switch action {
 			case gui.Closing:
@@ -230,17 +232,11 @@ func main() {
 				was := detect.Stopped
 				detect.Stopped = true
 
-				notify.Announce("Reloading image templates...")
-
-				time.Sleep(time.Second * 3)
-
 				err := config.Load()
 				if err != nil {
 					notify.Error("Failed to reload config (%v)", err)
 					continue
 				}
-
-				notify.Announce("Successfully reloaded image templates")
 
 				detect.Stopped = was
 			}
