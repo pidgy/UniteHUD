@@ -20,8 +20,6 @@ import (
 	"github.com/pidgy/unitehud/template"
 )
 
-var File = strings.ReplaceAll(global.Version, ".", "-") + "-config.unitehud"
-
 const (
 	MainDisplay          = "Main Display"
 	NoVideoCaptureDevice = -1
@@ -39,6 +37,8 @@ type Config struct {
 	Map                image.Rectangle
 	Scores             image.Rectangle
 	Time               image.Rectangle
+	Objectives         image.Rectangle
+	KOs                image.Rectangle
 	Filenames          map[string]map[string][]filter.Filter     `json:"-"`
 	Templates          map[string]map[string][]template.Template `json:"-"`
 	Scale              float64
@@ -59,7 +59,7 @@ type Shift struct {
 
 var Current Config
 
-func (c Config) Assets() string {
+func (c *Config) Assets() string {
 	e, err := os.Executable()
 	if err != nil {
 		notify.Error("Failed to find profile directory (%v)", err)
@@ -69,7 +69,11 @@ func (c Config) Assets() string {
 	return fmt.Sprintf(`%s\assets`, filepath.Dir(e))
 }
 
-func (c Config) ProfileAssets() string {
+func (c *Config) File() string {
+	return fmt.Sprintf("%s-config.unitehud.%s", strings.ReplaceAll(global.Version, ".", "-"), c.Profile)
+}
+
+func (c *Config) ProfileAssets() string {
 	e, err := os.Executable()
 	if err != nil {
 		notify.Error("Failed to find profile directory (%v)", err)
@@ -79,7 +83,7 @@ func (c Config) ProfileAssets() string {
 	return fmt.Sprintf(`%s\assets\profiles\%s`, filepath.Dir(e), c.Profile)
 }
 
-func (c Config) Reload() {
+func (c *Config) Reload() {
 	defer validate()
 }
 
@@ -92,8 +96,21 @@ func (c *Config) Report(crash string) {
 	}
 }
 
-func (c Config) Save() error {
-	f, err := os.Create(File)
+func (c *Config) Reset() error {
+	defer validate()
+
+	err := os.Remove(c.File())
+	if err != nil {
+		return err
+	}
+
+	return Load(c.Profile)
+}
+
+func (c *Config) Save() error {
+	notify.System("Saving configuration to %s", c.File())
+
+	f, err := os.Create(c.File())
 	if err != nil {
 		return err
 	}
@@ -111,14 +128,14 @@ func (c Config) Save() error {
 	return nil
 }
 
-func (c Config) Scoring() image.Rectangle {
+func (c *Config) Scoring() image.Rectangle {
 	return image.Rectangle{
 		Min: image.Pt(c.Energy.Min.X-50, c.Energy.Min.Y),
 		Max: image.Pt(c.Energy.Max.X+50, c.Energy.Max.Y+100),
 	}
 }
 
-func (c Config) ScoringOption() image.Rectangle {
+func (c *Config) ScoringOption() image.Rectangle {
 	return image.Rectangle{
 		Min: image.Pt(c.Energy.Min.X-100, c.Energy.Min.Y-100),
 		Max: image.Pt(c.Energy.Max.X+100, c.Energy.Max.Y-100),
@@ -131,202 +148,24 @@ func (c *Config) SetDefaultAreas() {
 	scores := image.Rect(500, 50, 1500, 250)
 	time := image.Rect(846, 0, 1046, 100)
 
-	if !c.Energy.Eq(energy) {
-		c.Energy = energy
-	}
-	if !c.Map.Eq(minimap) {
-		c.Map = minimap
-	}
-	if !c.Scores.Eq(scores) {
-		c.Scores = scores
-	}
-	if !c.Time.Eq(time) {
-		c.Time = time
+	c.Energy = energy
+	c.Map = minimap
+	c.Scores = scores
+	c.Time = time
+	c.setKOArea()
+	c.setObjectiveArea()
+}
+
+func (c *Config) SetProfile() {
+	switch c.Profile {
+	case ProfileBroadcaster:
+		c.setProfileBroadcaster()
+	default:
+		c.setProfilePlayer()
 	}
 }
 
-func (c *Config) SetProfileBroadcaster() error {
-	c.Profile = ProfileBroadcaster
-	c.load = loadProfileAssetsBroadcaster
-	c.DisableDefeated = false
-	c.DisableEnergy = true
-	c.DisableObjectives = false
-	c.DisableScoring = true
-	c.DisableTime = false
-	c.DisableKOs = false
-	return c.Save()
-}
-
-func (c *Config) SetProfilePlayer() error {
-	c.Profile = ProfilePlayer
-	c.load = loadProfileAssetsPlayer
-	c.DisableDefeated = false
-	c.DisableEnergy = false
-	c.DisableObjectives = false
-	c.DisableScoring = false
-	c.DisableTime = false
-	c.DisableKOs = false
-	return c.Save()
-}
-
-func Load() error {
-	defer validate()
-
-	ok := open()
-	if !ok {
-		Current = Config{
-			Window:             MainDisplay,
-			VideoCaptureDevice: NoVideoCaptureDevice,
-			Scale:              1,
-			Shift:              Shift{},
-			Profile:            ProfilePlayer,
-			load:               loadProfileAssetsPlayer,
-			Acceptance:         .91,
-		}
-		Current.SetDefaultAreas()
-		Current.load()
-	} else {
-		Current.Acceptance = .91
-	}
-
-	if Current.Window == "" {
-		Current.Window = MainDisplay
-		Current.VideoCaptureDevice = NoVideoCaptureDevice
-	}
-
-	return Current.Save()
-}
-
-func validate() {
-	Current.Templates = map[string]map[string][]template.Template{
-		"goals": {
-			team.Game.Name: {},
-		},
-		"game": {
-			team.Game.Name: {},
-		},
-		"ko": {
-			team.Game.Name: {},
-		},
-		"objective": {
-			team.Game.Name: {},
-		},
-		"killed": {
-			team.Game.Name: {},
-		},
-		"scoring": {
-			team.Game.Name: {},
-		},
-		"scored": {
-			team.Orange.Name: {},
-			team.Purple.Name: {},
-			team.Self.Name:   {},
-			team.First.Name:  {},
-		},
-		"secure": {
-			team.Game.Name: {},
-		},
-		"points": {
-			team.Orange.Name: {},
-			team.Purple.Name: {},
-			team.Self.Name:   {},
-			team.First.Name:  {},
-			team.Energy.Name: {},
-		},
-		"time": {
-			team.Time.Name: {},
-		},
-	}
-
-	for category := range Current.Filenames {
-		for subcategory, filters := range Current.Filenames[category] {
-			for _, filter := range filters {
-				mat := gocv.IMRead(filter.File, gocv.IMReadColor)
-
-				transparent := false
-
-				switch category {
-				case "points":
-					switch filter.Team.Name {
-					case team.First.Name,
-						team.Self.Name,
-						team.Orange.Name,
-						team.Purple.Name,
-						team.Energy.Name,
-						team.Game.Name:
-						transparent = true
-					}
-				}
-
-				template := template.New(filter, mat, category, subcategory)
-				if transparent {
-					template = template.AsTransparent()
-				}
-
-				Current.Templates[category][filter.Team.Name] = append(
-					Current.Templates[category][filter.Team.Name],
-					template,
-				)
-			}
-		}
-	}
-
-	for category := range Current.Templates {
-		for subcategory, templates := range Current.Templates[category] {
-			for _, t := range templates {
-				if t.Empty() {
-					notify.Error("Failed to read %s/%s template from file \"%s\"", category, subcategory, t.File)
-					continue
-				}
-
-				log.Debug().Str("category", category).Str("subcategory", subcategory).Object("template", t).Msg("template loaded")
-			}
-		}
-	}
-}
-
-func (c Config) scoreFiles(t *team.Team) []filter.Filter {
-	var files []string
-
-	root := fmt.Sprintf("%s/%s/score/", c.ProfileAssets(), t.Name)
-	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-		if info == nil {
-			return fmt.Errorf("Directory does not exist")
-		}
-		if info.IsDir() {
-			if info.Name() != "score" {
-				notify.SystemWarn("Skipping \"%s%s\"", root, info.Name())
-				return filepath.SkipDir
-			}
-		}
-
-		files = append(files, path)
-
-		return nil
-	})
-	if err != nil {
-		notify.Error("Failed to read from \"score\" directory \"%s\" (%v)", root, err)
-		return nil
-	}
-
-	filters := []filter.Filter{}
-	for _, file := range files {
-		if !strings.Contains(file, "score") {
-			continue
-		}
-
-		if !strings.Contains(file, ".png") &&
-			!strings.Contains(file, ".PNG") {
-			continue
-		}
-
-		filters = append(filters, filter.New(t, file, -1, false))
-	}
-
-	return filters
-}
-
-func (c Config) pointFiles(t *team.Team) []filter.Filter {
+func (c *Config) pointFiles(t *team.Team) []filter.Filter {
 	var files []string
 
 	root := fmt.Sprintf("%s/%s/points/", c.ProfileAssets(), t.Name)
@@ -380,15 +219,123 @@ func (c Config) pointFiles(t *team.Team) []filter.Filter {
 	return filters
 }
 
-func Reset() error {
-	defer validate()
+func (c *Config) scoreFiles(t *team.Team) []filter.Filter {
+	var files []string
 
-	err := os.Remove(File)
+	root := fmt.Sprintf("%s/%s/score/", c.ProfileAssets(), t.Name)
+	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if info == nil {
+			return fmt.Errorf("Directory does not exist")
+		}
+		if info.IsDir() {
+			if info.Name() != "score" {
+				notify.SystemWarn("Skipping \"%s%s\"", root, info.Name())
+				return filepath.SkipDir
+			}
+		}
+
+		files = append(files, path)
+
+		return nil
+	})
 	if err != nil {
-		return err
+		notify.Error("Failed to read from \"score\" directory \"%s\" (%v)", root, err)
+		return nil
 	}
 
-	return Load()
+	filters := []filter.Filter{}
+	for _, file := range files {
+		if !strings.Contains(file, "score") {
+			continue
+		}
+
+		if !strings.Contains(file, ".png") &&
+			!strings.Contains(file, ".PNG") {
+			continue
+		}
+
+		filters = append(filters, filter.New(t, file, -1, false))
+	}
+
+	return filters
+}
+
+func (c *Config) setKOArea() {
+	switch c.Profile {
+	case ProfileBroadcaster:
+		c.KOs = image.Rect(730, 130, 1160, 310)
+	case ProfilePlayer:
+		c.KOs = image.Rect(730, 130, 1160, 310)
+	}
+}
+
+func (c *Config) setObjectiveArea() {
+	switch c.Profile {
+	case ProfileBroadcaster:
+		c.Objectives = image.Rect(350, 200, 1350, 315)
+	case ProfilePlayer:
+		c.Objectives = image.Rect(600, 200, 1350, 315)
+	}
+}
+
+func (c *Config) setProfileBroadcaster() {
+	c.Profile = ProfileBroadcaster
+
+	c.load = loadProfileAssetsBroadcaster
+
+	c.DisableEnergy = true
+	c.DisableScoring = true
+	c.DisableDefeated = true
+
+	c.DisableObjectives = false
+	c.DisableTime = false
+	c.DisableKOs = false
+
+}
+
+func (c *Config) setProfilePlayer() {
+	c.Profile = ProfilePlayer
+
+	c.load = loadProfileAssetsPlayer
+
+	c.DisableDefeated = false
+	c.DisableEnergy = false
+	c.DisableObjectives = false
+	c.DisableScoring = false
+	c.DisableTime = false
+	c.DisableKOs = false
+}
+
+func Load(profile string) error {
+	defer validate()
+
+	if profile == "" {
+		profile = ProfilePlayer
+	}
+
+	notify.System("Loading configuration from %s", Current.File())
+
+	ok := open()
+	if !ok {
+		Current = Config{
+			Window:             MainDisplay,
+			VideoCaptureDevice: NoVideoCaptureDevice,
+			Scale:              1,
+			Shift:              Shift{},
+			Profile:            profile,
+			Acceptance:         .91,
+		}
+		Current.SetProfile()
+		Current.SetDefaultAreas()
+		Current.load()
+	}
+
+	if Current.Window == "" {
+		Current.Window = MainDisplay
+		Current.VideoCaptureDevice = NoVideoCaptureDevice
+	}
+
+	return Current.Save()
 }
 
 func TemplatesFirstRound(t1 []template.Template) []template.Template {
@@ -423,6 +370,8 @@ func loadProfileAssetsBroadcaster() {
 				filter.New(team.Game, "assets/profiles/broadcaster/game/registeel_enemy.png", state.RegisteelSecureEnemy.Int(), false),
 				filter.New(team.Game, "assets/profiles/broadcaster/game/regieleki_ally.png", state.RegielekiSecureAlly.Int(), false),
 				filter.New(team.Game, "assets/profiles/broadcaster/game/regieleki_enemy.png", state.RegielekiSecureEnemy.Int(), false),
+				filter.New(team.Game, "assets/profiles/broadcaster/game/rayquaza_ally.png", state.RayquazaSecureAlly.Int(), false),
+				filter.New(team.Game, "assets/profiles/broadcaster/game/rayquaza_enemy.png", state.RayquazaSecureEnemy.Int(), false),
 			},
 		},
 		"ko": {
@@ -540,7 +489,11 @@ func loadProfileAssetsPlayer() {
 }
 
 func open() bool {
-	b, err := os.ReadFile(File)
+	if Current.Profile == "" {
+		Current.Profile = ProfilePlayer
+	}
+
+	b, err := os.ReadFile(Current.File())
 	if err != nil {
 		return false
 	}
@@ -554,22 +507,99 @@ func open() bool {
 		return false
 	}
 
-	switch c.Profile {
-	case ProfilePlayer:
-		err := c.SetProfilePlayer()
-		if err != nil {
-			return false
-		}
-	case ProfileBroadcaster:
-		err := c.SetProfileBroadcaster()
-		if err != nil {
-			return false
-		}
-	}
+	c.SetProfile()
 
 	Current = c
 
 	Current.load()
 
 	return true
+}
+
+func validate() {
+	Current.Templates = map[string]map[string][]template.Template{
+		"goals": {
+			team.Game.Name: {},
+		},
+		"game": {
+			team.Game.Name: {},
+		},
+		"ko": {
+			team.Game.Name: {},
+		},
+		"objective": {
+			team.Game.Name: {},
+		},
+		"killed": {
+			team.Game.Name: {},
+		},
+		"scoring": {
+			team.Game.Name: {},
+		},
+		"scored": {
+			team.Orange.Name: {},
+			team.Purple.Name: {},
+			team.Self.Name:   {},
+			team.First.Name:  {},
+		},
+		"secure": {
+			team.Game.Name: {},
+		},
+		"points": {
+			team.Orange.Name: {},
+			team.Purple.Name: {},
+			team.Self.Name:   {},
+			team.First.Name:  {},
+			team.Energy.Name: {},
+		},
+		"time": {
+			team.Time.Name: {},
+		},
+	}
+
+	for category := range Current.Filenames {
+		for subcategory, filters := range Current.Filenames[category] {
+			for _, filter := range filters {
+				mat := gocv.IMRead(filter.File, gocv.IMReadColor)
+
+				transparent := false
+
+				switch category {
+				case "points":
+					switch filter.Team.Name {
+					case team.First.Name,
+						team.Self.Name,
+						team.Orange.Name,
+						team.Purple.Name,
+						team.Energy.Name,
+						team.Game.Name:
+						transparent = true
+					}
+				}
+
+				template := template.New(filter, mat, category, subcategory)
+				if transparent {
+					template = template.AsTransparent()
+				}
+
+				Current.Templates[category][filter.Team.Name] = append(
+					Current.Templates[category][filter.Team.Name],
+					template,
+				)
+			}
+		}
+	}
+
+	for category := range Current.Templates {
+		for subcategory, templates := range Current.Templates[category] {
+			for _, t := range templates {
+				if t.Empty() {
+					notify.Error("Failed to read %s/%s template from file \"%s\"", category, subcategory, t.File)
+					continue
+				}
+
+				log.Debug().Str("category", category).Str("subcategory", subcategory).Object("template", t).Msg("template loaded")
+			}
+		}
+	}
 }

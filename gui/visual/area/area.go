@@ -14,15 +14,25 @@ import (
 	"gioui.org/widget/material"
 
 	"github.com/pidgy/unitehud/gui/visual/button"
+	"github.com/pidgy/unitehud/rgba"
 	"github.com/pidgy/unitehud/video/device"
 )
 
+const alpha = 0xCC
+
+var (
+	Locked = rgba.N(rgba.Alpha(rgba.Black, alpha))
+	Match  = rgba.N(rgba.Alpha(rgba.DarkSeafoam, alpha))
+	Miss   = rgba.N(rgba.Alpha(rgba.Red, alpha))
+)
+
 type Area struct {
-	Text     string
-	TextSize unit.Value
-	Subtext  string
-	Hidden   bool
-	Theme    *material.Theme
+	Text          string
+	TextSize      unit.Value
+	TextAlignLeft bool
+	Subtext       string
+	Hidden        bool
+	Theme         *material.Theme
 
 	*button.Button
 
@@ -47,6 +57,10 @@ func toScale(r image.Rectangle) image.Rectangle {
 func (a *Area) Layout(gtx layout.Context) layout.Dimensions {
 	if a.TextSize.V == unit.Px(0).V {
 		a.TextSize = unit.Px(16)
+	}
+
+	if a.Theme == nil {
+		a.Theme = material.NewTheme(gofont.Collection())
 	}
 
 	{
@@ -109,7 +123,11 @@ func (a *Area) Layout(gtx layout.Context) layout.Dimensions {
 	layout.UniformInset(unit.Dp(5)).Layout(
 		gtx,
 		func(gtx layout.Context) layout.Dimensions {
-			defer clip.Rect{Min: a.Min, Max: a.Max}.Push(gtx.Ops).Pop()
+			defer clip.Rect{
+				Min: a.Min,
+				Max: a.Max,
+			}.Push(gtx.Ops).Pop()
+
 			paint.ColorOp{Color: a.NRGBA}.Add(gtx.Ops)
 			paint.PaintOp{}.Add(gtx.Ops)
 
@@ -133,32 +151,44 @@ func (a *Area) Layout(gtx layout.Context) layout.Dimensions {
 				})
 		})
 
-	if a.Theme == nil {
-		a.Theme = material.NewTheme(gofont.Collection())
-	}
+	text := a.Text + " " + a.Subtext
 
+	/*
+		layout.Inset{
+			Left: unit.Px(float32(a.Min.X)),
+			Top:  unit.Px(float32(a.Min.Y)),
+		}.Layout(
+			gtx,
+			func(gtx layout.Context) layout.Dimensions {
+				// Text background.
+				defer clip.Rect{
+					Min: image.Pt(5, 5),
+					Max: image.Pt(len(text)*int((a.TextSize.V)-(a.TextSize.V/3)), 25),
+				}.Push(gtx.Ops).Pop()
+
+				paint.ColorOp{Color: color.NRGBA{A: 0x9F}}.Add(gtx.Ops)
+				paint.PaintOp{}.Add(gtx.Ops)
+
+				return layout.Dimensions{Size: a.Max.Sub(a.Min)}
+			})
+	*/
 	return layout.Inset{
 		Left: unit.Px(float32(a.Min.X)),
 		Top:  unit.Px(float32(a.Min.Y)),
 	}.Layout(
 		gtx,
 		func(gtx layout.Context) layout.Dimensions {
-			title := material.Body1(a.Theme, a.Text+" "+a.Subtext)
-			title.Color = color.NRGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0xFF}
+			title := material.Body1(a.Theme, text)
 			title.TextSize = a.TextSize
-
-			//defer clip.Rect{Min: a.Max.Sub(a.Min).Sub(image.Pt(0, int(title.TextSize.V))), Max: a.Max.Sub(a.Min).Sub(image.Pt(len(title.Text), int(title.TextSize.V)))}.Push(gtx.Ops).Pop()
-			defer clip.Rect{
-				Min: image.Pt(7, a.Max.Sub(a.Min).Y-int(title.TextSize.V)),
-				Max: image.Pt(a.Max.Sub(a.Min).X+3, a.Max.Sub(a.Min).Y+int(title.TextSize.V)-12),
-			}.Push(gtx.Ops).Pop()
-
-			paint.ColorOp{Color: color.NRGBA{A: 0x9F}}.Add(gtx.Ops)
-			paint.PaintOp{}.Add(gtx.Ops)
+			title.Font.Weight = 500
+			title.Color = rgba.N(rgba.White)
+			if a.NRGBA == Match {
+				title.Font.Weight = 1000
+			}
 
 			layout.Inset{
-				Left: unit.Px(float32((a.Max.Sub(a.Min).X)/2) - float32(len(title.Text)*3)),
-				Top:  unit.Px(float32(a.Max.Sub(a.Min).Y) - title.TextSize.V),
+				Left: unit.Px(10),
+				Top:  unit.Px(5),
 			}.Layout(gtx, title.Layout)
 
 			return layout.Dimensions{Size: a.Max.Sub(a.Min)}

@@ -74,7 +74,7 @@ func Crash() {
 			return
 		}
 
-		err := window.StartingWith(gui.Title)
+		err := window.StartingWith(gui.Title())
 		if err != nil {
 			notify.Error("Failed to detect window (%v)", err)
 			continue
@@ -221,24 +221,17 @@ func Energy() {
 }
 
 func KOs() {
-	area := image.Rect(
-		config.Current.Scores.Min.X+230,
-		config.Current.Scores.Min.Y+90,
-		config.Current.Scores.Max.X-340,
-		config.Current.Scores.Max.Y-45,
-	)
-
 	var last *duplicate.Duplicate
 
 	for {
-		time.Sleep(time.Second)
+		time.Sleep(time.Millisecond * 1500)
 
 		if Stopped || gui.Window.Screen == nil || config.Current.DisableKOs {
 			last = nil
 			continue
 		}
 
-		matrix, img, err := capture(area)
+		matrix, img, err := capture(config.Current.KOs)
 		if err != nil {
 			notify.Error("Failed to capture objective area (%v)", err)
 			continue
@@ -312,35 +305,29 @@ func Minimap() {
 }
 
 func Objectives() {
-	area := image.Rect(
-		config.Current.Scores.Min.X+100,
-		config.Current.Scores.Min.Y+150,
-		config.Current.Scores.Max.X-200,
-		config.Current.Scores.Max.Y,
-	)
-	templates := config.Current.Templates["secure"][team.Game.Name]
-
-	top, bottom := time.Time{}, time.Time{}
+	top, bottom, middle := time.Time{}, time.Time{}, time.Time{}
 
 	for {
 		time.Sleep(time.Second)
 
 		if Stopped || gui.Window.Screen == nil || config.Current.DisableObjectives {
-			top, bottom = time.Time{}, time.Time{}
+			top, bottom, middle = time.Time{}, time.Time{}, time.Time{}
 			continue
 		}
 
-		matrix, img, err := capture(area)
+		matrix, img, err := capture(config.Current.Objectives)
 		if err != nil {
 			notify.Error("Failed to capture objective area (%v)", err)
 			continue
 		}
 
-		_, r, e := match.Matches(matrix, img, templates)
+		_, r, e := match.Matches(matrix, img, config.Current.Templates["secure"][team.Game.Name])
 		if r != match.Found {
 			matrix.Close()
 			continue
 		}
+
+		done := false
 
 		if time.Since(top) > time.Minute {
 			switch e := state.EventType(e); e {
@@ -350,27 +337,24 @@ func Objectives() {
 				server.SetRegieleki(team.Orange)
 				top = time.Now()
 
-				matrix.Close()
-				continue
+				done = true
 			case state.RegielekiSecureAlly:
 				state.Add(e, server.Clock(), 0)
 				notify.Feed(team.Purple.RGBA, "[%s] [%s] Regieleki secured", server.Clock(), strings.Title(team.Purple.Name))
 				server.SetRegieleki(team.Purple)
 				top = time.Now()
 
-				matrix.Close()
-				continue
+				done = true
 			}
 		}
 
-		if time.Since(bottom) > time.Minute {
+		if !done && time.Since(bottom) > time.Minute {
 			switch e := state.EventType(e); e {
 			case state.RegiceSecureEnemy:
 				state.Add(e, server.Clock(), 0)
 				notify.Feed(team.Orange.RGBA, "[%s] [%s] Regice secured", server.Clock(), strings.Title(team.Orange.Name))
 				server.SetRegice(team.Orange)
 				bottom = time.Now()
-
 			case state.RegiceSecureAlly:
 				state.Add(e, server.Clock(), 0)
 				notify.Feed(team.Purple.RGBA, "[%s] [%s] Regice secured", server.Clock(), strings.Title(team.Purple.Name))
@@ -398,6 +382,22 @@ func Objectives() {
 				notify.Feed(team.Purple.RGBA, "[%s] [%s] Registeel secured", server.Clock(), strings.Title(team.Purple.Name))
 				server.SetRegisteel(team.Purple)
 				bottom = time.Now()
+			}
+		}
+
+		if !done && time.Since(middle) > time.Minute {
+			switch e := state.EventType(e); e {
+			case state.RayquazaSecureEnemy:
+				state.Add(e, server.Clock(), 0)
+				notify.Feed(team.Orange.RGBA, "[%s] [%s] Rayquaza secured", server.Clock(), strings.Title(team.Orange.Name))
+				server.SetRayquaza(team.Orange)
+				middle = time.Now()
+
+			case state.RayquazaSecureAlly:
+				state.Add(e, server.Clock(), 0)
+				notify.Feed(team.Purple.RGBA, "[%s] [%s] Rayquaza secured", server.Clock(), strings.Title(team.Purple.Name))
+				server.SetRayquaza(team.Purple)
+				middle = time.Now()
 			}
 		}
 
@@ -589,15 +589,18 @@ func States() {
 			// Also tells javascript to turn on.
 			server.SetTime(10, 0)
 		case state.MatchEnding:
-			o, p, self := server.Scores()
-			if o+p+self > 0 {
+			switch config.Current.Profile {
+			case config.ProfileBroadcaster:
+				if !server.Match() {
+					break
+				}
+
 				notify.Feed(team.Game.RGBA, "[%s] Match ended", strings.Title(team.Game.Name))
 
 				// Purple score and objective results.
 				regielekis, regices, regirocks, registeels := server.Objectives(team.Purple)
-				result := fmt.Sprintf("[%s] %d [+%d KO%s] [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s]",
+				result := fmt.Sprintf("[%s] [+%d KO%s] [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s]",
 					strings.Title(team.Purple.Name),
-					p,
 					server.KOs(team.Purple), s(server.KOs(team.Purple)),
 					regielekis, s(regielekis),
 					regices, s(regices),
@@ -608,21 +611,52 @@ func States() {
 
 				// Orange score and objective results.
 				regielekis, regices, regirocks, registeels = server.Objectives(team.Orange)
-				result = fmt.Sprintf("[%s] %d [+%d KO%s] [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s]",
+				result = fmt.Sprintf("[%s] [+%d KO%s] [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s]",
 					strings.Title(team.Orange.Name),
-					o,
 					server.KOs(team.Orange), s(server.KOs(team.Orange)),
 					regielekis, s(regielekis),
 					regices, s(regices),
 					regirocks, s(regirocks),
 					registeels, s(registeels),
 				)
+
 				notify.Feed(team.Orange.RGBA, result)
+			case config.ProfilePlayer:
+				o, p, self := server.Scores()
+				if o+p+self > 0 {
+					notify.Feed(team.Game.RGBA, "[%s] Match ended", strings.Title(team.Game.Name))
 
-				// Self score and objective results.
-				notify.Feed(team.Self.RGBA, "[%s] %d", strings.Title(team.Self.Name), self)
+					// Purple score and objective results.
+					regielekis, regices, regirocks, registeels := server.Objectives(team.Purple)
+					result := fmt.Sprintf("[%s] %d [+%d KO%s] [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s]",
+						strings.Title(team.Purple.Name),
+						p,
+						server.KOs(team.Purple), s(server.KOs(team.Purple)),
+						regielekis, s(regielekis),
+						regices, s(regices),
+						regirocks, s(regirocks),
+						registeels, s(registeels),
+					)
+					notify.Feed(team.Purple.RGBA, result)
 
-				history.Add(p, o, self)
+					// Orange score and objective results.
+					regielekis, regices, regirocks, registeels = server.Objectives(team.Orange)
+					result = fmt.Sprintf("[%s] %d [+%d KO%s] [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s]",
+						strings.Title(team.Orange.Name),
+						o,
+						server.KOs(team.Orange), s(server.KOs(team.Orange)),
+						regielekis, s(regielekis),
+						regices, s(regices),
+						regirocks, s(regirocks),
+						registeels, s(registeels),
+					)
+					notify.Feed(team.Orange.RGBA, result)
+
+					// Self score and objective results.
+					notify.Feed(team.Self.RGBA, "[%s] %d", strings.Title(team.Self.Name), self)
+
+					history.Add(p, o, self)
+				}
 			}
 
 			server.Clear()

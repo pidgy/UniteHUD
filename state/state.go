@@ -57,6 +57,8 @@ const (
 	KOStreakAlly           = EventType(33)
 	KOEnemy                = EventType(34)
 	KOStreakEnemy          = EventType(35)
+	RayquazaSecureEnemy    = EventType(36)
+	RayquazaSecureAlly     = EventType(37)
 )
 
 var (
@@ -106,21 +108,21 @@ func (e EventType) String() string {
 	case PurpleScoreMissed:
 		return "Purple score missed"
 	case RegielekiSecureEnemy:
-		return "Regieleki ally secure"
+		return "Regieleki orange secure"
 	case RegielekiSecureAlly:
-		return "Regieleki enemy secure"
+		return "Regieleki purple secure"
 	case RegiceSecureEnemy:
-		return "Regice ally secure"
+		return "Regice orange secure"
 	case RegiceSecureAlly:
-		return "Regice enemy secure"
+		return "Regice purple secure"
 	case RegirockSecureEnemy:
-		return "Regirock ally secure"
+		return "Regirock orange secure"
 	case RegirockSecureAlly:
-		return "Regirock enemy secure"
+		return "Regirock purple secure"
 	case RegisteelSecureEnemy:
-		return "Registeel ally secure"
+		return "Registeel orange secure"
 	case RegisteelSecureAlly:
-		return "Registeel enemy secure"
+		return "Registeel purple secure"
 	case PressButtonToScore:
 		return "Press button to score"
 	case ScoreOverride:
@@ -136,13 +138,17 @@ func (e EventType) String() string {
 	case ServerStopped:
 		return "Server Stopped"
 	case KOAlly:
-		return "Ally KO"
+		return "Purple KO"
 	case KOEnemy:
-		return "Enemy KO"
+		return "Orange KO"
 	case KOStreakAlly:
-		return "Ally KO streak"
+		return "Purple KO streak"
 	case KOStreakEnemy:
-		return "Enemy KO streak"
+		return "Orange KO streak"
+	case RayquazaSecureEnemy:
+		return "Rayquaza orange secure"
+	case RayquazaSecureAlly:
+		return "Rayquaza purple secure"
 	default:
 		return fmt.Sprintf("Unknown (%d)", e.Int())
 	}

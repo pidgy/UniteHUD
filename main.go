@@ -50,7 +50,7 @@ func kill(errs ...error) {
 	}
 
 	for _, err := range errs {
-		log.Err(err).Msg(gui.Title)
+		log.Err(err).Msg(gui.Title())
 	}
 
 	time.Sleep(time.Second)
@@ -84,7 +84,7 @@ func main() {
 		notify.Error("Failed to kill previous UniteHUD (%v)", err)
 	}
 
-	err = config.Load()
+	err = config.Load(config.Current.Profile)
 	if err != nil {
 		kill(err)
 	}
@@ -110,6 +110,7 @@ func main() {
 	notify.System("Recording: %t", config.Current.Record)
 	notify.System("Profile: %s", config.Current.Profile)
 	notify.System("Assets: %s", config.Current.Assets())
+	notify.System("Match Threshold: %.0f%%", config.Current.Acceptance*100)
 
 	go detect.Clock()
 	// go detect.Crash()
@@ -232,13 +233,14 @@ func main() {
 				was := detect.Stopped
 				detect.Stopped = true
 
-				err := config.Load()
+				err := config.Load(config.Current.Profile)
 				if err != nil {
 					notify.Error("Failed to reload config (%v)", err)
 					continue
 				}
 
 				detect.Stopped = was
+
 			}
 		}
 	}()

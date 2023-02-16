@@ -39,6 +39,7 @@ type game struct {
 	Config    bool        `json:"config"`
 	Profile   string      `json:"profile"`
 	Version   string      `json:"version"`
+	Rayquaza  string      `json:"rayquaza"`
 
 	Events []string `json:"events"`
 }
@@ -210,6 +211,10 @@ func Listen() error {
 	return <-errq
 }
 
+func Match() bool {
+	return current.game.Match
+}
+
 func Objectives(t *team.Team) (regielekis, regices, regirocks, registeels int) {
 	return RegielekisSecured(t), RegicesSecured(t), RegirocksSecured(t), RegisteelsSecured(t)
 }
@@ -310,6 +315,10 @@ func SetKO(t *team.Team) {
 	}
 }
 
+func SetRayquaza(t *team.Team) {
+	current.game.Rayquaza = t.Name
+}
+
 func SetRegice(t *team.Team) {
 	current.Bottom = append(current.Bottom, objective{Team: t.Name, Name: "regice", Time: time.Now().Unix()})
 }
@@ -385,6 +394,10 @@ func SetTime(minutes, seconds int) {
 	current.game.Match = true
 
 	current.game.Seconds = minutes*60 + seconds
+}
+
+func Started() bool {
+	return current.game.Started
 }
 
 func (i *info) client(r *http.Request, route string, raw []byte) {

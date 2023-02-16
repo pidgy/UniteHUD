@@ -263,11 +263,21 @@ func round(v float64) float64 {
 }
 
 func sanitize(stat string) string {
-	stat = strings.ReplaceAll(stat, "PNG", "png")
-	stat = strings.ReplaceAll(stat, "\\", "/")
-	args := strings.Split(stat, "/")
-	if len(args) > 2 {
-		return strings.Join(args[2:], "/")
+	stat = strings.ReplaceAll(
+		strings.ReplaceAll(
+			stat,
+			"\\", "/",
+		),
+		"PNG", "png")
+
+	if strings.Contains(stat, "profiles") {
+		args := strings.Split(stat, "/")
+		for i := range args {
+			if args[i] == "profiles" {
+				return strings.Join(args[i:], "/")
+			}
+		}
 	}
+
 	return stat
 }

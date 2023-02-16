@@ -113,11 +113,11 @@ td {
     bottom: 210px;
     background: rgba(0, 0, 0, .6);
     width: 120px;
-    height: 180px;
+    height: 90px;
     border-radius: 15px;
 }
 
-.aeos-img {
+.purple-kos-img {
     position: absolute;
     top: 10px;
     left: 15px;
@@ -125,15 +125,13 @@ td {
     border-radius: 40%;
 }
 
-.selfscore {
+.purplekos {
     position: absolute;
     top: 6px;
     left: 60px;
-    width: 125px;
-    text-align: left;
 }
 
-.attack-weight-img {
+.orange-kos-img {
     position: absolute;
     top: 52px;
     left: 15px;
@@ -141,37 +139,9 @@ td {
     border-radius: 40%;
 }
 
-.stacks {
-    position: absolute;
-    top: 47px;
-    left: 58px;
-}
-
-.purple-kos-img {
-    position: absolute;
-    top: 95px;
-    left: 15px;
-    height: 25px;
-    border-radius: 40%;
-}
-
-.purplekos {
-    position: absolute;
-    top: 90px;
-    left: 58px;
-}
-
-.orange-kos-img {
-    position: absolute;
-    top: 140px;
-    left: 15px;
-    height: 25px;
-    border-radius: 40%;
-}
-
 .orangekos {
     position: absolute;
-    top: 135px;
+    top: 47px;
     left: 58px;
 }
 

@@ -9,8 +9,6 @@ var loggedError = false;
 var lastShake = 0;
 
 function clear(err = '') {
-    $('.purple').css('opacity', 0);
-    $('.orange').css('opacity', 0);
     $('.self').css('opacity', 0);
     $('.regis').css('opacity', 0);
     $('.regis-bottom').css('opacity', 0);
@@ -93,14 +91,17 @@ function success(data) {
         return shake();
     }
 
+    if (data.profile != "broadcaster") {
+        error(`Invalid profile (${data.profile})`);
+        return shake();
+    }
+
     if (!data.started) {
         clear(`Press Start`);
         return shake();
     }
 
     if (data.seconds > 0) {
-        $('.purple').css('opacity', 1);
-        $('.orange').css('opacity', 1);
         $('.self').css('opacity', 1);
         $('.regis').css('opacity', 1);
         $('.regis-bottom').css('opacity', 1);
@@ -115,17 +116,11 @@ function success(data) {
             }
         }
 
-        $('.purplescore').html(`${data.purple.value} <span>${p}</span>`);
-        $('.orangescore').html(`${data.orange.value} <span>${o}</span>`);
-        $('.selfscore').html(data.self.value);
-
         $('.purplekos').html(data.purple.kos);
         $('.orangekos').html(data.orange.kos);
     } else {
         clear();
     }
-
-    $('.stacks').html(data.stacks);
 
     var cache = {
         "none": ["none", "orange", "purple"],

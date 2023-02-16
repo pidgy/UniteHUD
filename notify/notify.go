@@ -110,7 +110,7 @@ func Remove(r string) {
 }
 
 func System(format string, a ...interface{}) {
-	feed.log(rgba.System, true, false, false, fmt.Sprintf("%s", format), a...)
+	feed.log(rgba.System, true, false, true, fmt.Sprintf("%s", format), a...)
 }
 
 func SystemAppend(format string, a ...interface{}) {

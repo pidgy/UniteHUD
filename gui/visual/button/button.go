@@ -91,7 +91,10 @@ func (b *Button) Layout(gtx layout.Context) layout.Dimensions {
 			Tag:   b,
 			Types: pointer.Press | pointer.Release | pointer.Enter | pointer.Leave,
 		}.Add(gtx.Ops)
+
 		area.Pop()
+	} else {
+		b.hover = false
 	}
 
 	return b.draw(gtx)

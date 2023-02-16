@@ -93,10 +93,16 @@ function success(data) {
         return shake();
     }
 
+    if (data.profile != "player") {
+        error(`Invalid profile (${data.profile})`);
+        return shake();
+    }
+
     if (!data.started) {
         clear(`Press Start`);
         return shake();
     }
+
 
     if (data.seconds > 0) {
         $('.purple').css('opacity', 1);
