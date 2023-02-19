@@ -135,9 +135,23 @@ function success(data) {
     }
 
     for (var i = 0; i < data.bottom.length; i++) {
+        $(`.regis-bottom-${i+1} .regis-bottom-circle-purple`).css('opacity', 0);
+        $(`.regis-bottom-${i+1} .regis-bottom-circle-orange`).css('opacity', 0);
+        $(`.regis-bottom-${i+1} .regis-bottom-circle-none`).css('opacity', 0);
+
         var obj = data.bottom[i];
         $(`.regis-bottom-${i+1} .regis-bottom-circle-${obj.team}`).css('opacity', 1);
         $(`.regis-bottom-img-${i+1}`).attr('src', `assets/img/${obj.name}.png`);
+    }
+
+    if (data.bottom.length < 3) {
+        for (var i = data.bottom.length; i < 3; i++) {
+            $(`.regis-bottom-${i+1} .regis-bottom-circle-purple`).css('opacity', 0);
+            $(`.regis-bottom-${i+1} .regis-bottom-circle-orange`).css('opacity', 0);
+            $(`.regis-bottom-${i+1} .regis-bottom-circle-none`).css('opacity', 1);
+
+            $(`.regis-bottom-img-${i+1}`).attr('src', 'assets/img/objective.png');
+        }
     }
 }
 

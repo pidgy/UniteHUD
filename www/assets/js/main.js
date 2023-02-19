@@ -144,7 +144,6 @@ function success(data) {
         $(`.regis-${parseInt(i)+1} .regis-circle-${elekis[data.regis[i]][2]}`).css('opacity', 0);
     }
 
-
     for (var i = 0; i < data.bottom.length; i++) {
         $(`.regis-bottom-${i+1} .regis-bottom-circle-purple`).css('opacity', 0);
         $(`.regis-bottom-${i+1} .regis-bottom-circle-orange`).css('opacity', 0);

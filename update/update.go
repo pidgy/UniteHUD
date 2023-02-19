@@ -13,8 +13,8 @@ var (
 )
 
 type query struct {
-	Message string `json:"message"`
-	Latest  string `json:"latest"`
+	News   []string `json:"news"`
+	Latest string   `json:"latest"`
 }
 
 func Check() {
@@ -34,6 +34,11 @@ func Check() {
 		return
 	}
 
+	if q.Latest == "" {
+		notify.SystemWarn("Failed to verify latest version")
+		return
+	}
+
 	Available = (q.Latest != global.Version)
 
 	if Available {
@@ -42,7 +47,7 @@ func Check() {
 		notify.System("Running the latest version of UniteHUD (%s)", global.Version)
 	}
 
-	if q.Message != "" {
-		notify.Announce("[UniteHUD.dev] %s", q.Message)
+	for _, n := range q.News {
+		notify.Announce("[UniteHUD.dev] %s", n)
 	}
 }
