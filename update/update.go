@@ -14,7 +14,7 @@ var (
 
 type query struct {
 	Message string `json:"message"`
-	Version string `json:"version"`
+	Latest  string `json:"latest"`
 }
 
 func Check() {
@@ -34,10 +34,10 @@ func Check() {
 		return
 	}
 
-	Available = (q.Version != global.Version)
+	Available = (q.Latest != global.Version)
 
 	if Available {
-		notify.Announce("UniteHUD %s is now available for download at UniteHUD.dev", q.Version)
+		notify.Announce("UniteHUD %s is now available for download at UniteHUD.dev", q.Latest)
 	} else {
 		notify.System("Running the latest version of UniteHUD (%s)", global.Version)
 	}
