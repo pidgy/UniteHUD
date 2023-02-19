@@ -24,6 +24,7 @@ import (
 	"github.com/pidgy/unitehud/state"
 	"github.com/pidgy/unitehud/stats"
 	"github.com/pidgy/unitehud/team"
+	"github.com/pidgy/unitehud/update"
 	"github.com/pidgy/unitehud/video"
 )
 
@@ -50,7 +51,7 @@ func kill(errs ...error) {
 	}
 
 	for _, err := range errs {
-		log.Err(err).Msg(gui.Title())
+		log.Err(err).Msg(gui.Title(""))
 	}
 
 	time.Sleep(time.Second)
@@ -130,6 +131,8 @@ func main() {
 	gui.New()
 	defer gui.Window.Open()
 
+	go update.Check()
+
 	go func() {
 		lastWindow := ""
 
@@ -146,7 +149,7 @@ func main() {
 					continue
 				}
 
-				notify.Announce("Starting %s...", gui.Title)
+				notify.Announce("Starting %s...", gui.Title(""))
 
 				notify.Clear()
 				server.Clear()
@@ -156,7 +159,7 @@ func main() {
 
 				detect.Stopped = false
 
-				notify.Announce("Started %s", gui.Title)
+				notify.Announce("Started %s", gui.Title(""))
 
 				server.SetStarted()
 				state.Add(state.ServerStarted, server.Clock(), -1)
@@ -166,12 +169,12 @@ func main() {
 				}
 				detect.Stopped = true
 
-				notify.Denounce("Stopping %s...", gui.Title)
+				notify.Denounce("Stopping %s...", gui.Title(""))
 
 				// Wait for the capture routines to go idle.
 				// time.Sleep(time.Second * 2)
 
-				notify.Denounce("Stopped %s", gui.Title)
+				notify.Denounce("Stopped %s", gui.Title(""))
 
 				server.Clear()
 				team.Clear()

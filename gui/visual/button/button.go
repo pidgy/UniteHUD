@@ -40,6 +40,10 @@ type Button struct {
 
 var Max = image.Pt(100, 35)
 
+func (b *Button) Deactivate() {
+	b.Active = !b.Active
+}
+
 func (b *Button) Error() {
 	tmp := b.Pressed
 	b.Pressed = color.NRGBA(rgba.Red)

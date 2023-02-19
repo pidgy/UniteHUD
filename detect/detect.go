@@ -27,7 +27,8 @@ import (
 
 var (
 	Stopped = true
-	closed  = false
+
+	closed = false
 )
 
 func Clock() {
@@ -74,7 +75,7 @@ func Crash() {
 			return
 		}
 
-		err := window.StartingWith(gui.Title())
+		err := window.StartingWith(gui.Title(""))
 		if err != nil {
 			notify.Error("Failed to detect window (%v)", err)
 			continue

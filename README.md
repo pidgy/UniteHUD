@@ -33,24 +33,53 @@ GET 127.0.0.1:17069/ws
 ##### HTTP/WebSocket
 ```
 {
-    "balls":0,
-    "orange":{
-        "team":"orange",
-        "value":0
+    "purple": {
+        "team": "purple",
+        "value": 254,
+        "kos": 12
     },
-    "purple":{
-        "team":"purple",
-        "value":0
+    "orange": {
+        "team": "orange",
+        "value": 367,
+        "kos": 21
     },
-    "regis":["none","none","none"],
-    "seconds":0,
-    "self":{
-        "team":"self",
-        "value":0
+    "self": {
+        "team": "self",
+        "value": 43,
     },
-    "stacks":0,
-    "started":false,
-    "version":"v1.0beta"
+    "seconds": 59,
+    "balls": 34,
+    "regis": [
+        "orange",
+        "purple",
+        "orange"
+    ],
+    "bottom": [
+        {
+            "name": "regice",
+            "team": "orange",
+            "time": 1676760349
+        },
+        {
+            "name": "regirock",
+            "team": "purple",
+            "time": 1676760390
+        },
+        {
+            "name": "registeel",
+            "team": "orange",
+            "time": 1676760391
+        }
+    ],
+    "started": true,
+    "stacks": 3,
+    "defeated": [421, 342, 120, ],
+    "match": true,
+    "config": false,
+    "profile": "player",
+    "version": "v1.1beta",
+    "rayquaza": "orange",
+    "events": ["[2:00] Defeated with points"], "[1:45] Rayquaza orange secure"]
 }
 ```
 

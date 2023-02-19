@@ -254,6 +254,10 @@ func Load() error {
 	return nil
 }
 
+var attempts = 0
+
+const max = 5
+
 func Reattach() error {
 	windows, _, err := list()
 	if err != nil {
@@ -274,6 +278,13 @@ func Reattach() error {
 
 			return nil
 		}
+	}
+
+	attempts++
+	if attempts == max {
+		config.Current.Window = config.MainDisplay
+		config.Current.LostWindow = ""
+		attempts = 0
 	}
 
 	return nil

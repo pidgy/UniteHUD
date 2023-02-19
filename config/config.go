@@ -156,8 +156,8 @@ func (c *Config) SetDefaultAreas() {
 	c.setObjectiveArea()
 }
 
-func (c *Config) SetProfile() {
-	switch c.Profile {
+func (c *Config) SetProfile(p string) {
+	switch p {
 	case ProfileBroadcaster:
 		c.setProfileBroadcaster()
 	default:
@@ -279,6 +279,8 @@ func (c *Config) setObjectiveArea() {
 }
 
 func (c *Config) setProfileBroadcaster() {
+	log.Debug().Msg("applying broadcaster profile")
+
 	c.Profile = ProfileBroadcaster
 
 	c.load = loadProfileAssetsBroadcaster
@@ -286,11 +288,6 @@ func (c *Config) setProfileBroadcaster() {
 	c.DisableEnergy = true
 	c.DisableScoring = true
 	c.DisableDefeated = true
-
-	c.DisableObjectives = false
-	c.DisableTime = false
-	c.DisableKOs = false
-
 }
 
 func (c *Config) setProfilePlayer() {
@@ -298,12 +295,7 @@ func (c *Config) setProfilePlayer() {
 
 	c.load = loadProfileAssetsPlayer
 
-	c.DisableDefeated = false
-	c.DisableEnergy = false
-	c.DisableObjectives = false
-	c.DisableScoring = false
-	c.DisableTime = false
-	c.DisableKOs = false
+	log.Debug().Msg("applying player profile")
 }
 
 func Load(profile string) error {
@@ -325,7 +317,7 @@ func Load(profile string) error {
 			Profile:            profile,
 			Acceptance:         .91,
 		}
-		Current.SetProfile()
+		Current.SetProfile(profile)
 		Current.SetDefaultAreas()
 		Current.load()
 	}
@@ -507,7 +499,7 @@ func open() bool {
 		return false
 	}
 
-	c.SetProfile()
+	c.SetProfile(Current.Profile)
 
 	Current = c
 

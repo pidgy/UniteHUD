@@ -1,4 +1,4 @@
-const version = "v1.0beta";
+const version = "v1.1beta";
 const urlWS = "ws://127.0.0.1:17069/ws";
 const urlHTTP = "http://127.0.0.1:17069/http";
 
@@ -103,7 +103,6 @@ function success(data) {
         return shake();
     }
 
-
     if (data.seconds > 0) {
         $('.purple').css('opacity', 1);
         $('.orange').css('opacity', 1);
@@ -133,22 +132,37 @@ function success(data) {
 
     $('.stacks').html(data.stacks);
 
-    var cache = {
+    var elekis = {
         "none": ["none", "orange", "purple"],
         "purple": ["purple", "orange", "none"],
         "orange": ["orange", "purple", "none"],
     }
 
     for (var i in data.regis) {
-        $(`.regis-${parseInt(i)+1} .regis-circle-${cache[data.regis[i]][0]}`).css('opacity', 1);
-        $(`.regis-${parseInt(i)+1} .regis-circle-${cache[data.regis[i]][1]}`).css('opacity', 0);
-        $(`.regis-${parseInt(i)+1} .regis-circle-${cache[data.regis[i]][2]}`).css('opacity', 0);
+        $(`.regis-${parseInt(i)+1} .regis-circle-${elekis[data.regis[i]][0]}`).css('opacity', 1);
+        $(`.regis-${parseInt(i)+1} .regis-circle-${elekis[data.regis[i]][1]}`).css('opacity', 0);
+        $(`.regis-${parseInt(i)+1} .regis-circle-${elekis[data.regis[i]][2]}`).css('opacity', 0);
     }
 
+
     for (var i = 0; i < data.bottom.length; i++) {
+        $(`.regis-bottom-${i+1} .regis-bottom-circle-purple`).css('opacity', 0);
+        $(`.regis-bottom-${i+1} .regis-bottom-circle-orange`).css('opacity', 0);
+        $(`.regis-bottom-${i+1} .regis-bottom-circle-none`).css('opacity', 0);
+
         var obj = data.bottom[i];
         $(`.regis-bottom-${i+1} .regis-bottom-circle-${obj.team}`).css('opacity', 1);
         $(`.regis-bottom-img-${i+1}`).attr('src', `assets/img/${obj.name}.png`);
+    }
+
+    if (data.bottom.length < 3) {
+        for (var i = data.bottom.length; i < 3; i++) {
+            $(`.regis-bottom-${i+1} .regis-bottom-circle-purple`).css('opacity', 0);
+            $(`.regis-bottom-${i+1} .regis-bottom-circle-orange`).css('opacity', 0);
+            $(`.regis-bottom-${i+1} .regis-bottom-circle-none`).css('opacity', 1);
+
+            $(`.regis-bottom-img-${i+1}`).attr('src', 'assets/img/objective.png');
+        }
     }
 }
 

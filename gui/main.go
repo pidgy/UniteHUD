@@ -5,6 +5,7 @@ import (
 	"image"
 	"image/color"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -19,14 +20,12 @@ import (
 	"gioui.org/op/paint"
 	"gioui.org/text"
 	"gioui.org/unit"
-	"gioui.org/widget"
 	"gioui.org/widget/material"
 	"github.com/skratchdot/open-golang/open"
 
 	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/gui/visual/button"
-	"github.com/pidgy/unitehud/gui/visual/dropdown"
 	"github.com/pidgy/unitehud/gui/visual/screen"
 	"github.com/pidgy/unitehud/gui/visual/spinner"
 	"github.com/pidgy/unitehud/gui/visual/split"
@@ -38,6 +37,7 @@ import (
 	"github.com/pidgy/unitehud/state"
 	"github.com/pidgy/unitehud/stats"
 	"github.com/pidgy/unitehud/team"
+	"github.com/pidgy/unitehud/update"
 	"github.com/pidgy/unitehud/video/device"
 )
 
@@ -68,15 +68,20 @@ func (g *GUI) main() (next string, err error) {
 	spinRecord := spinner.Recording()
 	defer spinRecord.Stop()
 
-	reloadButton := &button.Button{
-		Text:     "\tReload",
+	updateButton := &button.Button{
+		Text:     "\tUpdate",
 		Released: rgba.N(rgba.Gray),
 		Pressed:  rgba.N(rgba.DarkGray),
 	}
 
-	reloadButton.Click = func() {
-		reloadButton.Active = !reloadButton.Active
-		g.Actions <- Debug
+	updateButton.Click = func() {
+		defer updateButton.Deactivate()
+
+		err = exec.Command("rundll32", "url.dll,FileProtocolHandler", "https://unitehud.dev").Start()
+		if err != nil {
+			notify.Error("Failed to open https://UniteHUD.dev (%v)", err)
+			return
+		}
 	}
 
 	startButton := &button.Button{
@@ -158,7 +163,8 @@ func (g *GUI) main() (next string, err error) {
 	}
 
 	recordButton.Click = func() {
-		recordButton.Active = !recordButton.Active
+		defer recordButton.Deactivate()
+
 		g.Actions <- Record
 	}
 
@@ -169,7 +175,7 @@ func (g *GUI) main() (next string, err error) {
 	}
 
 	openButton.Click = func() {
-		openButton.Active = !openButton.Active
+		defer openButton.Deactivate()
 
 		g.Actions <- Open
 	}
@@ -192,6 +198,8 @@ func (g *GUI) main() (next string, err error) {
 	}
 
 	statsButton.Click = func() {
+		defer statsButton.Deactivate()
+
 		stats.Data()
 
 		s, ok := state.Dump()
@@ -200,8 +208,6 @@ func (g *GUI) main() (next string, err error) {
 		} else {
 			notify.System(s)
 		}
-
-		statsButton.Active = !statsButton.Active
 	}
 
 	historyButton := &button.Button{
@@ -216,7 +222,8 @@ func (g *GUI) main() (next string, err error) {
 	}
 
 	historyButton.Click = func() {
-		historyButton.Active = !historyButton.Active
+		defer historyButton.Deactivate()
+
 		history.Dump()
 	}
 
@@ -232,7 +239,7 @@ func (g *GUI) main() (next string, err error) {
 	}
 
 	obsButton.Click = func() {
-		obsButton.Active = !obsButton.Active
+		defer obsButton.Deactivate()
 
 		drag := "Drag \"UniteHUD Client\" into any OBS scene."
 		if config.Current.Profile == config.ProfileBroadcaster {
@@ -268,7 +275,7 @@ func (g *GUI) main() (next string, err error) {
 	}
 
 	clearButton.Click = func() {
-		clearButton.Active = !clearButton.Active
+		defer clearButton.Deactivate()
 
 		notify.CLS()
 		notify.System("Cleared")
@@ -297,6 +304,28 @@ func (g *GUI) main() (next string, err error) {
 		}
 	}
 
+	controllerButton := &button.Button{
+		Text:           "ctrl",
+		Released:       rgba.N(rgba.DreamyBlue),
+		Pressed:        rgba.N(rgba.DarkGray),
+		Size:           image.Pt(30, 15),
+		TextSize:       unit.Sp(12),
+		TextOffsetTop:  -4,
+		TextOffsetLeft: -5,
+		BorderWidth:    unit.Sp(.5),
+	}
+
+	controllerButton.Click = func() {
+		defer controllerButton.Deactivate()
+
+		if controller {
+			g.ToastError(fmt.Errorf("%s is already open", controllerTitle))
+			return
+		}
+
+		g.controller()
+	}
+
 	preview := &button.Image{
 		Screen: &screen.Screen{
 			Border:      true,
@@ -305,51 +334,6 @@ func (g *GUI) main() (next string, err error) {
 	}
 	preview.Click = func() {
 		preview.Hide = !preview.Hide
-	}
-
-	profileList := &dropdown.List{
-		Radio: true,
-		Items: []*dropdown.Item{
-			{
-				Text: strings.Title(config.ProfilePlayer),
-				Checked: widget.Bool{
-					Value: config.Current.Profile == config.ProfilePlayer,
-				},
-			},
-			{
-				Text: strings.Title(config.ProfileBroadcaster),
-				Checked: widget.Bool{
-					Value: config.Current.Profile == config.ProfileBroadcaster,
-				},
-			},
-		},
-	}
-
-	profileList.Callback = func(i *dropdown.Item) {
-		for item := range profileList.Items {
-			if profileList.Items[item].Text == i.Text {
-				profileList.Items[item].Checked.Value = true
-			} else {
-				profileList.Items[item].Checked.Value = false
-			}
-		}
-
-		if config.Current.Profile == strings.ToLower(i.Text) {
-			return
-		}
-
-		config.Current.Profile = strings.ToLower(i.Text)
-
-		if startButton.Disabled {
-			stopButton.Click()
-			defer startButton.Click()
-		}
-
-		config.Current.SetProfile()
-
-		reloadButton.Click()
-
-		notify.Announce("Profile set to %s mode", i.Text)
 	}
 
 	var ops op.Ops
@@ -361,7 +345,7 @@ func (g *GUI) main() (next string, err error) {
 		}
 
 		if config.Current.Crashed != "" {
-			g.ToastCrash(fmt.Sprintf("%s recently crashed for the following reason", Title), config.Current.Crashed)
+			g.ToastCrash(fmt.Sprintf("%s recently crashed for the following reason", Title("")), config.Current.Crashed)
 			config.Current.Report("")
 		}
 
@@ -376,7 +360,7 @@ func (g *GUI) main() (next string, err error) {
 		case system.DestroyEvent:
 			return "", e.Err
 		case system.FrameEvent:
-			g.Window.Option(app.Title(Title()))
+			g.Window.Option(app.Title(Title("")))
 
 			gtx := layout.NewContext(&ops, e)
 			pointer.CursorNameOp{Name: pointer.CursorGrab}.Add(gtx.Ops)
@@ -390,19 +374,29 @@ func (g *GUI) main() (next string, err error) {
 
 			split.Layout(gtx,
 				func(gtx layout.Context) layout.Dimensions {
-					return Fill(
+					return fill(
 						gtx,
 						color.NRGBA{R: 25, G: 25, B: 25, A: 255},
 						func(gtx layout.Context) layout.Dimensions {
 							{
-								header := material.H6(g.normal, Title())
+								header := material.H6(g.normal, Title(""))
 								header.Color = rgba.N(rgba.White)
 								header.Alignment = text.Middle
 
 								layout.Inset{
 									Left: unit.Px(2),
-									Top:  unit.Px(5),
+									Top:  unit.Px(2),
 								}.Layout(gtx, header.Layout)
+
+								profileHeader := material.Caption(g.normal, fmt.Sprintf("%s Mode", strings.Title(config.Current.Profile)))
+								profileHeader.Color = rgba.N(rgba.DreamyPurple)
+								profileHeader.Alignment = text.Middle
+								profileHeader.Font.Weight = text.Bold
+
+								layout.Inset{
+									Left: unit.Px(2),
+									Top:  unit.Px(27),
+								}.Layout(gtx, profileHeader.Layout)
 
 								win := config.Current.Window
 								if config.Current.VideoCaptureDevice != config.NoVideoCaptureDevice {
@@ -638,7 +632,7 @@ func (g *GUI) main() (next string, err error) {
 				},
 
 				func(gtx layout.Context) layout.Dimensions {
-					return Fill(
+					return fill(
 						gtx,
 						color.NRGBA{R: 25, G: 25, B: 25, A: 255},
 						func(gtx layout.Context) layout.Dimensions {
@@ -694,34 +688,19 @@ func (g *GUI) main() (next string, err error) {
 										return ecoButton.Layout(gtx)
 									},
 								)
+
+								layout.Inset{
+									Left: unit.Px(float32(gtx.Constraints.Max.X - controllerButton.Size.X*2 - 2)),
+									Top:  unit.Px(float32(gtx.Constraints.Min.Y + controllerButton.Size.Y*2 + 2)),
+								}.Layout(
+									gtx,
+									func(gtx layout.Context) layout.Dimensions {
+										return controllerButton.Layout(gtx)
+									},
+								)
 							}
 							// Right-side criteria.
 							{
-								{ // Matching check boxes.
-									left := 125
-									layout.Inset{
-										Left: unit.Px(float32(gtx.Constraints.Max.X - left)),
-										Top:  unit.Px(float32(gtx.Constraints.Max.Y - 400)),
-									}.Layout(
-										gtx,
-										func(gtx layout.Context) layout.Dimensions {
-											profileListTitle := material.Label(g.normal, unit.Px(12), "Profile")
-											profileListTitle.Color = rgba.N(rgba.Slate)
-											return profileListTitle.Layout(gtx)
-										},
-									)
-
-									layout.Inset{
-										Left: unit.Px(float32(gtx.Constraints.Max.X - left)),
-										Top:  unit.Px(float32(gtx.Constraints.Max.Y - 380)),
-									}.Layout(
-										gtx,
-										func(gtx layout.Context) layout.Dimensions {
-											return profileList.Layout(gtx, g.normal)
-										},
-									)
-								}
-
 								layout.Inset{
 									Left: unit.Px(float32(gtx.Constraints.Max.X - 125)),
 									Top:  unit.Px(float32(gtx.Constraints.Max.Y - 335)),
@@ -733,19 +712,17 @@ func (g *GUI) main() (next string, err error) {
 								},
 								)
 
-								/*
-									if global.DebugMode {
-										layout.Inset{
-											Left: unit.Px(float32(gtx.Constraints.Max.X - 125)),
-											Top:  unit.Px(float32(gtx.Constraints.Max.Y - 390)),
-										}.Layout(
-											gtx,
-											func(gtx layout.Context) layout.Dimensions {
-												return reloadButton.Layout(gtx)
-											},
-										)
-									}
-								*/
+								if update.Available {
+									layout.Inset{
+										Left: unit.Px(float32(gtx.Constraints.Max.X - 125)),
+										Top:  unit.Px(float32(gtx.Constraints.Max.Y - 390)),
+									}.Layout(
+										gtx,
+										func(gtx layout.Context) layout.Dimensions {
+											return updateButton.Layout(gtx)
+										},
+									)
+								}
 
 								layout.Inset{
 									Left: unit.Px(float32(gtx.Constraints.Max.X - 125)),

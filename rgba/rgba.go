@@ -78,6 +78,10 @@ func Grayscale(img *image.RGBA) *image.Gray {
 	return gray
 }
 
+func R(c color.NRGBA) color.RGBA {
+	return color.RGBA(c)
+}
+
 func N(c color.RGBA) color.NRGBA {
 	return color.NRGBA(c)
 }

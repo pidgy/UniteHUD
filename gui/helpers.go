@@ -9,15 +9,21 @@ import (
 	"gioui.org/op/paint"
 )
 
-// ColorBox creates a widget with the specified dimensions and color.
-func ColorBox(gtx layout.Context, size image.Point, color color.NRGBA) layout.Dimensions {
+func colorBox(gtx layout.Context, size image.Point, color color.NRGBA) layout.Dimensions {
 	defer clip.Rect{Max: size}.Push(gtx.Ops).Pop()
 	paint.ColorOp{Color: color}.Add(gtx.Ops)
 	paint.PaintOp{}.Add(gtx.Ops)
 	return layout.Dimensions{Size: size}
 }
 
-func Fill(gtx layout.Context, backgroundColor color.NRGBA, w layout.Widget) layout.Dimensions {
-	ColorBox(gtx, gtx.Constraints.Max, backgroundColor)
+func fill(gtx layout.Context, backgroundColor color.NRGBA, w layout.Widget) layout.Dimensions {
+	colorBox(gtx, gtx.Constraints.Max, backgroundColor)
 	return layout.NW.Layout(gtx, w)
+}
+
+func line(gtx layout.Context, rect clip.Rect, color color.NRGBA) layout.Dimensions {
+	defer rect.Push(gtx.Ops).Pop()
+	paint.ColorOp{Color: color}.Add(gtx.Ops)
+	paint.PaintOp{}.Add(gtx.Ops)
+	return colorBox(gtx, gtx.Constraints.Max, color)
 }

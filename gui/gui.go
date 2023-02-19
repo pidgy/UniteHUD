@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"image"
 	"runtime"
-	"strings"
 	"syscall"
 	"time"
 
@@ -71,7 +70,7 @@ var Window *GUI
 func New() {
 	Window = &GUI{
 		Window: app.NewWindow(
-			app.Title(Title()),
+			app.Title(Title("")),
 			app.Size(
 				unit.Px(975),
 				unit.Px(715),
@@ -256,7 +255,7 @@ func (g *GUI) preview() {
 	}
 }
 
-// buttonSpam ensures we only call reload once for multiple button presses.
+// buttonSpam ensures we only execute a config reload once before cooling down.
 func (g *GUI) buttonSpam(b *button.Button) {
 	b.LastPressed = time.Now()
 
@@ -269,6 +268,6 @@ func (g *GUI) buttonSpam(b *button.Button) {
 	)
 }
 
-func Title() string {
-	return fmt.Sprintf("UniteHUD (%s) %s Server", global.Version, strings.Title(config.Current.Profile))
+func Title(t string) string {
+	return fmt.Sprintf("UniteHUD %s Server %s", global.Version, t)
 }

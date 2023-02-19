@@ -53,7 +53,7 @@ func (g *GUI) ToastCrash(msg, reason string, callbacks ...func()) {
 
 				ops.Reset()
 
-				ColorBox(gtx, gtx.Constraints.Max, color.NRGBA{R: 25, G: 25, B: 25, A: 255})
+				colorBox(gtx, gtx.Constraints.Max, color.NRGBA{R: 25, G: 25, B: 25, A: 255})
 
 				layout.Inset{
 					Top: unit.Px(15),
@@ -128,7 +128,7 @@ func (g *GUI) ToastOK(title, msg string, callbacks ...func()) {
 
 				ops.Reset()
 
-				ColorBox(gtx, gtx.Constraints.Max, color.NRGBA{R: 25, G: 25, B: 25, A: 255})
+				colorBox(gtx, gtx.Constraints.Max, color.NRGBA{R: 25, G: 25, B: 25, A: 255})
 
 				layout.Inset{
 					Top: unit.Px(15),
@@ -216,7 +216,7 @@ func (g *GUI) ToastYesNo(title, msg string, y, n func()) {
 				gtx := layout.NewContext(&ops, e)
 				ops.Reset()
 
-				ColorBox(gtx, gtx.Constraints.Max, color.NRGBA{R: 25, G: 25, B: 25, A: 255})
+				colorBox(gtx, gtx.Constraints.Max, color.NRGBA{R: 25, G: 25, B: 25, A: 255})
 
 				layout.Inset{
 					Top: unit.Px(15),

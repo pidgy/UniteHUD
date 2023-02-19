@@ -25,23 +25,22 @@ import (
 const Address = "127.0.0.1:17069"
 
 type game struct {
-	Purple    score       `json:"purple"`
-	Orange    score       `json:"orange"`
-	Self      score       `json:"self"`
-	Seconds   int         `json:"seconds"`
-	Energy    int         `json:"balls"`
-	Regilekis []string    `json:"regis"`
 	Bottom    []objective `json:"bottom"`
-	Started   bool        `json:"started"`
-	Stacks    int         `json:"stacks"`
-	Defeated  []int       `json:"defeated"`
-	Match     bool        `json:"match"`
 	Config    bool        `json:"config"`
+	Defeated  []int       `json:"defeated"`
+	Energy    int         `json:"balls"`
+	Events    []string    `json:"events"`
+	Match     bool        `json:"match"`
+	Orange    score       `json:"orange"`
+	Purple    score       `json:"purple"`
 	Profile   string      `json:"profile"`
-	Version   string      `json:"version"`
 	Rayquaza  string      `json:"rayquaza"`
-
-	Events []string `json:"events"`
+	Regilekis []string    `json:"regis"`
+	Seconds   int         `json:"seconds"`
+	Self      score       `json:"self"`
+	Stacks    int         `json:"stacks"`
+	Started   bool        `json:"started"`
+	Version   string      `json:"version"`
 }
 
 type info struct {
@@ -71,6 +70,10 @@ var current = &info{
 	game:    reset(),
 	clients: map[string]time.Time{},
 	mutex:   &sync.Mutex{},
+}
+
+func Bottom() []objective {
+	return current.game.Bottom
 }
 
 func Clear() {
@@ -164,10 +167,7 @@ func Listen() error {
 			return
 		}
 
-		log.Debug().
-			RawJSON("response", raw).
-			Str("client", r.RemoteAddr).
-			Msg("http response")
+		log.Debug().RawJSON("response", raw).Str("client", r.RemoteAddr).Msg("http response")
 
 		_, err = w.Write(raw)
 		if err != nil {
@@ -286,6 +286,19 @@ func RegisteelsSecured(t *team.Team) int {
 	return n
 }
 
+func Score(t *team.Team) int {
+	switch t {
+	case team.Purple:
+		return current.game.Purple.Value
+	case team.Orange:
+		return current.game.Orange.Value
+	case team.Self:
+		return current.game.Self.Value
+	default:
+		return -1
+	}
+}
+
 func Scores() (orange, purple, self int) {
 	return current.game.Orange.Value, current.game.Purple.Value, current.game.Self.Value
 }
@@ -294,8 +307,45 @@ func Seconds() int {
 	return current.game.Seconds
 }
 
-func SetEnergy(b int) {
-	current.game.Energy = b
+func SetBottomObjective(t *team.Team, name string, n int) {
+	o := objective{
+		Team: t.Name,
+		Name: name,
+		Time: time.Now().Unix(),
+	}
+
+	op := fmt.Sprintf("[%s] %s #%d", strings.Title(t.Name), strings.Title(o.Name), n+1)
+
+	switch {
+	// Illegal.
+	case len(current.Bottom) < n:
+		notify.Warn("[Control] %s illegal operation (no index)", op)
+
+	// Remove.
+	case len(current.Bottom) == n+1 && current.Bottom[n].Team == t.Name && current.Bottom[n].Name == o.Name:
+		// Remove last objective.
+		current.Bottom = current.Bottom[:n]
+		notify.Unique(t.RGBA, "[Control] %s removed", op)
+
+	// Add.
+	case len(current.Bottom) == n:
+		current.Bottom = append(current.Bottom, o)
+		notify.Unique(t.RGBA, "[Control] %s secured", op)
+	case len(current.Bottom) > n+1 && current.Bottom[n].Team != t.Name:
+		current.Bottom[n] = o
+		notify.Unique(t.RGBA, "[Control] %s secure replaced", op)
+
+		// Overwrite.
+	case len(current.Bottom) == n+1 && current.Bottom[n].Team == t.Name && current.Bottom[n].Name != o.Name:
+		// Replace between first and last.
+		fallthrough
+	case len(current.Bottom) > n+1 && current.Bottom[n].Team == t.Name:
+		fallthrough
+	case len(current.Bottom) == n+1 && current.Bottom[n].Team != t.Name:
+		// Overwrite last objective.
+		current.Bottom[n] = o
+		notify.Unique(t.RGBA, "[Control] %s secure replaced", op)
+	}
 }
 
 func SetConfig(c bool) {
@@ -304,6 +354,10 @@ func SetConfig(c bool) {
 
 func SetDefeated() {
 	current.game.Defeated = append(current.game.Defeated, current.game.Seconds)
+}
+
+func SetEnergy(b int) {
+	current.game.Energy = b
 }
 
 func SetKO(t *team.Team) {
@@ -315,12 +369,24 @@ func SetKO(t *team.Team) {
 	}
 }
 
+func SetMatchStarted() {
+	current.game.Match = true
+}
+
+func SetMatchStopped() {
+	current.game.Match = false
+}
+
 func SetRayquaza(t *team.Team) {
 	current.game.Rayquaza = t.Name
 }
 
 func SetRegice(t *team.Team) {
-	current.Bottom = append(current.Bottom, objective{Team: t.Name, Name: "regice", Time: time.Now().Unix()})
+	current.Bottom = append(current.Bottom, objective{
+		Team: t.Name,
+		Name: "regice",
+		Time: time.Now().Unix(),
+	})
 }
 
 func SetRegieleki(t *team.Team) {
@@ -336,12 +402,38 @@ func SetRegieleki(t *team.Team) {
 	current.game.Regilekis[2] = team.None.Name
 }
 
+// SetRegielekiAt assumes n to be an index starting at 0.
+func SetRegielekiAt(t *team.Team, n int) {
+	op := fmt.Sprintf("[%s] Regieleki #%d", strings.Title(t.Name), n+1)
+
+	switch {
+	case n != 0 && current.game.Regilekis[n-1] == team.None.Name:
+		notify.Warn("[Control] %s illegal operation (missing previous)", op)
+	case current.game.Regilekis[n] != t.Name:
+		notify.Unique(t.RGBA, "[Control] %s secure replaced", op)
+		current.game.Regilekis[n] = t.Name
+	case n+1 == len(current.game.Regilekis) || current.game.Regilekis[n+1] == team.None.Name:
+		notify.Unique(t.RGBA, "[Control] %s reset", op)
+		current.game.Regilekis[n] = team.None.Name
+	default:
+		notify.Warn("[Control] %s illegal operation", op)
+	}
+}
+
 func SetRegirock(t *team.Team) {
-	current.Bottom = append(current.Bottom, objective{Team: t.Name, Name: "regirock", Time: time.Now().Unix()})
+	current.Bottom = append(current.Bottom, objective{
+		Team: t.Name,
+		Name: "regirock",
+		Time: time.Now().Unix(),
+	})
 }
 
 func SetRegisteel(t *team.Team) {
-	current.Bottom = append(current.Bottom, objective{Team: t.Name, Name: "registeel", Time: time.Now().Unix()})
+	current.Bottom = append(current.Bottom, objective{
+		Team: t.Name,
+		Name: "registeel",
+		Time: time.Now().Unix(),
+	})
 }
 
 func SetScore(t *team.Team, value int) {
@@ -375,10 +467,6 @@ func SetScore(t *team.Team, value int) {
 
 func SetStarted() {
 	current.game.Started = true
-}
-
-func SetMatchStarted() {
-	current.game.Match = true
 }
 
 func SetStopped() {

@@ -6,7 +6,6 @@ import (
 	"image/color"
 	"os"
 	"os/exec"
-	"strings"
 	"syscall"
 	"time"
 
@@ -30,12 +29,9 @@ import (
 	"github.com/pidgy/unitehud/gui/visual/dropdown"
 	"github.com/pidgy/unitehud/gui/visual/help"
 	"github.com/pidgy/unitehud/gui/visual/split"
-	"github.com/pidgy/unitehud/match"
 	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/rgba"
 	"github.com/pidgy/unitehud/server"
-	"github.com/pidgy/unitehud/state"
-	"github.com/pidgy/unitehud/team"
 	"github.com/pidgy/unitehud/video"
 	"github.com/pidgy/unitehud/video/device"
 )
@@ -541,7 +537,13 @@ func (g *GUI) configure() (next string, err error) {
 	}
 
 	windowList := &dropdown.List{
-		Items: []*dropdown.Item{},
+		Items: []*dropdown.Item{
+			{
+				Text:     config.MainDisplay,
+				Disabled: config.Current.VideoCaptureDevice != config.NoVideoCaptureDevice,
+				Checked:  widget.Bool{Value: config.Current.Window == config.MainDisplay},
+			},
+		},
 		Callback: func(i *dropdown.Item) {
 			if config.Current.VideoCaptureDevice != config.NoVideoCaptureDevice {
 				return
@@ -549,17 +551,31 @@ func (g *GUI) configure() (next string, err error) {
 
 			if i.Text == "" {
 				config.Current.Window = config.MainDisplay
-				return
+			} else {
+				config.Current.Window = i.Text
 			}
-
-			config.Current.Window = i.Text
 		},
 		WidthModifier: 2,
 	}
 
 	populateWindows := func(videoCaptureDisabledEvent bool) {
-		windows, _ := video.Sources()
+		if config.Current.Window == config.MainDisplay {
+			windowList.Items[0].Checked.Value = true
+			for _, item := range windowList.Items {
+				if item.Text != config.MainDisplay {
+					item.Checked.Value = false
+				}
+			}
+		} else {
+			windowList.Items[0].Checked.Value = false
+			for _, item := range windowList.Items {
+				if item.Text != config.MainDisplay {
+					item.Checked.Value = config.Current.Window == item.Text
+				}
+			}
+		}
 
+		windows, _ := video.Sources()
 		if len(windows) == len(windowList.Items) && !videoCaptureDisabledEvent {
 			return
 		}
@@ -580,13 +596,7 @@ func (g *GUI) configure() (next string, err error) {
 			)
 		}
 
-		if config.Current.VideoCaptureDevice == config.NoVideoCaptureDevice {
-			// populateWindows(false)
-			windowList.Items[0].Disabled = false
-		} else {
-			// unpopulateWindows()
-			windowList.Items[0].Disabled = true
-		}
+		windowList.Items[0].Disabled = config.Current.VideoCaptureDevice != config.NoVideoCaptureDevice
 	}
 
 	populateWindows(false)
@@ -597,12 +607,15 @@ func (g *GUI) configure() (next string, err error) {
 		}
 	}
 
-	deviceList := &dropdown.List{}
+	deviceList := &dropdown.List{
+		WidthModifier: 3,
+	}
 
 	populateDevices := func(videoCaptureDisabledEvent bool) {
 		_, devices := video.Sources()
 
 		if len(devices)+1 == len(deviceList.Items) && !videoCaptureDisabledEvent {
+			deviceList.Items[0].Checked.Value = config.Current.VideoCaptureDevice == config.NoVideoCaptureDevice
 			return
 		}
 
@@ -610,9 +623,11 @@ func (g *GUI) configure() (next string, err error) {
 			{
 				Text:  "Disabled",
 				Value: config.NoVideoCaptureDevice,
+				Checked: widget.Bool{
+					Value: config.Current.VideoCaptureDevice != config.NoVideoCaptureDevice,
+				},
 			},
 		}
-
 		for _, d := range devices {
 			deviceList.Items = append(deviceList.Items, &dropdown.Item{
 				Text:  device.Name(d),
@@ -623,7 +638,6 @@ func (g *GUI) configure() (next string, err error) {
 
 		for _, i := range deviceList.Items {
 			i.Checked.Value = false
-
 			if i.Value == config.Current.VideoCaptureDevice {
 				i.Checked.Value = true
 			}
@@ -635,20 +649,23 @@ func (g *GUI) configure() (next string, err error) {
 			{
 				Text:  "Disabled",
 				Value: config.NoVideoCaptureDevice,
+				Checked: widget.Bool{
+					Value: config.Current.VideoCaptureDevice != config.NoVideoCaptureDevice,
+				},
 			},
 		},
 		Callback: func(i *dropdown.Item) {
 			video.Close()
-			log.Debug().Msg("here")
 			time.Sleep(time.Second) // XXX: Fix concurrency error in device.go Close.
 
 			config.Current.VideoCaptureDevice = i.Value
 
 			if i.Text == "Disabled" {
 				i.Checked = widget.Bool{Value: true}
+				populateDevices(true)
 				populateWindows(true)
 			} else {
-				populateWindows(false)
+				populateWindows(true)
 			}
 
 			log.Debug().Int("device", i.Value).Msg("selected video capture device")
@@ -715,7 +732,7 @@ func (g *GUI) configure() (next string, err error) {
 		)
 	}
 
-	header := material.H5(g.cascadia, Title())
+	header := material.H5(g.cascadia, Title(""))
 	header.Color = color.NRGBA{R: 0, G: 0, B: 0, A: 255}
 	header.Alignment = text.Middle
 	header.Font.Weight = text.ExtraBold
@@ -750,7 +767,7 @@ func (g *GUI) configure() (next string, err error) {
 		case system.DestroyEvent:
 			return "", nil
 		case system.FrameEvent:
-			g.Window.Option(app.Title(fmt.Sprintf("%s (%s %s)", Title(), g.cpu, g.ram)))
+			g.Window.Option(app.Title(Title(fmt.Sprintf("(%s %s)", g.cpu, g.ram))))
 
 			gtx := layout.NewContext(&ops, e)
 			pointer.CursorNameOp{Name: pointer.CursorGrab}.Add(gtx.Ops)
@@ -768,7 +785,7 @@ func (g *GUI) configure() (next string, err error) {
 								return layout.Dimensions{Size: gtx.Constraints.Max}
 							}
 
-							return Fill(
+							return fill(
 								gtx,
 								color.NRGBA{R: 25, G: 25, B: 25, A: 255},
 								g.Screen.Layout)
@@ -779,7 +796,7 @@ func (g *GUI) configure() (next string, err error) {
 				func(gtx layout.Context) layout.Dimensions {
 					return layout.UniformInset(unit.Dp(5)).Layout(gtx,
 						func(gtx layout.Context) layout.Dimensions {
-							return Fill(gtx, color.NRGBA{R: 25, G: 25, B: 25, A: 255},
+							return fill(gtx, color.NRGBA{R: 25, G: 25, B: 25, A: 255},
 								func(gtx layout.Context) layout.Dimensions {
 									{
 										layout.Inset{
@@ -863,9 +880,8 @@ func (g *GUI) configure() (next string, err error) {
 									// Capture video.
 									{
 										layout.Inset{
-											Left:  unit.Px(float32(gtx.Constraints.Max.X - 519)),
-											Top:   unit.Px(3),
-											Right: unit.Px(10),
+											Left: unit.Px(float32(gtx.Constraints.Max.X - 519)),
+											Top:  unit.Px(3),
 										}.Layout(
 											gtx,
 											func(gtx layout.Context) layout.Dimensions {
@@ -878,7 +894,6 @@ func (g *GUI) configure() (next string, err error) {
 										layout.Inset{
 											Left:   unit.Px(float32(gtx.Constraints.Max.X - 520)),
 											Top:    unit.Px(20),
-											Right:  unit.Px(10),
 											Bottom: unit.Px(3),
 										}.Layout(
 											gtx,
@@ -896,9 +911,8 @@ func (g *GUI) configure() (next string, err error) {
 
 									{
 										layout.Inset{
-											Left:  unit.Px(float32(gtx.Constraints.Max.X - 249)),
-											Top:   unit.Px(3),
-											Right: unit.Px(10),
+											Left: unit.Px(float32(gtx.Constraints.Max.X - 249)),
+											Top:  unit.Px(3),
 										}.Layout(
 											gtx,
 											func(gtx layout.Context) layout.Dimensions {
@@ -911,7 +925,6 @@ func (g *GUI) configure() (next string, err error) {
 										layout.Inset{
 											Left:   unit.Px(float32(gtx.Constraints.Max.X - 250)),
 											Top:    unit.Px(20),
-											Right:  unit.Px(10),
 											Bottom: unit.Px(3),
 										}.Layout(
 											gtx,
@@ -1214,7 +1227,7 @@ func (g *GUI) configurationHelpDialog(h *help.Help, widget layout.Widget) (next 
 
 			split.Layout(gtx,
 				func(gtx layout.Context) layout.Dimensions {
-					return Fill(gtx,
+					return fill(gtx,
 						color.NRGBA{R: 25, G: 25, B: 25, A: 255},
 						func(gtx layout.Context) layout.Dimensions {
 							layout.Inset{
@@ -1232,7 +1245,7 @@ func (g *GUI) configurationHelpDialog(h *help.Help, widget layout.Widget) (next 
 				},
 
 				func(gtx layout.Context) layout.Dimensions {
-					return Fill(
+					return fill(
 						gtx,
 						color.NRGBA{R: 25, G: 25, B: 25, A: 255},
 						func(gtx layout.Context) layout.Dimensions {
@@ -1283,255 +1296,4 @@ func (g *GUI) configurationHelpDialog(h *help.Help, widget layout.Widget) (next 
 	}
 
 	return next, nil
-}
-
-func (g *GUI) matchEnergy(a *area.Area) {
-	defer func() {
-		r := recover()
-		if r != nil {
-			log.Error().Err(r.(error)).Msg("match balls failed")
-		}
-	}()
-
-	if !g.Preview {
-		a.NRGBA = area.Locked
-		return
-	}
-
-	a.NRGBA = area.Miss
-
-	img, err := video.CaptureRect(a.Rectangle())
-	if err != nil {
-		log.Err(err).Send()
-		return
-	}
-
-	matrix, err := gocv.ImageToMatRGB(img)
-	if err != nil {
-		log.Err(err).Send()
-		return
-	}
-	defer matrix.Close()
-
-	result, _, score := match.Energy(matrix, g.Image)
-	switch result {
-	case match.Found, match.Duplicate:
-		a.NRGBA = area.Match
-		a.Text = fmt.Sprintf("\t %d", score)
-	case match.NotFound:
-		a.NRGBA = area.Miss
-		a.Text = "Energy"
-	case match.Missed:
-		a.NRGBA = rgba.N(rgba.Alpha(rgba.DarkerYellow, 0x99))
-		a.Text = fmt.Sprintf("\t %d?", score)
-	case match.Invalid:
-		a.NRGBA = area.Miss
-		a.Text = "Energy"
-	}
-
-	m, result := match.SelfScore(matrix, img)
-	switch result {
-	case match.Found:
-		if state.EventType(m.Template.Value) == state.PreScore {
-			a.NRGBA = area.Match
-			a.Text = "Scoring"
-		} else {
-			a.NRGBA = area.Match
-			a.Text = "Scored"
-		}
-	case match.Invalid:
-		a.NRGBA = area.Miss
-		a.Text = "Invalid Energy"
-	}
-}
-
-func (g *GUI) matchKOs(a *area.Area) {
-	if !g.Preview {
-		a.NRGBA = area.Locked
-		return
-	}
-
-	img, err := video.CaptureRect(a.Rectangle())
-	if err != nil {
-		log.Err(err).Send()
-		return
-	}
-
-	matrix, err := gocv.ImageToMatRGB(img)
-	if err != nil {
-		log.Err(err).Send()
-		return
-	}
-	defer matrix.Close()
-
-	_, r, e := match.Matches(matrix, img, config.Current.Templates["ko"][team.Game.Name])
-	if r != match.Found {
-		a.NRGBA = area.Miss
-		a.Text = fmt.Sprintf("KO %s", strings.Title(r.String()))
-		return
-	}
-	a.NRGBA = area.Match
-	a.Text = fmt.Sprintf("KO %s (%s)", strings.Title(r.String()), state.EventType(e))
-}
-
-func (g *GUI) matchObjectives(a *area.Area) {
-	if !g.Preview {
-		a.NRGBA = area.Locked
-		return
-	}
-
-	img, err := video.CaptureRect(a.Rectangle())
-	if err != nil {
-		log.Err(err).Send()
-		return
-	}
-
-	matrix, err := gocv.ImageToMatRGB(img)
-	if err != nil {
-		log.Err(err).Send()
-		return
-	}
-	defer matrix.Close()
-
-	_, r, e := match.Matches(matrix, img, config.Current.Templates["secure"][team.Game.Name])
-	if r != match.Found {
-		a.NRGBA = area.Miss
-		a.Text = fmt.Sprintf("Objective %s", strings.Title(r.String()))
-		return
-	}
-	a.NRGBA = area.Match
-	a.Text = fmt.Sprintf("Objective %s (%s)", strings.Title(r.String()), state.EventType(e))
-}
-
-func (g *GUI) matchScore(a *area.Area) {
-	defer func() {
-		r := recover()
-		if r != nil {
-			log.Error().Err(r.(error)).Msg("match score failed")
-		}
-	}()
-
-	if !g.Preview {
-		a.NRGBA = area.Locked
-		return
-	}
-
-	// a.NRGBA = area.Miss
-	// a.Subtext = ""
-
-	img, err := video.CaptureRect(a.Rectangle())
-	if err != nil {
-		log.Err(err).Send()
-		return
-	}
-
-	matrix, err := gocv.ImageToMatRGB(img)
-	if err != nil {
-		log.Err(err).Send()
-		return
-	}
-	defer matrix.Close()
-
-	for _, templates := range config.Current.Templates["scored"] {
-		_, result, score := match.Matches(matrix, g.Image, templates)
-		switch result {
-		case match.Found, match.Duplicate:
-			a.NRGBA = area.Match
-			a.Subtext = fmt.Sprintf("(+%d)", score)
-			return
-		case match.NotFound:
-			a.NRGBA = area.Miss
-		case match.Missed:
-			a.NRGBA = rgba.N(rgba.Alpha(rgba.DarkerYellow, 0x99))
-			a.Subtext = fmt.Sprintf("(%d?)", score)
-		case match.Invalid:
-			a.NRGBA = area.Miss
-		}
-
-		a.Subtext = strings.Title(result.String())
-	}
-}
-
-func (g *GUI) matchMap(a *area.Area) {
-	defer func() {
-		r := recover()
-		if r != nil {
-			log.Error().Err(r.(error)).Msg("match map failed")
-		}
-	}()
-
-	if !g.Preview {
-		a.NRGBA = area.Locked
-		return
-	}
-
-	a.NRGBA = area.Miss
-	a.Subtext = ""
-
-	img, err := video.CaptureRect(a.Rectangle())
-	if err != nil {
-		log.Err(err).Send()
-		return
-	}
-
-	matrix, err := gocv.ImageToMatRGB(img)
-	if err != nil {
-		log.Err(err).Send()
-		return
-	}
-	defer matrix.Close()
-
-	_, ok := match.MiniMap(matrix, img)
-	if ok {
-		a.NRGBA = area.Match
-		a.Subtext = "(Found)"
-	}
-}
-
-func (g *GUI) matchTime(a *area.Area) {
-	defer func() {
-		r := recover()
-		if r != nil {
-			log.Error().Err(r.(error)).Msg("match time failed")
-		}
-	}()
-
-	if !g.Preview {
-		a.NRGBA = area.Locked
-		return
-	}
-
-	a.NRGBA = area.Miss
-	a.Subtext = "(00:00)"
-
-	img, err := video.CaptureRect(a.Rectangle())
-	if err != nil {
-		log.Err(err).Send()
-		return
-	}
-
-	matrix, err := gocv.ImageToMatRGB(img)
-	if err != nil {
-		log.Err(err).Send()
-		return
-	}
-	defer matrix.Close()
-
-	s, k := match.Time(matrix, img)
-	if s != 0 {
-		a.NRGBA = area.Match
-		a.Subtext = "(" + k + ")"
-	}
-}
-
-func (g *GUI) while(fn func(), wait *bool) {
-	for {
-		time.Sleep(time.Second)
-
-		if *wait {
-			continue
-		}
-
-		fn()
-	}
 }
