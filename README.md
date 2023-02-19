@@ -73,13 +73,20 @@ GET 127.0.0.1:17069/ws
     ],
     "started": true,
     "stacks": 3,
-    "defeated": [421, 342, 120, ],
+    "defeated": [
+        421, 
+        342, 
+        120
+    ],
     "match": true,
     "config": false,
     "profile": "player",
     "version": "v1.1beta",
     "rayquaza": "orange",
-    "events": ["[2:00] Defeated with points"], "[1:45] Rayquaza orange secure"]
+    "events": [
+        "[2:00] Defeated with points", 
+        "[1:45] Rayquaza orange secure"
+    ]
 }
 ```
 
