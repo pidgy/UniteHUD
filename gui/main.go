@@ -53,7 +53,6 @@ func (g *GUI) main() (next string, err error) {
 		Released: rgba.N(rgba.Gray),
 		Pressed:  rgba.N(rgba.DarkGray),
 	}
-
 	configButton.Click = func() {
 		configButton.Active = false
 		next = "configure"
@@ -73,7 +72,6 @@ func (g *GUI) main() (next string, err error) {
 		Released: rgba.N(rgba.Gray),
 		Pressed:  rgba.N(rgba.DarkGray),
 	}
-
 	updateButton.Click = func() {
 		defer updateButton.Deactivate()
 
@@ -173,7 +171,6 @@ func (g *GUI) main() (next string, err error) {
 		Released: rgba.N(rgba.Gray),
 		Pressed:  rgba.N(rgba.DarkGray),
 	}
-
 	openButton.Click = func() {
 		defer openButton.Deactivate()
 
@@ -196,7 +193,6 @@ func (g *GUI) main() (next string, err error) {
 		TextOffsetLeft: 0,
 		BorderWidth:    unit.Sp(.5),
 	}
-
 	statsButton.Click = func() {
 		defer statsButton.Deactivate()
 
@@ -220,7 +216,6 @@ func (g *GUI) main() (next string, err error) {
 		TextOffsetLeft: 0,
 		BorderWidth:    unit.Sp(.5),
 	}
-
 	historyButton.Click = func() {
 		defer historyButton.Deactivate()
 
@@ -237,7 +232,6 @@ func (g *GUI) main() (next string, err error) {
 		TextOffsetLeft: -5,
 		BorderWidth:    unit.Sp(.5),
 	}
-
 	obsButton.Click = func() {
 		defer obsButton.Deactivate()
 
@@ -273,7 +267,6 @@ func (g *GUI) main() (next string, err error) {
 		TextOffsetLeft: -4,
 		BorderWidth:    unit.Sp(.5),
 	}
-
 	clearButton.Click = func() {
 		defer clearButton.Deactivate()
 
@@ -292,7 +285,6 @@ func (g *GUI) main() (next string, err error) {
 		BorderWidth:    unit.Sp(.5),
 		Active:         !g.ecoMode,
 	}
-
 	ecoButton.Click = func() {
 		g.ecoMode = !g.ecoMode
 		ecoButton.Active = !g.ecoMode
@@ -314,7 +306,6 @@ func (g *GUI) main() (next string, err error) {
 		TextOffsetLeft: -5,
 		BorderWidth:    unit.Sp(.5),
 	}
-
 	controllerButton.Click = func() {
 		defer controllerButton.Deactivate()
 
