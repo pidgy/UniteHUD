@@ -106,6 +106,7 @@ func (a *Area) Layout(gtx layout.Context, dims layout.Dimensions, img image.Imag
 			a.NRGBA.A = 0
 		case pointer.Leave:
 			a.Focus = false
+			a.NRGBA.A = alpha
 		case pointer.Cancel:
 		case pointer.Press:
 			if !a.Active {
@@ -182,7 +183,7 @@ func (a *Area) Layout(gtx layout.Context, dims layout.Dimensions, img image.Imag
 		gtx,
 		func(gtx layout.Context) layout.Dimensions {
 			c := a.NRGBA
-			c.A = 0
+			c.A = 255
 			return widget.Border{
 				Color: c,
 				Width: unit.Px(2),
