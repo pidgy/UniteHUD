@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/rs/zerolog/log"
 	"gocv.io/x/gocv"
 
 	"github.com/pidgy/unitehud/filter"
@@ -22,6 +21,8 @@ import (
 
 const (
 	MainDisplay          = "Main Display"
+	BrowserWindow        = "UniteHUD Browser"
+	ProjectorWindow      = "UniteHUD Projector"
 	NoVideoCaptureDevice = -1
 
 	ProfilePlayer      = "player"
@@ -29,22 +30,23 @@ const (
 )
 
 type Config struct {
-	Window             string
-	VideoCaptureDevice int
-	LostWindow         string `json:"-"`
-	Record             bool   `json:"-"` // Record all matched images and logs.
-	Energy             image.Rectangle
-	Map                image.Rectangle
-	Scores             image.Rectangle
-	Time               image.Rectangle
-	Objectives         image.Rectangle
-	KOs                image.Rectangle
-	Filenames          map[string]map[string][]filter.Filter     `json:"-"`
-	Templates          map[string]map[string][]template.Template `json:"-"`
-	Scale              float64
-	Shift              Shift
-	Acceptance         float32
-	Profile            string
+	Window                   string
+	VideoCaptureDevice       int
+	LostWindow               string `json:"-"`
+	Record                   bool   `json:"-"` // Record all matched images and logs.
+	Energy                   image.Rectangle
+	Scores                   image.Rectangle
+	Time                     image.Rectangle
+	Objectives               image.Rectangle
+	KOs                      image.Rectangle
+	Filenames                map[string]map[string][]filter.Filter      `json:"-"`
+	Templates                map[string]map[string][]*template.Template `json:"-"`
+	Scale                    float64
+	Shift                    Shift
+	Acceptance               float32
+	Profile                  string
+	BrowserWindowURL         string
+	DisableBrowserFormatting bool
 
 	DisableScoring, DisableTime, DisableObjectives, DisableEnergy, DisableDefeated, DisableKOs bool
 
@@ -92,7 +94,7 @@ func (c *Config) Report(crash string) {
 
 	err := c.Save()
 	if err != nil {
-		log.Panic().Err(err).Msg("failed to save crash report")
+		notify.Error("Failed to save crash log (%v)", err)
 	}
 }
 
@@ -144,12 +146,10 @@ func (c *Config) ScoringOption() image.Rectangle {
 
 func (c *Config) SetDefaultAreas() {
 	energy := image.Rect(908, 764, 1008, 864)
-	minimap := image.Rect(70, 100, 470, 250)
 	scores := image.Rect(500, 50, 1500, 250)
 	time := image.Rect(846, 0, 1046, 100)
 
 	c.Energy = energy
-	c.Map = minimap
 	c.Scores = scores
 	c.Time = time
 	c.setKOArea()
@@ -201,7 +201,6 @@ func (c *Config) pointFiles(t *team.Team) []filter.Filter {
 
 		v := filter.Strip(b[1])
 		if v == "" {
-			log.Warn().Str("file", file).Msg("invalid file in points directory")
 			continue
 		}
 
@@ -279,7 +278,6 @@ func (c *Config) setObjectiveArea() {
 }
 
 func (c *Config) setProfileBroadcaster() {
-	log.Debug().Msg("applying broadcaster profile")
 
 	c.Profile = ProfileBroadcaster
 
@@ -295,14 +293,13 @@ func (c *Config) setProfilePlayer() {
 
 	c.load = loadProfileAssetsPlayer
 
-	log.Debug().Msg("applying player profile")
 }
 
 func Load(profile string) error {
 	defer validate()
 
 	if profile == "" {
-		profile = ProfilePlayer
+		Current.SetProfile(profile)
 	}
 
 	notify.System("Loading configuration from %s", Current.File())
@@ -330,8 +327,8 @@ func Load(profile string) error {
 	return Current.Save()
 }
 
-func TemplatesFirstRound(t1 []template.Template) []template.Template {
-	t2 := []template.Template{}
+func TemplatesFirstRound(t1 []*template.Template) []*template.Template {
+	t2 := []*template.Template{}
 	for _, t := range t1 {
 		if t.Value == 0 {
 			continue
@@ -354,24 +351,24 @@ func loadProfileAssetsBroadcaster() {
 		"killed": {},
 		"secure": {
 			team.Game.Name: {
-				filter.New(team.Game, "assets/profiles/broadcaster/game/regice_ally.png", state.RegiceSecureAlly.Int(), false),
-				filter.New(team.Game, "assets/profiles/broadcaster/game/regice_enemy.png", state.RegiceSecureEnemy.Int(), false),
-				filter.New(team.Game, "assets/profiles/broadcaster/game/regirock_ally.png", state.RegirockSecureAlly.Int(), false),
-				filter.New(team.Game, "assets/profiles/broadcaster/game/regirock_enemy.png", state.RegirockSecureEnemy.Int(), false),
-				filter.New(team.Game, "assets/profiles/broadcaster/game/registeel_ally.png", state.RegisteelSecureAlly.Int(), false),
-				filter.New(team.Game, "assets/profiles/broadcaster/game/registeel_enemy.png", state.RegisteelSecureEnemy.Int(), false),
-				filter.New(team.Game, "assets/profiles/broadcaster/game/regieleki_ally.png", state.RegielekiSecureAlly.Int(), false),
-				filter.New(team.Game, "assets/profiles/broadcaster/game/regieleki_enemy.png", state.RegielekiSecureEnemy.Int(), false),
-				filter.New(team.Game, "assets/profiles/broadcaster/game/rayquaza_ally.png", state.RayquazaSecureAlly.Int(), false),
-				filter.New(team.Game, "assets/profiles/broadcaster/game/rayquaza_enemy.png", state.RayquazaSecureEnemy.Int(), false),
+				filter.New(team.Game, "assets/profiles/broadcaster/game/regice_ally.png", state.RegiceSecurePurple.Int(), false),
+				filter.New(team.Game, "assets/profiles/broadcaster/game/regice_enemy.png", state.RegiceSecureOrange.Int(), false),
+				filter.New(team.Game, "assets/profiles/broadcaster/game/regirock_ally.png", state.RegirockSecurePurple.Int(), false),
+				filter.New(team.Game, "assets/profiles/broadcaster/game/regirock_enemy.png", state.RegirockSecureOrange.Int(), false),
+				filter.New(team.Game, "assets/profiles/broadcaster/game/registeel_ally.png", state.RegisteelSecurePurple.Int(), false),
+				filter.New(team.Game, "assets/profiles/broadcaster/game/registeel_enemy.png", state.RegisteelSecureOrange.Int(), false),
+				filter.New(team.Game, "assets/profiles/broadcaster/game/regieleki_ally.png", state.RegielekiSecurePurple.Int(), false),
+				filter.New(team.Game, "assets/profiles/broadcaster/game/regieleki_enemy.png", state.RegielekiSecureOrange.Int(), false),
+				filter.New(team.Game, "assets/profiles/broadcaster/game/rayquaza_ally.png", state.RayquazaSecurePurple.Int(), false),
+				filter.New(team.Game, "assets/profiles/broadcaster/game/rayquaza_enemy.png", state.RayquazaSecureOrange.Int(), false),
 			},
 		},
 		"ko": {
 			team.Game.Name: {
-				filter.New(team.Game, "assets/profiles/broadcaster/game/ko_ally.png", state.KOAlly.Int(), false),
-				filter.New(team.Game, "assets/profiles/broadcaster/game/ko_streak_ally.png", state.KOStreakAlly.Int(), false),
-				filter.New(team.Game, "assets/profiles/broadcaster/game/ko_enemy.png", state.KOEnemy.Int(), false),
-				filter.New(team.Game, "assets/profiles/broadcaster/game/ko_streak_enemy.png", state.KOStreakEnemy.Int(), false),
+				filter.New(team.Game, "assets/profiles/broadcaster/game/ko_ally.png", state.KOPurple.Int(), false),
+				filter.New(team.Game, "assets/profiles/broadcaster/game/ko_streak_ally.png", state.KOStreakPurple.Int(), false),
+				filter.New(team.Game, "assets/profiles/broadcaster/game/ko_enemy.png", state.KOOrange.Int(), false),
+				filter.New(team.Game, "assets/profiles/broadcaster/game/ko_streak_enemy.png", state.KOStreakOrange.Int(), false),
 			},
 		},
 		"objective": {
@@ -418,22 +415,22 @@ func loadProfileAssetsPlayer() {
 		},
 		"secure": {
 			team.Game.Name: {
-				filter.New(team.Game, "assets/profiles/player/game/regieleki_ally.png", state.RegielekiSecureAlly.Int(), false),
-				filter.New(team.Game, "assets/profiles/player/game/regieleki_enemy.png", state.RegielekiSecureEnemy.Int(), false),
-				filter.New(team.Game, "assets/profiles/player/game/regice_ally.png", state.RegiceSecureAlly.Int(), false),
-				filter.New(team.Game, "assets/profiles/player/game/regice_enemy.png", state.RegiceSecureEnemy.Int(), false),
-				filter.New(team.Game, "assets/profiles/player/game/regirock_ally.png", state.RegirockSecureAlly.Int(), false),
-				filter.New(team.Game, "assets/profiles/player/game/regirock_enemy.png", state.RegirockSecureEnemy.Int(), false),
-				filter.New(team.Game, "assets/profiles/player/game/registeel_ally.png", state.RegisteelSecureAlly.Int(), false),
-				filter.New(team.Game, "assets/profiles/player/game/registeel_enemy.png", state.RegisteelSecureEnemy.Int(), false),
+				filter.New(team.Game, "assets/profiles/player/game/regieleki_ally.png", state.RegielekiSecurePurple.Int(), false),
+				filter.New(team.Game, "assets/profiles/player/game/regieleki_enemy.png", state.RegielekiSecureOrange.Int(), false),
+				filter.New(team.Game, "assets/profiles/player/game/regice_ally.png", state.RegiceSecurePurple.Int(), false),
+				filter.New(team.Game, "assets/profiles/player/game/regice_enemy.png", state.RegiceSecureOrange.Int(), false),
+				filter.New(team.Game, "assets/profiles/player/game/regirock_ally.png", state.RegirockSecurePurple.Int(), false),
+				filter.New(team.Game, "assets/profiles/player/game/regirock_enemy.png", state.RegirockSecureOrange.Int(), false),
+				filter.New(team.Game, "assets/profiles/player/game/registeel_ally.png", state.RegisteelSecurePurple.Int(), false),
+				filter.New(team.Game, "assets/profiles/player/game/registeel_enemy.png", state.RegisteelSecureOrange.Int(), false),
 			},
 		},
 		"ko": {
 			team.Game.Name: {
-				filter.New(team.Game, "assets/profiles/player/game/ko_ally.png", state.KOAlly.Int(), false),
-				filter.New(team.Game, "assets/profiles/player/game/ko_streak_ally.png", state.KOStreakAlly.Int(), false),
-				filter.New(team.Game, "assets/profiles/player/game/ko_enemy.png", state.KOEnemy.Int(), false),
-				filter.New(team.Game, "assets/profiles/player/game/ko_streak_enemy.png", state.KOStreakEnemy.Int(), false),
+				filter.New(team.Game, "assets/profiles/player/game/ko_ally.png", state.KOPurple.Int(), false),
+				filter.New(team.Game, "assets/profiles/player/game/ko_streak_ally.png", state.KOStreakPurple.Int(), false),
+				filter.New(team.Game, "assets/profiles/player/game/ko_enemy.png", state.KOOrange.Int(), false),
+				filter.New(team.Game, "assets/profiles/player/game/ko_streak_enemy.png", state.KOStreakOrange.Int(), false),
 			},
 		},
 		"objective": {
@@ -509,7 +506,7 @@ func open() bool {
 }
 
 func validate() {
-	Current.Templates = map[string]map[string][]template.Template{
+	Current.Templates = map[string]map[string][]*template.Template{
 		"goals": {
 			team.Game.Name: {},
 		},
@@ -590,7 +587,6 @@ func validate() {
 					continue
 				}
 
-				log.Debug().Str("category", category).Str("subcategory", subcategory).Object("template", t).Msg("template loaded")
 			}
 		}
 	}

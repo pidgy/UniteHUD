@@ -29,7 +29,7 @@ type CircleButton struct {
 	LastPressed       time.Time
 	Pressed, Released color.NRGBA
 
-	Click       func()
+	Click       func(b *CircleButton)
 	SingleClick bool // Toggle the Active field on Click events.
 
 	hover bool
@@ -67,7 +67,7 @@ func (c *CircleButton) Layout(gtx layout.Context) layout.Dimensions {
 				c.hover = true
 			case pointer.Release:
 				if c.hover && c.Click != nil {
-					c.Click()
+					c.Click(c)
 					if c.SingleClick {
 						c.Active = !c.Active
 					}

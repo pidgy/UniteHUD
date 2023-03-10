@@ -19,17 +19,11 @@ type Process struct {
 }
 
 func Replace() error {
-	exe, err := os.Executable()
-	if err != nil {
-		return err
-	}
-
-	args := strings.Split(exe, "\\")
-	exe = args[len(args)-1]
-
-	err = kill(path.Base(exe))
-	if err != nil {
-		return err
+	for _, exe := range []string{"UniteHUD.exe", "UniteHUD_Debug.exe"} {
+		err := kill(path.Base(exe))
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -44,7 +38,7 @@ func kill(exe string) error {
 	this := os.Getpid()
 
 	for _, p := range ps {
-		if strings.ToLower(p.Exe) == strings.ToLower(exe) && p.ID != this {
+		if strings.EqualFold(p.Exe, exe) && p.ID != this {
 			p, err := os.FindProcess(p.ID)
 			if err != nil {
 				return err

@@ -5,11 +5,11 @@ import (
 	"image"
 
 	"github.com/pidgy/unitehud/config"
+	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/rgba"
 	"github.com/pidgy/unitehud/state"
 	"github.com/pidgy/unitehud/stats"
 	"github.com/pidgy/unitehud/team"
-	"github.com/rs/zerolog/log"
 	"gocv.io/x/gocv"
 )
 
@@ -97,7 +97,7 @@ func goals(matrix gocv.Mat, img *image.RGBA) (Goals, bool) {
 
 		for i := range results {
 			if results[i].Empty() {
-				log.Warn().Str("filename", templates[i].File).Msg("empty result")
+				notify.SystemWarn("Empty result for %s", templates[i].Truncated())
 				continue
 			}
 

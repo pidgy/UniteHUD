@@ -7,9 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
-
+	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/template"
 )
 
@@ -82,8 +80,6 @@ func (p Pieces) Sort(hack bool) (int, string) {
 		order += strconv.Itoa(piece.Value)
 	}
 
-	log.Debug().Object("pieces", p).Str("order", order).Object("removed", removed).Msg("sorted")
-
 	// TODO: replace/remove hack once image processing stabilizes.
 	if hack {
 		switch len(order) {
@@ -102,7 +98,7 @@ func (p Pieces) Sort(hack bool) (int, string) {
 
 			v, err := strconv.Atoi(o)
 			if err != nil {
-				log.Warn().Err(err).Object("pieces", p).Msg("failed to convert 3 sortable pieces to an integer")
+				notify.SystemWarn("Failed to convert 3 sortable pieces to an integer")
 			}
 
 			return v, order
@@ -110,7 +106,7 @@ func (p Pieces) Sort(hack bool) (int, string) {
 			if order[:2] == order[2:] {
 				v, err := strconv.Atoi(order[:2])
 				if err != nil {
-					log.Warn().Err(err).Object("pieces", p).Msg("failed to convert 4 sortable pieces to an integer")
+					notify.SystemWarn("Failed to convert 4 sortable pieces to an integer")
 				}
 
 				return v, order
@@ -120,22 +116,10 @@ func (p Pieces) Sort(hack bool) (int, string) {
 
 	v, err := strconv.Atoi(order)
 	if err != nil {
-		log.Warn().Err(err).Object("pieces", p).Msg("failed to convert sortable pieces to an integer")
+		notify.SystemWarn("Failed to convert sortable pieces to an integer")
 	}
 
 	return v, order
-}
-
-func (p Piece) MarshalZerologObject(e *zerolog.Event) {
-	e.Stringer("point", p.Point).Str("file", p.File).Int("value", p.Value)
-}
-
-func (p Pieces) MarshalZerologObject(e *zerolog.Event) {
-	e.Int("len", len(p))
-
-	for i, piece := range p {
-		e.Object(strconv.Itoa(i), piece)
-	}
 }
 
 func (s StringInts) Len() int {

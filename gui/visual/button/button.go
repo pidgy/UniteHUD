@@ -31,7 +31,7 @@ type Button struct {
 	LastPressed       time.Time
 	Pressed, Released color.NRGBA
 
-	Click       func()
+	Click       func(b *Button)
 	SingleClick bool // Toggle the Active field on Click events.
 
 	hover bool
@@ -71,7 +71,7 @@ func (b *Button) Layout(gtx layout.Context) layout.Dimensions {
 				b.hover = true
 			case pointer.Release:
 				if b.hover && b.Click != nil {
-					b.Click()
+					b.Click(b)
 					if b.SingleClick {
 						b.Active = !b.Active
 					}

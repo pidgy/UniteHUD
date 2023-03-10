@@ -9,10 +9,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/diode"
-	"github.com/rs/zerolog/log"
-
 	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/debug"
 	"github.com/pidgy/unitehud/detect"
@@ -35,14 +31,6 @@ var sigq = make(chan os.Signal, 1)
 
 func init() {
 	notify.System("Initializing...")
-
-	log.Logger = zerolog.New(
-		diode.NewWriter(zerolog.ConsoleWriter{
-			Out:        os.Stderr,
-			TimeFormat: time.Stamp,
-		}, 4096, time.Nanosecond, func(missed int) {
-			println("diode is falling behind")
-		})).With().Timestamp().Logger().Level(zerolog.DebugLevel)
 }
 
 func kill(errs ...error) {
@@ -51,7 +39,7 @@ func kill(errs ...error) {
 	}
 
 	for _, err := range errs {
-		log.Err(err).Msg(gui.Title(""))
+		println(err)
 	}
 
 	time.Sleep(time.Second)
@@ -65,9 +53,7 @@ func kill(errs ...error) {
 
 func signals() {
 	signal.Notify(sigq, syscall.SIGINT, syscall.SIGTERM)
-	s := <-sigq
-
-	log.Info().Stringer("signal", s).Msg("closing...")
+	<-sigq
 
 	detect.Close()
 
@@ -90,7 +76,7 @@ func main() {
 		kill(err)
 	}
 
-	err = video.Load()
+	err = video.Open()
 	if err != nil {
 		notify.Error("Failed to load video input (%v)", err)
 	}
@@ -100,25 +86,17 @@ func main() {
 		notify.Error("Failed to start UniteHUD server (%v)", err)
 	}
 
-	log.Info().
-		Bool("record", config.Current.Record).
-		Str("assets", config.Current.Assets()).
-		Str("profile", config.Current.Profile).
-		Msg("unitehud")
-
-	notify.System("Debug Mode: %t", global.DebugMode)
+	notify.System("Debug mode: %t", global.DebugMode)
 	notify.System("Server address: \"%s\"", server.Address)
 	notify.System("Recording: %t", config.Current.Record)
 	notify.System("Profile: %s", config.Current.Profile)
 	notify.System("Assets: %s", config.Current.Assets())
-	notify.System("Match Threshold: %.0f%%", config.Current.Acceptance*100)
+	notify.System("Default match threshold: %.0f%%", config.Current.Acceptance*100)
 
 	go detect.Clock()
-	// go detect.Crash()
 	go detect.Energy()
 	go detect.Defeated()
 	go detect.KOs()
-	go detect.Minimap()
 	go detect.Objectives()
 	go detect.PressButtonToScore()
 	go detect.Preview()
@@ -134,7 +112,7 @@ func main() {
 	go update.Check()
 
 	go func() {
-		lastWindow := ""
+		lastWindow := config.Current.Window
 
 		for action := range gui.Window.Actions {
 			switch action {
@@ -199,21 +177,26 @@ func main() {
 
 				switch config.Current.Record {
 				case true:
-					err := debug.LoggingStart()
-					if err != nil {
-						kill(err)
-					}
-
 					notify.System("Using \"%s\" directory for recording data", debug.Dir)
 
 					err = config.Current.Save()
 					if err != nil {
 						kill(err)
 					}
+
+					err := debug.Open()
+					if err != nil {
+						notify.Error("Failed to open \"%s\" (%v)", debug.Dir, err)
+					}
 				case false:
 					notify.System("Closing open files in %s", debug.Dir)
+				}
+			case gui.Log:
+				debug.Log()
 
-					debug.LoggingStop()
+				err := debug.Open()
+				if err != nil {
+					notify.Error("Failed to open \"%s\" (%v)", debug.Dir, err)
 				}
 			case gui.Open:
 				notify.System("Opening \"%s\"", debug.Dir)
@@ -223,13 +206,12 @@ func main() {
 					notify.Error("Failed to open \"%s\" (%v)", debug.Dir, err)
 				}
 			case gui.Refresh:
-				err := video.Load()
+				err := video.Open()
 				if err != nil {
 					notify.Error("Failed to load windows (%v)", err)
 				}
 
 				if lastWindow != config.Current.Window {
-					lastWindow = config.Current.Window
 					notify.System("Capture window set to \"%s\"", lastWindow)
 				}
 			case gui.Debug:
@@ -248,5 +230,5 @@ func main() {
 		}
 	}()
 
-	notify.System("Launched")
+	notify.System("Initialized")
 }

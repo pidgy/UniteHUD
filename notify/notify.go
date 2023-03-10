@@ -89,7 +89,7 @@ func LastSystem() string {
 	return "..."
 }
 
-func (p Post) String() string {
+func (p *Post) String() string {
 	if p.count > 1 {
 		return fmt.Sprintf("%s (x%d)", p.msg, p.count)
 	}

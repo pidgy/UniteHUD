@@ -13,6 +13,7 @@
 // https://learn.microsoft.com/en-us/windows/win32/directshow/selecting-a-capture-device
 HRESULT EnumerateDevices(REFGUID category, IEnumMoniker **ppEnum)
 {
+    VIDEOINFO *pvi;
     // Create the System Device Enumerator.
     ICreateDevEnum *pDevEnum;
     HRESULT hr = CoCreateInstance(CLSID_SystemDeviceEnum, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pDevEnum));

@@ -4,12 +4,12 @@ import (
 	"image"
 	"math"
 
-	"github.com/rs/zerolog/log"
 	"gocv.io/x/gocv"
 
 	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/duplicate"
 	"github.com/pidgy/unitehud/global"
+	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/server"
 	"github.com/pidgy/unitehud/sort"
 	"github.com/pidgy/unitehud/stats"
@@ -45,7 +45,7 @@ func (m *Match) first(matrix gocv.Mat) (Result, int) {
 	lefts := []int{math.MaxInt32, math.MaxInt32, math.MaxInt32}
 
 	templatesWithZero := config.Current.Templates["points"][m.Team.Name]
-	templatesWithoutZero := []template.Template{}
+	templatesWithoutZero := []*template.Template{}
 	for _, t := range templatesWithZero {
 		if t.Value == 0 {
 			continue
@@ -86,7 +86,7 @@ func (m *Match) first(matrix gocv.Mat) (Result, int) {
 
 		for i := range results {
 			if results[i].Empty() {
-				log.Warn().Str("filename", templates[i].File).Msg("empty result")
+				notify.SystemWarn("Empty result for %s", templates[i].Truncated())
 				continue
 			}
 
@@ -109,19 +109,6 @@ func (m *Match) first(matrix gocv.Mat) (Result, int) {
 				if delta(maxp.X, lefts[round]) < 3 {
 					leftmost = maxv > maxs[round]
 				}
-
-				log.Debug().
-					Bool("check1", maxp.X < lefts[round]).
-					Bool("check2", maxv > maxs[round]).
-					Int("delta", delta(maxp.X, lefts[round])).
-					Int("distance", maxp.X).
-					Bool("leftmost", leftmost).
-					Stringer("maxp", maxp).
-					Float32("maxv", maxv).
-					Int("min", mins[round]).
-					Int("round", round).
-					Object("t", templates[i]).
-					Msgf("%d", templates[i].Value)
 
 				if leftmost {
 					lefts[round] = maxp.X
@@ -211,7 +198,7 @@ func (m *Match) regular(matrix gocv.Mat) (Result, int) {
 
 		for i := range results {
 			if results[i].Empty() {
-				log.Warn().Str("filename", templates[i].File).Msg("empty result")
+				notify.SystemWarn("Empty result for %s", templates[i].Truncated())
 				continue
 			}
 
@@ -233,19 +220,6 @@ func (m *Match) regular(matrix gocv.Mat) (Result, int) {
 				if delta(maxp.X, lefts[round]) < 5 {
 					leftmost = maxv > maxs[round]
 				}
-
-				log.Debug().
-					Bool("check1", maxp.X < lefts[round]).
-					Bool("check2", maxv > maxs[round]).
-					Int("delta", delta(maxp.X, lefts[round])).
-					Int("distance", maxp.X).
-					Bool("leftmost", leftmost).
-					Stringer("maxp", maxp).
-					Float32("maxv", maxv).
-					Int("min", mins[round]).
-					Int("round", round).
-					Object("t", templates[i]).
-					Msgf("%d", templates[i].Value)
 
 				if leftmost {
 					m.Points[round] = maxp
@@ -274,13 +248,6 @@ func (m *Match) regular(matrix gocv.Mat) (Result, int) {
 	return m.validate(matrix, p)
 }
 
-func delta(a, b int) int {
-	if a > b {
-		return a - b
-	}
-	return b - a
-}
-
 func (m *Match) validate(matrix gocv.Mat, value int) (Result, int) {
 	if value < 1 || value > 100 {
 		return Invalid, value
@@ -306,6 +273,12 @@ func (m *Match) validate(matrix gocv.Mat, value int) (Result, int) {
 	}
 }
 
+func delta(a, b int) int {
+	if a > b {
+		return a - b
+	}
+	return b - a
+}
 func sliceToValue(points []int) (Result, int) {
 	// Enforce a length 3 array to validate checks below.
 	if len(points) == 2 {

@@ -18,6 +18,7 @@ type Event struct {
 }
 
 type EventType int
+type Types []EventType
 
 const (
 	Nothing                = EventType(-1)
@@ -38,8 +39,8 @@ const (
 	FirstScored            = EventType(14)
 	OrangeScoreMissed      = EventType(15)
 	PurpleScoreMissed      = EventType(16)
-	RegielekiSecureEnemy   = EventType(17)
-	RegielekiSecureAlly    = EventType(18)
+	RegielekiSecureOrange  = EventType(17)
+	RegielekiSecurePurple  = EventType(18)
 	PressButtonToScore     = EventType(19)
 	ScoreOverride          = EventType(20)
 	ObjectivePresent       = EventType(21)
@@ -47,18 +48,18 @@ const (
 	ObjectiveReachedPurple = EventType(23)
 	ServerStarted          = EventType(24)
 	ServerStopped          = EventType(25)
-	RegiceSecureEnemy      = EventType(26)
-	RegiceSecureAlly       = EventType(27)
-	RegirockSecureEnemy    = EventType(28)
-	RegirockSecureAlly     = EventType(29)
-	RegisteelSecureEnemy   = EventType(30)
-	RegisteelSecureAlly    = EventType(31)
-	KOAlly                 = EventType(32)
-	KOStreakAlly           = EventType(33)
-	KOEnemy                = EventType(34)
-	KOStreakEnemy          = EventType(35)
-	RayquazaSecureEnemy    = EventType(36)
-	RayquazaSecureAlly     = EventType(37)
+	RegiceSecureOrange     = EventType(26)
+	RegiceSecurePurple     = EventType(27)
+	RegirockSecureOrange   = EventType(28)
+	RegirockSecurePurple   = EventType(29)
+	RegisteelSecureOrange  = EventType(30)
+	RegisteelSecurePurple  = EventType(31)
+	KOPurple               = EventType(32)
+	KOStreakPurple         = EventType(33)
+	KOOrange               = EventType(34)
+	KOStreakOrange         = EventType(35)
+	RayquazaSecureOrange   = EventType(36)
+	RayquazaSecurePurple   = EventType(37)
 )
 
 var (
@@ -107,22 +108,22 @@ func (e EventType) String() string {
 		return "Orange score missed"
 	case PurpleScoreMissed:
 		return "Purple score missed"
-	case RegielekiSecureEnemy:
-		return "Regieleki orange secure"
-	case RegielekiSecureAlly:
-		return "Regieleki purple secure"
-	case RegiceSecureEnemy:
-		return "Regice orange secure"
-	case RegiceSecureAlly:
-		return "Regice purple secure"
-	case RegirockSecureEnemy:
-		return "Regirock orange secure"
-	case RegirockSecureAlly:
-		return "Regirock purple secure"
-	case RegisteelSecureEnemy:
-		return "Registeel orange secure"
-	case RegisteelSecureAlly:
-		return "Registeel purple secure"
+	case RegielekiSecurePurple:
+		return "Regieleki secured by Purple team"
+	case RegielekiSecureOrange:
+		return "Regieleki secured by Orange team"
+	case RegiceSecurePurple:
+		return "Regice secured by Purple team"
+	case RegiceSecureOrange:
+		return "Regice secured by Orange team"
+	case RegirockSecurePurple:
+		return "Regirock secured by Purple team"
+	case RegirockSecureOrange:
+		return "Regirock secured by Orange team"
+	case RegisteelSecurePurple:
+		return "Registeel secured by Purple team"
+	case RegisteelSecureOrange:
+		return "Registeel secured by Orange team"
 	case PressButtonToScore:
 		return "Press button to score"
 	case ScoreOverride:
@@ -137,18 +138,18 @@ func (e EventType) String() string {
 		return "Server Started"
 	case ServerStopped:
 		return "Server Stopped"
-	case KOAlly:
-		return "Purple KO"
-	case KOEnemy:
-		return "Orange KO"
-	case KOStreakAlly:
-		return "Purple KO streak"
-	case KOStreakEnemy:
-		return "Orange KO streak"
-	case RayquazaSecureEnemy:
-		return "Rayquaza orange secure"
-	case RayquazaSecureAlly:
-		return "Rayquaza purple secure"
+	case KOPurple:
+		return "KO by Purple team"
+	case KOOrange:
+		return "KO by Orange team"
+	case KOStreakPurple:
+		return "KO streak by Purple team"
+	case KOStreakOrange:
+		return "KO streak by Orange team"
+	case RayquazaSecurePurple:
+		return "Rayquaza secured by Purple team"
+	case RayquazaSecureOrange:
+		return "Rayquaza secured by Orange team"
 	default:
 		return fmt.Sprintf("Unknown (%d)", e.Int())
 	}
@@ -174,7 +175,7 @@ func Dump() (string, bool) {
 		return "No event data is available to display...", false
 	}
 
-	str := "Matched Events"
+	str := "Event History"
 	for i := len(Events) - 1; i >= 0; i-- {
 		e := Events[i]
 
@@ -212,16 +213,7 @@ func (e *Event) Strip() string {
 	return fmt.Sprintf("[%s] %s", e.Clock, e.EventType)
 }
 
-func First(e EventType, since time.Duration) *Event {
-	events := Past(e, since)
-	if len(events) > 0 {
-		return events[len(events)-1]
-	}
-
-	return nil
-}
-
-func Last(e EventType, since time.Duration) *Event {
+func (e EventType) Occured(since time.Duration) *Event {
 	for _, event := range Events {
 		// Have we gone too far?
 		if time.Since(event.Time) > since {
@@ -236,22 +228,21 @@ func Last(e EventType, since time.Duration) *Event {
 	return nil
 }
 
-func LastAny(since time.Duration, any ...EventType) *Event {
-	for _, event := range Events {
-		// Have we gone too far?
-		if time.Since(event.Time) > since {
-			return nil
-		}
+func First(e EventType, since time.Duration) *Event {
+	events := Past(e, since)
+	if len(events) > 0 {
+		return events[len(events)-1]
+	}
+	return nil
+}
 
-		for _, a := range any {
-			if event.EventType == a {
-				if time.Since(event.Time) < since {
-					return event
-				}
-			}
+func Occured(since time.Duration, e ...EventType) *Event {
+	for _, e := range e {
+		event := e.Occured(since)
+		if event != nil {
+			return event
 		}
 	}
-
 	return nil
 }
 

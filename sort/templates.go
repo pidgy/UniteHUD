@@ -11,7 +11,7 @@ import (
 
 // Templates represents a sortable set of unique templates where set len > 1.
 type Templates struct {
-	templates []template.Template
+	templates []*template.Template
 	cache     map[string]cached
 	invalid   bool
 }
@@ -28,7 +28,7 @@ func NewTemplates() Templates {
 	}
 }
 
-func (t *Templates) Cache(t2 template.Template, p image.Point, value float32) {
+func (t *Templates) Cache(t2 *template.Template, p image.Point, value float32) {
 	if t2.Value == 0 {
 		p = image.Pt(math.MaxInt32, math.MaxInt32)
 	}

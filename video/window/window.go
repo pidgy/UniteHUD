@@ -15,16 +15,16 @@ import (
 
 	"github.com/disintegration/gift"
 	"github.com/nfnt/resize"
-	"github.com/rs/zerolog/log"
 
 	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/video/proc"
 	"github.com/pidgy/unitehud/video/screen"
+	"github.com/pidgy/unitehud/video/window/electron"
 )
 
 var (
-	Sources = screen.Sources
+	Sources = []string{}
 
 	handles = []syscall.Handle{}
 	lock    = &sync.Mutex{}
@@ -38,6 +38,10 @@ var (
 		name, err := getWindowText(h) //, &b[0], int32(len(b)))
 		if err != nil {
 			// notify.Error("Failed to find a window title (%v)", err)
+			return 1
+		}
+
+		if name == config.ProjectorWindow {
 			return 1
 		}
 
@@ -58,7 +62,7 @@ func init() {
 		for range time.NewTicker(time.Second * 5).C {
 			windows, _, err := list()
 			if err != nil {
-				log.Err(err).Msg("failed to load open windows")
+
 			}
 
 			Sources = windows
@@ -159,7 +163,7 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 		uintptr(width), uintptr(height),
 		src,
 		uintptr(rect.Min.X), uintptr(rect.Min.Y),
-		uintptr(proc.SrcCopy|proc.CaptureBLT),
+		uintptr(proc.CaptureBLT|proc.SrcCopy),
 	)
 	if ret == 0 {
 		notify.Error("Failed to capture \"%s\" window", config.Current.Window)
@@ -195,7 +199,18 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 
 	img2 := image.NewRGBA(img.Bounds())
 
-	if config.Current.Scale == 1 {
+	if config.Current.Window == config.BrowserWindow {
+		gift.New(
+			gift.FlipVertical(),
+			/*
+				gift.ResizeToFill(1920, 1080, gift.CubicResampling, gift.TopLeftAnchor),
+				gift.CropToSize(1920, 1080, gift.TopLeftAnchor),
+			*/
+		).Draw(img2, img)
+
+		return img2, nil
+		//return resize.Resize(uint(float64(img.Rect.Max.X)*1.3), uint(float64(img.Rect.Max.Y)*1.3), img2, resize.Lanczos3).(*image.RGBA), nil
+	} else if config.Current.Scale == 1 {
 		gift.New(
 			gift.FlipVertical(),
 		).Draw(img2, img)
@@ -229,7 +244,18 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 	return img3, nil
 }
 
-func Load() error {
+func IsWindow() bool {
+	return !Lost()
+}
+
+func Open() error {
+	if config.Current.Window == config.BrowserWindow {
+		err := electron.Open()
+		if err != nil {
+			notify.Error("%v", err)
+		}
+	}
+
 	windows, _, err := list()
 	if err != nil {
 		return err
@@ -239,11 +265,15 @@ func Load() error {
 
 	for _, win := range windows {
 		if win == config.Current.Window {
-			if config.Current.Window != config.MainDisplay {
+			if !screen.IsDisplay() {
 				config.Current.LostWindow = ""
 			}
 			return nil
 		}
+	}
+
+	if screen.IsDisplay() {
+		return nil
 	}
 
 	notify.Error("\"%s\" could not be found", config.Current.Window)
@@ -254,27 +284,32 @@ func Load() error {
 	return nil
 }
 
-var attempts = 0
+func Lost() bool {
+	return config.Current.LostWindow != ""
+}
 
 const max = 5
 
+var attempts = 0
+
 func Reattach() error {
+	if !Lost() {
+		return nil
+	}
+
+	max := 5
 	windows, _, err := list()
 	if err != nil {
 		return err
 	}
 
-	log.Debug().Str("lost", config.Current.LostWindow).Strs("windows", windows).Msg("reattaching window")
-
 	for _, win := range windows {
 		if win == config.Current.LostWindow {
 			config.Current.Window = win
-			if config.Current.Window != config.MainDisplay {
-				config.Current.LostWindow = ""
-			}
 
 			notify.Announce("Found \"%s\" window", config.Current.Window)
 			config.Current.LostWindow = ""
+			attempts = 0
 
 			return nil
 		}
@@ -340,7 +375,7 @@ func list() ([]string, []syscall.Handle, error) {
 	lock.Lock()
 	defer lock.Unlock()
 
-	Sources = screen.Sources
+	Sources = []string{}
 
 	err := enumWindows(callback, 0)
 	if err != nil {
@@ -386,12 +421,8 @@ func getWindowText(hwnd syscall.Handle) (name string, err error) {
 	return syscall.UTF16ToString(b), err
 }
 
-func scaled(img *image.RGBA) *image.RGBA {
-	if config.Current.Scale < 1 || img == nil {
-		return img
-	}
-
-	x := float64(img.Rect.Max.X) * config.Current.Scale
+func scaled(img *image.RGBA, scale float64) *image.RGBA {
+	x := float64(img.Rect.Max.X) * scale
 
 	return resize.Resize(uint(x), 0, img, resize.Lanczos3).(*image.RGBA)
 }

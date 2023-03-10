@@ -10,8 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"nhooyr.io/websocket"
 
 	"github.com/pidgy/unitehud/config"
@@ -31,20 +29,22 @@ type game struct {
 	Energy    int         `json:"balls"`
 	Events    []string    `json:"events"`
 	Match     bool        `json:"match"`
-	Orange    score       `json:"orange"`
-	Purple    score       `json:"purple"`
+	Orange    *score      `json:"orange"`
+	Purple    *score      `json:"purple"`
 	Profile   string      `json:"profile"`
 	Rayquaza  string      `json:"rayquaza"`
 	Regilekis []string    `json:"regis"`
 	Seconds   int         `json:"seconds"`
-	Self      score       `json:"self"`
+	Self      *score      `json:"self"`
 	Stacks    int         `json:"stacks"`
 	Started   bool        `json:"started"`
 	Version   string      `json:"version"`
+
+	lastSecondsUpdate time.Time
 }
 
 type info struct {
-	game
+	*game
 
 	tx       int
 	requests int
@@ -77,8 +77,6 @@ func Bottom() []objective {
 }
 
 func Clear() {
-	log.Debug().Object("game", current.game).Msg("clearing")
-
 	started := current.game.Started
 	current.game = reset()
 	current.game.Started = started
@@ -107,7 +105,16 @@ func Holding() int {
 }
 
 func IsFinalStretch() bool {
-	return current.game.Seconds != 0 && current.game.Seconds <= 120
+	if current.game.Seconds >= 130 {
+		return false
+	}
+
+	// Edge case to handle scoring at exactly 2:00 and missing time update.
+	if time.Since(current.lastSecondsUpdate).Seconds() >= float64(current.game.Seconds-130) {
+		return true
+	}
+
+	return current.game.Seconds > 0 && current.game.Seconds < 121
 }
 
 func KOs(t *team.Team) int {
@@ -166,8 +173,6 @@ func Listen() error {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-
-		log.Debug().RawJSON("response", raw).Str("client", r.RemoteAddr).Msg("http response")
 
 		_, err = w.Write(raw)
 		if err != nil {
@@ -442,8 +447,6 @@ func SetScore(t *team.Team, value int) {
 		Value: value,
 	}
 
-	log.Debug().Object("score", s).Object("game", current.game).Msg("publishing")
-
 	switch t.Name {
 	case team.Purple.Name:
 		current.game.Purple.Value += s.Value
@@ -474,6 +477,8 @@ func SetStopped() {
 }
 
 func SetTime(minutes, seconds int) {
+	current.game.lastSecondsUpdate = time.Now()
+
 	if minutes+seconds == 0 {
 		current.game.Match = false
 		return
@@ -498,23 +503,23 @@ func (i *info) client(r *http.Request, route string, raw []byte) {
 	_, ok := i.clients[key]
 	if !ok {
 		notify.System("Server accepted a new %s connection from %s", route, key)
-		log.Debug().RawJSON("response", raw).Str("client", key).Msg("first json response")
+
 	}
 
 	i.clients[key] = time.Now()
 }
 
-func reset() game {
-	return game{
-		Purple: score{
+func reset() *game {
+	return &game{
+		Purple: &score{
 			Team:  team.Purple.Name,
 			Value: 0,
 		},
-		Orange: score{
+		Orange: &score{
 			Team:  team.Orange.Name,
 			Value: 0,
 		},
-		Self: score{
+		Self: &score{
 			Team:  team.Self.Name,
 			Value: 0,
 		},
@@ -525,14 +530,4 @@ func reset() game {
 		Version:   global.Version,
 		Defeated:  []int{},
 	}
-}
-
-// Zerolog.
-
-func (g game) MarshalZerologObject(e *zerolog.Event) {
-	e.Object("purple", g.Purple).Object("orange", g.Orange).Int("seconds", g.Seconds).Bool("config", g.Config)
-}
-
-func (s score) MarshalZerologObject(e *zerolog.Event) {
-	e.Str("team", s.Team).Int("value", s.Value)
 }

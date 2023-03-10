@@ -100,8 +100,12 @@ func CPUData() string {
 	}...)
 }
 
-func Data() {
+func Lines() []string {
+	lineq := make(chan []string)
+
 	statsq <- func() {
+		defer close(lineq)
+
 		if len(averages) == 0 {
 			notify.Warn("No matched image template statistics to display...")
 			return
@@ -174,28 +178,33 @@ func Data() {
 
 		notify.System("Matched image template statistics")
 
-		lines := strings.Split(buf.String(), "\n")
-		for i := range lines {
-			if lines[i] == "" {
-				continue
-			}
+		lineq <- strings.Split(buf.String(), "\n")
+	}
 
-			switch {
-			case strings.Contains(lines[i], team.Orange.Name):
-				notify.Append(team.Orange.RGBA, lines[i])
-			case strings.Contains(lines[i], team.Purple.Name):
-				notify.Append(team.Purple.RGBA, lines[i])
-			case strings.Contains(lines[i], team.First.Name):
-				notify.Append(team.First.RGBA, lines[i])
-			case strings.Contains(lines[i], team.Energy.Name):
-				notify.Append(rgba.DarkYellow, lines[i])
-			case strings.Contains(lines[i], team.Time.Name):
-				notify.Append(rgba.Slate, lines[i])
-			case strings.Contains(lines[i], team.Game.Name):
-				notify.Append(rgba.Gray, lines[i])
-			default:
-				notify.SystemAppend(lines[i])
-			}
+	return <-lineq
+}
+
+func Data() {
+	for _, line := range Lines() {
+		if line == "" {
+			continue
+		}
+
+		switch {
+		case strings.Contains(line, team.Orange.Name):
+			notify.Append(team.Orange.RGBA, line)
+		case strings.Contains(line, team.Purple.Name):
+			notify.Append(team.Purple.RGBA, line)
+		case strings.Contains(line, team.First.Name):
+			notify.Append(team.First.RGBA, line)
+		case strings.Contains(line, team.Energy.Name):
+			notify.Append(rgba.DarkYellow, line)
+		case strings.Contains(line, team.Time.Name):
+			notify.Append(rgba.Slate, line)
+		case strings.Contains(line, team.Game.Name):
+			notify.Append(rgba.Gray, line)
+		default:
+			notify.SystemAppend(line)
 		}
 	}
 }

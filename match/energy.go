@@ -6,7 +6,6 @@ import (
 	"math"
 	"strconv"
 
-	"github.com/rs/zerolog/log"
 	"gocv.io/x/gocv"
 
 	"github.com/pidgy/unitehud/config"
@@ -47,7 +46,6 @@ func Energy(matrix gocv.Mat, img image.Image) (Result, []int, int) {
 
 		for i := range results {
 			if results[i].Empty() {
-				log.Warn().Str("filename", templates[i].File).Msg("empty result")
 				continue
 			}
 
@@ -61,14 +59,6 @@ func Energy(matrix gocv.Mat, img image.Image) (Result, []int, int) {
 			if maxv >= team.Energy.Acceptance {
 				go stats.Average(templates[i].Truncated(), maxv)
 				go stats.Count(templates[i].Truncated())
-
-				/*
-					log.Info().Object("t", templates[i]).
-						Stringer("maxp", maxp).
-						Float32("maxv", maxv).
-						Int("round", round).
-						Msgf("%d", templates[i].Value)
-				*/
 
 				// No sorting comparison exists yet, proceed.
 				if mins[round] == 0 {
@@ -134,7 +124,6 @@ func IdentifyEnergy(mat gocv.Mat, points int) (image.Image, error) {
 
 	crop, err := clone.ToImage()
 	if err != nil {
-		log.Err(err).Msg("failed to convert image")
 		return nil, err
 	}
 
@@ -142,7 +131,7 @@ func IdentifyEnergy(mat gocv.Mat, points int) (image.Image, error) {
 }
 
 func SelfScore(matrix gocv.Mat, img image.Image) (*Match, Result) {
-	templates := []template.Template{}
+	templates := []*template.Template{}
 	for _, t := range config.Current.Templates["scoring"][team.Game.Name] {
 		if state.EventType(t.Value) == state.PreScore || state.EventType(t.Value) == state.PostScore {
 			templates = append(templates, t)
@@ -153,7 +142,7 @@ func SelfScore(matrix gocv.Mat, img image.Image) (*Match, Result) {
 }
 
 func SelfScored(matrix gocv.Mat, img image.Image) (*Match, Result) {
-	templates := []template.Template{}
+	templates := []*template.Template{}
 	for _, t := range config.Current.Templates["scoring"][team.Game.Name] {
 		if state.EventType(t.Value) == state.PostScore {
 			templates = append(templates, t)
@@ -164,7 +153,7 @@ func SelfScored(matrix gocv.Mat, img image.Image) (*Match, Result) {
 }
 
 func SelfScoring(matrix gocv.Mat, img image.Image) (*Match, Result) {
-	templates := []template.Template{}
+	templates := []*template.Template{}
 	for _, t := range config.Current.Templates["scoring"][team.Game.Name] {
 		e := state.EventType(t.Value)
 		if e == state.PreScore || e == state.PressButtonToScore {
@@ -176,7 +165,7 @@ func SelfScoring(matrix gocv.Mat, img image.Image) (*Match, Result) {
 }
 
 func SelfScoreOption(matrix gocv.Mat, img image.Image) (*Match, Result) {
-	templates := []template.Template{}
+	templates := []*template.Template{}
 	for _, t := range config.Current.Templates["scoring"][team.Game.Name] {
 		if state.EventType(t.Value) == state.PressButtonToScore {
 			templates = append(templates, t)

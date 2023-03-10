@@ -81,7 +81,7 @@ GET 127.0.0.1:17069/ws
     "match": true,
     "config": false,
     "profile": "player",
-    "version": "v1.1beta",
+    "version": "v1.1",
     "rayquaza": "orange",
     "events": [
         "[2:00] Defeated with points", 

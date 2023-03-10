@@ -11,18 +11,18 @@ import (
 	"gioui.org/font/gofont"
 	"gioui.org/unit"
 	"gioui.org/widget/material"
-	"github.com/rs/zerolog/log"
 
 	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/gui/visual/button"
-	"github.com/pidgy/unitehud/gui/visual/help"
 	"github.com/pidgy/unitehud/gui/visual/screen"
 	"github.com/pidgy/unitehud/gui/visual/textblock"
 	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/stats"
 	"github.com/pidgy/unitehud/video"
 )
+
+type Action string
 
 type GUI struct {
 	*app.Window
@@ -50,8 +50,6 @@ type GUI struct {
 	ecoMode bool
 }
 
-type Action string
-
 const (
 	Start   = Action("start")
 	Stats   = Action("stats")
@@ -63,6 +61,7 @@ const (
 	Debug   = Action("debug")
 	Idle    = Action("idle")
 	Config  = Action("Config")
+	Log     = Action("Log")
 )
 
 var Window *GUI
@@ -72,8 +71,8 @@ func New() {
 		Window: app.NewWindow(
 			app.Title(Title("")),
 			app.Size(
-				unit.Px(975),
-				unit.Px(715),
+				unit.Px(1024),
+				unit.Px(720),
 			),
 		),
 		Preview: true,
@@ -112,21 +111,14 @@ func (g *GUI) Open() {
 
 				next, err = g.main()
 				if err != nil {
-					log.Err(err).Send()
+					g.ToastError(err)
 				}
 			case "configure":
 				g.resize = true
 
 				next, err = g.configure()
 				if err != nil {
-					log.Err(err).Send()
-				}
-			case "help_configure":
-				h := help.Configuration()
-
-				next, err = g.configurationHelpDialog(h.Help, h.Layout)
-				if err != nil {
-					log.Err(err).Send()
+					g.ToastError(err)
 				}
 			default:
 				return
@@ -220,9 +212,8 @@ func (g *GUI) proc() {
 
 func (g *GUI) display(src image.Image) {
 	g.Screen = &screen.Screen{
-		Image:  src,
-		ScaleX: 2,
-		ScaleY: 2,
+		Image:         src,
+		VerticalScale: true,
 	}
 
 	if g.open {
@@ -236,18 +227,15 @@ func (g *GUI) display(src image.Image) {
 }
 
 func (g *GUI) preview() {
-	once := true
-	for range time.NewTicker(time.Millisecond * 100).C {
+	for ; ; time.Sleep(time.Millisecond * 50) {
 		if g.Preview {
 			img, err := video.Capture()
 			if err != nil {
 				g.ToastError(err)
+				continue
 			}
 
 			g.display(img)
-			if once {
-				once = !once
-			}
 		}
 
 		// Redraw the image.
@@ -269,5 +257,5 @@ func (g *GUI) buttonSpam(b *button.Button) {
 }
 
 func Title(t string) string {
-	return fmt.Sprintf("UniteHUD %s Server %s", global.Version, t)
+	return fmt.Sprintf("UniteHUD %s %s", global.Version, t)
 }

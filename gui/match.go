@@ -3,9 +3,7 @@ package gui
 import (
 	"fmt"
 	"strings"
-	"time"
 
-	"github.com/rs/zerolog/log"
 	"gocv.io/x/gocv"
 
 	"github.com/pidgy/unitehud/config"
@@ -17,31 +15,24 @@ import (
 	"github.com/pidgy/unitehud/video"
 )
 
-func (g *GUI) matchEnergy(a *area.Area) {
-	defer func() {
-		r := recover()
-		if r != nil {
-			log.Error().Err(r.(error)).Msg("match balls failed")
-		}
-	}()
-
+func (g *GUI) matchEnergy(a *area.Area) bool {
 	if !g.Preview {
 		a.NRGBA = area.Locked
-		return
+		return false
 	}
 
 	a.NRGBA = area.Miss
 
 	img, err := video.CaptureRect(a.Rectangle())
 	if err != nil {
-		log.Err(err).Send()
-		return
+		g.ToastError(err)
+		return false
 	}
 
 	matrix, err := gocv.ImageToMatRGB(img)
 	if err != nil {
-		log.Err(err).Send()
-		return
+		g.ToastError(err)
+		return false
 	}
 	defer matrix.Close()
 
@@ -49,20 +40,20 @@ func (g *GUI) matchEnergy(a *area.Area) {
 	switch result {
 	case match.Found, match.Duplicate:
 		a.NRGBA = area.Match
-		a.Text = fmt.Sprintf("\t %d", score)
+		a.Text = fmt.Sprintf("Aeos: %d", score)
 	case match.NotFound:
 		a.NRGBA = area.Miss
-		a.Text = "Energy"
+		a.Text = "Aeos"
 	case match.Missed:
 		a.NRGBA = rgba.N(rgba.Alpha(rgba.DarkerYellow, 0x99))
-		a.Text = fmt.Sprintf("\t %d?", score)
+		a.Text = fmt.Sprintf("Aeos: %d?", score)
 	case match.Invalid:
 		a.NRGBA = area.Miss
-		a.Text = "Energy"
+		a.Text = "Aeos"
 	}
 
-	m, result := match.SelfScore(matrix, img)
-	switch result {
+	m, r := match.SelfScore(matrix, img)
+	switch r {
 	case match.Found:
 		if state.EventType(m.Template.Value) == state.PreScore {
 			a.NRGBA = area.Match
@@ -73,197 +64,143 @@ func (g *GUI) matchEnergy(a *area.Area) {
 		}
 	case match.Invalid:
 		a.NRGBA = area.Miss
-		a.Text = "Invalid Energy"
+		a.Text = "Invalid Aeos"
 	}
+
+	return r == match.Found
 }
 
-func (g *GUI) matchKOs(a *area.Area) {
+func (g *GUI) matchKOs(a *area.Area) bool {
 	if !g.Preview {
 		a.NRGBA = area.Locked
-		return
+		return false
 	}
 
 	img, err := video.CaptureRect(a.Rectangle())
 	if err != nil {
-		log.Err(err).Send()
-		return
+		g.ToastError(err)
+		return false
 	}
 
 	matrix, err := gocv.ImageToMatRGB(img)
 	if err != nil {
-		log.Err(err).Send()
-		return
+		g.ToastError(err)
+		return false
 	}
 	defer matrix.Close()
 
 	_, r, e := match.Matches(matrix, img, config.Current.Templates["ko"][team.Game.Name])
 	if r != match.Found {
 		a.NRGBA = area.Miss
-		a.Text = fmt.Sprintf("KO %s", strings.Title(r.String()))
-		return
+		a.Text = fmt.Sprintf("KO: %s", strings.Title(r.String()))
+		return false
 	}
 	a.NRGBA = area.Match
-	a.Text = fmt.Sprintf("KO %s (%s)", strings.Title(r.String()), state.EventType(e))
+	a.Text = fmt.Sprintf("KO: %s", state.EventType(e))
+
+	return r == match.Found
 }
 
-func (g *GUI) matchObjectives(a *area.Area) {
+func (g *GUI) matchObjectives(a *area.Area) bool {
 	if !g.Preview {
 		a.NRGBA = area.Locked
-		return
+		return false
 	}
 
 	img, err := video.CaptureRect(a.Rectangle())
 	if err != nil {
-		log.Err(err).Send()
-		return
+		g.ToastError(err)
+		return false
 	}
 
 	matrix, err := gocv.ImageToMatRGB(img)
 	if err != nil {
-		log.Err(err).Send()
-		return
+		g.ToastError(err)
+		return false
 	}
 	defer matrix.Close()
 
 	_, r, e := match.Matches(matrix, img, config.Current.Templates["secure"][team.Game.Name])
 	if r != match.Found {
 		a.NRGBA = area.Miss
-		a.Text = fmt.Sprintf("Objective %s", strings.Title(r.String()))
-		return
+		a.Text = fmt.Sprintf("Objective: %s", strings.Title(r.String()))
+		return false
 	}
 	a.NRGBA = area.Match
-	a.Text = fmt.Sprintf("Objective %s (%s)", strings.Title(r.String()), state.EventType(e))
+	a.Text = fmt.Sprintf("Objective: %s (%s)", strings.Title(r.String()), state.EventType(e))
+
+	return r == match.Found
 }
 
-func (g *GUI) matchScore(a *area.Area) {
-	defer func() {
-		r := recover()
-		if r != nil {
-			log.Error().Err(r.(error)).Msg("match score failed")
-		}
-	}()
-
+func (g *GUI) matchScore(a *area.Area) bool {
 	if !g.Preview {
 		a.NRGBA = area.Locked
-		return
+		return false
 	}
-
-	// a.NRGBA = area.Miss
-	// a.Subtext = ""
 
 	img, err := video.CaptureRect(a.Rectangle())
 	if err != nil {
-		log.Err(err).Send()
-		return
+		g.ToastError(err)
+		return false
 	}
 
 	matrix, err := gocv.ImageToMatRGB(img)
 	if err != nil {
-		log.Err(err).Send()
-		return
+		g.ToastError(err)
+		return false
 	}
 	defer matrix.Close()
 
-	for _, templates := range config.Current.Templates["scored"] {
-		_, result, score := match.Matches(matrix, g.Image, templates)
-		switch result {
+	for _, t := range config.Current.Templates["scored"] {
+		_, r, score := match.Matches(matrix, g.Image, t)
+		switch r {
 		case match.Found, match.Duplicate:
 			a.NRGBA = area.Match
-			a.Subtext = fmt.Sprintf("(+%d)", score)
-			return
+			a.Text = fmt.Sprintf("Score: %d", score)
+
+			return true
 		case match.NotFound:
 			a.NRGBA = area.Miss
+			a.Text = fmt.Sprintf("Score: %s", strings.Title(r.String()))
 		case match.Missed:
 			a.NRGBA = rgba.N(rgba.Alpha(rgba.DarkerYellow, 0x99))
-			a.Subtext = fmt.Sprintf("(%d?)", score)
+			a.Text = fmt.Sprintf("Score: %d?", score)
 		case match.Invalid:
 			a.NRGBA = area.Miss
+			a.Text = fmt.Sprintf("Score: %s", strings.Title(r.String()))
 		}
-
-		a.Subtext = strings.Title(result.String())
 	}
+
+	return false
 }
 
-func (g *GUI) matchMap(a *area.Area) {
-	defer func() {
-		r := recover()
-		if r != nil {
-			log.Error().Err(r.(error)).Msg("match map failed")
-		}
-	}()
-
+func (g *GUI) matchTime(a *area.Area) bool {
 	if !g.Preview {
 		a.NRGBA = area.Locked
-		return
+		return false
 	}
-
-	a.NRGBA = area.Miss
-	a.Subtext = ""
 
 	img, err := video.CaptureRect(a.Rectangle())
 	if err != nil {
-		log.Err(err).Send()
-		return
+		g.ToastError(err)
+		return false
 	}
 
 	matrix, err := gocv.ImageToMatRGB(img)
 	if err != nil {
-		log.Err(err).Send()
-		return
-	}
-	defer matrix.Close()
-
-	_, ok := match.MiniMap(matrix, img)
-	if ok {
-		a.NRGBA = area.Match
-		a.Subtext = "(Found)"
-	}
-}
-
-func (g *GUI) matchTime(a *area.Area) {
-	defer func() {
-		r := recover()
-		if r != nil {
-			log.Error().Err(r.(error)).Msg("match time failed")
-		}
-	}()
-
-	if !g.Preview {
-		a.NRGBA = area.Locked
-		return
-	}
-
-	a.NRGBA = area.Miss
-	a.Subtext = "(00:00)"
-
-	img, err := video.CaptureRect(a.Rectangle())
-	if err != nil {
-		log.Err(err).Send()
-		return
-	}
-
-	matrix, err := gocv.ImageToMatRGB(img)
-	if err != nil {
-		log.Err(err).Send()
-		return
+		g.ToastError(err)
+		return false
 	}
 	defer matrix.Close()
 
 	s, k := match.Time(matrix, img)
 	if s != 0 {
 		a.NRGBA = area.Match
-		a.Subtext = "(" + k + ")"
+		a.Text = fmt.Sprintf("Time: %s", k)
+		return true
 	}
-}
 
-func (g *GUI) while(fn func(), wait *bool) {
-	for {
-		time.Sleep(time.Second)
-
-		if *wait {
-			continue
-		}
-
-		fn()
-	}
+	a.NRGBA = area.Miss
+	a.Text = "Time: Not Found"
+	return false
 }

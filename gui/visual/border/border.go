@@ -24,7 +24,7 @@ type Top struct {
 	Width        unit.Value
 }
 
-func (b Bottom) Layout(gtx layout.Context, w layout.Widget) layout.Dimensions {
+func (b *Bottom) Layout(gtx layout.Context, w layout.Widget) layout.Dimensions {
 	dims := w(gtx)
 	sz := layout.FPt(dims.Size)
 
@@ -47,7 +47,7 @@ func (b Bottom) Layout(gtx layout.Context, w layout.Widget) layout.Dimensions {
 	return dims
 }
 
-func (t Top) Layout(gtx layout.Context, w layout.Widget) layout.Dimensions {
+func (t *Top) Layout(gtx layout.Context, w layout.Widget) layout.Dimensions {
 	dims := w(gtx)
 	sz := layout.FPt(dims.Size)
 

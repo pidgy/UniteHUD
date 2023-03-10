@@ -85,7 +85,7 @@ func (t *TextBlock) Layout(gtx layout.Context, posts []notify.Post) layout.Dimen
 	th.TextSize = unit.Sp(9)
 
 	Fill(gtx,
-		rgba.N(rgba.DarkGray),
+		rgba.N(rgba.Background),
 		func(gtx layout.Context) layout.Dimensions {
 			return layout.Dimensions{Size: gtx.Constraints.Max}
 		},

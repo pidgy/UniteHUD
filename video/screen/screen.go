@@ -4,36 +4,114 @@ import (
 	"fmt"
 	"image"
 	"reflect"
+	"sync"
 	"unsafe"
 
+	"github.com/kbinani/screenshot"
+
 	"github.com/pidgy/unitehud/config"
+	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/video/proc"
 )
 
 var (
-	Sources = []string{config.MainDisplay}
+	Sources = []string{}
+
+	displays = map[string]int{}
+	bounds   = map[string]image.Rectangle{}
+
+	mutex = &sync.RWMutex{}
 )
 
-func Capture() (*image.RGBA, error) {
-	r, e := monitorRect()
-	if e != nil {
-		return nil, e
-	}
-	return CaptureRect(r)
+func Bounds() image.Rectangle {
+	return bounds[config.Current.Window]
 }
 
-func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
-	hDC := getDC(0)
-	if hDC == 0 {
+func Open() {
+	sourcesTmp := []string{}
+	displaysTmp := map[string]int{}
+	boundsTmp := map[string]image.Rectangle{}
+
+	leftDisplays := 0
+	rightDisplays := 0
+	topDisplays := 0
+	bottomDisplays := 0
+
+	m, err := mainDisplayRect()
+	if err != nil {
+		notify.SystemWarn("Failed to locate %s bounds", config.MainDisplay)
+	}
+
+	for i := 0; i < screenshot.NumActiveDisplays(); i++ {
+		name := ""
+
+		r := screenshot.GetDisplayBounds(i)
+		switch {
+		case r.Eq(m):
+			name = config.MainDisplay
+		case r.Min.X < m.Min.X:
+			leftDisplays++
+			name = display("Left Display", leftDisplays)
+		case r.Min.X > m.Min.X:
+			rightDisplays++
+			name = display("Right Display", rightDisplays)
+		case r.Min.Y < m.Min.Y:
+			topDisplays++
+			name = display("Top Display", topDisplays)
+		case r.Min.Y > m.Min.Y:
+			bottomDisplays++
+			name = display("Bottom Display", bottomDisplays)
+		default:
+			notify.Error("Failed to locate display #%d [%s] relative to %s [%s]", i, r, config.MainDisplay, m)
+			continue
+		}
+
+		displaysTmp[name] = i
+		boundsTmp[name] = r
+		sourcesTmp = append(sourcesTmp, name)
+	}
+
+	mutex.Lock()
+	Sources = sourcesTmp
+	displays = displaysTmp
+	bounds = boundsTmp
+	mutex.Unlock()
+}
+
+func Capture() (*image.RGBA, error) {
+	mutex.RLock()
+	r := bounds[config.Current.Window]
+	mutex.RUnlock()
+
+	return CaptureRect2(r)
+}
+
+func CaptureRect(r image.Rectangle) (*image.RGBA, error) {
+	mutex.RLock()
+	b := bounds[config.Current.Window]
+	mutex.RUnlock()
+
+	r.Min.X = b.Min.X + r.Min.X
+	r.Max.X = b.Min.X + r.Max.X
+
+	r.Min.Y = b.Min.Y + r.Min.Y
+	r.Max.Y = b.Min.Y + r.Max.Y
+
+	return CaptureRect2(r)
+}
+
+func CaptureRect2(rect image.Rectangle) (*image.RGBA, error) {
+	hdc := getDC(0)
+	if hdc == 0 {
 		return nil, fmt.Errorf("Failed to find primary display (%d)", getLastError())
 	}
-	defer releaseDC(0, hDC)
+	defer releaseDC(0, hdc)
 
-	m_hDC := createCompatibleDC(hDC)
-	if m_hDC == 0 {
+	mHDC := createCompatibleDC(hdc)
+	if mHDC == 0 {
 		return nil, fmt.Errorf("Could not Create Compatible DC (%d)", getLastError())
 	}
-	defer deleteDC(m_hDC)
+	defer proc.DeleteDC.Call(uintptr(mHDC))
 
 	x, y := rect.Dx(), rect.Dy()
 
@@ -47,7 +125,7 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 
 	ptr := unsafe.Pointer(uintptr(0))
 
-	mhBmp := createDIBSection(m_hDC, &bt, proc.DIBRGBColors, &ptr, 0, 0)
+	mhBmp := createDIBSection(mHDC, &bt, proc.DIBRGBColors, &ptr, 0, 0)
 	if mhBmp == 0 {
 		return nil, fmt.Errorf("Could not Create DIB Section err:%d.\n", getLastError())
 	}
@@ -56,7 +134,7 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 	}
 	defer deleteObject(proc.HGDIOBJ(mhBmp))
 
-	obj := selectObject(m_hDC, proc.HGDIOBJ(mhBmp))
+	obj := selectObject(mHDC, proc.HGDIOBJ(mhBmp))
 	if obj == 0 {
 		return nil, fmt.Errorf("error occurred and the selected object is not a region err:%d.\n", getLastError())
 	}
@@ -65,7 +143,7 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 	}
 	defer deleteObject(obj)
 
-	if !bitBlt(m_hDC, 0, 0, x, y, hDC, rect.Min.X, rect.Min.Y, proc.SrcCopy|proc.CaptureBLT) {
+	if !bitBlt(mHDC, 0, 0, x, y, hdc, rect.Min.X, rect.Min.Y, proc.SrcCopy|proc.CaptureBLT) {
 		return nil, fmt.Errorf("BitBlt failed err:%d.\n", getLastError())
 	}
 
@@ -86,6 +164,14 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 		Stride: 4 * x,
 		Rect:   image.Rect(0, 0, x, y),
 	}, nil
+}
+
+func IsDisplay() bool {
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	_, ok := displays[config.Current.Window]
+	return ok
 }
 
 func bitBlt(hdcDest proc.HDC, nXDest, nYDest, nWidth, nHeight int, hdcSrc proc.HDC, nXSrc, nYSrc int, dwRop uint) bool {
@@ -136,6 +222,13 @@ func deleteObject(hObject proc.HGDIOBJ) bool {
 	return ret != 0
 }
 
+func display(name string, count int) string {
+	if count <= 1 {
+		return name
+	}
+	return fmt.Sprintf("%s %d", name, count)
+}
+
 func getDC(hwnd proc.HWND) proc.HDC {
 	ret, _, _ := proc.GetDC.Call(uintptr(hwnd))
 	return proc.HDC(ret)
@@ -154,20 +247,20 @@ func getLastError() uint32 {
 	return uint32(ret)
 }
 
-func releaseDC(hwnd proc.HWND, hDC proc.HDC) bool {
-	ret, _, _ := proc.ReleaseDC.Call(uintptr(hwnd), uintptr(hDC))
+func releaseDC(hwnd proc.HWND, hdc proc.HDC) bool {
+	ret, _, _ := proc.ReleaseDC.Call(uintptr(hwnd), uintptr(hdc))
 	return ret != 0
 }
 
-func monitorRect() (image.Rectangle, error) {
-	hDC := getDC(0)
-	if hDC == 0 {
+func mainDisplayRect() (image.Rectangle, error) {
+	hdc := getDC(0)
+	if hdc == 0 {
 		return image.Rectangle{}, fmt.Errorf("Could not Get primary display err:%d\n", getLastError())
 	}
-	defer releaseDC(0, hDC)
+	defer releaseDC(0, hdc)
 
 	x0, y0 := 0, 0
-	x1, y1 := getDeviceCaps(hDC, proc.HorzRes), getDeviceCaps(hDC, proc.VertRes)
+	x1, y1 := getDeviceCaps(hdc, proc.HorzRes), getDeviceCaps(hdc, proc.VertRes)
 
 	/*
 		switch config.Current.Window {

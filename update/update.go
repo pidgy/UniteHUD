@@ -3,6 +3,7 @@ package update
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/notify"
@@ -39,7 +40,7 @@ func Check() {
 		return
 	}
 
-	Available = (q.Latest != global.Version)
+	Available = q.Latest != global.Version && strings.Contains(q.Latest, "beta") == strings.Contains(global.Version, "beta")
 
 	if Available {
 		notify.Announce("UniteHUD %s is now available for download at UniteHUD.dev", q.Latest)

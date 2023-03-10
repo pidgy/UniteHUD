@@ -1,8 +1,12 @@
 package area
 
 import (
+	"fmt"
 	"image"
 	"image/color"
+	"os"
+	"syscall"
+	"time"
 
 	"gioui.org/font/gofont"
 	"gioui.org/io/pointer"
@@ -12,13 +16,17 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
+	"gocv.io/x/gocv"
 
 	"github.com/pidgy/unitehud/gui/visual/button"
 	"github.com/pidgy/unitehud/rgba"
+	"github.com/pidgy/unitehud/video"
 	"github.com/pidgy/unitehud/video/device"
+	"github.com/pidgy/unitehud/video/screen"
+	"github.com/pidgy/unitehud/video/window"
 )
 
-const alpha = 0xCC
+const alpha = 150
 
 var (
 	Locked = rgba.N(rgba.Alpha(rgba.Black, alpha))
@@ -34,114 +42,149 @@ type Area struct {
 	Hidden        bool
 	Theme         *material.Theme
 
+	*Capture
+
+	Match    func(*Area) bool
+	Cooldown time.Duration
+	readyq   chan bool
+
 	*button.Button
 
 	Min, Max image.Point
 
 	color.NRGBA
 
-	drag         bool
-	dragID       pointer.ID
-	dragX, dragY float32
+	Drag, Focus bool
+
+	lastDimsSize image.Point
+
+	lastRelease time.Time
 }
 
-func (a *Area) Rectangle() image.Rectangle {
-	return toScale(image.Rectangle{a.Min, a.Max})
-	// return image.Rect(a.Min.X*2, a.Min.Y*2, a.Max.X*2, a.Max.Y*2)
+type Capture struct {
+	Option string
+	File   string
+	Base   image.Rectangle
 }
 
-func toScale(r image.Rectangle) image.Rectangle {
-	return image.Rectangle{r.Min.Mul(2), r.Max.Mul(2)}
-}
-
-func (a *Area) Layout(gtx layout.Context) layout.Dimensions {
-	if a.TextSize.V == unit.Px(0).V {
-		a.TextSize = unit.Px(16)
+func (a *Area) Layout(gtx layout.Context, dims layout.Dimensions, img image.Image) error {
+	if img == nil || dims.Size.X == 0 || a.Base.Max.X == 0 {
+		return nil
 	}
+	defer a.match()
+
+	a.TextSize = unit.Px(24).Scale(float32(dims.Size.X) / float32(img.Bounds().Max.X))
 
 	if a.Theme == nil {
 		a.Theme = material.NewTheme(gofont.Collection())
 	}
 
-	{
-		// handle input
-		for _, ev := range gtx.Events(a) {
-			e, ok := ev.(pointer.Event)
-			if !ok {
-				continue
-			}
+	if !a.lastDimsSize.Eq(dims.Size) {
+		minXScale := float32(a.Base.Min.X) / float32(img.Bounds().Max.X)
+		maxXScale := float32(a.Base.Max.X) / float32(img.Bounds().Max.X)
+		minYScale := float32(a.Base.Min.Y) / float32(img.Bounds().Max.Y)
+		maxYScale := float32(a.Base.Max.Y) / float32(img.Bounds().Max.Y)
 
-			switch e.Type {
-			case pointer.Press:
-				if a.drag || !a.Active {
-					break
-				}
+		a.Min.X = int(float32(dims.Size.X) * minXScale)
+		a.Max.X = int(float32(dims.Size.X) * maxXScale)
+		a.Min.Y = int(float32(dims.Size.Y) * minYScale)
+		a.Max.Y = int(float32(dims.Size.Y) * maxYScale)
 
-				a.dragID = e.PointerID
-				a.dragX = e.Position.X
-				a.dragY = e.Position.Y
-			case pointer.Drag:
-				if a.dragID != e.PointerID || !a.Active {
-					break
-				}
-
-				deltaX := e.Position.X - a.dragX
-				a.dragX = e.Position.X
-				deltaY := e.Position.Y - a.dragY
-				a.dragY = e.Position.Y
-
-				// maxX := int(float32(gtx.Constraints.Max.X)*.99) - 1
-				// maxY := int(float32(gtx.Constraints.Max.Y)*.75) - 3
-
-				if !toScale(image.Rectangle{
-					a.Min.Add(image.Pt(int(deltaX), int(deltaY))),
-					a.Max.Add(image.Pt(int(deltaX), int(deltaY))),
-				}).In(device.HD1080) {
-					break
-				}
-
-				a.Min.X += int(deltaX)
-				a.Min.Y += int(deltaY)
-				a.Max.X += int(deltaX)
-				a.Max.Y += int(deltaY)
-			case pointer.Release:
-				fallthrough
-			case pointer.Cancel:
-				a.drag = false
-			}
-		}
-
-		area := clip.Rect{Min: a.Min, Max: a.Max}.Push(gtx.Ops)
-		pointer.InputOp{
-			Tag:   a,
-			Types: pointer.Press | pointer.Drag | pointer.Release,
-			Grab:  a.drag,
-		}.Add(gtx.Ops)
-		area.Pop()
+		a.lastDimsSize = dims.Size
 	}
 
-	layout.UniformInset(unit.Dp(5)).Layout(
+	for _, ev := range gtx.Events(a) {
+		e, ok := ev.(pointer.Event)
+		if !ok {
+			continue
+		}
+
+		switch e.Type {
+		case pointer.Enter:
+			a.Focus = true
+			a.NRGBA = Locked
+			a.NRGBA.A = 0
+		case pointer.Leave:
+			a.Focus = false
+		case pointer.Cancel:
+		case pointer.Press:
+			if !a.Active {
+				break
+			}
+		case pointer.Release:
+			if a.Drag {
+				a.Drag = false
+
+				baseMinXScale := float32(a.Min.X) * float32(img.Bounds().Max.X)
+				baseMaxXScale := float32(a.Max.X) * float32(img.Bounds().Max.X)
+				baseMinYScale := float32(a.Min.Y) * float32(img.Bounds().Max.Y)
+				baseMaxYScale := float32(a.Max.Y) * float32(img.Bounds().Max.Y)
+
+				a.Base.Min.X = int(baseMinXScale / float32(dims.Size.X))
+				a.Base.Max.X = int(baseMaxXScale / float32(dims.Size.X))
+				a.Base.Min.Y = int(baseMinYScale / float32(dims.Size.Y))
+				a.Base.Max.Y = int(baseMaxYScale / float32(dims.Size.Y))
+			} else {
+				s := time.Since(a.lastRelease)
+				if s > time.Millisecond*100 && s < time.Millisecond*500 {
+					err := a.Capture.Open()
+					if err != nil {
+						return err
+					}
+				}
+				a.lastRelease = time.Now()
+			}
+		case pointer.Move:
+			if !a.Drag {
+				break
+			}
+			fallthrough
+		case pointer.Drag:
+			a.Drag = true
+
+			half := a.Max.Sub(a.Min).Div(2)
+			a.Min = image.Pt(int(e.Position.X)-half.X, int(e.Position.Y)-half.Y)
+			a.Max = image.Pt(int(e.Position.X)+half.X, int(e.Position.Y)+half.Y)
+		}
+	}
+
+	layout.UniformInset(unit.Dp(0)).Layout(
 		gtx,
 		func(gtx layout.Context) layout.Dimensions {
-			defer clip.Rect{
+			area := clip.Rect{
 				Min: a.Min,
 				Max: a.Max,
-			}.Push(gtx.Ops).Pop()
+			}.Push(gtx.Ops)
+			defer area.Pop()
 
 			paint.ColorOp{Color: a.NRGBA}.Add(gtx.Ops)
 			paint.PaintOp{}.Add(gtx.Ops)
 
 			return layout.Dimensions{Size: a.Max.Sub(a.Min)}
-		})
+		},
+	)
+
+	area := clip.Rect{
+		Min: a.Min,
+		Max: a.Max,
+	}.Push(gtx.Ops)
+	pointer.InputOp{
+		Tag:   a,
+		Types: pointer.Press | pointer.Drag | pointer.Release | pointer.Leave | pointer.Enter | pointer.Move,
+		Grab:  a.Drag,
+	}.Add(gtx.Ops)
+	area.Pop()
 
 	layout.Inset{
-		Left: unit.Px(float32(a.Min.X) + 5),
-		Top:  unit.Px(float32(a.Min.Y) + 5),
+		Left: unit.Px(float32(a.Min.X)),
+		Top:  unit.Px(float32(a.Min.Y)),
 	}.Layout(
 		gtx,
 		func(gtx layout.Context) layout.Dimensions {
+			c := a.NRGBA
+			c.A = 0
 			return widget.Border{
-				Color: a.NRGBA,
+				Color: c,
 				Width: unit.Px(2),
 			}.Layout(
 				gtx,
@@ -151,46 +194,101 @@ func (a *Area) Layout(gtx layout.Context) layout.Dimensions {
 				})
 		})
 
-	text := a.Text + " " + a.Subtext
-
-	/*
-		layout.Inset{
-			Left: unit.Px(float32(a.Min.X)),
-			Top:  unit.Px(float32(a.Min.Y)),
-		}.Layout(
-			gtx,
-			func(gtx layout.Context) layout.Dimensions {
-				// Text background.
-				defer clip.Rect{
-					Min: image.Pt(5, 5),
-					Max: image.Pt(len(text)*int((a.TextSize.V)-(a.TextSize.V/3)), 25),
-				}.Push(gtx.Ops).Pop()
-
-				paint.ColorOp{Color: color.NRGBA{A: 0x9F}}.Add(gtx.Ops)
-				paint.PaintOp{}.Add(gtx.Ops)
-
-				return layout.Dimensions{Size: a.Max.Sub(a.Min)}
-			})
-	*/
-	return layout.Inset{
+	layout.Inset{
 		Left: unit.Px(float32(a.Min.X)),
 		Top:  unit.Px(float32(a.Min.Y)),
 	}.Layout(
 		gtx,
 		func(gtx layout.Context) layout.Dimensions {
-			title := material.Body1(a.Theme, text)
+			title := material.Body1(a.Theme, a.Text)
 			title.TextSize = a.TextSize
 			title.Font.Weight = 500
 			title.Color = rgba.N(rgba.White)
-			if a.NRGBA == Match {
-				title.Font.Weight = 1000
-			}
-
 			layout.Inset{
-				Left: unit.Px(10),
-				Top:  unit.Px(5),
+				Left: unit.Px(2),
+				Top:  unit.Px(1),
 			}.Layout(gtx, title.Layout)
 
+			sub := material.Body2(a.Theme, a.Subtext)
+			sub.TextSize = a.TextSize.Scale(.75)
+			sub.Font.Weight = 1000
+			sub.Color = rgba.N(rgba.Alpha(rgba.White, 175))
+
+			layout.Inset{
+				Left: unit.Px(2),
+				Top:  unit.Px(float32(a.Max.Sub(a.Min).Y) - a.TextSize.V),
+			}.Layout(gtx, sub.Layout)
+
 			return layout.Dimensions{Size: a.Max.Sub(a.Min)}
-		})
+		},
+	)
+
+	return nil
+}
+
+func (c *Capture) Rectangle() image.Rectangle {
+	return c.Base
+}
+
+func (a *Area) Reset() {
+	a.lastDimsSize = image.Pt(0, 0)
+}
+
+func (a *Area) match() {
+	if a.Drag || a.Focus {
+		return
+	}
+
+	if a.readyq == nil {
+		a.readyq = make(chan bool)
+		go func() { a.readyq <- true }()
+	}
+
+	if !device.IsActive() && !screen.IsDisplay() && !window.IsWindow() {
+		return
+	}
+
+	select {
+	case <-a.readyq:
+		go func() {
+			a.Match(a)
+			time.Sleep(a.Cooldown)
+			a.readyq <- true
+		}()
+	default:
+	}
+}
+
+func (c *Capture) Open() error {
+	dir, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("Failed to find current directory (%v)", err)
+	}
+
+	img, err := video.CaptureRect(c.Base)
+	if err != nil {
+		return fmt.Errorf("Failed to capture %s (%v)", c.File, err)
+	}
+
+	matrix, err := gocv.ImageToMatRGB(img)
+	if err != nil {
+		return fmt.Errorf("Failed to create %s (%v)", c.File, err)
+	}
+	defer matrix.Close()
+
+	if !gocv.IMWrite(c.File, matrix) {
+		return fmt.Errorf("Failed to save %s (%v)", c.File, err)
+	}
+
+	var sI syscall.StartupInfo
+	var pI syscall.ProcessInformation
+	argv := syscall.StringToUTF16Ptr(os.Getenv("windir") + "\\system32\\cmd.exe /C " +
+		fmt.Sprintf("\"%s\\%s\"", dir, c.File))
+
+	err = syscall.CreateProcess(nil, argv, nil, nil, true, 0, nil, nil, &sI, &pI)
+	if err != nil {
+		return fmt.Errorf("Failed to open %s (%v)", c.File, err)
+	}
+
+	return nil
 }

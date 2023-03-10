@@ -5,8 +5,6 @@ import (
 	"image/color"
 	"strconv"
 
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"gocv.io/x/gocv"
 
 	"github.com/pidgy/unitehud/config"
@@ -20,7 +18,7 @@ import (
 
 type Match struct {
 	image.Point
-	template.Template
+	*template.Template
 	Max      image.Point
 	Accepted float32
 
@@ -60,18 +58,18 @@ func (m *Match) Identify(mat gocv.Mat, points int) (image.Image, error) {
 
 	crop, err := region.ToImage()
 	if err != nil {
-		log.Err(err).Msg("failed to convert image")
+
 		return nil, err
 	}
 
 	return crop, nil
 }
 
-func Matches(matrix gocv.Mat, img image.Image, templates []template.Template) (*Match, Result, int) {
+func Matches(matrix gocv.Mat, img image.Image, templates []*template.Template) (*Match, Result, int) {
 	return MatchesWithAcceptance(matrix, img, templates, config.Current.Acceptance)
 }
 
-func MatchesWithAcceptance(matrix gocv.Mat, img image.Image, templates []template.Template, acceptance float32) (*Match, Result, int) {
+func MatchesWithAcceptance(matrix gocv.Mat, img image.Image, templates []*template.Template, acceptance float32) (*Match, Result, int) {
 	results := make([]gocv.Mat, len(templates))
 
 	m := &Match{
@@ -83,7 +81,6 @@ func MatchesWithAcceptance(matrix gocv.Mat, img image.Image, templates []templat
 		defer results[i].Close()
 
 		if template.Mat.Rows() > matrix.Rows() || template.Mat.Cols() > matrix.Cols() {
-			log.Warn().Str("type", "time").Msg("match is outside the legal selection")
 			notify.Error("Match is outside the configured selection area")
 
 			if config.Current.Record {
@@ -98,7 +95,8 @@ func MatchesWithAcceptance(matrix gocv.Mat, img image.Image, templates []templat
 
 	for i, mat := range results {
 		if mat.Empty() {
-			log.Warn().Str("filename", templates[i].Truncated()).Msg("empty result")
+			notify.SystemWarn("Empty result for %s", templates[i].Truncated())
+
 			continue
 		}
 
@@ -124,19 +122,12 @@ func MatchesWithAcceptance(matrix gocv.Mat, img image.Image, templates []templat
 }
 
 func (m *Match) process(matrix gocv.Mat, img image.Image) (Result, int) {
-	log.Debug().
-		Object("match", m).
-		Int("cols", matrix.Cols()).
-		Int("rows", matrix.Rows()).
-		Msg("processing match")
-
 	switch m.Template.Category {
 	case "killed":
 		return Found, team.Energy.Holding
 	case "scored": // Orange, Purple scoring.
 		crop := m.Team.Crop(m.Point)
 		if crop.Min.X < 0 || crop.Min.Y < 0 || crop.Max.X > matrix.Cols() || crop.Max.Y > matrix.Rows() {
-			log.Error().Object("match", m).Msg("cropped image is outside the legal selection")
 			return Invalid, 0
 		}
 
@@ -152,10 +143,4 @@ func (m *Match) process(matrix gocv.Mat, img image.Image) (Result, int) {
 
 func (m *Match) rectangle() image.Rectangle {
 	return image.Rect(m.Point.X, m.Point.Y, m.Point.X+m.Template.Mat.Cols(), m.Point.Y+m.Template.Mat.Rows())
-}
-
-// Zerolog.
-
-func (m *Match) MarshalZerologObject(e *zerolog.Event) {
-	e.Object("template", m.Template).Stringer("point", m.Point).Object("duplicate", m.Duplicate).Object("team", m.Team)
 }

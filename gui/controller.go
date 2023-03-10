@@ -23,11 +23,11 @@ import (
 	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/gui/visual/button"
 	"github.com/pidgy/unitehud/gui/visual/dropdown"
-	"github.com/pidgy/unitehud/gui/visual/screen"
 	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/rgba"
 	"github.com/pidgy/unitehud/server"
 	"github.com/pidgy/unitehud/team"
+	"github.com/pidgy/unitehud/video/window/electron"
 )
 
 const (
@@ -229,12 +229,21 @@ var (
 				return
 			}
 
+			electron.Close()
+
 			config.Current.Profile = strings.ToLower(i.Text)
 
 			err := config.Load(config.Current.Profile)
 			if err != nil {
 				notify.Error("Failed to load %s profile configuration", config.Current.Profile)
 				return
+			}
+
+			if config.Current.Window == config.BrowserWindow {
+				err = electron.Open()
+				if err != nil {
+					notify.Error("Failed to open %s (%v)", config.BrowserWindow, err)
+				}
 			}
 
 			notify.System("Profile set to %s mode", i.Text)
@@ -761,12 +770,10 @@ func (g *GUI) controller() {
 						layout.Inset{
 							Top:  unit.Px(x),
 							Left: offsets["regi-icon"],
-						}.Layout(gtx, (&screen.Screen{
-							BorderColor: colors["regi-icon"],
-							Border:      true,
-							ScaleX:      5,
-							ScaleY:      5,
-							Image:       images["regieleki"],
+						}.Layout(gtx, (widget.Image{
+							Src:      paint.NewImageOp(images["regieleki"]),
+							Position: layout.NW,
+							Scale:    .2,
 						}).Layout)
 
 						layout.Inset{
@@ -850,12 +857,10 @@ func (g *GUI) controller() {
 						layout.Inset{
 							Top:  unit.Px(x),
 							Left: offsets["regi-icon"],
-						}.Layout(gtx, (&screen.Screen{
-							BorderColor: colors["regi-icon"],
-							Border:      true,
-							ScaleX:      5,
-							ScaleY:      5,
-							Image:       images["registeel"],
+						}.Layout(gtx, (widget.Image{
+							Src:      paint.NewImageOp(images["registeel"]),
+							Position: layout.NW,
+							Scale:    .2,
 						}).Layout)
 
 						layout.Inset{
@@ -936,12 +941,10 @@ func (g *GUI) controller() {
 						layout.Inset{
 							Top:  unit.Px(x),
 							Left: offsets["regi-icon"],
-						}.Layout(gtx, (&screen.Screen{
-							BorderColor: colors["regi-icon"],
-							Border:      true,
-							ScaleX:      5,
-							ScaleY:      5,
-							Image:       images["regirock"],
+						}.Layout(gtx, (widget.Image{
+							Src:      paint.NewImageOp(images["regirock"]),
+							Position: layout.NW,
+							Scale:    .2,
 						}).Layout)
 
 						layout.Inset{
@@ -1022,12 +1025,10 @@ func (g *GUI) controller() {
 						layout.Inset{
 							Top:  unit.Px(x),
 							Left: offsets["regi-icon"],
-						}.Layout(gtx, (&screen.Screen{
-							BorderColor: colors["regi-icon"],
-							Border:      true,
-							ScaleX:      5,
-							ScaleY:      5,
-							Image:       images["regice"],
+						}.Layout(gtx, (widget.Image{
+							Src:      paint.NewImageOp(images["regice"]),
+							Position: layout.NW,
+							Scale:    .2,
 						}).Layout)
 
 						layout.Inset{
@@ -1284,7 +1285,7 @@ func bottomObjectiveButton(t *team.Team, name string, n int) *button.CircleButto
 		BorderWidth: unit.Sp(.5),
 	}
 
-	b.Click = func() {
+	b.Click = func(b *button.CircleButton) {
 		defer b.Deactivate()
 
 		server.SetBottomObjective(t, name, n-1)
@@ -1305,7 +1306,7 @@ func clearButton() *button.Button {
 		BorderWidth:    unit.Sp(.5),
 	}
 
-	b.Click = func() {
+	b.Click = func(b *button.Button) {
 		defer b.Deactivate()
 
 		ok := server.Match()
@@ -1339,7 +1340,7 @@ func plusButton(t *team.Team, n int) *button.Button {
 		BorderWidth:    unit.Sp(.5),
 	}
 
-	b.Click = func() {
+	b.Click = func(b *button.Button) {
 		defer b.Deactivate()
 
 		val := 1
@@ -1370,7 +1371,7 @@ func plusMinusButton(t *team.Team) *button.Button {
 		BorderWidth:    unit.Sp(.5),
 	}
 
-	b.Click = func() {
+	b.Click = func(b *button.Button) {
 		defer b.Deactivate()
 
 		switch b.Text {
@@ -1402,7 +1403,7 @@ func regielekiButton(t *team.Team, n int) *button.CircleButton {
 		BorderWidth: unit.Sp(.5),
 	}
 
-	b.Click = func() {
+	b.Click = func(b *button.CircleButton) {
 		defer b.Deactivate()
 
 		server.SetRegielekiAt(t, n-1)
@@ -1423,7 +1424,7 @@ func startStopButton() *button.Button {
 		BorderWidth:    unit.Sp(.5),
 	}
 
-	b.Click = func() {
+	b.Click = func(b *button.Button) {
 		defer b.Deactivate()
 
 		switch b.Text {

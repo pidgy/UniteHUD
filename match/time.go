@@ -5,7 +5,6 @@ import (
 	"image"
 	"math"
 
-	"github.com/rs/zerolog/log"
 	"gocv.io/x/gocv"
 
 	"github.com/pidgy/unitehud/config"
@@ -36,7 +35,6 @@ func Time(matrix gocv.Mat, img *image.RGBA) (seconds int, kitchen string) {
 
 		for _, template := range templates {
 			if template.Mat.Cols() > region.Cols() || template.Mat.Rows() > region.Rows() {
-				log.Warn().Str("type", "time").Msg("match is outside the legal selection")
 				notify.Error("Time match is outside the configured selection area")
 
 				if config.Current.Record {
@@ -56,7 +54,7 @@ func Time(matrix gocv.Mat, img *image.RGBA) (seconds int, kitchen string) {
 
 		for i := range results {
 			if results[i].Empty() {
-				log.Warn().Str("filename", templates[i].File).Msg("empty result")
+				notify.SystemWarn("Empty result for %s", templates[i].Truncated())
 				continue
 			}
 
@@ -125,7 +123,7 @@ func IdentifyTime(mat gocv.Mat, kitchen string) (image.Image, error) {
 
 	crop, err := region.ToImage()
 	if err != nil {
-		log.Err(err).Msg("failed to convert image")
+
 		return nil, err
 	}
 

@@ -5,7 +5,6 @@ import (
 	"image"
 	"time"
 
-	"github.com/rs/zerolog/log"
 	"gocv.io/x/gocv"
 
 	"github.com/pidgy/unitehud/config"
@@ -14,26 +13,19 @@ import (
 )
 
 var (
-	Hide           = true
 	Sources, names = sources()
 
 	HD1080 = image.Rect(0, 0, 1920, 1080)
 
 	active = config.NoVideoCaptureDevice
-	base   = gocv.IMRead(fmt.Sprintf(`%s/splash/paused2.png`, config.Current.Assets()), gocv.IMReadColor) // Global matrix is more efficient?
+	base   = gocv.IMRead(fmt.Sprintf(`%s/splash/device.png`, config.Current.Assets()), gocv.IMReadColor) // Global matrix is more efficient?
 	mat    = base.Clone()
 
 	running = false
 	stopped = true
-)
 
-func init() {
-	go func() {
-		for range time.NewTicker(time.Second * 5).C {
-			// Sources, names = sources()
-		}
-	}()
-}
+	splash *image.RGBA
+)
 
 func Capture() (*image.RGBA, error) {
 	return CaptureRect(HD1080)
@@ -57,19 +49,28 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 }
 
 func Close() {
-	if active == config.NoVideoCaptureDevice {
+	if !isActivated() {
 		return
 	}
 
-	closeCaptureDevice()
+	running = false
+	for !stopped {
+		time.Sleep(time.Nanosecond)
+	}
 }
 
-func Load() error {
-	if active == config.Current.VideoCaptureDevice {
+func IsActive() bool {
+	return config.Current.VideoCaptureDevice != config.NoVideoCaptureDevice
+}
+
+func Open() error {
+	if isActivated() {
 		return nil
 	}
 
-	err := openCaptureDevice()
+	active = config.Current.VideoCaptureDevice
+
+	err := startCaptureDevice()
 	if err != nil {
 		notify.Error("Failed to open Video Capture Device (%v)", err)
 		reset()
@@ -84,6 +85,20 @@ func Name(d int) string {
 		return names[d]
 	}
 	return fmt.Sprintf("Video Capture Device %d", d)
+}
+
+func Splash() *image.RGBA {
+	if splash == nil {
+		s, err := convert(base)
+		if err != nil {
+			notify.Error("Failed to render device splash screen")
+			return nil
+		}
+
+		splash = s
+	}
+
+	return splash
 }
 
 func convert(mat gocv.Mat) (*image.RGBA, error) {
@@ -102,26 +117,8 @@ func convert(mat gocv.Mat) (*image.RGBA, error) {
 	return img, nil
 }
 
-func closeCaptureDevice() {
-	log.Debug().Int("device", config.Current.VideoCaptureDevice).Msg("closing capture device")
-
-	running = false
-	for !stopped {
-		time.Sleep(time.Nanosecond)
-	}
-
-	log.Debug().Int("device", config.Current.VideoCaptureDevice).Msg("closed capture device")
-}
-
-func openCaptureDevice() error {
-	if active != config.NoVideoCaptureDevice {
-		return nil
-	}
-	active = config.Current.VideoCaptureDevice
-
-	errq := make(chan error)
-	go startCaptureDevice(errq)
-	return <-errq
+func isActivated() bool {
+	return active == config.Current.VideoCaptureDevice
 }
 
 func reset() {
@@ -150,56 +147,52 @@ func sources() ([]int, []string) {
 	return s, n
 }
 
-func startCaptureDevice(errq chan error) {
-	running = true
+func startCaptureDevice() error {
+	errq := make(chan error)
 
-	stopped = false
-	defer func() {
-		stopped = true
-		resetActive()
+	go func() {
+		running = true
+
+		stopped = false
+		defer func() {
+			stopped = true
+			resetActive()
+		}()
+
+		name := Name(config.Current.VideoCaptureDevice)
+
+		notify.System("Capturing from %s", name)
+
+		device, err := gocv.OpenVideoCaptureWithAPI(config.Current.VideoCaptureDevice, gocv.VideoCaptureAny)
+		if err != nil {
+			errq <- err
+			return
+		}
+		defer device.Close()
+
+		device.Set(gocv.VideoCaptureFrameWidth, float64(HD1080.Dx()))
+		device.Set(gocv.VideoCaptureFrameHeight, float64(HD1080.Dy()))
+
+		area := image.Rect(0, 0, int(device.Get(gocv.VideoCaptureFrameWidth)), int(device.Get(gocv.VideoCaptureFrameHeight)))
+		if !area.Eq(HD1080) {
+			mat = base.Clone()
+			errq <- fmt.Errorf("%s has invalid dimensions: %s", name, area.String())
+			return
+		}
+
+		close(errq)
+
+		for running && active == config.Current.VideoCaptureDevice {
+			if !device.Read(&mat) {
+				notify.Warn("Failed to read from %s", name)
+			}
+
+			if mat.Empty() {
+				notify.Warn("Failed to read from %s", name)
+				continue
+			}
+		}
 	}()
 
-	name := Name(config.Current.VideoCaptureDevice)
-
-	notify.System("Capturing from %s", name)
-
-	log.Debug().Str("name", name).Int("device", config.Current.VideoCaptureDevice).Msg("starting capture")
-
-	device, err := gocv.OpenVideoCaptureWithAPI(config.Current.VideoCaptureDevice, gocv.VideoCaptureDshow)
-	if err != nil {
-		errq <- err
-		return
-	}
-	defer device.Close()
-
-	device.Set(gocv.VideoCaptureFrameWidth, float64(HD1080.Dx()))
-	device.Set(gocv.VideoCaptureFrameHeight, float64(HD1080.Dy()))
-
-	area := image.Rect(0, 0, int(device.Get(gocv.VideoCaptureFrameWidth)), int(device.Get(gocv.VideoCaptureFrameHeight)))
-	if !area.Eq(HD1080) {
-		mat = base.Clone()
-		errq <- fmt.Errorf("%s has invalid dimensions: %s", name, area.String())
-		return
-	}
-
-	close(errq)
-
-	for running && active == config.Current.VideoCaptureDevice {
-		if !device.Read(&mat) {
-			notify.Warn("Failed to read from %s", name)
-		}
-
-		if mat.Empty() {
-			notify.Warn("Failed to read from %s", name)
-			continue
-		}
-	}
-}
-
-// deadcode ignore invertMatrix
-func invertMatrix() gocv.Mat {
-	mat2 := gocv.NewMatWithSizeFromScalar(gocv.NewScalar(255, 255, 255, 255), mat.Rows(), mat.Cols(), mat.Type())
-	mat3 := gocv.NewMat()
-	gocv.Subtract(mat2, mat, &mat3)
-	return mat3
+	return <-errq
 }

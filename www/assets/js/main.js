@@ -1,4 +1,4 @@
-const version = "v1.1beta";
+const version = "v1.1";
 const urlWS = "ws://127.0.0.1:17069/ws";
 const urlHTTP = "http://127.0.0.1:17069/http";
 

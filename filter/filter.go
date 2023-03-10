@@ -4,9 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pidgy/unitehud/state"
 	"github.com/pidgy/unitehud/team"
-	"github.com/rs/zerolog"
 )
 
 type Filter struct {
@@ -20,7 +18,7 @@ func New(t *team.Team, file string, value int, alias bool) Filter {
 	return Filter{t, file, value, alias}
 }
 
-func (f Filter) Truncated() string {
+func (f *Filter) Truncated() string {
 	count := strings.Count(f.File, "_alt")
 
 	if count > 0 {
@@ -62,10 +60,4 @@ func Strip(file string) string {
 		"_alt",
 		"",
 	)
-}
-
-func (f Filter) MarshalZerologObject(e *zerolog.Event) {
-	e.Str("file", f.File).
-		Str("team", f.Team.Name).
-		Stringer("event", state.EventType(f.Value))
 }

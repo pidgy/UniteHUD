@@ -5,7 +5,6 @@ import (
 	"image/color"
 	"time"
 
-	"github.com/rs/zerolog"
 	"gocv.io/x/gocv"
 
 	"github.com/pidgy/unitehud/duplicate"
@@ -15,6 +14,7 @@ import (
 // Team represents a team side in Pokémon Unite.
 type Team struct {
 	Name                 string `json:"name"`
+	title                string
 	Alias                string `json:"-"`
 	color.RGBA           `json:"-"`
 	*duplicate.Duplicate `json:"-"`
@@ -31,7 +31,9 @@ type Team struct {
 var (
 	// Energy represents the number of balls held by self.
 	Energy = &Team{
-		Name:      "balls",
+		Name:  "balls",
+		title: "Balls",
+
 		RGBA:      rgba.Purple,
 		Duplicate: duplicate.New(-1, gocv.NewMat(), gocv.NewMat()),
 
@@ -40,34 +42,39 @@ var (
 		Acceptance: .8,
 		Delay:      time.Second,
 	}
-
 	First = &Team{
-		Name:      "first",
+		Name:  "first",
+		title: "First",
+
 		RGBA:      color.RGBA(rgba.LightPurple),
 		Duplicate: duplicate.New(-1, gocv.NewMat(), gocv.NewMat()),
 
 		Acceptance: .64,
 		Delay:      time.Second,
 	}
-
 	Game = &Team{
-		Name:      "game",
+		Name:  "game",
+		title: "Game",
+
 		RGBA:      rgba.White,
 		Duplicate: duplicate.New(-1, gocv.NewMat(), gocv.NewMat()),
 
 		Delay:      time.Second * 2,
 		Acceptance: .8,
 	}
-
 	None = &Team{
-		Name:      "none",
-		RGBA:      rgba.Slate,
+		Name:  "none",
+		title: "None",
+
+		RGBA: rgba.Slate,
+
 		Duplicate: duplicate.New(-1, gocv.NewMat(), gocv.NewMat()),
 	}
-
 	// Orange represents the standard Team for the Orange side.
 	Orange = &Team{
-		Name:      "orange",
+		Name:  "orange",
+		title: "Orange",
+
 		RGBA:      rgba.Orange,
 		Duplicate: duplicate.New(-1, gocv.NewMat(), gocv.NewMat()),
 
@@ -77,29 +84,32 @@ var (
 		// Less than 2s to avoid missing difficult capture windows.
 		Delay: time.Millisecond * 1500,
 	}
-
 	// Purple represents the standard Team for the Purple side.
 	Purple = &Team{
-		Name:      "purple",
+		Name:  "purple",
+		title: "Purple",
+
 		RGBA:      rgba.Purple,
 		Duplicate: duplicate.New(-1, gocv.NewMat(), gocv.NewMat()),
 
 		Acceptance: Orange.Acceptance,
 		Delay:      Orange.Delay,
 	}
-
 	// Self represents a wrapper Team for the Purple side.
 	Self = &Team{
-		Name:      "self",
+		Name:  "self",
+		title: "Self",
+
 		RGBA:      rgba.User,
 		Duplicate: duplicate.New(-1, gocv.NewMat(), gocv.NewMat()),
 
 		Acceptance: .75,
 		Delay:      time.Second / 4,
 	}
-
 	Time = &Team{
-		Name:      "time",
+		Name:  "time",
+		title: "Time",
+
 		RGBA:      rgba.White,
 		Duplicate: duplicate.New(-1, gocv.NewMat(), gocv.NewMat()),
 
@@ -109,7 +119,7 @@ var (
 
 	Teams = []*Team{Orange, Purple, Self, Energy, Game, Time, First}
 
-	cache = map[string]*Team{
+	nameOf = map[string]*Team{
 		Orange.Name: Orange,
 		Purple.Name: Purple,
 		Self.Name:   Self,
@@ -143,7 +153,7 @@ func Color(name string) color.RGBA {
 }
 
 // Comparable returns a smaller ROI to help increase duplication accuracy assurance.
-func (t Team) Comparable(mat gocv.Mat) gocv.Mat {
+func (t *Team) Comparable(mat gocv.Mat) gocv.Mat {
 	switch t.Name {
 	case Self.Name:
 		return mat.Region(image.Rect(0, 20, 225, 60))
@@ -157,7 +167,7 @@ func (t Team) Comparable(mat gocv.Mat) gocv.Mat {
 }
 
 // Crop returns the dimensions for a cropped ROI for use with granular template matching.
-func (t Team) Crop(p image.Point) image.Rectangle {
+func (t *Team) Crop(p image.Point) image.Rectangle {
 	switch t.Name {
 	case Self.Name:
 		return image.Rect(p.X, p.Y-100, p.X+300, p.Y+100)
@@ -170,10 +180,10 @@ func (t Team) Crop(p image.Point) image.Rectangle {
 	}
 }
 
-func Delay(team string) time.Duration {
-	return cache[team].Delay
+func (t *Team) String() string {
+	return t.title
 }
 
-func (t Team) MarshalZerologObject(e *zerolog.Event) {
-	e.Str("name", t.Name)
+func Delay(team string) time.Duration {
+	return nameOf[team].Delay
 }

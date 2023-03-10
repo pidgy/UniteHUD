@@ -6,9 +6,9 @@ import (
 	"gocv.io/x/gocv"
 
 	"github.com/pidgy/unitehud/notify"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 )
+
+const delay = time.Second * 3
 
 type Duplicate struct {
 	Value int
@@ -41,16 +41,14 @@ func (d *Duplicate) Close() {
 
 	err := d.Mat.Close()
 	if err != nil {
-		log.Warn().Err(err).Object("duplicate", d).Msg("failed to close duplicate matrix")
+		notify.SystemWarn("Failed to close duplicate matrix")
 	}
 
 	err = d.region.Close()
 	if err != nil {
-		log.Warn().Err(err).Object("duplicate", d).Msg("failed to close duplicate region matrix")
+		notify.SystemWarn("Failed to close duplicate region")
 	}
 }
-
-const delay = time.Second * 3
 
 func (d *Duplicate) Of(d2 *Duplicate) bool {
 	if d2.Value == 0 {
@@ -124,8 +122,4 @@ func (d *Duplicate) Pixels(d2 *Duplicate) bool {
 	_, maxc, _, _ := gocv.MinMaxLoc(mat)
 
 	return maxc > 0.91
-}
-
-func (d *Duplicate) MarshalZerologObject(e *zerolog.Event) {
-	e.Time("time", d.Time).Int("value", d.Value)
 }

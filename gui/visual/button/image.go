@@ -16,8 +16,10 @@ import (
 
 type Image struct {
 	*screen.Screen
-	Click func()
+	Click func(i *Image)
 	Hide  bool
+
+	hover bool
 }
 
 func (i *Image) Layout(th *material.Theme, gtx layout.Context) layout.Dimensions {
@@ -48,11 +50,20 @@ func (i *Image) Layout(th *material.Theme, gtx layout.Context) layout.Dimensions
 		if e, ok := e.(pointer.Event); ok {
 			switch e.Type {
 			case pointer.Enter:
+				i.hover = true
+				i.Screen.BorderColor = rgba.N(rgba.White)
+				i.Screen.Border = true
 			case pointer.Leave:
+				i.hover = false
+				i.Screen.BorderColor = rgba.N(rgba.Gray)
+				i.Screen.Border = false
 			case pointer.Press:
 			case pointer.Release:
-				if i.Click != nil {
-					i.Click()
+				if i.hover && i.Click != nil {
+					i.Click(i)
+
+					i.Screen.BorderColor = rgba.N(rgba.Gray)
+					i.Screen.Border = false
 				}
 			}
 		}

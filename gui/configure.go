@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"image"
 	"image/color"
-	"os"
 	"os/exec"
-	"syscall"
+	"runtime"
 	"time"
 
 	"gioui.org/app"
@@ -20,151 +19,184 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
-	"github.com/rs/zerolog/log"
-	"gocv.io/x/gocv"
 
 	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/gui/visual/area"
 	"github.com/pidgy/unitehud/gui/visual/button"
 	"github.com/pidgy/unitehud/gui/visual/dropdown"
-	"github.com/pidgy/unitehud/gui/visual/help"
 	"github.com/pidgy/unitehud/gui/visual/split"
 	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/rgba"
 	"github.com/pidgy/unitehud/server"
+	"github.com/pidgy/unitehud/team"
 	"github.com/pidgy/unitehud/video"
 	"github.com/pidgy/unitehud/video/device"
+	"github.com/pidgy/unitehud/video/screen"
+	"github.com/pidgy/unitehud/video/window/electron"
 )
 
 func (g *GUI) configure() (next string, err error) {
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
 	defer server.SetConfig(false)
 
 	g.Preview = true
-	device.Hide = false
 	defer func() {
 		g.Preview = false
-		device.Hide = true
 	}()
 
 	split := &split.Horizontal{
 		Ratio: .6,
 	}
 
-	energyAreaText := "Energy"
-	energyAreaButtonText := fmt.Sprintf("\t%s", energyAreaText)
-	objectiveAreaText := "Objectives"
-	koAreaText := "KOs"
-	timeAreaText := "\tTime"
-	timeAreaButtonText := fmt.Sprintf("  %s", timeAreaText)
-	scoreAreaText := "Score"
-	scoreAreaButtonText := fmt.Sprintf("\t %s", scoreAreaText)
-	lockedAreaText := func(a string) string { return fmt.Sprintf("%s (Locked)", a) }
+	lockedAreaText := "Locked"
 	lockedAreaButtonText := "\tLocked"
 
 	koArea := &area.Area{
-		Text:     koAreaText,
+		Text:     "KOs",
+		Subtext:  lockedAreaText,
 		TextSize: unit.Sp(13),
-		Min:      config.Current.KOs.Min.Div(2),
-		Max:      config.Current.KOs.Max.Div(2),
+		Min:      config.Current.KOs.Min,
+		Max:      config.Current.KOs.Max,
+		NRGBA:    area.Locked,
+		Match:    g.matchKOs,
+		Cooldown: time.Millisecond * 1500,
+
+		Capture: &area.Capture{
+			Option: "KO area",
+			File:   "ko_area.png",
+			Base:   config.Current.KOs,
+		},
 
 		Button: &button.Button{
-			Active: true,
+			Active: false,
 		},
 	}
 
 	objectiveArea := &area.Area{
-		Text:     objectiveAreaText,
+		Text:     "Objectives",
+		Subtext:  lockedAreaText,
 		TextSize: unit.Sp(13),
-		Min:      config.Current.Objectives.Min.Div(2),
-		Max:      config.Current.Objectives.Max.Div(2),
+		Min:      config.Current.Objectives.Min,
+		Max:      config.Current.Objectives.Max,
+		NRGBA:    area.Locked,
+		Match:    g.matchObjectives,
+		Cooldown: time.Second,
+
+		Capture: &area.Capture{
+			Option: "Objective area",
+			File:   "objective_area.png",
+			Base:   config.Current.Objectives,
+		},
 
 		Button: &button.Button{
-			Active: true,
+			Active: false,
 		},
 	}
 
 	energyArea := &area.Area{
-		Text:     energyAreaText,
+		Text:     "Aeos",
+		Subtext:  lockedAreaText,
 		TextSize: unit.Sp(13),
-		Min:      config.Current.Energy.Min.Div(2),
-		Max:      config.Current.Energy.Max.Div(2),
+		Min:      config.Current.Energy.Min,
+		Max:      config.Current.Energy.Max,
+		NRGBA:    area.Locked,
+		Match:    g.matchEnergy,
+		Cooldown: team.Energy.Delay,
 
-		Button: &button.Button{
-			Active:   true,
-			Text:     energyAreaButtonText,
-			Pressed:  rgba.N(rgba.Night),
-			Released: rgba.N(rgba.DarkGray),
-			Size:     image.Pt(100, 30),
+		Capture: &area.Capture{
+			Option: "Aeos area",
+			File:   "aeos_area.png",
+			Base:   config.Current.Energy,
 		},
 	}
+	energyArea.Button = &button.Button{
+		Active:   false,
+		Text:     fmt.Sprintf("\t  %s", energyArea.Text),
+		Pressed:  rgba.N(rgba.Night),
+		Released: rgba.N(rgba.DarkGray),
+		Size:     image.Pt(100, 30),
+		Click: func(b *button.Button) {
+			energyArea.Subtext = ""
+			energyArea.NRGBA.A = 0x4F
 
-	energyArea.Button.Click = func() {
-		if !energyArea.Button.Active {
-			energyArea.Text = lockedAreaText(energyAreaText)
-			energyArea.Button.Text = lockedAreaButtonText
-			energyArea.NRGBA.A = 0x9
-			return
-		}
-
-		energyArea.Text = energyAreaText
-		energyArea.Button.Text = energyAreaButtonText
-		energyArea.NRGBA.A = 0x4F
+			if !energyArea.Button.Active {
+				energyArea.Subtext = lockedAreaText
+				energyArea.Button.Text = lockedAreaButtonText
+				energyArea.NRGBA.A = 0x9
+			}
+		},
 	}
 
 	timeArea := &area.Area{
-		Text:     timeAreaText,
-		TextSize: unit.Sp(13),
-		Min:      config.Current.Time.Min.Div(2),
-		Max:      config.Current.Time.Max.Div(2),
-		Button: &button.Button{
-			Active:   true,
-			Text:     timeAreaButtonText,
-			Pressed:  rgba.N(rgba.Night),
-			Released: rgba.N(rgba.DarkGray),
-			Size:     image.Pt(100, 30),
+		Text:     "\tTime",
+		Subtext:  lockedAreaText,
+		TextSize: unit.Sp(12),
+		Min:      config.Current.Time.Min,
+		Max:      config.Current.Time.Max,
+		NRGBA:    area.Locked,
+		Match:    g.matchTime,
+		Cooldown: team.Time.Delay,
+
+		Capture: &area.Capture{
+			Option: "Time area",
+			File:   "time_area.png",
+			Base:   config.Current.Time,
 		},
 	}
+	timeArea.Button = &button.Button{
+		Active:   false,
+		Text:     fmt.Sprintf("  %s", timeArea.Text),
+		Pressed:  rgba.N(rgba.Night),
+		Released: rgba.N(rgba.DarkGray),
+		Size:     image.Pt(100, 30),
+		Click: func(b *button.Button) {
+			timeArea.Subtext = ""
+			timeArea.NRGBA.A = 0x4F
 
-	timeArea.Button.Click = func() {
-		if !timeArea.Button.Active {
-			timeArea.Text = lockedAreaText(timeAreaText)
-			timeArea.Button.Text = lockedAreaButtonText
-			timeArea.NRGBA.A = 0x9
-			return
-		}
-
-		timeArea.Text = timeAreaText
-		timeArea.Button.Text = timeAreaButtonText
-		timeArea.NRGBA.A = 0x4F
+			if !timeArea.Button.Active {
+				timeArea.Subtext = lockedAreaText
+				timeArea.Button.Text = lockedAreaButtonText
+				timeArea.NRGBA.A = 0x9
+			}
+		},
 	}
 
 	scoreArea := &area.Area{
-		Text:          scoreAreaText,
+		Text:          "Score",
+		Subtext:       lockedAreaText,
 		TextAlignLeft: true,
-		Min:           config.Current.Scores.Min.Div(2),
-		Max:           config.Current.Scores.Max.Div(2),
-		Theme:         g.normal,
+		Min:           config.Current.Scores.Min,
+		Max:           config.Current.Scores.Max,
+		NRGBA:         area.Locked,
+		Match:         g.matchScore,
+		Cooldown:      team.Purple.Delay,
 
-		Button: &button.Button{
-			Active:   true,
-			Text:     scoreAreaButtonText,
-			Pressed:  rgba.N(rgba.Night),
-			Released: rgba.N(rgba.DarkGray),
-			Size:     image.Pt(100, 30),
+		Capture: &area.Capture{
+			Option: "Score area",
+			File:   "score_area.png",
+			Base:   config.Current.Scores,
 		},
+
+		Theme: g.normal,
 	}
+	scoreArea.Button = &button.Button{
+		Active:   false,
+		Text:     fmt.Sprintf("\t %s", scoreArea.Text),
+		Pressed:  rgba.N(rgba.Night),
+		Released: rgba.N(rgba.DarkGray),
+		Size:     image.Pt(100, 30),
+		Click: func(b *button.Button) {
+			scoreArea.Subtext = ""
+			scoreArea.NRGBA.A = 0x4F
 
-	scoreArea.Button.Click = func() {
-		if !scoreArea.Button.Active {
-			scoreArea.Text = lockedAreaText(scoreAreaText)
-			scoreArea.Button.Text = lockedAreaButtonText
-			scoreArea.NRGBA.A = 0x9
-			return
-		}
-
-		scoreArea.Text = scoreAreaText
-		scoreArea.Button.Text = scoreAreaButtonText
-		scoreArea.NRGBA.A = 0x4F
+			if !scoreArea.Button.Active {
+				scoreArea.Subtext = lockedAreaText
+				scoreArea.Button.Text = lockedAreaButtonText
+				scoreArea.NRGBA.A = 0x9
+			}
+		},
 	}
 
 	scaleText := material.H5(g.cascadia, "Scale")
@@ -183,6 +215,14 @@ func (g *GUI) configure() (next string, err error) {
 		Released: color.NRGBA{R: 50, G: 50, B: 0xFF, A: 0x3F},
 		Size:     image.Pt(30, 30),
 		TextSize: unit.Sp(12),
+		Click: func(b *button.Button) {
+			defer b.Deactivate()
+
+			g.Preview = false
+			defer g.buttonSpam(b)
+
+			config.Current.Scale += .01
+		},
 	}
 
 	scaleDownButton := &button.Button{
@@ -191,25 +231,17 @@ func (g *GUI) configure() (next string, err error) {
 		Released: color.NRGBA{R: 50, G: 50, B: 0xFF, A: 0x3F},
 		Size:     image.Pt(30, 30),
 		TextSize: unit.Sp(12),
-	}
+		Click: func(b *button.Button) {
+			defer b.Deactivate()
 
-	scaleUpButton.Click = func() {
-		g.Preview = false
-		defer g.buttonSpam(scaleUpButton)
+			g.Preview = false
+			defer g.buttonSpam(b)
 
-		scaleUpButton.Active = !scaleUpButton.Active
-		config.Current.Scale += .01
-	}
-
-	scaleDownButton.Click = func() {
-		g.Preview = false
-		defer g.buttonSpam(scaleDownButton)
-
-		scaleDownButton.Active = !scaleDownButton.Active
-		config.Current.Scale -= .01
-		if config.Current.Scale < 1 {
-			config.Current.Scale = 1
-		}
+			config.Current.Scale -= .01
+			if config.Current.Scale < 1 {
+				config.Current.Scale = 1
+			}
+		},
 	}
 
 	nButton := &button.Button{
@@ -219,7 +251,7 @@ func (g *GUI) configure() (next string, err error) {
 		Size:        image.Pt(30, 20),
 		TextSize:    unit.Sp(18),
 		SingleClick: true,
-		Click: func() {
+		Click: func(b *button.Button) {
 			config.Current.Shift.N++
 		},
 	}
@@ -232,7 +264,7 @@ func (g *GUI) configure() (next string, err error) {
 		TextSize:      unit.Sp(12),
 		TextOffsetTop: -2,
 		SingleClick:   true,
-		Click: func() {
+		Click: func(b *button.Button) {
 			config.Current.Shift.E++
 		},
 	}
@@ -245,7 +277,7 @@ func (g *GUI) configure() (next string, err error) {
 		TextSize:      unit.Sp(12),
 		TextOffsetTop: -2,
 		SingleClick:   true,
-		Click: func() {
+		Click: func(b *button.Button) {
 			config.Current.Shift.S++
 		},
 	}
@@ -258,7 +290,7 @@ func (g *GUI) configure() (next string, err error) {
 		TextSize:      unit.Sp(12),
 		TextOffsetTop: -2,
 		SingleClick:   true,
-		Click: func() {
+		Click: func(b *button.Button) {
 			config.Current.Shift.W++
 		},
 	}
@@ -275,7 +307,7 @@ func (g *GUI) configure() (next string, err error) {
 		Released:    rgba.N(rgba.DarkGray),
 		Size:        image.Pt(100, 30),
 		SingleClick: true,
-		Click: func() {
+		Click: func(b *button.Button) {
 			exec.Command(`explorer`, config.Current.ProfileAssets()).Run()
 		},
 	}
@@ -287,97 +319,24 @@ func (g *GUI) configure() (next string, err error) {
 		Released:    rgba.N(rgba.DarkGray),
 		Size:        image.Pt(100, 30),
 		SingleClick: true,
-		Click: func() {
-			dir, err := os.Getwd()
-			if err != nil {
-				g.ToastOK("Error", "Failed to find current directory")
-				return
-			}
-
-			for _, fr := range []struct {
-				area string
-				file string
-				rect image.Rectangle
-			}{
-				{"entire area", "screen_area.png", g.Screen.Bounds()},
-				{"Score area", "score_area.png", scoreArea.Rectangle()},
-				{"Energy area", "balls_area.png", energyArea.Rectangle()},
-				{"Time area", "time_area.png", timeArea.Rectangle()},
-				{"Objective area", "objective_area.png", objectiveArea.Rectangle()},
-				{"KO area", "ko_area.png", koArea.Rectangle()},
-			} {
-				noq := make(chan bool)
-				g.toastActive = false
-				g.ToastYesNo("Capture", fmt.Sprintf("Capture %s?", fr.area), func() { noq <- false }, func() { noq <- true })
-
-				if <-noq {
-					continue
-				}
-
-				img, err := video.CaptureRect(fr.rect)
-				if err != nil {
-					g.ToastOK("Error", fmt.Sprintf("Failed to capture %s", fr.file))
-					return
-				}
-
-				matrix, err := gocv.ImageToMatRGB(img)
-				if err != nil {
-					g.ToastOK("Error", fmt.Sprintf("Failed to create %s", fr.file))
-					return
-				}
-				defer matrix.Close()
-
-				if !gocv.IMWrite(fr.file, matrix) {
-					g.ToastOK("Error", fmt.Sprintf("Failed to save %s", fr.file))
-					return
-				}
-
-				var sI syscall.StartupInfo
-				var pI syscall.ProcessInformation
-				argv := syscall.StringToUTF16Ptr(os.Getenv("windir") + "\\system32\\cmd.exe /C " +
-					fmt.Sprintf("\"%s\\%s\"", dir, fr.file))
-
-				err = syscall.CreateProcess(nil, argv, nil, nil, true, 0, nil, nil, &sI, &pI)
-				if err != nil {
-					g.ToastOK("Error", fmt.Sprintf("Failed to open %s", fr.file))
-					return
-				}
-			}
+		Click: func(b *button.Button) {
+			g.ToastCapture([]*area.Capture{
+				{Option: "Entire area", File: "screen_area.png", Base: g.Screen.Bounds()},
+				scoreArea.Capture,
+				energyArea.Capture,
+				timeArea.Capture,
+				objectiveArea.Capture,
+				koArea.Capture,
+			})
 		},
 	}
 
-	mapArea := &area.Area{
-		Text:     "\t  Map",
-		TextSize: unit.Sp(13),
-		Min:      config.Current.Map.Min.Div(2),
-		Max:      config.Current.Map.Max.Div(2),
-
-		Button: &button.Button{
-			Active:   true,
-			Text:     "\t  tMap",
-			Pressed:  rgba.N(rgba.Gray),
-			Released: rgba.N(rgba.DarkGray),
-			Size:     image.Pt(100, 30),
-		},
-	}
-
-	resizeButton := &button.Button{
-		Text:     "\tResize",
-		Pressed:  rgba.N(rgba.Gray),
-		Released: rgba.N(rgba.DarkGray),
-		Active:   true,
-		Size:     image.Pt(100, 30),
-	}
-
-	resizeButton.Click = func() {
-		resizeButton.Active = !resizeButton.Active
-
-		err := video.Resize16x9()
-		if err != nil {
-			resizeButton.Error()
-			notify.Error("%v", err)
-			return
-		}
+	reapplyAreas := func() {
+		energyArea.Base = config.Current.Energy
+		scoreArea.Base = config.Current.Scores
+		timeArea.Base = config.Current.Time
+		objectiveArea.Base = config.Current.Objectives
+		koArea.Base = config.Current.KOs
 	}
 
 	defaultButton := &button.Button{
@@ -386,29 +345,19 @@ func (g *GUI) configure() (next string, err error) {
 		Released: rgba.N(rgba.DarkGray),
 		Active:   true,
 		Size:     image.Pt(100, 30),
-	}
+		Click: func(b *button.Button) {
+			defer b.Deactivate()
 
-	reapplyAreas := func() {
-		energyArea.Min = config.Current.Energy.Min.Div(2)
-		energyArea.Max = config.Current.Energy.Max.Div(2)
-		scoreArea.Min = config.Current.Scores.Min.Div(2)
-		scoreArea.Max = config.Current.Scores.Max.Div(2)
-		mapArea.Min = config.Current.Map.Min.Div(2)
-		mapArea.Max = config.Current.Map.Max.Div(2)
-		timeArea.Min = config.Current.Time.Min.Div(2)
-		timeArea.Max = config.Current.Time.Max.Div(2)
-		objectiveArea.Min = config.Current.Objectives.Min.Div(2)
-		objectiveArea.Max = config.Current.Objectives.Max.Div(2)
-		koArea.Min = config.Current.KOs.Min.Div(2)
-		koArea.Max = config.Current.KOs.Max.Div(2)
-	}
+			config.Current.SetDefaultAreas()
 
-	defaultButton.Click = func() {
-		defaultButton.Active = !defaultButton.Active
+			scoreArea.Reset()
+			energyArea.Reset()
+			timeArea.Reset()
+			koArea.Reset()
+			objectiveArea.Reset()
 
-		config.Current.SetDefaultAreas()
-
-		reapplyAreas()
+			reapplyAreas()
+		},
 	}
 
 	openConfigFileButton := &button.Button{
@@ -417,26 +366,25 @@ func (g *GUI) configure() (next string, err error) {
 		Released: rgba.N(rgba.DarkGray),
 		Active:   true,
 		Size:     image.Pt(100, 30),
-	}
+		Click: func(b *button.Button) {
+			defer b.Deactivate()
 
-	openConfigFileButton.Click = func() {
-		openConfigFileButton.Active = !openConfigFileButton.Active
+			exe := "C:\\Windows\\system32\\notepad.exe"
+			err := exec.Command(exe, config.Current.File()).Run()
+			if err != nil {
+				notify.Error("Failed to open \"%s\" (%v)", config.Current.File(), err)
+				return
+			}
 
-		exe := "C:\\Windows\\system32\\notepad.exe"
-		err := exec.Command(exe, config.Current.File()).Run()
-		if err != nil {
-			notify.Error("Failed to open \"%s\" (%v)", config.Current.File(), err)
-			return
-		}
+			// Called once window is closed.
+			err = config.Load(config.Current.Profile)
+			if err != nil {
+				notify.Error("Failed to reload \"%s\" (%v)", config.Current.File(), err)
+				return
+			}
 
-		// Called once window is closed.
-		err = config.Load(config.Current.Profile)
-		if err != nil {
-			notify.Error("Failed to reload \"%s\" (%v)", config.Current.File(), err)
-			return
-		}
-
-		reapplyAreas()
+			reapplyAreas()
+		},
 	}
 
 	saveButton := &button.Button{
@@ -447,51 +395,58 @@ func (g *GUI) configure() (next string, err error) {
 		Size:     image.Pt(100, 30),
 	}
 
+	// Hold on to the previous configuration to overwrite memory saves.
+	prev := config.Current
+
 	cancelButton := &button.Button{
 		Text:     "\tCancel",
 		Pressed:  rgba.N(rgba.Alpha(rgba.BloodOrange, 0x5F)),
 		Released: rgba.N(rgba.DarkGray),
 		Active:   true,
 		Size:     image.Pt(100, 30),
+		Click: func(b *button.Button) {
+			g.ToastYesNo("Cancel", "Discard configuration changes?",
+				func() {
+					defer b.Deactivate()
+
+					server.Clear()
+
+					if prev.Window != config.Current.Window {
+						electron.Close()
+					}
+
+					b.Disabled = true
+					saveButton.Disabled = true
+					energyArea.Button.Disabled = true
+					timeArea.Button.Disabled = true
+					scoreArea.Button.Disabled = true
+
+					config.Current = prev
+					err := config.Current.Save()
+					if err != nil {
+						notify.Error("Failed to save UniteHUD configuration (%v)", err)
+					}
+
+					if config.Current.Window == config.BrowserWindow {
+						err = electron.Open()
+						if err != nil {
+							notify.Error("Failed to open %s (%v)", config.BrowserWindow, err)
+						}
+					}
+
+					notify.System("Configuration omitted")
+
+					g.Actions <- Refresh
+
+					next = "main"
+				}, b.Deactivate)
+		},
 	}
 
-	// Hold on to the previous configuration to overwrite memory saves.
-	prev := config.Current
-
-	cancelButton.Click = func() {
-		g.ToastYesNo("Cancel", "Discard configuration changes?",
-			func() {
-				cancelButton.Active = !cancelButton.Active
-
-				server.Clear()
-
-				cancelButton.Disabled = true
-				saveButton.Disabled = true
-				energyArea.Button.Disabled = true
-				timeArea.Button.Disabled = true
-				scoreArea.Button.Disabled = true
-
-				config.Current = prev
-				err := config.Current.Save()
-				if err != nil {
-					notify.Error("Failed to save UniteHUD configuration (%v)")
-				}
-
-				notify.System("Configuration omitted")
-
-				g.Actions <- Refresh
-
-				next = "main"
-			}, func() {
-				cancelButton.Active = !cancelButton.Active
-			},
-		)
-	}
-
-	saveButton.Click = func() {
+	saveButton.Click = func(b *button.Button) {
 		g.ToastYesNo("Save", "Save configuration changes?",
 			func() {
-				saveButton.Active = !saveButton.Active
+				defer saveButton.Deactivate()
 
 				server.Clear()
 
@@ -504,13 +459,12 @@ func (g *GUI) configure() (next string, err error) {
 				config.Current.Scores = scoreArea.Rectangle()
 				config.Current.Time = timeArea.Rectangle()
 				config.Current.Energy = energyArea.Rectangle()
-				config.Current.Map = mapArea.Rectangle()
 				config.Current.Objectives = objectiveArea.Rectangle()
 				config.Current.KOs = koArea.Rectangle()
 
 				err := config.Current.Save()
 				if err != nil {
-					notify.Error("Failed to save UniteHUD configuration (%v)")
+					notify.Error("Failed to save UniteHUD configuration (%v)", err)
 				}
 
 				notify.System("Configuration saved to " + config.Current.File())
@@ -518,10 +472,7 @@ func (g *GUI) configure() (next string, err error) {
 				g.Actions <- Refresh
 
 				next = "main"
-			}, func() {
-				saveButton.Active = !saveButton.Active
-			},
-		)
+			}, saveButton.Deactivate)
 	}
 
 	screenButton := &button.Button{
@@ -530,24 +481,19 @@ func (g *GUI) configure() (next string, err error) {
 		Released: rgba.N(rgba.DarkGray),
 		Active:   true,
 		Size:     image.Pt(100, 30),
-	}
-
-	screenButton.Click = func() {
-		g.Preview = !g.Preview
+		Click: func(b *button.Button) {
+			g.Preview = !g.Preview
+		},
 	}
 
 	windowList := &dropdown.List{
-		Items: []*dropdown.Item{
-			{
-				Text:     config.MainDisplay,
-				Disabled: config.Current.VideoCaptureDevice != config.NoVideoCaptureDevice,
-				Checked:  widget.Bool{Value: config.Current.Window == config.MainDisplay},
-			},
-		},
+		Items: []*dropdown.Item{},
 		Callback: func(i *dropdown.Item) {
-			if config.Current.VideoCaptureDevice != config.NoVideoCaptureDevice {
+			if device.IsActive() {
 				return
 			}
+
+			electron.Close()
 
 			if i.Text == "" {
 				config.Current.Window = config.MainDisplay
@@ -559,51 +505,39 @@ func (g *GUI) configure() (next string, err error) {
 	}
 
 	populateWindows := func(videoCaptureDisabledEvent bool) {
-		if config.Current.Window == config.MainDisplay {
-			windowList.Items[0].Checked.Value = true
-			for _, item := range windowList.Items {
-				if item.Text != config.MainDisplay {
-					item.Checked.Value = false
-				}
-			}
-		} else {
-			windowList.Items[0].Checked.Value = false
-			for _, item := range windowList.Items {
-				if item.Text != config.MainDisplay {
-					item.Checked.Value = config.Current.Window == item.Text
-				}
-			}
+		for _, item := range windowList.Items {
+			item.Checked.Value = config.Current.Window == item.Text
 		}
 
-		windows, _ := video.Sources()
-		if len(windows) == len(windowList.Items) && !videoCaptureDisabledEvent {
+		windows, _, screens := video.Sources()
+		if len(windows)+len(screens) == len(windowList.Items) && !videoCaptureDisabledEvent {
 			return
 		}
 
-		windowList.Items = windowList.Items[:0]
+		windowList.Items = []*dropdown.Item{}
 
 		if videoCaptureDisabledEvent && config.Current.Window == "" {
 			config.Current.Window = config.MainDisplay
+		}
+
+		for _, screen := range screens {
+			windowList.Items = append(windowList.Items,
+				&dropdown.Item{
+					Text:     screen,
+					Disabled: device.IsActive(),
+					Checked:  widget.Bool{Value: screen == config.Current.Window},
+				},
+			)
 		}
 
 		for _, win := range windows {
 			windowList.Items = append(windowList.Items,
 				&dropdown.Item{
 					Text:     win,
-					Disabled: config.Current.VideoCaptureDevice != config.NoVideoCaptureDevice,
+					Disabled: device.IsActive(),
 					Checked:  widget.Bool{Value: win == config.Current.Window},
 				},
 			)
-		}
-
-		windowList.Items[0].Disabled = config.Current.VideoCaptureDevice != config.NoVideoCaptureDevice
-	}
-
-	populateWindows(false)
-
-	for _, i := range windowList.Items {
-		if i.Text == config.Current.Window {
-			i.Checked.Value = true
 		}
 	}
 
@@ -612,10 +546,11 @@ func (g *GUI) configure() (next string, err error) {
 	}
 
 	populateDevices := func(videoCaptureDisabledEvent bool) {
-		_, devices := video.Sources()
+		_, devices, _ := video.Sources()
 
+		// Set the "Disabled" checkbox when device is not active.
 		if len(devices)+1 == len(deviceList.Items) && !videoCaptureDisabledEvent {
-			deviceList.Items[0].Checked.Value = config.Current.VideoCaptureDevice == config.NoVideoCaptureDevice
+			deviceList.Items[0].Checked.Value = !device.IsActive()
 			return
 		}
 
@@ -624,7 +559,7 @@ func (g *GUI) configure() (next string, err error) {
 				Text:  "Disabled",
 				Value: config.NoVideoCaptureDevice,
 				Checked: widget.Bool{
-					Value: config.Current.VideoCaptureDevice != config.NoVideoCaptureDevice,
+					Value: device.IsActive(),
 				},
 			},
 		}
@@ -650,11 +585,12 @@ func (g *GUI) configure() (next string, err error) {
 				Text:  "Disabled",
 				Value: config.NoVideoCaptureDevice,
 				Checked: widget.Bool{
-					Value: config.Current.VideoCaptureDevice != config.NoVideoCaptureDevice,
+					Value: device.IsActive(),
 				},
 			},
 		},
 		Callback: func(i *dropdown.Item) {
+			electron.Close()
 			video.Close()
 			time.Sleep(time.Second) // XXX: Fix concurrency error in device.go Close.
 
@@ -668,10 +604,8 @@ func (g *GUI) configure() (next string, err error) {
 				populateWindows(true)
 			}
 
-			log.Debug().Int("device", i.Value).Msg("selected video capture device")
-
 			go func() {
-				err = video.Load()
+				err = video.Open()
 				if err != nil {
 					g.ToastErrorForce(err)
 
@@ -697,39 +631,95 @@ func (g *GUI) configure() (next string, err error) {
 		Released: rgba.N(rgba.DarkGray),
 		Active:   true,
 		Size:     image.Pt(100, 30),
+		Click: func(b *button.Button) {
+			g.ToastYesNo("Reset", fmt.Sprintf("Reset %s configuration?", config.Current.Profile), func() {
+				defer b.Deactivate()
+				defer server.Clear()
+
+				deviceList.Callback(deviceList.Items[0])
+
+				electron.Close()
+
+				err = config.Current.Reset()
+				if err != nil {
+					notify.Error("Failed to reset %s configuration (%v)", config.Current.Profile, err)
+				}
+
+				config.Current.Reload()
+
+				energyArea.Min, energyArea.Max = config.Current.Energy.Min, config.Current.Energy.Max
+				timeArea.Min, timeArea.Max = config.Current.Time.Min, config.Current.Time.Max
+				scoreArea.Min, scoreArea.Max = config.Current.Scores.Min, config.Current.Scores.Max
+				objectiveArea.Min, objectiveArea.Max = config.Current.Objectives.Min, config.Current.Objectives.Max
+				koArea.Min, koArea.Max = config.Current.KOs.Min, config.Current.KOs.Max
+
+				populateWindows(true)
+				populateDevices(true)
+
+				g.Actions <- Refresh
+
+				next = "main"
+
+				notify.Announce("Reset %s configuration", config.Current.Profile)
+			}, b.Deactivate)
+		},
+	}
+	openBrowserButton := &button.Button{
+		Text:     "  Browser",
+		Pressed:  rgba.N(rgba.Gray),
+		Released: rgba.N(rgba.DarkGray),
+		Active:   true,
+		Size:     image.Pt(100, 30),
+		Click: func(b *button.Button) {
+			defer b.Deactivate()
+
+			err := g.ToastInput(
+				fmt.Sprintf("%s URL", config.BrowserWindow),
+				"https://youtube.com/watch?v=t2kzUcEQa3g",
+				fmt.Sprintf("Disable %s auto-hide?", config.BrowserWindow),
+				func(url string, option bool) {
+					electron.Close()
+					video.Close()
+					time.Sleep(time.Second) // XXX: Fix concurrency error in device.go Close.
+
+					if device.IsActive() {
+						config.Current.VideoCaptureDevice = config.NoVideoCaptureDevice
+						populateDevices(true)
+					} else {
+						populateDevices(false)
+					}
+
+					config.Current.BrowserWindowURL = url
+					config.Current.DisableBrowserFormatting = option
+
+					err = electron.Open()
+					if err != nil {
+						g.ToastErrorForce(err)
+						return
+					}
+
+					config.Current.Window = config.BrowserWindow
+				})
+			if err != nil {
+				notify.Error("Failed to open url dialog (%v)", err)
+			}
+		},
 	}
 
-	resetButton.Click = func() {
-		g.ToastYesNo("Reset", fmt.Sprintf("Reset %s configuration?", config.Current.Profile), func() {
-			resetButton.Active = !resetButton.Active
+	closeBrowserButton := &button.Button{
+		Text:     "  Browser",
+		Pressed:  rgba.N(rgba.PaleRed),
+		Released: rgba.N(rgba.DarkGray),
+		Active:   true,
+		Size:     image.Pt(100, 30),
+		Click: func(b *button.Button) {
+			g.ToastYesNo("Cancel", fmt.Sprintf("Close %s?", config.BrowserWindow), func() {
+				defer b.Deactivate()
 
-			deviceList.Callback(deviceList.Items[0])
-
-			err := config.Current.Reset()
-			if err != nil {
-				notify.Error("Failed to reset %s configuration (%v)", config.Current.Profile, err)
-			}
-
-			config.Current.Reload()
-
-			energyArea.Min, energyArea.Max = config.Current.Energy.Min.Div(2), config.Current.Energy.Max.Div(2)
-			timeArea.Min, timeArea.Max = config.Current.Time.Min.Div(2), config.Current.Time.Max.Div(2)
-			scoreArea.Min, scoreArea.Max = config.Current.Scores.Min.Div(2), config.Current.Scores.Max.Div(2)
-			objectiveArea.Min, objectiveArea.Max = config.Current.Objectives.Min.Div(2), config.Current.Objectives.Max.Div(2)
-			koArea.Min, koArea.Max = config.Current.KOs.Min.Div(2), config.Current.KOs.Max.Div(2)
-
-			populateWindows(true)
-			populateDevices(true)
-
-			g.Actions <- Refresh
-
-			next = "main"
-
-			notify.Announce("Reset %s configuration", config.Current.Profile)
-		}, func() {
-			resetButton.Active = !resetButton.Active
+				electron.Close()
+				config.Current.Window = config.MainDisplay
+			}, b.Deactivate)
 		},
-		)
 	}
 
 	header := material.H5(g.cascadia, Title(""))
@@ -737,17 +727,16 @@ func (g *GUI) configure() (next string, err error) {
 	header.Alignment = text.Middle
 	header.Font.Weight = text.ExtraBold
 
-	pauseMatchingRoutines := false
-	defer func() { pauseMatchingRoutines = true }()
+	/*
+		go g.while(func() { g.matchKOs(koArea) }, &matchingRoutines)
+		go g.while(func() { g.matchObjectives(objectiveArea) }, &matchingRoutines)
+		go g.while(func() { g.matchTime(timeArea) }, &matchingRoutines)
 
-	go g.while(func() { g.matchKOs(koArea) }, &pauseMatchingRoutines)
-	go g.while(func() { g.matchObjectives(objectiveArea) }, &pauseMatchingRoutines)
-	go g.while(func() { g.matchTime(timeArea) }, &pauseMatchingRoutines)
-
-	if config.Current.Profile == config.ProfilePlayer {
-		go g.while(func() { g.matchEnergy(energyArea) }, &pauseMatchingRoutines)
-		go g.while(func() { g.matchScore(scoreArea) }, &pauseMatchingRoutines)
-	}
+		if config.Current.Profile == config.ProfilePlayer {
+			go g.while(func() { g.matchEnergy(energyArea) }, &matchingRoutines)
+			go g.while(func() { g.matchScore(scoreArea) }, &matchingRoutines)
+		}
+	*/
 	// go g.run(func() { g.matchMap(mapArea) }, &kill)
 
 	var ops op.Ops
@@ -773,30 +762,25 @@ func (g *GUI) configure() (next string, err error) {
 			pointer.CursorNameOp{Name: pointer.CursorGrab}.Add(gtx.Ops)
 
 			background := clip.Rect{Max: gtx.Constraints.Max}.Push(gtx.Ops)
-			paint.ColorOp{Color: rgba.N(rgba.Gray)}.Add(gtx.Ops)
+			paint.ColorOp{Color: rgba.N(rgba.Background)}.Add(gtx.Ops)
 			paint.PaintOp{}.Add(gtx.Ops)
 			background.Pop()
 
 			split.Layout(gtx,
 				func(gtx layout.Context) layout.Dimensions {
-					return layout.UniformInset(unit.Dp(5)).Layout(gtx,
+					return layout.Inset{
+						Top:  unit.Px(0),
+						Left: unit.Px(0),
+					}.Layout(gtx,
 						func(gtx layout.Context) layout.Dimensions {
-							if !screenButton.Active {
-								return layout.Dimensions{Size: gtx.Constraints.Max}
-							}
-
-							return fill(
-								gtx,
-								color.NRGBA{R: 25, G: 25, B: 25, A: 255},
-								g.Screen.Layout)
+							return layout.NW.Layout(gtx, g.Screen.Layout)
 						},
 					)
 				},
-
 				func(gtx layout.Context) layout.Dimensions {
 					return layout.UniformInset(unit.Dp(5)).Layout(gtx,
 						func(gtx layout.Context) layout.Dimensions {
-							return fill(gtx, color.NRGBA{R: 25, G: 25, B: 25, A: 255},
+							return fill(gtx, rgba.N(rgba.BackgroundAlt),
 								func(gtx layout.Context) layout.Dimensions {
 									{
 										layout.Inset{
@@ -821,16 +805,29 @@ func (g *GUI) configure() (next string, err error) {
 											},
 										)
 
-										layout.Inset{
-											Top:   unit.Px(5),
-											Left:  unit.Px(325),
-											Right: unit.Px(10),
-										}.Layout(
-											gtx,
-											func(gtx layout.Context) layout.Dimensions {
-												return resizeButton.Layout(gtx)
-											},
-										)
+										if config.Current.Window == config.BrowserWindow {
+											layout.Inset{
+												Top:   unit.Px(5),
+												Left:  unit.Px(325),
+												Right: unit.Px(10),
+											}.Layout(
+												gtx,
+												func(gtx layout.Context) layout.Dimensions {
+													return closeBrowserButton.Layout(gtx)
+												},
+											)
+										} else {
+											layout.Inset{
+												Top:   unit.Px(5),
+												Left:  unit.Px(325),
+												Right: unit.Px(10),
+											}.Layout(
+												gtx,
+												func(gtx layout.Context) layout.Dimensions {
+													return openBrowserButton.Layout(gtx)
+												},
+											)
+										}
 
 										layout.Inset{
 											Top:   unit.Px(37),
@@ -988,7 +985,7 @@ func (g *GUI) configure() (next string, err error) {
 
 									// Score area rectangle buttons.
 									{
-										if config.Current.VideoCaptureDevice != config.NoVideoCaptureDevice || config.Current.Window == config.MainDisplay {
+										if device.IsActive() || screen.IsDisplay() {
 											scaleText.Color = rgba.N(rgba.Slate)
 											scaleValueText.Color = rgba.N(rgba.Slate)
 											scaleUpButton.Disabled = true
@@ -1041,10 +1038,10 @@ func (g *GUI) configure() (next string, err error) {
 										}.Layout(
 											gtx,
 											func(gtx layout.Context) layout.Dimensions {
-												if config.Current.VideoCaptureDevice == config.NoVideoCaptureDevice {
-													scaleValueText.Text = fmt.Sprintf("%.2fx", config.Current.Scale)
-												} else {
+												if device.IsActive() {
 													scaleValueText.Text = "1.00x"
+												} else {
+													scaleValueText.Text = fmt.Sprintf("%.2fx", config.Current.Scale)
 												}
 
 												return scaleValueText.Layout(gtx)
@@ -1064,7 +1061,7 @@ func (g *GUI) configure() (next string, err error) {
 
 									// Shift N,E,S,W
 									{
-										if config.Current.VideoCaptureDevice != config.NoVideoCaptureDevice || config.Current.Window == config.MainDisplay || config.Current.Scale == 1 {
+										if device.IsActive() || screen.IsDisplay() {
 											nButton.Disabled = true
 											eButton.Disabled = true
 											sButton.Disabled = true
@@ -1137,159 +1134,20 @@ func (g *GUI) configure() (next string, err error) {
 				},
 			)
 
-			timeArea.Layout(gtx)
-
-			// mapArea.Layout(gtx)
-			switch config.Current.Profile {
-			case config.ProfilePlayer:
-				energyArea.Layout(gtx)
-				scoreArea.Layout(gtx)
-			case config.ProfileBroadcaster:
+			cursor := pointer.CursorDefault
+			for _, area := range []*area.Area{timeArea, energyArea, scoreArea, koArea, objectiveArea} {
+				err := area.Layout(gtx, g.Screen.Dims, g.Screen.Image)
+				if err != nil {
+					g.ToastError(err)
+				}
+				if area.Focus {
+					cursor = pointer.CursorPointer
+				}
+				if area.Drag {
+					cursor = pointer.CursorCrossHair
+				}
 			}
-
-			koArea.Layout(gtx)
-			objectiveArea.Layout(gtx)
-
-			e.Frame(gtx.Ops)
-		}
-	}
-
-	return next, nil
-}
-
-func (g *GUI) configurationHelpDialog(h *help.Help, widget layout.Widget) (next string, err error) {
-	split := &split.Vertical{Ratio: .70}
-
-	var ops op.Ops
-
-	header := material.H5(g.cascadia, "Help: Configuration")
-	header.Color = rgba.N(rgba.White)
-	header.Alignment = text.Middle
-
-	backwardButton := &button.Button{
-		Text:     " <",
-		Released: rgba.N(rgba.Slate),
-		Pressed:  rgba.N(rgba.DarkGray),
-		Size:     image.Pt(40, 35),
-	}
-
-	backwardButton.Click = func() {
-		backwardButton.Active = !backwardButton.Active
-		if h.Page != 0 {
-			h.Page--
-		}
-	}
-
-	forwardButton := &button.Button{
-		Text:     " >",
-		Released: rgba.N(rgba.Slate),
-		Pressed:  rgba.N(rgba.DarkGray),
-		Size:     image.Pt(40, 35),
-	}
-
-	forwardButton.Click = func() {
-		forwardButton.Active = !forwardButton.Active
-		if h.Page != h.Pages-1 {
-			h.Page++
-		}
-	}
-
-	returnButton := &button.Button{
-		Text:     "\t  Back",
-		Released: rgba.N(rgba.Slate),
-		Pressed:  rgba.N(rgba.DarkGray),
-	}
-
-	returnButton.Click = func() {
-		returnButton.Active = false
-		next = "configure"
-	}
-
-	for next == "" {
-		if !g.open {
-			time.Sleep(time.Millisecond * 10)
-			continue
-		}
-
-		e := <-g.Events()
-		switch e := e.(type) {
-		case app.ConfigEvent:
-		case system.DestroyEvent:
-			return "", e.Err
-		case system.FrameEvent:
-			gtx := layout.NewContext(&ops, e)
-			pointer.CursorNameOp{Name: pointer.CursorGrab}.Add(gtx.Ops)
-
-			background := clip.Rect{Max: gtx.Constraints.Max}.Push(gtx.Ops)
-			paint.ColorOp{Color: rgba.N(rgba.Gray)}.Add(gtx.Ops)
-			paint.PaintOp{}.Add(gtx.Ops)
-			background.Pop()
-
-			split.Layout(gtx,
-				func(gtx layout.Context) layout.Dimensions {
-					return fill(gtx,
-						color.NRGBA{R: 25, G: 25, B: 25, A: 255},
-						func(gtx layout.Context) layout.Dimensions {
-							layout.Inset{
-								Left: unit.Px(2),
-								Top:  unit.Px(10),
-							}.Layout(gtx, header.Layout)
-
-							return layout.Inset{Top: unit.Px(50)}.Layout(gtx,
-								func(gtx layout.Context) layout.Dimensions {
-									return widget(gtx)
-								},
-							)
-						},
-					)
-				},
-
-				func(gtx layout.Context) layout.Dimensions {
-					return fill(
-						gtx,
-						color.NRGBA{R: 25, G: 25, B: 25, A: 255},
-						func(gtx layout.Context) layout.Dimensions {
-							pages := material.H5(g.cascadia, fmt.Sprintf("%d / %d", h.Page+1, h.Pages))
-							pages.Color = rgba.N(rgba.White)
-							pages.Alignment = text.Middle
-							pages.TextSize = unit.Sp(14)
-							layout.Inset{
-								Left: unit.Px(float32(gtx.Constraints.Max.X - 90)),
-								Top:  unit.Px(float32(gtx.Constraints.Max.Y - 130)),
-							}.Layout(gtx, pages.Layout)
-
-							layout.Inset{
-								Left: unit.Px(float32(gtx.Constraints.Max.X - 125)),
-								Top:  unit.Px(float32(gtx.Constraints.Max.Y - 100)),
-							}.Layout(gtx,
-								func(gtx layout.Context) layout.Dimensions {
-									return backwardButton.Layout(gtx)
-								},
-							)
-
-							layout.Inset{
-								Left: unit.Px(float32(gtx.Constraints.Max.X - 65)),
-								Top:  unit.Px(float32(gtx.Constraints.Max.Y - 100)),
-							}.Layout(gtx,
-								func(gtx layout.Context) layout.Dimensions {
-									return forwardButton.Layout(gtx)
-								},
-							)
-
-							layout.Inset{
-								Left: unit.Px(float32(gtx.Constraints.Max.X - 125)),
-								Top:  unit.Px(float32(gtx.Constraints.Max.Y - 45)),
-							}.Layout(gtx,
-								func(gtx layout.Context) layout.Dimensions {
-									return returnButton.Layout(gtx)
-								},
-							)
-
-							return layout.Dimensions{Size: gtx.Constraints.Max}
-						},
-					)
-				},
-			)
+			g.Window.SetCursorName(cursor)
 
 			e.Frame(gtx.Ops)
 		}

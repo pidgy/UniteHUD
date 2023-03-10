@@ -10,14 +10,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rs/zerolog/log"
 	"github.com/skratchdot/open-golang/open"
 	"gocv.io/x/gocv"
 
-	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/match"
 	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/server"
+	"github.com/pidgy/unitehud/stats"
 	"github.com/pidgy/unitehud/team"
 )
 
@@ -26,9 +25,7 @@ var (
 
 	now = time.Now()
 
-	logs    = fmt.Sprintf("%d.log", time.Now().Unix())
-	logq    = make(chan string, 1024)
-	logging = false
+	logs = fmt.Sprintf("%d.log", time.Now().Unix())
 
 	cpu, ram *os.File
 
@@ -62,47 +59,43 @@ func Capture(img image.Image, mat gocv.Mat, t *team.Team, p image.Point, value i
 	return file
 }
 
-func Close() {
-	close(logq)
-}
-
-func Log(format string, a ...interface{}) {
-	if !config.Current.Record {
+func Log() {
+	err := createAllIfNotExist()
+	if err != nil {
+		notify.Error("Failed to create %s directory (%v)", Dir, err)
 		return
 	}
 
-	txt := fmt.Sprintf(format, a...)
-	logq <- fmt.Sprintf("[%s] | %s\n", time.Now().Format(time.Stamp), txt)
+	f, err := os.OpenFile(fmt.Sprintf("%s/log/unitehud_%s", Dir, logs), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		notify.Error("Failed to open log file (%v)", Dir, err)
+		return
+	}
+	defer f.Close()
+
+	for _, p := range notify.Feeds() {
+		_, err := f.WriteString(fmt.Sprintf("%s\n", p.String()))
+		if err != nil {
+			notify.Error("Failed to write event logs (%v)", Dir, err)
+		}
+	}
+
+	for _, line := range stats.Lines() {
+		_, err := f.WriteString(fmt.Sprintf("%s\n", line))
+		if err != nil {
+			notify.Error("Failed to append statistic logs (%v)", Dir, err)
+		}
+	}
 }
 
 func Open() error {
-	err := createTmpIfNotExist()
+	err := createAllIfNotExist()
 	if err != nil {
+		notify.Error("Failed to create %s directory (%v)", Dir, err)
 		return err
 	}
 
 	return open.Run("tmp")
-}
-
-func LoggingStart() error {
-	err := createAllIfNotExist()
-	if err != nil {
-		log.Err(err).Msgf("failed to create %s directory", Dir)
-		return err
-	}
-
-	if !logging {
-		go spin()
-		logging = true
-	}
-
-	Log("Start")
-
-	return nil
-}
-
-func LoggingStop() {
-	Log("End")
 }
 
 func ProfileStart() {
@@ -110,24 +103,24 @@ func ProfileStart() {
 
 	cpu, err = os.Create("cpu.prof")
 	if err != nil {
-		log.Panic().Err(err).Msg("failed to create cpu profile")
+
 	}
 
 	err = pprof.StartCPUProfile(cpu)
 	if err != nil {
-		log.Panic().Err(err).Msg("failed to start CPU profile")
+
 	}
 
 	ram, err = os.Create("mem.prof")
 	if err != nil {
-		log.Panic().Err(err).Msg("failed to create RAM profile")
+
 	}
 
 	runtime.GC()
 
 	err = pprof.WriteHeapProfile(ram)
 	if err != nil {
-		log.Panic().Err(err).Msg("failed to write RAM profile")
+
 	}
 }
 
@@ -167,7 +160,6 @@ func createDirIfNotExist(subdir string) error {
 
 	dir, err := os.Getwd()
 	if err != nil {
-		log.Err(err).Msg("failed to find working directory")
 		return err
 	}
 
@@ -186,7 +178,7 @@ func createDirIfNotExist(subdir string) error {
 func createTmpIfNotExist() error {
 	dir, err := os.Getwd()
 	if err != nil {
-		log.Err(err).Msg("failed to find working directory")
+
 		return err
 	}
 
@@ -217,20 +209,4 @@ func filename(name, subdir string, value int) string {
 	)
 
 	return p
-}
-
-func spin() {
-	f, err := os.OpenFile(fmt.Sprintf("%s/log/unitehud_%s", Dir, logs), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		log.Err(err).Msg("failed to open log file")
-		return
-	}
-	defer f.Close()
-
-	for txt := range logq {
-		_, err := f.WriteString(txt)
-		if err != nil {
-			log.Err(err).Str("file", logs).Msg("failed to write log")
-		}
-	}
 }
