@@ -60,7 +60,7 @@ func Capture(img image.Image, mat gocv.Mat, t *team.Team, p image.Point, value i
 }
 
 func Log() {
-	err := createAllIfNotExist()
+	_, err := createAllIfNotExist()
 	if err != nil {
 		notify.Error("Failed to create %s directory (%v)", Dir, err)
 		return
@@ -89,13 +89,13 @@ func Log() {
 }
 
 func Open() error {
-	err := createAllIfNotExist()
+	d, err := createAllIfNotExist()
 	if err != nil {
 		notify.Error("Failed to create %s directory (%v)", Dir, err)
 		return err
 	}
 
-	return open.Run("tmp")
+	return open.Run(d)
 }
 
 func ProfileStart() {
@@ -103,24 +103,28 @@ func ProfileStart() {
 
 	cpu, err = os.Create("cpu.prof")
 	if err != nil {
-
+		notify.Error("Failed to create CPU profile (%v)", err)
+		return
 	}
 
 	err = pprof.StartCPUProfile(cpu)
 	if err != nil {
-
+		notify.Error("Failed to start CPU profile (%v)", err)
+		return
 	}
 
 	ram, err = os.Create("mem.prof")
 	if err != nil {
-
+		notify.Error("Failed to create RAM profile (%v)", err)
+		return
 	}
 
 	runtime.GC()
 
 	err = pprof.WriteHeapProfile(ram)
 	if err != nil {
-
+		notify.Error("Failed to write RAM profile (%v)", err)
+		return
 	}
 }
 
@@ -130,10 +134,10 @@ func ProfileStop() {
 	ram.Close()
 }
 
-func createAllIfNotExist() error {
-	err := createTmpIfNotExist()
+func createAllIfNotExist() (string, error) {
+	d, err := createTmpIfNotExist()
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	for _, subdir := range []string{
@@ -143,11 +147,11 @@ func createAllIfNotExist() error {
 	} {
 		err := createDirIfNotExist(Dir + subdir)
 		if err != nil {
-			return err
+			return "", err
 		}
 	}
 
-	return nil
+	return d, nil
 }
 
 func createDirIfNotExist(subdir string) error {
@@ -175,23 +179,24 @@ func createDirIfNotExist(subdir string) error {
 	return nil
 }
 
-func createTmpIfNotExist() error {
+func createTmpIfNotExist() (string, error) {
 	dir, err := os.Getwd()
 	if err != nil {
-
-		return err
+		return "", err
 	}
 
-	err = os.Mkdir(fmt.Sprintf("%s/tmp", dir), 0755)
+	d := fmt.Sprintf("%s/tmp", dir)
+
+	err = os.Mkdir(d, 0755)
 	if err != nil {
 		if os.IsExist(err) {
-			return nil
+			return d, nil
 		}
 
-		return err
+		return "", err
 	}
 
-	return nil
+	return d, nil
 }
 
 func filename(name, subdir string, value int) string {

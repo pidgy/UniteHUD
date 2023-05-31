@@ -2,10 +2,8 @@ package button
 
 import (
 	"image"
-	"image/color"
 	"time"
 
-	"gioui.org/f32"
 	"gioui.org/font/gofont"
 	"gioui.org/io/pointer"
 	"gioui.org/layout"
@@ -15,27 +13,33 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 
-	"github.com/pidgy/unitehud/rgba"
+	"github.com/pidgy/unitehud/cursor"
+	"github.com/pidgy/unitehud/nrgba"
 )
 
 type Button struct {
-	Text                          string
-	TextSize                      unit.Value
-	TextOffsetTop, TextOffsetLeft float32
-	BorderWidth                   unit.Value
+	Text            string
+	TextSize        unit.Sp
+	TextInsetBottom unit.Dp
+	BorderWidth     unit.Sp
+	NoBorder        bool
+	SharpCorners    bool
 
 	Size image.Point
 
 	Active            bool
 	Disabled          bool
 	LastPressed       time.Time
-	Pressed, Released color.NRGBA
+	Pressed, Released nrgba.NRGBA
 
 	Click       func(b *Button)
 	SingleClick bool // Toggle the Active field on Click events.
 
 	hover bool
 	alpha uint8
+
+	inset layout.Inset
+	set   bool
 }
 
 var Max = image.Pt(100, 35)
@@ -46,7 +50,7 @@ func (b *Button) Deactivate() {
 
 func (b *Button) Error() {
 	tmp := b.Pressed
-	b.Pressed = color.NRGBA(rgba.Red)
+	b.Pressed = nrgba.Red
 	b.Disabled = true
 	time.AfterFunc(time.Second*2, func() {
 		b.Pressed = tmp
@@ -63,13 +67,32 @@ func (b *Button) Layout(gtx layout.Context) layout.Dimensions {
 		b.alpha = b.Released.A
 	}
 
+	not := func() bool {
+		if b.Disabled {
+			cursor.Is(pointer.CursorNotAllowed)
+			b.hover = false
+		}
+		return b.Disabled
+	}
+
 	for _, e := range gtx.Events(b) {
 		if e, ok := e.(pointer.Event); ok {
 			switch e.Type {
 			case pointer.Enter:
-				b.Released = color.NRGBA(rgba.Alpha(color.RGBA(b.Released), 0x50))
+				if not() {
+					continue
+				}
+				cursor.Is(pointer.CursorPointer)
+
+				b.Released = b.Released.Alpha(0x50)
 				b.hover = true
 			case pointer.Release:
+				if not() {
+					continue
+				}
+
+				cursor.Is(pointer.CursorPointer)
+
 				if b.hover && b.Click != nil {
 					b.Click(b)
 					if b.SingleClick {
@@ -79,81 +102,117 @@ func (b *Button) Layout(gtx layout.Context) layout.Dimensions {
 					b.Active = !b.Active
 				}
 			case pointer.Leave:
-				b.Released = color.NRGBA(rgba.Alpha(color.RGBA(b.Released), b.alpha))
+				cursor.Is(pointer.CursorDefault)
+
+				b.Released = b.Released.Alpha(b.alpha)
 				b.hover = false
 			case pointer.Press:
+				if not() {
+					continue
+				}
+
+				cursor.Is(pointer.CursorPointer)
+
 				b.Active = !b.Active
 			case pointer.Move:
+				if not() {
+					continue
+				}
+
+				cursor.Is(pointer.CursorPointer)
 			}
 		}
 	}
 
 	// Confine the area for pointer events.
-	if !b.Disabled {
-		area := clip.Rect(image.Rect(0, 0, b.Size.X, b.Size.Y)).Push(gtx.Ops)
-		pointer.InputOp{
-			Tag:   b,
-			Types: pointer.Press | pointer.Release | pointer.Enter | pointer.Leave,
-		}.Add(gtx.Ops)
-
-		area.Pop()
-	} else {
-		b.hover = false
-	}
+	area := clip.Rect(image.Rect(0, 0, b.Size.X, b.Size.Y)).Push(gtx.Ops)
+	pointer.InputOp{
+		Tag:   b,
+		Types: pointer.Press | pointer.Release | pointer.Enter | pointer.Leave | pointer.Move,
+	}.Add(gtx.Ops)
+	area.Pop()
 
 	return b.draw(gtx)
 }
 
 func (b *Button) uniform(gtx layout.Context) layout.Dimensions {
-	defer clip.RRect{SE: 3, SW: 3, NE: 3, NW: 3, Rect: f32.Rectangle{Max: f32.Pt(float32(b.Size.X), float32(b.Size.Y))}}.Push(gtx.Ops).Pop()
+	rect := clip.RRect{SE: 3, SW: 3, NE: 3, NW: 3, Rect: image.Rectangle{Max: image.Pt((b.Size.X), b.Size.Y)}}
+	if b.SharpCorners {
+		rect = clip.RRect{SE: 0, SW: 0, NE: 0, NW: 0, Rect: image.Rectangle{Max: image.Pt((b.Size.X), b.Size.Y)}}
+	}
+
+	defer rect.Push(gtx.Ops).Pop()
 
 	col := b.Pressed
 	if !b.Active {
 		col = b.Released
 	}
+	if b.hover {
+		col = b.Pressed
+	}
 
-	paint.ColorOp{Color: col}.Add(gtx.Ops)
+	paint.ColorOp{Color: col.Color()}.Add(gtx.Ops)
 	paint.PaintOp{}.Add(gtx.Ops)
+
 	return layout.Dimensions{Size: b.Size}
 }
 
 func (b *Button) draw(gtx layout.Context) layout.Dimensions {
-	if b.BorderWidth.V == unit.Px(0).V {
-		b.BorderWidth = unit.Px(2)
+	if b.TextSize == 0 {
+		b.TextSize = unit.Sp(16)
+	}
+
+	if b.NoBorder {
+		b.BorderWidth = 0
 	}
 
 	if b.hover {
 		widget.Border{
-			Color:        rgba.N(rgba.White),
-			Width:        unit.Dp(1),
-			CornerRadius: unit.Px(2),
+			Color:        nrgba.White.Color(),
+			Width:        unit.Dp(b.BorderWidth),
+			CornerRadius: unit.Dp(2),
 		}.Layout(gtx, b.uniform)
 	} else {
 		widget.Border{
-			Color:        color.NRGBA{A: 0xAF},
-			Width:        b.BorderWidth,
-			CornerRadius: unit.Px(2),
+			Color:        nrgba.Disabled.Color(),
+			Width:        unit.Dp(b.BorderWidth),
+			CornerRadius: unit.Dp(2),
 		}.Layout(gtx, b.uniform)
 	}
-	title := material.Body1(material.NewTheme(gofont.Collection()), b.Text)
-	title.Color = color.NRGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0xFF}
+
+	t := material.Label(material.NewTheme(gofont.Collection()), b.TextSize, b.Text)
+	t.Color = nrgba.White.Color()
+	t.MaxLines = 1
+	t.Truncator = t.Text
+
 	if b.Active && b.Click != nil {
-		title.Color.A = 0xFF
+		t.Color.A = 0xFF
 	}
+
 	if !b.Active && b.Click == nil {
-		title.Color.A = 0x3F
+		t.Color.A = 0x3F
 	}
 
-	if b.TextSize.V == 0 {
-		title.TextSize = unit.Px(16)
-	} else {
-		title.TextSize = b.TextSize
+	max := layout.Exact(b.Size).Max
+
+	gtx.Constraints.Max = max
+
+	if !b.set {
+		dims := t.Layout(gtx)
+		x := unit.Dp((float64(max.X) - float64(dims.Size.X)) / 2)
+		y := unit.Dp((float64(max.Y) - float64(dims.Size.Y)) / 2)
+		b.inset = layout.Inset{Left: x, Right: x, Top: y - b.TextInsetBottom, Bottom: y + b.TextInsetBottom}
+		b.set = true
+		return dims
 	}
 
-	return layout.Inset{
-		Left: unit.Dp(11 + b.TextOffsetLeft),
-		Top:  unit.Px(((float32(b.Size.Y) / title.TextSize.V) * 3) + b.TextOffsetTop),
-	}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-		return layout.N.Layout(gtx, title.Layout)
-	})
+	b.inset.Layout(gtx, t.Layout)
+	/*
+		layout.Flex{Axis: layout.Horizontal, Spacing: layout.SpaceEvenly, WeightSum: 3}.Layout(gtx,
+			layout.Rigid(layout.Spacer{Width: 1}.Layout),
+			layout.Rigid(t.Layout),
+			layout.Rigid(layout.Spacer{Width: 1}.Layout),
+		)
+	*/
+	return layout.Dimensions{Size: gtx.Constraints.Max}
 }

@@ -2,29 +2,26 @@ package dropdown
 
 import (
 	"image"
-	"image/color"
 
+	"gioui.org/font"
 	"gioui.org/layout"
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
-	"gioui.org/text"
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 
-	"github.com/pidgy/unitehud/rgba"
+	"github.com/pidgy/unitehud/nrgba"
 )
 
-const alpha = 0xCC
-
 var (
-	Disabled = rgba.N(rgba.Red)
-	Enabled  = rgba.N(rgba.DarkSeafoam)
+	Disabled = nrgba.Red.Color()
+	Enabled  = nrgba.DarkSeafoam.Color()
 )
 
 type List struct {
 	Items         []*Item
-	Callback      func(i *Item)
+	Callback      func(*Item, *List)
 	WidthModifier int
 	Radio         bool
 	TextSize      float32
@@ -34,12 +31,13 @@ type List struct {
 
 type Item struct {
 	Text     string
+	Hint     string
 	Checked  widget.Bool
 	Value    int
 	Disabled bool
 	Weight   int
 
-	Callback func()
+	Callback func(*Item)
 }
 
 // Layout handles drawing the letters view.
@@ -55,23 +53,24 @@ func (l *List) Layout(gtx layout.Context, th *material.Theme) layout.Dimensions 
 	}
 
 	style := material.List(th, l.list)
-	style.Track.Color = color.NRGBA(rgba.Gray)
+	style.Track.Color = nrgba.Gray.Color()
 	style.Track.Color.A = 0xFF
 
 	return style.Layout(gtx, len(l.Items), func(gtx layout.Context, index int) layout.Dimensions {
 		item := l.Items[index]
 
 		check := material.CheckBox(th, &item.Checked, item.Text)
-		check.Font.Weight = text.Weight(item.Weight)
-		check.Color = color.NRGBA(rgba.White)
-		check.Size = unit.Px(15)
-		check.IconColor = rgba.N(rgba.White)
+		check.Font.Weight = font.Weight(item.Weight)
+		check.Color = nrgba.White.Color()
+		check.Size = unit.Dp(14)
+		check.TextSize = unit.Sp(14)
+		check.IconColor = nrgba.White.Alpha(50).Color()
 
 		if item.Checked.Changed() {
 			if item.Disabled {
 				item.Checked.Value = !item.Checked.Value
 			} else if item.Callback != nil {
-				item.Callback()
+				item.Callback(item)
 			}
 
 			if l.Radio {
@@ -86,7 +85,7 @@ func (l *List) Layout(gtx layout.Context, th *material.Theme) layout.Dimensions 
 			}
 
 			if !item.Disabled && l.Callback != nil {
-				l.Callback(item)
+				l.Callback(item, l)
 			}
 		}
 
@@ -101,29 +100,42 @@ func (l *List) Layout(gtx layout.Context, th *material.Theme) layout.Dimensions 
 		}
 		switch {
 		case item.Checked.Hovered():
-			hoverItem(&gtx, index)
+			hoverItem(gtx, index)
 		case item.Checked.Value:
-			selectedItem(&gtx, index)
+			selectedItem(gtx, index)
 		}
 
 		if l.WidthModifier == 0 {
 			l.WidthModifier = 1
 		}
 
-		return layout.E.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+		dims := layout.E.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 			dim := check.Layout(gtx)
 			dim.Size.X = gtx.Constraints.Max.X / l.WidthModifier
 			return dim
 		})
+
+		if item.Hint != "" {
+			l := material.Label(
+				th,
+				check.TextSize*unit.Sp(.9),
+				item.Hint,
+			)
+			l.Color = nrgba.Transparent30.Color()
+
+			dims = l.Layout(gtx)
+		}
+
+		return dims
 	})
 }
 
-func selectedItem(gtx *layout.Context, index int) {
+func selectedItem(gtx layout.Context, index int) {
 	widget.Border{
-		Color:        rgba.N(rgba.Alpha(rgba.White, 5)),
-		Width:        unit.Px(1),
-		CornerRadius: unit.Px(3),
-	}.Layout(*gtx, func(gtx layout.Context) layout.Dimensions {
+		Color:        nrgba.White.Alpha(5).Color(),
+		Width:        unit.Dp(1),
+		CornerRadius: unit.Dp(3),
+	}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 		return colorRect(gtx,
 			clip.Rect{
 				Min: image.Pt(
@@ -135,55 +147,30 @@ func selectedItem(gtx *layout.Context, index int) {
 					20,
 				),
 			},
-			rgba.N(rgba.Alpha(rgba.Black, 100)),
+			nrgba.Black.Alpha(50),
 		)
 	})
 }
 
-func hoverItem(gtx *layout.Context, index int) {
-	widget.Border{
-		Color:        rgba.N(rgba.Alpha(rgba.White, 100)),
-		Width:        unit.Px(1),
-		CornerRadius: unit.Px(3),
-	}.Layout(*gtx, func(gtx layout.Context) layout.Dimensions {
-		return colorRect(gtx,
-			clip.Rect{
-				Min: image.Pt(
-					0,
-					0,
-				),
-				Max: image.Pt(
-					gtx.Constraints.Max.X,
-					20,
-				),
-			},
-			rgba.N(rgba.Alpha(rgba.White, 5)),
-		)
-	})
+func hoverItem(gtx layout.Context, index int) {
+	colorRect(gtx,
+		clip.Rect{
+			Min: image.Pt(
+				0,
+				0,
+			),
+			Max: image.Pt(
+				gtx.Constraints.Max.X,
+				20,
+			),
+		},
+		nrgba.White.Alpha(5),
+	)
 }
 
-func colorRRect(gtx layout.Context, rect clip.RRect, color color.NRGBA) layout.Dimensions {
+func colorRect(gtx layout.Context, rect clip.Rect, nrgba nrgba.NRGBA) layout.Dimensions {
 	defer rect.Push(gtx.Ops).Pop()
-	paint.ColorOp{Color: color}.Add(gtx.Ops)
-	paint.PaintOp{}.Add(gtx.Ops)
-	return layout.Dimensions{Size: image.Pt(int(rect.Rect.Max.X), int(rect.Rect.Max.Y))}
-}
-
-func colorRect(gtx layout.Context, rect clip.Rect, color color.NRGBA) layout.Dimensions {
-	defer rect.Push(gtx.Ops).Pop()
-	paint.ColorOp{Color: color}.Add(gtx.Ops)
+	paint.ColorOp{Color: nrgba.Color()}.Add(gtx.Ops)
 	paint.PaintOp{}.Add(gtx.Ops)
 	return layout.Dimensions{Size: rect.Max}
-}
-
-func colorBox(gtx layout.Context, size image.Point, color color.NRGBA) layout.Dimensions {
-	defer clip.Rect{Max: size}.Push(gtx.Ops).Pop()
-	paint.ColorOp{Color: color}.Add(gtx.Ops)
-	paint.PaintOp{}.Add(gtx.Ops)
-	return layout.Dimensions{Size: size}
-}
-
-func fill(gtx layout.Context, backgroundColor color.NRGBA, w layout.Widget) layout.Dimensions {
-	colorBox(gtx, gtx.Constraints.Max, backgroundColor)
-	return layout.NW.Layout(gtx, w)
 }

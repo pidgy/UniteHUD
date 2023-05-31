@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/pidgy/unitehud/notify"
-	"github.com/pidgy/unitehud/rgba"
+	"github.com/pidgy/unitehud/nrgba"
 )
 
 type match struct {
@@ -32,18 +32,18 @@ func Dump() {
 	notify.System("Match History")
 
 	for _, h := range history {
-		color := rgba.Green
+		color := nrgba.Green
 		result := ""
 		switch {
 		case h.purple > h.orange:
 			result = "Win »"
-			color = rgba.Green
+			color = nrgba.Green
 		case h.orange > h.purple:
 			result = "Loss «"
-			color = rgba.DarkRed
+			color = nrgba.DarkRed
 		case h.orange == h.purple:
 			result = "Tie ¤"
-			color = rgba.Yellow
+			color = nrgba.Yellow
 		}
 
 		notify.Append(color, "(%s) %s %d - %d - %d", h.Time.Format(time.Kitchen), result, h.purple, h.orange, h.self)

@@ -16,6 +16,25 @@ import (
 	"github.com/pidgy/unitehud/template"
 )
 
+func AsAeosImage(mat gocv.Mat, points int) (image.Image, error) {
+	if config.Current.DisablePreviews {
+		return nil, nil
+	}
+
+	clone := mat.Clone()
+	defer clone.Close()
+
+	p := image.Pt(10, mat.Rows()-15)
+	gocv.PutText(&clone, strconv.Itoa(points), p, gocv.FontHersheyPlain, 2, color.RGBA(rgba.Highlight), 3)
+
+	crop, err := clone.ToImage()
+	if err != nil {
+		return nil, err
+	}
+
+	return crop, nil
+}
+
 // Energy avoids the walking inset method in previous versions which fails for duplicate values.
 // Instead, Energy handles duplicate values by removing matched areas to avoid detection.
 func Energy(matrix gocv.Mat, img image.Image) (Result, []int, int) {
@@ -98,7 +117,7 @@ func Energy(matrix gocv.Mat, img image.Image) (Result, []int, int) {
 			continue
 		}
 
-		gocv.Rectangle(&region, matched[round], rgba.Black, -1)
+		gocv.Rectangle(&region, matched[round], rgba.Black.Color(), -1)
 	}
 
 	switch {
@@ -113,21 +132,6 @@ func Energy(matrix gocv.Mat, img image.Image) (Result, []int, int) {
 	default: // Double digits found at index 0, and 1.
 		return Found, points, points[0]*10 + points[1]
 	}
-}
-
-func IdentifyEnergy(mat gocv.Mat, points int) (image.Image, error) {
-	clone := mat.Clone()
-	defer clone.Close()
-
-	p := image.Pt(10, mat.Rows()-15)
-	gocv.PutText(&clone, strconv.Itoa(points), p, gocv.FontHersheyPlain, 2, color.RGBA(rgba.Highlight), 3)
-
-	crop, err := clone.ToImage()
-	if err != nil {
-		return nil, err
-	}
-
-	return crop, nil
 }
 
 func SelfScore(matrix gocv.Mat, img image.Image) (*Match, Result) {

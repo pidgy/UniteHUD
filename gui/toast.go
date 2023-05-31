@@ -2,12 +2,12 @@ package gui
 
 import (
 	"fmt"
-	"image/color"
+	"image"
 	"strings"
 	"time"
 
 	"gioui.org/app"
-	"gioui.org/f32"
+	"gioui.org/font"
 	"gioui.org/io/key"
 	"gioui.org/io/system"
 	"gioui.org/layout"
@@ -19,10 +19,181 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 
+	"github.com/pidgy/unitehud/audio"
 	"github.com/pidgy/unitehud/gui/visual/area"
 	"github.com/pidgy/unitehud/gui/visual/button"
-	"github.com/pidgy/unitehud/rgba"
+	"github.com/pidgy/unitehud/gui/visual/dropdown"
+	"github.com/pidgy/unitehud/notify"
+	"github.com/pidgy/unitehud/nrgba"
 )
+
+func (g *GUI) ToastAudioInputOutput(q string, callback func(capture, playback string)) {
+	if g.toastActive {
+		notify.Warn("Failed to get input, please close other toast windows")
+		return
+	}
+
+	g.toastActive = true
+	defer func() { g.toastActive = false }()
+
+	dx, dy := float32(720), float32(482)
+
+	w := app.NewWindow(
+		app.Title("UniteHUD "+q),
+		app.Size(unit.Dp(dx), unit.Dp(dy)),
+		app.MinSize(unit.Dp(dx), unit.Dp(dy)),
+		app.MaxSize(unit.Dp(dx), unit.Dp(dy)),
+	)
+
+	var ops op.Ops
+
+	cap, play := "", ""
+
+	capList := &dropdown.List{
+		WidthModifier: 1,
+		Items: []*dropdown.Item{
+			{
+				Text:    audio.DeviceDefault,
+				Checked: widget.Bool{Value: true},
+				Callback: func(i *dropdown.Item) {
+					cap = audio.DeviceDefault
+					i.Checked.Value = true
+				},
+			},
+		},
+		Callback: func(i *dropdown.Item, _ *dropdown.List) {
+		},
+	}
+
+	playList := &dropdown.List{
+		WidthModifier: 1,
+		Items: []*dropdown.Item{
+			{
+				Text:    audio.DeviceDefault,
+				Checked: widget.Bool{Value: true},
+				Callback: func(i *dropdown.Item) {
+					play = audio.DeviceDefault
+					i.Checked.Value = true
+				},
+			},
+		},
+		Callback: func(i *dropdown.Item, _ *dropdown.List) {
+		},
+	}
+
+	caps, plays := audio.DeviceNames()
+
+	for _, name := range caps {
+		capList.Items = append(capList.Items, &dropdown.Item{
+			Text: name,
+			Callback: func(i *dropdown.Item) {
+				play = i.Text
+				i.Checked.Value = true
+			},
+		})
+	}
+
+	for _, name := range plays {
+		playList.Items = append(playList.Items, &dropdown.Item{
+			Text: name,
+			Callback: func(i *dropdown.Item) {
+				play = i.Text
+				i.Checked.Value = true
+			},
+		})
+	}
+
+	okButton := &button.Button{
+		Text:        "OK",
+		Released:    nrgba.Gray,
+		Pressed:     nrgba.Transparent30,
+		BorderWidth: unit.Sp(1.5),
+		Click: func(b *button.Button) {
+			defer b.Deactivate()
+			defer w.Perform(system.ActionClose)
+
+			callback(cap, play)
+		},
+	}
+
+	for e := range w.Events() {
+		switch e := e.(type) {
+		case system.DestroyEvent:
+			callback("", "")
+			return
+		case system.FrameEvent:
+			gtx := layout.NewContext(&ops, e)
+
+			ops.Reset()
+
+			colorBox(gtx, gtx.Constraints.Max, nrgba.DarkGray)
+
+			layout.Flex{
+				Axis: layout.Vertical,
+			}.Layout(gtx,
+				layout.Flexed(0.2, func(gtx layout.Context) layout.Dimensions {
+					return layout.Flex{
+						Axis: layout.Horizontal,
+					}.Layout(gtx,
+						layout.Flexed(0.35, func(gtx layout.Context) layout.Dimensions {
+							label := material.Label(g.normal, unit.Sp(18), "Audio In (Capture)")
+							label.Color = nrgba.Highlight.Color()
+							label.Font.Weight = 200
+
+							return layout.N.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+								return layout.Inset{Top: unit.Dp(5)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+									return label.Layout(gtx)
+								})
+							})
+						}),
+						layout.Flexed(0.35, func(gtx layout.Context) layout.Dimensions {
+							label := material.Label(g.normal, unit.Sp(18), "Audio Out (Playback)")
+							label.Color = nrgba.Highlight.Color()
+							label.Font.Weight = 200
+
+							return layout.N.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+								return layout.Inset{Top: unit.Dp(5)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+									return label.Layout(gtx)
+								})
+							})
+						}),
+						layout.Flexed(0.2, func(gtx layout.Context) layout.Dimensions {
+							return layout.Dimensions{Size: gtx.Constraints.Max}
+						}),
+					)
+				}),
+				layout.Flexed(0.8, func(gtx layout.Context) layout.Dimensions {
+					layout.Flex{
+						Axis: layout.Horizontal,
+					}.Layout(gtx,
+						layout.Flexed(0.35, func(gtx layout.Context) layout.Dimensions {
+							return capList.Layout(gtx, g.normal)
+						}),
+						layout.Flexed(0.35, func(gtx layout.Context) layout.Dimensions {
+							return playList.Layout(gtx, g.normal)
+						}),
+						layout.Flexed(0.2, func(gtx layout.Context) layout.Dimensions {
+							return layout.S.Layout(gtx,
+								func(gtx layout.Context) layout.Dimensions {
+									return layout.Inset{Bottom: unit.Dp(25)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+										return okButton.Layout(gtx)
+									})
+								},
+							)
+						}),
+					)
+					return layout.Dimensions{Size: gtx.Constraints.Max}
+				}),
+			)
+
+			w.Perform(system.ActionCenter)
+			w.Perform(system.ActionRaise)
+			w.Invalidate()
+
+			e.Frame(gtx.Ops)
+		}
+	}
+}
 
 func (g *GUI) ToastCapture(captures []*area.Capture) error {
 	if g.toastActive {
@@ -36,42 +207,44 @@ func (g *GUI) ToastCapture(captures []*area.Capture) error {
 		dx, dy := float32(300), float32(200)
 
 		w := app.NewWindow(
-			app.Title("Capture Areas"),
-			app.Size(unit.Px(dx), unit.Px(dy)),
-			app.MinSize(unit.Px(dx), unit.Px(dy)),
-			app.MaxSize(unit.Px(dx), unit.Px(dy)),
+			app.Title("UniteHUD Capture Areas"),
+			app.Size(unit.Dp(dx), unit.Dp(dy)),
+			app.MinSize(unit.Dp(dx), unit.Dp(dy)),
+			app.MaxSize(unit.Dp(dx), unit.Dp(dy)),
 		)
 
 		checks := make([]material.CheckBoxStyle, len(captures))
 		for i, c := range captures {
 			checks[i] = material.CheckBox(g.cascadia, &widget.Bool{}, c.Option)
-			checks[i].Font.Weight = text.Weight(500)
-			checks[i].Color = color.NRGBA(rgba.White)
-			checks[i].Size = unit.Px(20)
-			checks[i].IconColor = rgba.N(rgba.White)
-			checks[i].TextSize = unit.Px(17)
+			checks[i].Font.Weight = font.Weight(500)
+			checks[i].Color = nrgba.White.Color()
+			checks[i].Size = unit.Dp(20)
+			checks[i].IconColor = nrgba.White.Color()
+			checks[i].TextSize = unit.Sp(12)
 		}
 
 		all := material.CheckBox(g.cascadia, &widget.Bool{}, "Select All")
-		all.Font.Weight = text.Weight(500)
-		all.Color = color.NRGBA(rgba.White)
-		all.Size = unit.Px(20)
-		all.IconColor = rgba.N(rgba.White)
-		all.TextSize = unit.Px(17)
+		all.Font.Weight = font.Weight(500)
+		all.Color = nrgba.White.Color()
+		all.Size = unit.Dp(20)
+		all.IconColor = nrgba.White.Color()
+		all.TextSize = unit.Sp(12)
 
 		okButton := &button.Button{
-			Text:     "  Capture",
-			Released: rgba.N(rgba.Gray),
-			Pressed:  rgba.N(rgba.DarkGray),
+			Text:        "Capture",
+			Released:    nrgba.Gray,
+			Pressed:     nrgba.Transparent30,
+			BorderWidth: unit.Sp(1.5),
 			Click: func(b *button.Button) {
 				defer b.Deactivate()
-				defer w.Close()
+				defer w.Perform(system.ActionClose)
 
 				for i, check := range checks {
 					if check.CheckBox.Value {
 						err := captures[i].Open()
 						if err != nil {
-							g.ToastError(err)
+							g.ToastErrorForce(err)
+							return
 						}
 					}
 				}
@@ -89,15 +262,16 @@ func (g *GUI) ToastCapture(captures []*area.Capture) error {
 
 				ops.Reset()
 
-				colorBox(gtx, gtx.Constraints.Max, color.NRGBA{R: 25, G: 25, B: 25, A: 255})
+				colorBox(gtx, gtx.Constraints.Max, nrgba.DarkGray)
 
 				if all.CheckBox.Changed() {
 					for _, check := range checks {
 						check.CheckBox.Value = all.CheckBox.Value
 					}
 				}
+
 				layout.Inset{
-					Top: unit.Px(10),
+					Top: unit.Dp(10),
 				}.Layout(gtx,
 					func(gtx layout.Context) layout.Dimensions {
 						disabled := true
@@ -107,8 +281,8 @@ func (g *GUI) ToastCapture(captures []*area.Capture) error {
 								disabled = false
 							}
 							layout.Inset{
-								Top:  unit.Px(float32((15 * i) + (5 * i) + 1)),
-								Left: unit.Px(10),
+								Top:  unit.Dp(float32((15 * i) + (5 * i) + 1)),
+								Left: unit.Dp(10),
 							}.Layout(gtx,
 								func(gtx layout.Context) layout.Dimensions {
 									return layout.N.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
@@ -124,11 +298,12 @@ func (g *GUI) ToastCapture(captures []*area.Capture) error {
 						okButton.Active = disabled
 
 						return layout.Dimensions{Size: gtx.Constraints.Max}
-					})
+					},
+				)
 
 				layout.Inset{
-					Top:  unit.Px(float32(gtx.Constraints.Max.Y - 40)),
-					Left: unit.Px(10),
+					Top:  unit.Dp(float32(gtx.Constraints.Max.Y - 40)),
+					Left: unit.Dp(10),
 				}.Layout(gtx,
 					func(gtx layout.Context) layout.Dimensions {
 						return layout.S.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
@@ -140,16 +315,16 @@ func (g *GUI) ToastCapture(captures []*area.Capture) error {
 				)
 
 				layout.Inset{
-					Top:  unit.Px(float32(gtx.Constraints.Max.Y - 40)),
-					Left: unit.Px(float32(gtx.Constraints.Max.X - 110)),
+					Top:  unit.Dp(float32(gtx.Constraints.Max.Y - 40)),
+					Left: unit.Dp(float32(gtx.Constraints.Max.X - 110)),
 				}.Layout(gtx,
 					func(gtx layout.Context) layout.Dimensions {
 						return okButton.Layout(gtx)
 					},
 				)
 
-				w.Center()
-				w.Raise()
+				w.Perform(system.ActionCenter)
+				w.Perform(system.ActionRaise)
 				w.Invalidate()
 
 				e.Frame(gtx.Ops)
@@ -168,18 +343,19 @@ func (g *GUI) ToastCrash(msg, reason string, callbacks ...func()) {
 		dx, dy := float32(500), float32(125)
 
 		w := app.NewWindow(
-			app.Title("Crash Report"),
-			app.Size(unit.Px(dx), unit.Px(dy)),
-			app.MaxSize(unit.Px(dx), unit.Px(dy)),
-			app.MinSize(unit.Px(dx), unit.Px(dy)),
+			app.Title("UniteHUD Crash Report"),
+			app.Size(unit.Dp(dx), unit.Dp(dy)),
+			app.MaxSize(unit.Dp(dx), unit.Dp(dy)),
+			app.MinSize(unit.Dp(dx), unit.Dp(dy)),
 		)
 
-		m := material.Label(g.normal, g.normal.TextSize.Scale(15.0/16.0), msg)
-		m.Color = rgba.N(rgba.White)
+		// Scale.
+		m := material.Label(g.normal, g.normal.TextSize, msg)
+		m.Color = nrgba.White.Color()
 		m.Alignment = text.Middle
 
-		c := material.Label(g.normal, g.normal.TextSize.Scale(15.0/16.0), reason)
-		c.Color = rgba.N(rgba.PaleRed)
+		c := material.Label(g.normal, g.normal.TextSize, reason)
+		c.Color = nrgba.PaleRed.Color()
 		c.Alignment = text.Middle
 
 		var ops op.Ops
@@ -196,10 +372,10 @@ func (g *GUI) ToastCrash(msg, reason string, callbacks ...func()) {
 
 				ops.Reset()
 
-				colorBox(gtx, gtx.Constraints.Max, color.NRGBA{R: 25, G: 25, B: 25, A: 255})
+				colorBox(gtx, gtx.Constraints.Max, nrgba.DarkGray)
 
 				layout.Inset{
-					Top: unit.Px(15),
+					Top: unit.Dp(15),
 				}.Layout(gtx,
 					func(gtx layout.Context) layout.Dimensions {
 						return m.Layout(gtx)
@@ -207,15 +383,15 @@ func (g *GUI) ToastCrash(msg, reason string, callbacks ...func()) {
 				)
 
 				layout.Inset{
-					Top: unit.Px(40),
+					Top: unit.Dp(40),
 				}.Layout(gtx,
 					func(gtx layout.Context) layout.Dimensions {
 						return c.Layout(gtx)
 					},
 				)
 
-				w.Center()
-				w.Raise()
+				w.Perform(system.ActionCenter)
+				w.Perform(system.ActionRaise)
 				w.Invalidate()
 
 				e.Frame(gtx.Ops)
@@ -236,7 +412,7 @@ func (g *GUI) ToastError(err error) {
 	es := strings.Split(e, " ")
 	es[0] = strings.Title(es[0])
 
-	g.ToastOK("Errorr", strings.Join(es, " "))
+	g.ToastOK("UniteHUD Error", strings.Join(es, " "))
 }
 
 func (g *GUI) ToastErrorf(format string, a ...interface{}) {
@@ -253,7 +429,7 @@ func (g *GUI) ToastErrorForce(err error) {
 
 	g.toastActive = false
 
-	g.ToastOK("Error", strings.Join(es, " "))
+	g.ToastOK("UniteHUD Error", strings.Join(es, " "))
 }
 
 func (g *GUI) ToastInput(q, hint, option string, callback func(text string, option bool)) error {
@@ -268,19 +444,19 @@ func (g *GUI) ToastInput(q, hint, option string, callback func(text string, opti
 		dx, dy := float32(400), float32(100)
 
 		w := app.NewWindow(
-			app.Title(q),
-			app.Size(unit.Px(dx), unit.Px(dy)),
-			app.MinSize(unit.Px(dx), unit.Px(dy)),
-			app.MaxSize(unit.Px(dx), unit.Px(dy)),
+			app.Title("UniteHUD "+q),
+			app.Size(unit.Dp(dx), unit.Dp(dy)),
+			app.MinSize(unit.Dp(dx), unit.Dp(dy)),
+			app.MaxSize(unit.Dp(dx), unit.Dp(dy)),
 		)
 
 		checked := widget.Bool{}
 		check := material.CheckBox(g.cascadia, &checked, option)
-		check.Font.Weight = text.Weight(500)
-		check.Color = color.NRGBA(rgba.White)
-		check.Size = unit.Px(16)
-		check.IconColor = rgba.N(rgba.White)
-		check.TextSize = unit.Px(13)
+		check.Font.Weight = font.Weight(500)
+		check.Color = nrgba.White.Color()
+		check.Size = unit.Dp(16)
+		check.IconColor = nrgba.White.Color()
+		check.TextSize = unit.Sp(13)
 
 		input := &widget.Editor{
 			Alignment:  text.Start,
@@ -291,12 +467,13 @@ func (g *GUI) ToastInput(q, hint, option string, callback func(text string, opti
 		input.SetCaret(0, 0)
 
 		okButton := &button.Button{
-			Text:     "\t    OK",
-			Released: rgba.N(rgba.Gray),
-			Pressed:  rgba.N(rgba.DarkGray),
+			Text:        "OK",
+			Released:    nrgba.Gray,
+			Pressed:     nrgba.Transparent30,
+			BorderWidth: unit.Sp(1.5),
 			Click: func(b *button.Button) {
 				defer b.Deactivate()
-				defer w.Close()
+				defer w.Perform(system.ActionClose)
 
 				if callback != nil {
 					text := input.Text()
@@ -319,31 +496,27 @@ func (g *GUI) ToastInput(q, hint, option string, callback func(text string, opti
 
 				ops.Reset()
 
-				colorBox(gtx, gtx.Constraints.Max, color.NRGBA{R: 25, G: 25, B: 25, A: 255})
+				colorBox(gtx, gtx.Constraints.Max, nrgba.DarkGray)
 
 				layout.Inset{
-					Top:    unit.Px(10),
-					Left:   unit.Px(10),
-					Right:  unit.Px(15),
-					Bottom: unit.Px(float32(gtx.Constraints.Max.Y / 2)),
+					Top:    unit.Dp(10),
+					Left:   unit.Dp(10),
+					Right:  unit.Dp(15),
+					Bottom: unit.Dp(float32(gtx.Constraints.Max.Y / 2)),
 				}.Layout(gtx,
 					func(gtx layout.Context) layout.Dimensions {
-						defer clip.RRect{SE: 3, SW: 3, NE: 3, NW: 3, Rect: f32.
-							Rectangle{
-							Max: f32.Pt(
-								float32(gtx.Constraints.Max.X+5),
-								float32(25),
-							),
+						defer clip.RRect{SE: 3, SW: 3, NE: 3, NW: 3, Rect: image.Rectangle{
+							Max: image.Pt(gtx.Constraints.Max.X+5, 25),
 						}}.Push(gtx.Ops).Pop()
 
-						paint.ColorOp{Color: rgba.N(rgba.White)}.Add(gtx.Ops)
+						paint.ColorOp{Color: nrgba.White.Color()}.Add(gtx.Ops)
 						paint.PaintOp{}.Add(gtx.Ops)
 
 						e := material.Editor(g.cascadia, input, hint)
-						e.Color = rgba.N(rgba.Black)
-						e.HintColor = rgba.N(rgba.Alpha(rgba.Gray, 200))
-						e.TextSize = unit.Px(16)
-						return layout.Inset{Left: unit.Px(2), Right: unit.Px(2), Top: unit.Px(2)}.Layout(gtx,
+						e.Color = nrgba.Black.Color()
+						e.HintColor = nrgba.Gray.Alpha(200).Color()
+						e.TextSize = unit.Sp(16)
+						return layout.Inset{Left: unit.Dp(2), Right: unit.Dp(2), Top: unit.Dp(2)}.Layout(gtx,
 							func(gtx layout.Context) layout.Dimensions {
 								return e.Layout(gtx)
 							},
@@ -352,9 +525,9 @@ func (g *GUI) ToastInput(q, hint, option string, callback func(text string, opti
 				)
 
 				layout.Inset{
-					Top:    unit.Px(20),
-					Left:   unit.Px(10),
-					Bottom: unit.Px(40),
+					Top:    unit.Dp(20),
+					Left:   unit.Dp(10),
+					Bottom: unit.Dp(40),
 				}.Layout(gtx,
 					func(gtx layout.Context) layout.Dimensions {
 						return layout.S.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
@@ -366,16 +539,16 @@ func (g *GUI) ToastInput(q, hint, option string, callback func(text string, opti
 				)
 
 				layout.Inset{
-					Top:  unit.Px(float32(gtx.Constraints.Max.Y - 40)),
-					Left: unit.Px(float32(gtx.Constraints.Max.X - 110)),
+					Top:  unit.Dp(float32(gtx.Constraints.Max.Y - 40)),
+					Left: unit.Dp(float32(gtx.Constraints.Max.X - 110)),
 				}.Layout(gtx,
 					func(gtx layout.Context) layout.Dimensions {
 						return okButton.Layout(gtx)
 					},
 				)
 
-				w.Center()
-				w.Raise()
+				w.Perform(system.ActionCenter)
+				w.Perform(system.ActionRaise)
 				w.Invalidate()
 
 				e.Frame(gtx.Ops)
@@ -398,24 +571,26 @@ func (g *GUI) ToastOK(title, msg string, callbacks ...func()) {
 		dx, dy := float32(400), float32(100)
 
 		w := app.NewWindow(
-			app.Title(title),
-			app.Size(unit.Px(dx), unit.Px(dy)),
-			app.MaxSize(unit.Px(dx), unit.Px(dy)),
-			app.MinSize(unit.Px(dx), unit.Px(dy)),
+			app.Title("UniteHUD "+title),
+			app.Size(unit.Dp(dx), unit.Dp(dy)),
+			app.MaxSize(unit.Dp(dx), unit.Dp(dy)),
+			app.MinSize(unit.Dp(dx), unit.Dp(dy)),
 		)
 
-		m := material.Label(g.normal, g.normal.TextSize.Scale(15.0/16.0), msg)
-		m.Color = rgba.N(rgba.White)
+		// Scale.
+		m := material.Label(g.normal, g.normal.TextSize, msg)
+		m.Color = nrgba.White.Color()
 		m.Alignment = text.Middle
 
 		okButton := &button.Button{
-			Text:     "\t    OK",
-			Released: rgba.N(rgba.Gray),
-			Pressed:  rgba.N(rgba.DarkGray),
+			Text:        "OK",
+			Released:    nrgba.Gray,
+			Pressed:     nrgba.Transparent30,
+			BorderWidth: unit.Sp(1.5),
 			Click: func(b *button.Button) {
 				defer b.Deactivate()
 
-				w.Close()
+				w.Perform(system.ActionClose)
 			},
 		}
 
@@ -433,10 +608,10 @@ func (g *GUI) ToastOK(title, msg string, callbacks ...func()) {
 
 				ops.Reset()
 
-				colorBox(gtx, gtx.Constraints.Max, color.NRGBA{R: 25, G: 25, B: 25, A: 255})
+				colorBox(gtx, gtx.Constraints.Max, nrgba.DarkGray)
 
 				layout.Inset{
-					Top: unit.Px(15),
+					Top: unit.Dp(15),
 				}.Layout(gtx,
 					func(gtx layout.Context) layout.Dimensions {
 						return m.Layout(gtx)
@@ -444,16 +619,16 @@ func (g *GUI) ToastOK(title, msg string, callbacks ...func()) {
 				)
 
 				layout.Inset{
-					Top:  unit.Px(float32(gtx.Constraints.Max.Y - 40)),
-					Left: unit.Px(float32(gtx.Constraints.Max.X - 110)),
+					Top:  unit.Dp(float32(gtx.Constraints.Max.Y - 40)),
+					Left: unit.Dp(float32(gtx.Constraints.Max.X - 110)),
 				}.Layout(gtx,
 					func(gtx layout.Context) layout.Dimensions {
 						return okButton.Layout(gtx)
 					},
 				)
 
-				w.Center()
-				w.Raise()
+				w.Perform(system.ActionCenter)
+				w.Perform(system.ActionRaise)
 				w.Invalidate()
 
 				e.Frame(gtx.Ops)
@@ -474,40 +649,43 @@ func (g *GUI) ToastYesNo(title, msg string, y, n func()) {
 		destroyed := true // Avoid calling n() multiple times.
 
 		w := app.NewWindow(
-			app.Title(title),
+			app.Title("UniteHUD "+title),
 			app.Size(
-				unit.Px(400),
-				unit.Px(100),
+				unit.Dp(400),
+				unit.Dp(100),
 			),
 		)
 
-		m := material.Label(g.normal, g.normal.TextSize.Scale(16.0/16.0), msg)
-		m.Color = rgba.N(rgba.White)
+		// Scale 16.
+		m := material.Label(g.normal, g.normal.TextSize, msg)
+		m.Color = nrgba.White.Color()
 		m.Alignment = text.Middle
 
 		yButton := &button.Button{
-			Text:     "\t   Yes",
-			Released: rgba.N(rgba.Gray),
-			Pressed:  rgba.N(rgba.DarkGray),
+			Text:        "Yes",
+			Released:    nrgba.Gray,
+			Pressed:     nrgba.Transparent30,
+			BorderWidth: unit.Sp(1.5),
 			Click: func(b *button.Button) {
 				destroyed = false
 				if y != nil {
 					y()
 				}
-				w.Close()
+				w.Perform(system.ActionClose)
 			},
 		}
 
 		nButton := &button.Button{
-			Text:     "\t    No",
-			Released: rgba.N(rgba.Gray),
-			Pressed:  rgba.N(rgba.DarkGray),
+			Text:        "No",
+			Released:    nrgba.Gray,
+			Pressed:     nrgba.Transparent30,
+			BorderWidth: unit.Sp(1.5),
 			Click: func(b *button.Button) {
 				destroyed = false
 				if n != nil {
 					n()
 				}
-				w.Close()
+				w.Perform(system.ActionClose)
 			},
 		}
 
@@ -523,10 +701,10 @@ func (g *GUI) ToastYesNo(title, msg string, y, n func()) {
 				gtx := layout.NewContext(&ops, e)
 				ops.Reset()
 
-				colorBox(gtx, gtx.Constraints.Max, color.NRGBA{R: 25, G: 25, B: 25, A: 255})
+				colorBox(gtx, gtx.Constraints.Max, nrgba.DarkGray)
 
 				layout.Inset{
-					Top: unit.Px(15),
+					Top: unit.Dp(15),
 				}.Layout(gtx,
 					func(gtx layout.Context) layout.Dimensions {
 						return m.Layout(gtx)
@@ -534,8 +712,8 @@ func (g *GUI) ToastYesNo(title, msg string, y, n func()) {
 				)
 
 				layout.Inset{
-					Left: unit.Px(float32(gtx.Constraints.Max.X/2 - 115)),
-					Top:  unit.Px(float32(gtx.Constraints.Max.Y/2) + 5),
+					Left: unit.Dp(float32(gtx.Constraints.Max.X/2 - 115)),
+					Top:  unit.Dp(float32(gtx.Constraints.Max.Y/2) + 5),
 				}.Layout(gtx,
 					func(gtx layout.Context) layout.Dimensions {
 						return yButton.Layout(gtx)
@@ -543,16 +721,16 @@ func (g *GUI) ToastYesNo(title, msg string, y, n func()) {
 				)
 
 				layout.Inset{
-					Left: unit.Px(float32(gtx.Constraints.Max.X/2 + 15)),
-					Top:  unit.Px(float32(gtx.Constraints.Max.Y/2) + 5),
+					Left: unit.Dp(float32(gtx.Constraints.Max.X/2 + 15)),
+					Top:  unit.Dp(float32(gtx.Constraints.Max.Y/2) + 5),
 				}.Layout(gtx,
 					func(gtx layout.Context) layout.Dimensions {
 						return nButton.Layout(gtx)
 					},
 				)
 
-				w.Center()
-				w.Raise()
+				w.Perform(system.ActionCenter)
+				w.Perform(system.ActionRaise)
 				w.Invalidate()
 
 				e.Frame(gtx.Ops)

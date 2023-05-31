@@ -3,6 +3,7 @@ package detect
 import (
 	"fmt"
 	"image"
+	"image/png"
 	"os"
 	"strings"
 	"time"
@@ -23,13 +24,15 @@ import (
 	"github.com/pidgy/unitehud/video/window"
 )
 
-var Stopped = true
+var (
+	Idle = true
+)
 
 func Clock() {
 	for {
 		time.Sleep(team.Delay(team.Time.Name))
 
-		if Stopped || config.Current.DisableTime {
+		if Idle || config.Current.DisableTime {
 			continue
 		}
 
@@ -46,7 +49,7 @@ func Clock() {
 			continue
 		}
 
-		notify.Time, err = match.IdentifyTime(matrix, kitchen)
+		notify.Time, err = match.AsTimeImage(matrix, kitchen)
 		if err != nil {
 			notify.Error("Failed to identify time (%v)", err)
 			continue
@@ -68,7 +71,7 @@ func Defeated() {
 	for {
 		time.Sleep(time.Second)
 
-		if Stopped || gui.Window.Screen == nil || config.Current.DisableDefeated {
+		if Idle || gui.Window.Screen == nil || config.Current.DisableDefeated {
 			modified = config.Current.Templates["killed"][team.Game.Name]
 			unmodified = config.Current.Templates["killed"][team.Game.Name]
 			continue
@@ -112,7 +115,7 @@ func Defeated() {
 				str = fmt.Sprintf("%s with unscored points (%d)", str, server.Holding())
 			}
 
-			notify.Feed(team.Self.RGBA, "[%s] [Self] %s", server.Clock(), str)
+			notify.Feed(team.Self.NRGBA, "[%s] [Self] %s", server.Clock(), str)
 
 			if state.Occured(time.Minute, state.Killed, state.KilledWithPoints, state.KilledWithoutPoints) != nil {
 				server.SetDefeated()
@@ -133,7 +136,7 @@ func Energy() {
 	for {
 		time.Sleep(team.Energy.Delay)
 
-		if Stopped || config.Current.DisableEnergy {
+		if Idle || config.Current.DisableEnergy {
 			assured = make(map[int]int)
 			confirmScore = -1
 			continue
@@ -176,12 +179,12 @@ func Energy() {
 
 		last := state.HoldingEnergy.Occured(time.Hour)
 		if last == nil || last.Value != points {
-			notify.Feed(team.Self.RGBA, "[%s] [Self] Holding %d point%s", server.Clock(), points, s(points))
+			notify.Feed(team.Self.NRGBA, "[%s] [Self] Holding %d point%s", server.Clock(), points, s(points))
 			state.Add(state.HoldingEnergy, server.Clock(), points)
 
 			server.SetEnergy(points)
 
-			notify.Energy, err = match.IdentifyEnergy(matrix, points)
+			notify.Energy, err = match.AsAeosImage(matrix, points)
 			if err != nil {
 				notify.Warn("[Self] Failed to identify energy (%v)", err)
 			}
@@ -204,7 +207,7 @@ func KOs() {
 	for {
 		time.Sleep(time.Millisecond * 1500)
 
-		if Stopped || gui.Window.Screen == nil || config.Current.DisableKOs {
+		if Idle || gui.Window.Screen == nil || config.Current.DisableKOs {
 			last = nil
 			continue
 		}
@@ -234,10 +237,10 @@ func KOs() {
 
 		switch e := state.EventType(e); e {
 		case state.KOPurple, state.KOStreakPurple:
-			notify.Unique(team.Purple.RGBA, "[%s] [%s] %s", server.Clock(), team.Purple, e)
+			notify.Unique(team.Purple.NRGBA, "[%s] [%s] %s", server.Clock(), team.Purple, e)
 			server.SetKO(team.Purple)
 		case state.KOOrange, state.KOStreakOrange:
-			notify.Unique(team.Orange.RGBA, "[%s] [%s] %s", server.Clock(), team.Orange, e)
+			notify.Unique(team.Orange.NRGBA, "[%s] [%s] %s", server.Clock(), team.Orange, e)
 			server.SetKO(team.Orange)
 		}
 	}
@@ -249,7 +252,7 @@ func Objectives() {
 	for {
 		time.Sleep(time.Second)
 
-		if Stopped || gui.Window.Screen == nil || config.Current.DisableObjectives {
+		if Idle || gui.Window.Screen == nil || config.Current.DisableObjectives {
 			top, bottom, middle = time.Time{}, time.Time{}, time.Time{}
 			continue
 		}
@@ -272,14 +275,14 @@ func Objectives() {
 			switch e := state.EventType(e); e {
 			case state.RegielekiSecureOrange:
 				state.Add(e, server.Clock(), 0)
-				notify.Feed(team.Orange.RGBA, "[%s] [%s] Regieleki secured", server.Clock(), strings.Title(team.Orange.Name))
+				notify.Feed(team.Orange.NRGBA, "[%s] [%s] Regieleki secured", server.Clock(), strings.Title(team.Orange.Name))
 				server.SetRegieleki(team.Orange)
 				top = time.Now()
 
 				done = true
 			case state.RegielekiSecurePurple:
 				state.Add(e, server.Clock(), 0)
-				notify.Feed(team.Purple.RGBA, "[%s] [%s] Regieleki secured", server.Clock(), strings.Title(team.Purple.Name))
+				notify.Feed(team.Purple.NRGBA, "[%s] [%s] Regieleki secured", server.Clock(), strings.Title(team.Purple.Name))
 				server.SetRegieleki(team.Purple)
 				top = time.Now()
 
@@ -291,34 +294,34 @@ func Objectives() {
 			switch e := state.EventType(e); e {
 			case state.RegiceSecureOrange:
 				state.Add(e, server.Clock(), 0)
-				notify.Feed(team.Orange.RGBA, "[%s] [%s] Regice secured", server.Clock(), strings.Title(team.Orange.Name))
+				notify.Feed(team.Orange.NRGBA, "[%s] [%s] Regice secured", server.Clock(), strings.Title(team.Orange.Name))
 				server.SetRegice(team.Orange)
 				bottom = time.Now()
 			case state.RegiceSecurePurple:
 				state.Add(e, server.Clock(), 0)
-				notify.Feed(team.Purple.RGBA, "[%s] [%s] Regice secured", server.Clock(), strings.Title(team.Purple.Name))
+				notify.Feed(team.Purple.NRGBA, "[%s] [%s] Regice secured", server.Clock(), strings.Title(team.Purple.Name))
 				server.SetRegice(team.Purple)
 				bottom = time.Now()
 
 			case state.RegirockSecureOrange:
 				state.Add(e, server.Clock(), 0)
-				notify.Feed(team.Orange.RGBA, "[%s] [%s] Regirock secured", server.Clock(), strings.Title(team.Orange.Name))
+				notify.Feed(team.Orange.NRGBA, "[%s] [%s] Regirock secured", server.Clock(), strings.Title(team.Orange.Name))
 				server.SetRegirock(team.Orange)
 				bottom = time.Now()
 			case state.RegirockSecurePurple:
 				state.Add(e, server.Clock(), 0)
-				notify.Feed(team.Purple.RGBA, "[%s] [%s] Regirock secured", server.Clock(), strings.Title(team.Purple.Name))
+				notify.Feed(team.Purple.NRGBA, "[%s] [%s] Regirock secured", server.Clock(), strings.Title(team.Purple.Name))
 				server.SetRegirock(team.Purple)
 				bottom = time.Now()
 
 			case state.RegisteelSecureOrange:
 				state.Add(e, server.Clock(), 0)
-				notify.Feed(team.Orange.RGBA, "[%s] [%s] Registeel secured", server.Clock(), strings.Title(team.Orange.Name))
+				notify.Feed(team.Orange.NRGBA, "[%s] [%s] Registeel secured", server.Clock(), strings.Title(team.Orange.Name))
 				server.SetRegisteel(team.Orange)
 				bottom = time.Now()
 			case state.RegisteelSecurePurple:
 				state.Add(e, server.Clock(), 0)
-				notify.Feed(team.Purple.RGBA, "[%s] [%s] Registeel secured", server.Clock(), strings.Title(team.Purple.Name))
+				notify.Feed(team.Purple.NRGBA, "[%s] [%s] Registeel secured", server.Clock(), strings.Title(team.Purple.Name))
 				server.SetRegisteel(team.Purple)
 				bottom = time.Now()
 			}
@@ -328,13 +331,13 @@ func Objectives() {
 			switch e := state.EventType(e); e {
 			case state.RayquazaSecureOrange:
 				state.Add(e, server.Clock(), 0)
-				notify.Feed(team.Orange.RGBA, "[%s] [%s] Rayquaza secured", server.Clock(), strings.Title(team.Orange.Name))
+				notify.Feed(team.Orange.NRGBA, "[%s] [%s] Rayquaza secured", server.Clock(), strings.Title(team.Orange.Name))
 				server.SetRayquaza(team.Orange)
 				middle = time.Now()
 
 			case state.RayquazaSecurePurple:
 				state.Add(e, server.Clock(), 0)
-				notify.Feed(team.Purple.RGBA, "[%s] [%s] Rayquaza secured", server.Clock(), strings.Title(team.Purple.Name))
+				notify.Feed(team.Purple.NRGBA, "[%s] [%s] Rayquaza secured", server.Clock(), strings.Title(team.Purple.Name))
 				server.SetRayquaza(team.Purple)
 				middle = time.Now()
 			}
@@ -348,7 +351,7 @@ func PressButtonToScore() {
 	for {
 		time.Sleep(time.Millisecond * 500)
 
-		if Stopped {
+		if Idle {
 			continue
 		}
 
@@ -366,7 +369,7 @@ func PressButtonToScore() {
 
 		state.Add(state.PressButtonToScore, server.Clock(), team.Energy.Holding)
 
-		notify.Feed(team.Self.RGBA, "[%s] [Self] Score option present (%d)", server.Clock(), team.Energy.Holding)
+		notify.Feed(team.Self.NRGBA, "[%s] [Self] Score option present (%d)", server.Clock(), team.Energy.Holding)
 
 		matrix.Close()
 
@@ -376,6 +379,17 @@ func PressButtonToScore() {
 }
 
 func Preview() {
+	f, err := os.Open(`assets\splash\projector.png`)
+	if err != nil {
+		notify.Error("Failed to open splash capture screen (%v)", err)
+	}
+	if f != nil {
+		notify.Preview, err = png.Decode(f)
+		if err != nil {
+			notify.Error("Failed to decode splash capture screen (%v)", err)
+		}
+	}
+
 	tick := time.NewTicker(time.Second * 5)
 	poll := time.NewTicker(time.Second * 5)
 
@@ -383,6 +397,11 @@ func Preview() {
 	device := config.NoVideoCaptureDevice
 
 	for {
+		if config.Current.DisablePreviews {
+			time.Sleep(time.Second)
+			continue
+		}
+
 		if notify.Preview.Bounds().Max.X != 0 {
 			select {
 			case <-tick.C:
@@ -392,6 +411,8 @@ func Preview() {
 				}
 			}
 		}
+
+		return
 
 		img, err := video.Capture()
 		if err != nil {
@@ -413,7 +434,7 @@ func Scores(name string) {
 	for {
 		time.Sleep(team.Delay(name))
 
-		if Stopped || config.Current.DisableScoring {
+		if Idle || config.Current.DisableScoring {
 			continue
 		}
 
@@ -439,7 +460,7 @@ func Scores(name string) {
 
 			server.SetScore(m.Team, -m.Team.Duplicate.Replaces)
 
-			notify.Feed(m.Team.RGBA, "[%s] [%s] -%d (override)", server.Clock(), strings.Title(m.Team.Name), m.Team.Duplicate.Replaces)
+			notify.Feed(m.Team.NRGBA, "[%s] [%s] -%d (override)", server.Clock(), strings.Title(m.Team.Name), m.Team.Duplicate.Replaces)
 
 			fallthrough
 		case match.Found:
@@ -450,11 +471,11 @@ func Scores(name string) {
 				title = fmt.Sprintf("[%s] [%s]", strings.Title(m.Team.Alias), strings.Title(m.Team.Name))
 			}
 
-			notify.Feed(m.Team.RGBA, "[%s] %s +%d", server.Clock(), title, p)
+			notify.Feed(m.Team.NRGBA, "[%s] %s +%d", server.Clock(), title, p)
 
 			state.Add(state.ScoredBy(m.Team.Name), server.Clock(), p)
 
-			score, err := m.Identify(matrix, p)
+			score, err := m.AsImage(matrix, p)
 			if err != nil {
 				notify.Error("[%s] [%s] Failed to identify score (%v)", server.Clock(), strings.Title(m.Team.Name), err)
 				break
@@ -496,13 +517,12 @@ func States() {
 	for {
 		time.Sleep(time.Second * 2)
 
-		if Stopped || gui.Window.Screen == nil {
+		if Idle || gui.Window.Screen == nil {
 			continue
 		}
 
 		if area.Empty() {
-			b := gui.Window.Screen.Bounds()
-			area = image.Rect(b.Max.X/3, 0, b.Max.X-b.Max.X/3, b.Max.Y)
+			area = gui.StateArea()
 		}
 
 		matrix, img, err := capture(area)
@@ -533,7 +553,7 @@ func States() {
 			team.Clear()
 			state.Clear()
 
-			notify.Feed(team.Game.RGBA, "[%s] Match starting", strings.Title(team.Game.Name))
+			notify.Feed(team.Game.NRGBA, "[%s] Match starting", strings.Title(team.Game.Name))
 
 			// Also tells javascript to turn on.
 			server.SetTime(10, 0)
@@ -544,11 +564,11 @@ func States() {
 					break
 				}
 
-				notify.Feed(team.Game.RGBA, "[%s] Match ended", strings.Title(team.Game.Name))
+				notify.Feed(team.Game.NRGBA, "[%s] Match ended", strings.Title(team.Game.Name))
 
 				// Purple score and objective results.
 				regielekis, regices, regirocks, registeels := server.Objectives(team.Purple)
-				notify.Feed(team.Purple.RGBA,
+				notify.Feed(team.Purple.NRGBA,
 					"[%s] [+%d KO%s] [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s]",
 					strings.Title(team.Purple.Name),
 					server.KOs(team.Purple), s(server.KOs(team.Purple)),
@@ -560,7 +580,7 @@ func States() {
 
 				// Orange score and objective results.
 				regielekis, regices, regirocks, registeels = server.Objectives(team.Orange)
-				notify.Feed(team.Orange.RGBA,
+				notify.Feed(team.Orange.NRGBA,
 					"[%s] [+%d KO%s] [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s]",
 					strings.Title(team.Orange.Name),
 					server.KOs(team.Orange), s(server.KOs(team.Orange)),
@@ -572,11 +592,11 @@ func States() {
 			case config.ProfilePlayer:
 				o, p, self := server.Scores()
 				if o+p+self > 0 {
-					notify.Feed(team.Game.RGBA, "[%s] Match ended", strings.Title(team.Game.Name))
+					notify.Feed(team.Game.NRGBA, "[%s] Match ended", strings.Title(team.Game.Name))
 
 					// Purple score and objective results.
 					regielekis, regices, regirocks, registeels := server.Objectives(team.Purple)
-					notify.Feed(team.Purple.RGBA,
+					notify.Feed(team.Purple.NRGBA,
 						"[%s] %d [+%d KO%s] [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s]",
 						strings.Title(team.Purple.Name),
 						p,
@@ -589,7 +609,7 @@ func States() {
 
 					// Orange score and objective results.
 					regielekis, regices, regirocks, registeels = server.Objectives(team.Orange)
-					notify.Feed(team.Orange.RGBA,
+					notify.Feed(team.Orange.NRGBA,
 						"[%s] %d [+%d KO%s] [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s]",
 						strings.Title(team.Orange.Name),
 						o,
@@ -601,11 +621,23 @@ func States() {
 					)
 
 					// Self score and objective results.
-					notify.Feed(team.Self.RGBA, "[%s] %d", strings.Title(team.Self.Name), self)
+					notify.Feed(team.Self.NRGBA, "[%s] %d", strings.Title(team.Self.Name), self)
 
 					history.Add(p, o, self)
 				}
 			}
+
+			// If time since match started is greater thaaaan 2 mins lets wait for 10 seconds...
+			cooldown := time.Second * 0
+			start := state.MatchStarting.Occured(time.Since(state.Start().Time))
+			if start != nil {
+				end := state.MatchEnding.Occured(time.Since(state.Start().Time))
+				if end != nil && start.After(end.Time) {
+					cooldown = time.Second * 10
+				}
+			}
+
+			time.Sleep(cooldown)
 
 			server.Clear()
 			team.Clear()
@@ -646,9 +678,10 @@ func capture(area image.Rectangle) (gocv.Mat, *image.RGBA, error) {
 
 // energyScoredConfirm is another step to confirm a self-score event occured. This function
 // handles multiple edge cases that can result in invalid detections, such as:
-//  - Interrupted score attempts.
-//  - Defeated while scoring.
-//  - ...
+//   - Interrupted score attempts.
+//   - Defeated while scoring.
+//   - ...
+//
 // If a call is made to this function it is because UniteHUD has detected were holding 0 points
 // after a confirmed score match.
 func energyScoredConfirm(before, after int, at time.Time) {
@@ -656,7 +689,7 @@ func energyScoredConfirm(before, after int, at time.Time) {
 		return
 	}
 
-	notify.Feed(team.Self.RGBA,
+	notify.Feed(team.Self.NRGBA,
 		"[%s] [Self] Confirming %d point%s scored %s ago",
 		server.Clock(),
 		before,
@@ -686,7 +719,7 @@ func energyScoredConfirm(before, after int, at time.Time) {
 
 	state.Add(state.PostScore, server.Clock(), before)
 
-	notify.Feed(team.Self.RGBA,
+	notify.Feed(team.Self.NRGBA,
 		"[%s] [%s] [%s] +%d",
 		server.Clock(),
 		strings.Title(team.Purple.Name),

@@ -9,7 +9,8 @@ import (
 	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/gui/visual/area"
 	"github.com/pidgy/unitehud/match"
-	"github.com/pidgy/unitehud/rgba"
+	"github.com/pidgy/unitehud/nrgba"
+	"github.com/pidgy/unitehud/server"
 	"github.com/pidgy/unitehud/state"
 	"github.com/pidgy/unitehud/team"
 	"github.com/pidgy/unitehud/video"
@@ -45,7 +46,7 @@ func (g *GUI) matchEnergy(a *area.Area) bool {
 		a.NRGBA = area.Miss
 		a.Text = "Aeos"
 	case match.Missed:
-		a.NRGBA = rgba.N(rgba.Alpha(rgba.DarkerYellow, 0x99))
+		a.NRGBA = nrgba.DarkerYellow.Alpha(0x99)
 		a.Text = fmt.Sprintf("Aeos: %d?", score)
 	case match.Invalid:
 		a.NRGBA = area.Miss
@@ -163,12 +164,57 @@ func (g *GUI) matchScore(a *area.Area) bool {
 			a.NRGBA = area.Miss
 			a.Text = fmt.Sprintf("Score: %s", strings.Title(r.String()))
 		case match.Missed:
-			a.NRGBA = rgba.N(rgba.Alpha(rgba.DarkerYellow, 0x99))
+			a.NRGBA = nrgba.DarkerYellow.Alpha(0x99)
 			a.Text = fmt.Sprintf("Score: %d?", score)
 		case match.Invalid:
 			a.NRGBA = area.Miss
 			a.Text = fmt.Sprintf("Score: %s", strings.Title(r.String()))
 		}
+	}
+
+	return false
+}
+
+func (g *GUI) matchState(a *area.Area) bool {
+	if !g.Preview {
+		a.NRGBA = area.Locked
+		return false
+	}
+
+	img, err := video.CaptureRect(a.Rectangle())
+	if err != nil {
+		g.ToastError(err)
+		return false
+	}
+
+	matrix, err := gocv.ImageToMatRGB(img)
+	if err != nil {
+		g.ToastError(err)
+		return false
+	}
+	defer matrix.Close()
+
+	_, r, e := match.Matches(matrix, img, config.Current.Templates["game"][team.Game.Name])
+	if r == match.Found {
+		a.Text = "State: " + state.EventType(e).String()
+		a.NRGBA = area.Match
+		return true
+	}
+
+	a.Text = "State: " + strings.Title(r.String())
+	a.NRGBA = area.Miss
+
+	switch {
+	case server.IsFinalStretch():
+		a.Text = "State: Final Stretch"
+		a.NRGBA = area.Match
+
+		return true
+	case server.Clock() != "00:00":
+		a.Text = "State: In Match"
+		a.NRGBA = area.Match
+
+		return true
 	}
 
 	return false
@@ -202,5 +248,6 @@ func (g *GUI) matchTime(a *area.Area) bool {
 
 	a.NRGBA = area.Miss
 	a.Text = "Time: Not Found"
+
 	return false
 }

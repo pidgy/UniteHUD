@@ -2,10 +2,8 @@ package button
 
 import (
 	"image"
-	"image/color"
 	"time"
 
-	"gioui.org/f32"
 	"gioui.org/io/pointer"
 	"gioui.org/layout"
 	"gioui.org/op/clip"
@@ -13,21 +11,21 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget"
 
-	"github.com/pidgy/unitehud/rgba"
+	"github.com/pidgy/unitehud/nrgba"
 )
 
 type CircleButton struct {
 	Name string
 
-	BorderColor color.NRGBA
-	BorderWidth unit.Value
+	BorderColor nrgba.NRGBA
+	BorderWidth unit.Sp
 
 	Size image.Point
 
 	Active            bool
 	Disabled          bool
 	LastPressed       time.Time
-	Pressed, Released color.NRGBA
+	Pressed, Released nrgba.NRGBA
 
 	Click       func(b *CircleButton)
 	SingleClick bool // Toggle the Active field on Click events.
@@ -42,7 +40,7 @@ func (c *CircleButton) Deactivate() {
 
 func (c *CircleButton) Error() {
 	tmp := c.Pressed
-	c.Pressed = color.NRGBA(rgba.Red)
+	c.Pressed = nrgba.Red
 	c.Disabled = true
 	time.AfterFunc(time.Second*2, func() {
 		c.Pressed = tmp
@@ -63,7 +61,7 @@ func (c *CircleButton) Layout(gtx layout.Context) layout.Dimensions {
 		if e, ok := e.(pointer.Event); ok {
 			switch e.Type {
 			case pointer.Enter:
-				c.Released = color.NRGBA(rgba.Alpha(color.RGBA(c.Released), 0x50))
+				c.Released = c.Released.Alpha(0x50)
 				c.hover = true
 			case pointer.Release:
 				if c.hover && c.Click != nil {
@@ -75,7 +73,7 @@ func (c *CircleButton) Layout(gtx layout.Context) layout.Dimensions {
 					c.Active = !c.Active
 				}
 			case pointer.Leave:
-				c.Released = color.NRGBA(rgba.Alpha(color.RGBA(c.Released), c.alpha))
+				c.Released = c.Released.Alpha(c.alpha)
 				c.hover = false
 			case pointer.Press:
 				c.Active = !c.Active
@@ -103,36 +101,36 @@ func (c *CircleButton) Layout(gtx layout.Context) layout.Dimensions {
 func (c *CircleButton) uniform(gtx layout.Context) layout.Dimensions {
 	defer clip.RRect{
 		SE: 5, SW: 5, NE: 5, NW: 5,
-		Rect: f32.Rectangle{
-			Max: f32.Pt(float32(c.Size.X), float32(c.Size.Y))},
+		Rect: image.Rectangle{
+			Max: image.Pt((c.Size.X), c.Size.Y)},
 	}.Push(gtx.Ops).Pop()
 
-	col := c.Pressed
+	n := c.Pressed
 	if !c.Active {
-		col = c.Released
+		n = c.Released
 	}
 
-	paint.ColorOp{Color: col}.Add(gtx.Ops)
+	paint.ColorOp{Color: n.Color()}.Add(gtx.Ops)
 	paint.PaintOp{}.Add(gtx.Ops)
 	return layout.Dimensions{Size: c.Size}
 }
 
 func (c *CircleButton) draw(gtx layout.Context) layout.Dimensions {
-	if c.BorderWidth.V == unit.Px(0).V {
-		c.BorderWidth = unit.Px(2)
+	if c.BorderWidth == unit.Sp(0) {
+		c.BorderWidth = unit.Sp(2)
 	}
 
 	if c.hover {
 		return widget.Border{
-			Color:        c.BorderColor,
+			Color:        c.BorderColor.Color(),
 			Width:        unit.Dp(1),
-			CornerRadius: unit.Px(2),
+			CornerRadius: unit.Dp(2),
 		}.Layout(gtx, c.uniform)
 	} else {
 		return widget.Border{
-			Color:        c.BorderColor,
-			Width:        c.BorderWidth,
-			CornerRadius: unit.Px(2),
+			Color:        c.BorderColor.Color(),
+			Width:        unit.Dp(c.BorderWidth),
+			CornerRadius: unit.Dp(2),
 		}.Layout(gtx, c.uniform)
 	}
 }

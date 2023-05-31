@@ -5,7 +5,6 @@ package main
 import (
 	"os"
 	"os/signal"
-	"runtime"
 	"syscall"
 	"time"
 
@@ -14,6 +13,7 @@ import (
 	"github.com/pidgy/unitehud/detect"
 	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/gui"
+	"github.com/pidgy/unitehud/gui/visual/title"
 	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/process"
 	"github.com/pidgy/unitehud/server"
@@ -57,14 +57,19 @@ func signals() {
 
 	detect.Close()
 
+	println("signal")
+
 	os.Exit(1)
 }
 
 func main() {
-	runtime.LockOSThread()
-	defer runtime.UnlockOSThread()
+	// runtime.LockOSThread()
+	//defer runtime.UnlockOSThread()
 
 	go signals()
+
+	gui.New()
+	defer gui.Window.Open()
 
 	err := process.Replace()
 	if err != nil {
@@ -106,9 +111,6 @@ func main() {
 	go detect.Scores(team.Orange.Name)
 	go detect.Scores(team.First.Name)
 
-	gui.New()
-	defer gui.Window.Open()
-
 	go update.Check()
 
 	go func() {
@@ -123,11 +125,9 @@ func main() {
 				server.SetConfig(true)
 				fallthrough
 			case gui.Start:
-				if !detect.Stopped {
-					continue
-				}
+				detect.Idle = false
 
-				notify.Announce("Starting %s...", gui.Title(""))
+				notify.Announce("Starting %s...", title.Default)
 
 				notify.Clear()
 				server.Clear()
@@ -135,24 +135,19 @@ func main() {
 				stats.Clear()
 				state.Clear()
 
-				detect.Stopped = false
-
-				notify.Announce("Started %s", gui.Title(""))
+				notify.Announce("Started %s", title.Default)
 
 				server.SetStarted()
 				state.Add(state.ServerStarted, server.Clock(), -1)
 			case gui.Stop:
-				if detect.Stopped {
-					continue
-				}
-				detect.Stopped = true
+				detect.Idle = true
 
-				notify.Denounce("Stopping %s...", gui.Title(""))
+				notify.Denounce("Stopping %s...", title.Default)
 
 				// Wait for the capture routines to go idle.
 				// time.Sleep(time.Second * 2)
 
-				notify.Denounce("Stopped %s", gui.Title(""))
+				notify.Denounce("Stopped %s", gui.Window.Bar.Title)
 
 				server.Clear()
 				team.Clear()
@@ -215,8 +210,8 @@ func main() {
 					notify.System("Capture window set to \"%s\"", lastWindow)
 				}
 			case gui.Debug:
-				was := detect.Stopped
-				detect.Stopped = true
+				was := detect.Idle
+				detect.Idle = true
 
 				err := config.Load(config.Current.Profile)
 				if err != nil {
@@ -224,8 +219,7 @@ func main() {
 					continue
 				}
 
-				detect.Stopped = was
-
+				detect.Idle = was
 			}
 		}
 	}()

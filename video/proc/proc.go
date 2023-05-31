@@ -25,6 +25,7 @@ const (
 	PatPaint         = 0x00FB0A09
 	MergePaint       = 0x00BB0226
 	SrcInvert        = 0x00660046
+	CreateNoWindow   = 0x08000000
 )
 
 var (
@@ -52,6 +53,7 @@ var (
 
 	gdi32                  = syscall.MustLoadDLL("gdi32.dll")
 	BitBlt                 = gdi32.MustFindProc("BitBlt")
+	StretchBlt             = gdi32.MustFindProc("StretchBlt")
 	CreateCompatibleBitmap = gdi32.MustFindProc("CreateCompatibleBitmap")
 	CreateCompatibleDC     = gdi32.MustFindProc("CreateCompatibleDC")
 	CreateDIBSection       = gdi32.MustFindProc("CreateDIBSection")

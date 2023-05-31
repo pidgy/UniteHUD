@@ -24,7 +24,10 @@ var (
 )
 
 func Bounds() image.Rectangle {
-	return bounds[config.Current.Window]
+	mutex.RLock()
+	defer mutex.RUnlock()
+	b := bounds[config.Current.Window]
+	return b
 }
 
 func Open() {
@@ -70,48 +73,33 @@ func Open() {
 		boundsTmp[name] = r
 		sourcesTmp = append(sourcesTmp, name)
 	}
-
-	mutex.Lock()
-	Sources = sourcesTmp
-	displays = displaysTmp
-	bounds = boundsTmp
-	mutex.Unlock()
+	set(sourcesTmp, displaysTmp, boundsTmp)
 }
 
 func Capture() (*image.RGBA, error) {
-	mutex.RLock()
-	r := bounds[config.Current.Window]
-	mutex.RUnlock()
-
-	return CaptureRect2(r)
+	return CaptureRect(dims())
 }
 
-func CaptureRect(r image.Rectangle) (*image.RGBA, error) {
-	mutex.RLock()
-	b := bounds[config.Current.Window]
-	mutex.RUnlock()
+func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
+	b := dims()
 
-	r.Min.X = b.Min.X + r.Min.X
-	r.Max.X = b.Min.X + r.Max.X
+	rect.Min.X = b.Min.X + rect.Min.X
+	rect.Max.X = b.Min.X + rect.Max.X
 
-	r.Min.Y = b.Min.Y + r.Min.Y
-	r.Max.Y = b.Min.Y + r.Max.Y
+	rect.Min.Y = b.Min.Y + rect.Min.Y
+	rect.Max.Y = b.Min.Y + rect.Max.Y
 
-	return CaptureRect2(r)
-}
-
-func CaptureRect2(rect image.Rectangle) (*image.RGBA, error) {
-	hdc := getDC(0)
-	if hdc == 0 {
+	src := getDC(0)
+	if src == 0 {
 		return nil, fmt.Errorf("Failed to find primary display (%d)", getLastError())
 	}
-	defer releaseDC(0, hdc)
+	defer releaseDC(0, src)
 
-	mHDC := createCompatibleDC(hdc)
-	if mHDC == 0 {
+	dst := createCompatibleDC(src)
+	if dst == 0 {
 		return nil, fmt.Errorf("Could not Create Compatible DC (%d)", getLastError())
 	}
-	defer proc.DeleteDC.Call(uintptr(mHDC))
+	defer proc.DeleteDC.Call(uintptr(dst))
 
 	x, y := rect.Dx(), rect.Dy()
 
@@ -125,7 +113,7 @@ func CaptureRect2(rect image.Rectangle) (*image.RGBA, error) {
 
 	ptr := unsafe.Pointer(uintptr(0))
 
-	mhBmp := createDIBSection(mHDC, &bt, proc.DIBRGBColors, &ptr, 0, 0)
+	mhBmp := createDIBSection(dst, &bt, proc.DIBRGBColors, &ptr, 0, 0)
 	if mhBmp == 0 {
 		return nil, fmt.Errorf("Could not Create DIB Section err:%d.\n", getLastError())
 	}
@@ -134,7 +122,7 @@ func CaptureRect2(rect image.Rectangle) (*image.RGBA, error) {
 	}
 	defer deleteObject(proc.HGDIOBJ(mhBmp))
 
-	obj := selectObject(mHDC, proc.HGDIOBJ(mhBmp))
+	obj := selectObject(dst, proc.HGDIOBJ(mhBmp))
 	if obj == 0 {
 		return nil, fmt.Errorf("error occurred and the selected object is not a region err:%d.\n", getLastError())
 	}
@@ -143,8 +131,48 @@ func CaptureRect2(rect image.Rectangle) (*image.RGBA, error) {
 	}
 	defer deleteObject(obj)
 
-	if !bitBlt(mHDC, 0, 0, x, y, hdc, rect.Min.X, rect.Min.Y, proc.SrcCopy|proc.CaptureBLT) {
-		return nil, fmt.Errorf("BitBlt failed err:%d.\n", getLastError())
+	//if !bitBlt(mHDC, 0, 0, x, y, hdc, rect.Min.X, rect.Min.Y) {
+	//	return nil, fmt.Errorf("BitBlt failed err:%d.\n", getLastError())
+	//}
+
+	width := rect.Dx()
+	height := rect.Dy()
+
+	var ret uintptr
+	switch config.Current.Scale {
+	case 1:
+		ret, _, _ = proc.BitBlt.Call(
+			uintptr(dst),
+			0,
+			0,
+			uintptr(width),
+			uintptr(height),
+			uintptr(src),
+			uintptr(rect.Min.X),
+			uintptr(rect.Min.Y),
+			uintptr(proc.CaptureBLT|proc.SrcCopy),
+		)
+	default: // Scaled.
+		scaledW := int(float64(width) * config.Current.Scale)
+		scaledH := int(float64(height) * config.Current.Scale)
+
+		ret, _, _ = proc.StretchBlt.Call(
+			uintptr(dst),
+			0,
+			0,
+			uintptr(scaledW),
+			uintptr(scaledH),
+			uintptr(src),
+			uintptr(rect.Min.X),
+			uintptr(rect.Min.Y),
+			uintptr(width),
+			uintptr(height),
+			uintptr(proc.CaptureBLT|proc.SrcCopy),
+		)
+	}
+	if ret == 0 {
+		notify.Error("Failed to capture \"%s\"", config.Current.Window)
+		return nil, fmt.Errorf("bitblt returned: %d", ret)
 	}
 
 	var slice []byte
@@ -174,18 +202,50 @@ func IsDisplay() bool {
 	return ok
 }
 
-func bitBlt(hdcDest proc.HDC, nXDest, nYDest, nWidth, nHeight int, hdcSrc proc.HDC, nXSrc, nYSrc int, dwRop uint) bool {
-	ret, _, _ := proc.BitBlt.Call(
-		uintptr(hdcDest),
-		uintptr(nXDest),
-		uintptr(nYDest),
-		uintptr(nWidth),
-		uintptr(nHeight),
-		uintptr(hdcSrc),
-		uintptr(nXSrc),
-		uintptr(nYSrc),
-		uintptr(dwRop))
+func bitBlt(dst proc.HDC, dstx, dsty, dstw, dsth int, src proc.HDC, srcx, srcy int) bool {
+	/*ret, _, _ := proc.BitBlt.Call(
+	uintptr(hdcDest),
+	uintptr(nXDest),
+	uintptr(nYDest),
+	uintptr(nWidth),
+	uintptr(nHeight),
+	uintptr(hdcSrc),
+	uintptr(nXSrc),
+	uintptr(nYSrc),
+	uintptr(dwRop))
+	*/
+	var ret uintptr
+	switch config.Current.Scale {
+	case 1:
+		ret, _, _ = proc.BitBlt.Call(
+			uintptr(dst),
+			0,
+			0,
+			uintptr(dstw),
+			uintptr(dsth),
+			uintptr(src),
+			uintptr(dstx),
+			uintptr(dsty),
+			uintptr(proc.CaptureBLT|proc.SrcCopy),
+		)
+	default: // Scaled.
+		scaledW := int(float64(dstw) * config.Current.Scale)
+		scaledH := int(float64(dsth) * config.Current.Scale)
 
+		ret, _, _ = proc.StretchBlt.Call(
+			uintptr(dst),
+			0,
+			0,
+			uintptr(scaledW),
+			uintptr(scaledH),
+			uintptr(src),
+			uintptr(dstx),
+			uintptr(dsty),
+			uintptr(srcx),
+			uintptr(srcy),
+			uintptr(proc.CaptureBLT|proc.SrcCopy),
+		)
+	}
 	return ret != 0
 }
 
@@ -220,6 +280,14 @@ func deleteDC(hdc proc.HDC) bool {
 func deleteObject(hObject proc.HGDIOBJ) bool {
 	ret, _, _ := proc.DeleteObject.Call(uintptr(hObject))
 	return ret != 0
+}
+
+func dims() image.Rectangle {
+	mutex.RLock()
+	defer mutex.RUnlock()
+
+	b := bounds[config.Current.Window]
+	return b
 }
 
 func display(name string, count int) string {
@@ -286,4 +354,13 @@ func selectObject(hdc proc.HDC, hgdiobj proc.HGDIOBJ) proc.HGDIOBJ {
 	}
 
 	return proc.HGDIOBJ(ret)
+}
+
+func set(s []string, d map[string]int, b map[string]image.Rectangle) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	Sources = s
+	displays = d
+	bounds = b
 }

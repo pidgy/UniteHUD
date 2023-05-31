@@ -3,7 +3,6 @@ package gui
 import (
 	"fmt"
 	"image"
-	"image/color"
 	"strings"
 	"time"
 
@@ -24,7 +23,7 @@ import (
 	"github.com/pidgy/unitehud/gui/visual/button"
 	"github.com/pidgy/unitehud/gui/visual/dropdown"
 	"github.com/pidgy/unitehud/notify"
-	"github.com/pidgy/unitehud/rgba"
+	"github.com/pidgy/unitehud/nrgba"
 	"github.com/pidgy/unitehud/server"
 	"github.com/pidgy/unitehud/team"
 	"github.com/pidgy/unitehud/video/window/electron"
@@ -37,6 +36,7 @@ const (
 	timeLabel       = "Time"
 	kosLabel        = "KOs"
 	koSelfLabel     = "Self KOs"
+	allLabel        = "All"
 
 	startLabel = " Start"
 	stopLabel  = " Stop"
@@ -46,31 +46,33 @@ var (
 	controller      = false
 	controllerTitle = fmt.Sprintf("UniteHUD %s Controller", global.Version)
 
-	colors = map[string]color.NRGBA{
-		"enabled":   rgba.N(rgba.Alpha(rgba.DarkSeafoam, 0xC0)),
-		"disabled":  rgba.N(rgba.PaleRed),
-		"pressed":   rgba.N(rgba.DarkGray),
-		"released":  rgba.N(rgba.Gray),
-		"regi-icon": rgba.N(rgba.Alpha(rgba.DarkYellow, 200)),
+	colors = map[string]nrgba.NRGBA{
+		"enabled":               nrgba.DarkSeafoam.Alpha(0xC0),
+		"disabled":              nrgba.PaleRed,
+		"pressed":               nrgba.Transparent30,
+		"released":              nrgba.Gray,
+		"regi-icon":             nrgba.DarkYellow.Alpha(200),
+		"header":                nrgba.White,
+		"header-bar-horizontal": nrgba.White.Alpha(50),
 	}
 
-	offsets = map[string]unit.Value{
-		"score":       unit.Px(95),
-		"+1":          unit.Px(140),
-		"+10":         unit.Px(185),
-		"+50":         unit.Px(230),
-		"+100":        unit.Px(275),
-		"+/-":         unit.Px(345),
-		"header":      unit.Px(10),
-		"line1":       unit.Px(8),
-		"line2":       unit.Px(10),
-		"regi1":       unit.Px(140),
-		"regi2":       unit.Px(210),
-		"regi3":       unit.Px(280),
-		"regi-orange": unit.Px(0),
-		"regi-purple": unit.Px(20),
-		"regi-label":  unit.Px(45),
-		"regi-icon":   unit.Px(15),
+	offsets = map[string]unit.Dp{
+		"score":       unit.Dp(95),
+		"+1":          unit.Dp(140),
+		"+10":         unit.Dp(185),
+		"+50":         unit.Dp(230),
+		"+100":        unit.Dp(275),
+		"+/-":         unit.Dp(345),
+		"header":      unit.Dp(10),
+		"line1":       unit.Dp(8),
+		"line2":       unit.Dp(10),
+		"regi1":       unit.Dp(140),
+		"regi2":       unit.Dp(210),
+		"regi3":       unit.Dp(280),
+		"regi-orange": unit.Dp(0),
+		"regi-purple": unit.Dp(20),
+		"regi-label":  unit.Dp(45),
+		"regi-icon":   unit.Dp(15),
 	}
 
 	orange = map[string]*button.Button{
@@ -143,8 +145,8 @@ var (
 				Checked: widget.Bool{
 					Value: !config.Current.DisableScoring,
 				},
-				Callback: func() {
-					config.Current.DisableScoring = !config.Current.DisableScoring
+				Callback: func(this *dropdown.Item) {
+					config.Current.DisableScoring = this.Checked.Value
 				},
 			},
 			{
@@ -152,8 +154,8 @@ var (
 				Checked: widget.Bool{
 					Value: !config.Current.DisableEnergy,
 				},
-				Callback: func() {
-					config.Current.DisableEnergy = !config.Current.DisableEnergy
+				Callback: func(this *dropdown.Item) {
+					config.Current.DisableEnergy = this.Checked.Value
 				},
 			},
 			{
@@ -161,8 +163,8 @@ var (
 				Checked: widget.Bool{
 					Value: !config.Current.DisableObjectives,
 				},
-				Callback: func() {
-					config.Current.DisableObjectives = !config.Current.DisableObjectives
+				Callback: func(this *dropdown.Item) {
+					config.Current.DisableObjectives = this.Checked.Value
 				},
 			},
 			{
@@ -170,8 +172,8 @@ var (
 				Checked: widget.Bool{
 					Value: !config.Current.DisableTime,
 				},
-				Callback: func() {
-					config.Current.DisableTime = !config.Current.DisableTime
+				Callback: func(this *dropdown.Item) {
+					config.Current.DisableTime = this.Checked.Value
 				},
 			},
 			{
@@ -179,8 +181,8 @@ var (
 				Checked: widget.Bool{
 					Value: !config.Current.DisableKOs,
 				},
-				Callback: func() {
-					config.Current.DisableKOs = !config.Current.DisableKOs
+				Callback: func(this *dropdown.Item) {
+					config.Current.DisableKOs = this.Checked.Value
 				},
 			},
 			{
@@ -188,12 +190,28 @@ var (
 				Checked: widget.Bool{
 					Value: !config.Current.DisableDefeated,
 				},
-				Callback: func() {
-					config.Current.DisableDefeated = !config.Current.DisableDefeated
+				Callback: func(this *dropdown.Item) {
+					config.Current.DisableDefeated = this.Checked.Value
+				},
+			},
+			{
+				Text: allLabel,
+				Callback: func(_ *dropdown.Item) {
+					// Empty to force devicelist callback.
 				},
 			},
 		},
-		Callback: func(i *dropdown.Item) {
+		Callback: func(i *dropdown.Item, _ *dropdown.List) {
+			if i.Text == allLabel {
+				config.Current.DisableScoring = i.Checked.Value
+				config.Current.DisableEnergy = i.Checked.Value
+				config.Current.DisableObjectives = i.Checked.Value
+				config.Current.DisableTime = i.Checked.Value
+				config.Current.DisableKOs = i.Checked.Value
+				config.Current.DisableDefeated = i.Checked.Value
+				i.Checked.Value = !i.Checked.Value
+			}
+
 			status := "enabled"
 			if !i.Checked.Value {
 				status = "disabled"
@@ -224,7 +242,7 @@ var (
 				},
 			},
 		},
-		Callback: func(i *dropdown.Item) {
+		Callback: func(i *dropdown.Item, _ *dropdown.List) {
 			if config.Current.Profile == strings.ToLower(i.Text) {
 				return
 			}
@@ -268,9 +286,46 @@ var (
 		"regirock":  nil,
 		"registeel": nil,
 	}
+
+	advanced = map[string]*button.Button{
+		"reset": resetConfigurationButton(),
+	}
+
+	general = &dropdown.List{
+		Radio: true,
+		Items: []*dropdown.Item{
+			{
+				Text: "Previews",
+				Hint: "To ease CPU usage, avoid rendering successful captures on the main screen",
+				Checked: widget.Bool{
+					Value: config.Current.DisablePreviews,
+				},
+				Callback: func(this *dropdown.Item) {
+					config.Current.DisablePreviews = this.Checked.Value
+				},
+			},
+			{
+				Text: strings.Title(config.ProfileBroadcaster),
+				Checked: widget.Bool{
+					Value: config.Current.Profile == config.ProfileBroadcaster,
+				},
+			},
+		},
+		Callback: func(_ *dropdown.Item, l *dropdown.List) {
+
+		},
+	}
 )
 
 func (g *GUI) controller() {
+	list := material.List(g.normal, &widget.List{
+		Scrollbar: widget.Scrollbar{},
+		List: layout.List{
+			Axis:      layout.Vertical,
+			Alignment: layout.Baseline,
+		},
+	})
+
 	go func() {
 		controller = true
 		defer func() { controller = false }()
@@ -290,7 +345,7 @@ func (g *GUI) controller() {
 
 		w := app.NewWindow(
 			app.Title(controllerTitle),
-			app.Size(unit.Px(dx), unit.Px(dy)),
+			app.Size(unit.Dp(dx), unit.Dp(dy)),
 		)
 
 		var ops op.Ops
@@ -302,972 +357,865 @@ func (g *GUI) controller() {
 
 				updateControllerUI()
 
-				colorBox(gtx, gtx.Constraints.Max, color.NRGBA{R: 25, G: 25, B: 25, A: 255})
+				colorBox(gtx, gtx.Constraints.Max, nrgba.BackgroundAlt)
 
 				o, p, s := server.Scores()
 
-				x := float32(0)
+				y := float32(0)
 
-				// Frame Event Layout.
-				{
-					// Title Header.
-					{
-						x += 5
+				list.Layout(gtx, 70, func(gtx layout.Context, index int) layout.Dimensions {
+					// Frame Event Layout.
+					y += 5
 
-						layout.Inset{
-							Top:  unit.Px(x),
-							Left: unit.Px(0),
-						}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+					layout.Inset{
+						Top:  unit.Dp(y),
+						Left: unit.Dp(0),
+					}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+						l := material.Label(
+							g.normal,
+							g.normal.TextSize*unit.Sp(20.0/16.0),
+							controllerTitle,
+						)
+						l.Font.Weight = 100
+						l.Color = colors["header"].Color()
+						l.Alignment = text.Middle
+						return l.Layout(gtx)
+					})
+
+					y += 20
+
+					layout.Inset{
+						Top:  unit.Dp(y),
+						Left: offsets["header"],
+					}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+						l := material.Label(
+							g.normal,
+							g.normal.TextSize*unit.Sp(18.0/16.0),
+							"Profile",
+						)
+						l.Font.Weight = 200
+						l.Color = colors["header"].Color()
+						return l.Layout(gtx)
+					})
+
+					y += 25
+
+					layout.Inset{
+						Top:  unit.Dp(y),
+						Left: unit.Dp(5),
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return profile.Layout(gtx, g.normal)
+						})
+
+					y += 50
+
+					layout.Inset{
+						Top:  unit.Dp(y),
+						Left: offsets["line2"],
+					}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+						defer clip.Rect{Max: image.Pt(gtx.Constraints.Max.X-int(offsets["line2"]), 1)}.Push(gtx.Ops).Pop()
+						paint.ColorOp{Color: nrgba.White.Alpha(0x05).Color()}.Add(gtx.Ops)
+						paint.PaintOp{}.Add(gtx.Ops)
+						return layout.Dimensions{Size: gtx.Constraints.Max}
+					})
+
+					y += 15
+
+					layout.Inset{
+						Top:  unit.Dp(y),
+						Left: offsets["header"],
+					}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+						l := material.Label(
+							g.normal,
+							g.normal.TextSize*unit.Sp(18.0/16.0),
+							"Score",
+						)
+						l.Font.Weight = 200
+						l.Color = colors["header"].Color()
+						return l.Layout(gtx)
+					})
+
+					y += 25
+
+					layout.Inset{
+						Top:  unit.Dp(y),
+						Left: unit.Dp(30),
+					}.Layout(gtx,
+						func(gtx layout.Context) layout.Dimensions {
 							l := material.Label(
 								g.normal,
-								g.normal.TextSize.Scale(20.0/16.0),
-								controllerTitle,
+								g.normal.TextSize*unit.Sp(15.0/16.0),
+								"Purple",
 							)
-							l.Font.Weight = 100
-							l.Color = rgba.N(rgba.White)
-							l.Alignment = text.Middle
+							l.Color = colors["header"].Color()
+
 							return l.Layout(gtx)
-						},
-						)
-					}
+						})
 
-					// Title Line.
-					{
-						x += 25
-
-						layout.Inset{
-							Top:  unit.Px(x),
-							Left: unit.Px(5),
-						}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-							defer clip.Rect{Max: image.Pt(gtx.Constraints.Max.X-5, 2)}.Push(gtx.Ops).Pop()
-							paint.ColorOp{Color: rgba.N(rgba.Alpha(rgba.White, 0x5F))}.Add(gtx.Ops)
-							paint.PaintOp{}.Add(gtx.Ops)
-							return layout.Dimensions{Size: gtx.Constraints.Max}
-						},
-						)
-					}
-
-					// Profile Header.
-					{
-						x += 20
-
-						layout.Inset{
-							Top:  unit.Px(x),
-							Left: offsets["header"],
-						}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+					layout.Inset{
+						Top:  unit.Dp(y),
+						Left: offsets["score"],
+					}.Layout(gtx,
+						func(gtx layout.Context) layout.Dimensions {
 							l := material.Label(
 								g.normal,
-								g.normal.TextSize.Scale(18.0/16.0),
-								"Profile",
+								g.normal.TextSize*unit.Sp(15.0/16.0),
+								fmt.Sprintf("%d", p),
 							)
-							l.Font.Weight = 200
-							l.Color = rgba.N(rgba.White)
+							l.Font.Weight = 300
+							l.Color = nrgba.Purple.Color()
+
 							return l.Layout(gtx)
-						},
-						)
-					}
+						})
 
-					// Profile Section Line 1.
-					{
-						x += 25
+					layout.Inset{
+						Top:  unit.Dp(y + 2),
+						Left: offsets["+1"],
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return purple["+1"].Layout(gtx)
+						})
 
-						layout.Inset{
-							Top:  unit.Px(x),
-							Left: offsets["line1"],
-						}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-							defer clip.Rect{Max: image.Pt(gtx.Constraints.Max.X-int(offsets["line1"].V), 1)}.Push(gtx.Ops).Pop()
-							paint.ColorOp{Color: rgba.N(rgba.Alpha(rgba.White, 0x5F))}.Add(gtx.Ops)
-							paint.PaintOp{}.Add(gtx.Ops)
-							return layout.Dimensions{Size: gtx.Constraints.Max}
-						},
-						)
-					}
+					layout.Inset{
+						Top:  unit.Dp(y + 2),
+						Left: offsets["+10"],
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return purple["+10"].Layout(gtx)
+						})
 
-					// Profile.
-					{
-						x += 5
+					layout.Inset{
+						Top:  unit.Dp(y + 2),
+						Left: offsets["+50"],
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return purple["+50"].Layout(gtx)
+						})
 
-						layout.Inset{
-							Top:  unit.Px(x),
-							Left: unit.Px(5),
-						}.Layout(
-							gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								return profile.Layout(gtx, g.normal)
-							},
-						)
-					}
+					layout.Inset{
+						Top:  unit.Dp(y + 2),
+						Left: offsets["+100"],
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return purple["+100"].Layout(gtx)
+						})
 
-					// Profile Section Line 2.
-					{
-						x += 50
+					layout.Inset{
+						Top:  unit.Dp(y + 2),
+						Left: offsets["+/-"],
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							negated[team.Purple].Released = colors["enabled"]
+							if negated[team.Purple].Text == "-" {
+								negated[team.Purple].Released = nrgba.Red.Alpha(0xCC)
+							}
 
-						layout.Inset{
-							Top:  unit.Px(x),
-							Left: offsets["line2"],
-						}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-							defer clip.Rect{Max: image.Pt(gtx.Constraints.Max.X-int(offsets["line2"].V), 1)}.Push(gtx.Ops).Pop()
-							paint.ColorOp{Color: rgba.N(rgba.Alpha(rgba.White, 0x05))}.Add(gtx.Ops)
-							paint.PaintOp{}.Add(gtx.Ops)
-							return layout.Dimensions{Size: gtx.Constraints.Max}
-						},
-						)
-					}
+							return negated[team.Purple].Layout(gtx)
+						})
 
-					// Scores Header.
-					{
-						x += 15
+					y += 25
 
-						layout.Inset{
-							Top:  unit.Px(x),
-							Left: offsets["header"],
-						}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+					layout.Inset{
+						Top:  unit.Dp(y),
+						Left: unit.Dp(30),
+					}.Layout(gtx,
+						func(gtx layout.Context) layout.Dimensions {
 							l := material.Label(
 								g.normal,
-								g.normal.TextSize.Scale(18.0/16.0),
-								"Score",
+								g.normal.TextSize*unit.Sp(15.0/16.0),
+								"Orange",
 							)
-							l.Font.Weight = 200
-							l.Color = rgba.N(rgba.White)
+							l.Color = colors["header"].Color()
+
 							return l.Layout(gtx)
-						},
-						)
-					}
+						})
 
-					// Scores Section Line 1.
-					{
-						x += 25
-
-						layout.Inset{
-							Top:  unit.Px(x),
-							Left: offsets["line1"],
-						}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-							defer clip.Rect{Max: image.Pt(gtx.Constraints.Max.X-int(offsets["line1"].V), 1)}.Push(gtx.Ops).Pop()
-							paint.ColorOp{Color: rgba.N(rgba.Alpha(rgba.White, 0x5F))}.Add(gtx.Ops)
-							paint.PaintOp{}.Add(gtx.Ops)
-							return layout.Dimensions{Size: gtx.Constraints.Max}
-						},
-						)
-					}
-
-					// Purple.
-					{
-						x += 5
-
-						layout.Inset{
-							Top:  unit.Px(x),
-							Left: unit.Px(30),
-						}.Layout(gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								l := material.Label(
-									g.normal,
-									g.normal.TextSize.Scale(15.0/16.0),
-									"Purple",
-								)
-								l.Color = rgba.N(rgba.White)
-
-								return l.Layout(gtx)
-							},
-						)
-						layout.Inset{
-							Top:  unit.Px(x),
-							Left: offsets["score"],
-						}.Layout(gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								l := material.Label(
-									g.normal,
-									g.normal.TextSize.Scale(15.0/16.0),
-									fmt.Sprintf("%d", p),
-								)
-								l.Font.Weight = 300
-								l.Color = rgba.N(rgba.Purple)
-
-								return l.Layout(gtx)
-							},
-						)
-						layout.Inset{
-							Top:  unit.Px(x + 2),
-							Left: offsets["+1"],
-						}.Layout(
-							gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								return purple["+1"].Layout(gtx)
-							},
-						)
-						layout.Inset{
-							Top:  unit.Px(x + 2),
-							Left: offsets["+10"],
-						}.Layout(
-							gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								return purple["+10"].Layout(gtx)
-							},
-						)
-						layout.Inset{
-							Top:  unit.Px(x + 2),
-							Left: offsets["+50"],
-						}.Layout(
-							gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								return purple["+50"].Layout(gtx)
-							},
-						)
-						layout.Inset{
-							Top:  unit.Px(x + 2),
-							Left: offsets["+100"],
-						}.Layout(
-							gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								return purple["+100"].Layout(gtx)
-							},
-						)
-						layout.Inset{
-							Top:  unit.Px(x + 2),
-							Left: offsets["+/-"],
-						}.Layout(
-							gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								negated[team.Purple].Released = colors["enabled"]
-								if negated[team.Purple].Text == "-" {
-									negated[team.Purple].Released = rgba.N(rgba.Alpha(rgba.Red, 0xCC))
-								}
-
-								return negated[team.Purple].Layout(gtx)
-							},
-						)
-					}
-
-					// Orange.
-					{
-						x += 25
-
-						layout.Inset{
-							Top:  unit.Px(x),
-							Left: unit.Px(30),
-						}.Layout(gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								l := material.Label(
-									g.normal,
-									g.normal.TextSize.Scale(15.0/16.0),
-									"Orange",
-								)
-								l.Color = rgba.N(rgba.White)
-
-								return l.Layout(gtx)
-							},
-						)
-						layout.Inset{
-							Top:  unit.Px(x),
-							Left: offsets["score"],
-						}.Layout(gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								l := material.Label(
-									g.normal,
-									g.normal.TextSize.Scale(15.0/16.0),
-									fmt.Sprintf("%d", o),
-								)
-								l.Font.Weight = 300
-								l.Color = rgba.N(rgba.Orange)
-
-								return l.Layout(gtx)
-							},
-						)
-						layout.Inset{
-							Top:  unit.Px(x + 2),
-							Left: offsets["+1"],
-						}.Layout(
-							gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								return orange["+1"].Layout(gtx)
-							},
-						)
-						layout.Inset{
-							Top:  unit.Px(x + 2),
-							Left: offsets["+10"],
-						}.Layout(
-							gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								return orange["+10"].Layout(gtx)
-							},
-						)
-						layout.Inset{
-							Top:  unit.Px(x + 2),
-							Left: offsets["+50"],
-						}.Layout(
-							gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								return orange["+50"].Layout(gtx)
-							},
-						)
-						layout.Inset{
-							Top:  unit.Px(x + 2),
-							Left: offsets["+100"],
-						}.Layout(
-							gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								return orange["+100"].Layout(gtx)
-							},
-						)
-						layout.Inset{
-							Top:  unit.Px(x + 2),
-							Left: offsets["+/-"],
-						}.Layout(
-							gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								negated[team.Orange].Released = colors["enabled"]
-								if negated[team.Orange].Text == "-" {
-									negated[team.Orange].Released = rgba.N(rgba.Alpha(rgba.Red, 0xCC))
-								}
-
-								return negated[team.Orange].Layout(gtx)
-							},
-						)
-					}
-
-					// Self.
-					{
-						x += 25
-
-						layout.Inset{
-							Top:  unit.Px(x),
-							Left: unit.Px(30),
-						}.Layout(gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								l := material.Label(
-									g.normal,
-									g.normal.TextSize.Scale(15.0/16.0),
-									"Self",
-								)
-								l.Color = rgba.N(rgba.White)
-
-								return l.Layout(gtx)
-							},
-						)
-						layout.Inset{
-							Top:  unit.Px(x),
-							Left: offsets["score"],
-						}.Layout(gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								l := material.Label(
-									g.normal,
-									g.normal.TextSize.Scale(15.0/16.0),
-									fmt.Sprintf("%d", s),
-								)
-								l.Font.Weight = 300
-								l.Color = rgba.N(rgba.User)
-
-								return l.Layout(gtx)
-							},
-						)
-						layout.Inset{
-							Top:  unit.Px(x + 2),
-							Left: offsets["+1"],
-						}.Layout(
-							gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								return self["+1"].Layout(gtx)
-							},
-						)
-						layout.Inset{
-							Top:  unit.Px(x + 2),
-							Left: offsets["+10"],
-						}.Layout(
-							gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								return self["+10"].Layout(gtx)
-							},
-						)
-						layout.Inset{
-							Top:  unit.Px(x + 2),
-							Left: offsets["+50"],
-						}.Layout(
-							gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								return self["+50"].Layout(gtx)
-							},
-						)
-						layout.Inset{
-							Top:  unit.Px(x + 2),
-							Left: offsets["+100"],
-						}.Layout(
-							gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								return self["+100"].Layout(gtx)
-							},
-						)
-						layout.Inset{
-							Top:  unit.Px(x + 2),
-							Left: offsets["+/-"],
-						}.Layout(
-							gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								negated[team.Self].Released = colors["enabled"]
-								if negated[team.Self].Text == "-" {
-									negated[team.Self].Released = rgba.N(rgba.Alpha(rgba.Red, 0xCC))
-								}
-
-								return negated[team.Self].Layout(gtx)
-							},
-						)
-					}
-
-					// Scores Section Line 2.
-					{
-						x += 30
-
-						layout.Inset{
-							Top:  unit.Px(x),
-							Left: offsets["line2"],
-						}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-							defer clip.Rect{Max: image.Pt(gtx.Constraints.Max.X-int(offsets["line2"].V), 1)}.Push(gtx.Ops).Pop()
-							paint.ColorOp{Color: rgba.N(rgba.Alpha(rgba.White, 0x05))}.Add(gtx.Ops)
-							paint.PaintOp{}.Add(gtx.Ops)
-							return layout.Dimensions{Size: gtx.Constraints.Max}
-						},
-						)
-					}
-
-					// Objectives Header.
-					{
-						x += 15
-
-						layout.Inset{
-							Top:  unit.Px(x),
-							Left: offsets["header"],
-						}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+					layout.Inset{
+						Top:  unit.Dp(y),
+						Left: offsets["score"],
+					}.Layout(gtx,
+						func(gtx layout.Context) layout.Dimensions {
 							l := material.Label(
 								g.normal,
-								g.normal.TextSize.Scale(18.0/16.0),
-								"Objectives\t\t\t  1\t\t\t\t 2 \t\t\t  3",
+								g.normal.TextSize*unit.Sp(15.0/16.0),
+								fmt.Sprintf("%d", o),
 							)
-							l.Font.Weight = 200
-							l.Color = rgba.N(rgba.White)
+							l.Font.Weight = 300
+							l.Color = nrgba.Orange.Color()
+
 							return l.Layout(gtx)
-						},
+						})
+
+					layout.Inset{
+						Top:  unit.Dp(y + 2),
+						Left: offsets["+1"],
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return orange["+1"].Layout(gtx)
+						})
+
+					layout.Inset{
+						Top:  unit.Dp(y + 2),
+						Left: offsets["+10"],
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return orange["+10"].Layout(gtx)
+						})
+
+					layout.Inset{
+						Top:  unit.Dp(y + 2),
+						Left: offsets["+50"],
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return orange["+50"].Layout(gtx)
+						})
+
+					layout.Inset{
+						Top:  unit.Dp(y + 2),
+						Left: offsets["+100"],
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return orange["+100"].Layout(gtx)
+						})
+
+					layout.Inset{
+						Top:  unit.Dp(y + 2),
+						Left: offsets["+/-"],
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							negated[team.Orange].Released = colors["enabled"]
+							if negated[team.Orange].Text == "-" {
+								negated[team.Orange].Released = nrgba.Red.Alpha(0xCC)
+							}
+
+							return negated[team.Orange].Layout(gtx)
+						})
+
+					y += 25
+
+					layout.Inset{
+						Top:  unit.Dp(y),
+						Left: unit.Dp(30),
+					}.Layout(gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							l := material.Label(
+								g.normal,
+								g.normal.TextSize*unit.Sp(15.0/16.0),
+								"Self",
+							)
+							l.Color = colors["header"].Color()
+
+							return l.Layout(gtx)
+						})
+
+					layout.Inset{
+						Top:  unit.Dp(y),
+						Left: offsets["score"],
+					}.Layout(gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							l := material.Label(
+								g.normal,
+								g.normal.TextSize*unit.Sp(15.0/16.0),
+								fmt.Sprintf("%d", s),
+							)
+							l.Font.Weight = 300
+							l.Color = nrgba.User.Color()
+
+							return l.Layout(gtx)
+						})
+
+					layout.Inset{
+						Top:  unit.Dp(y + 2),
+						Left: offsets["+1"],
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return self["+1"].Layout(gtx)
+						})
+
+					layout.Inset{
+						Top:  unit.Dp(y + 2),
+						Left: offsets["+10"],
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return self["+10"].Layout(gtx)
+						})
+
+					layout.Inset{
+						Top:  unit.Dp(y + 2),
+						Left: offsets["+50"],
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return self["+50"].Layout(gtx)
+						})
+
+					layout.Inset{
+						Top:  unit.Dp(y + 2),
+						Left: offsets["+100"],
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return self["+100"].Layout(gtx)
+						})
+
+					layout.Inset{
+						Top:  unit.Dp(y + 2),
+						Left: offsets["+/-"],
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							negated[team.Self].Released = colors["enabled"]
+							if negated[team.Self].Text == "-" {
+								negated[team.Self].Released = nrgba.Red.Alpha(0xCC)
+							}
+
+							return negated[team.Self].Layout(gtx)
+						})
+
+					y += 30
+
+					layout.Inset{
+						Top:  unit.Dp(y),
+						Left: offsets["line2"],
+					}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+						defer clip.Rect{Max: image.Pt(gtx.Constraints.Max.X-int(offsets["line2"]), 1)}.Push(gtx.Ops).Pop()
+						paint.ColorOp{Color: nrgba.White.Alpha(0x05).Color()}.Add(gtx.Ops)
+						paint.PaintOp{}.Add(gtx.Ops)
+						return layout.Dimensions{Size: gtx.Constraints.Max}
+					})
+
+					y += 15
+
+					layout.Inset{
+						Top:  unit.Dp(y),
+						Left: offsets["header"],
+					}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+						l := material.Label(
+							g.normal,
+							g.normal.TextSize*unit.Sp(18.0/16.0),
+							"Objectives        1         2         3",
 						)
-					}
+						l.Font.Weight = 200
+						l.Color = colors["header"].Color()
+						return l.Layout(gtx)
+					})
 
-					// Objectives Section Line 1.
-					{
-						x += 25
+					y += 25
 
-						layout.Inset{
-							Top:  unit.Px(x),
-							Left: offsets["line1"],
-						}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-							defer clip.Rect{Max: image.Pt(gtx.Constraints.Max.X-int(offsets["line1"].V), 1)}.Push(gtx.Ops).Pop()
-							paint.ColorOp{Color: rgba.N(rgba.Alpha(rgba.White, 0x5F))}.Add(gtx.Ops)
-							paint.PaintOp{}.Add(gtx.Ops)
-							return layout.Dimensions{Size: gtx.Constraints.Max}
-						},
-						)
-					}
-
-					// Regieleki.
-					{
-						x += 5
-
-						layout.Inset{
-							Top:  unit.Px(x),
-							Left: offsets["regi-icon"],
-						}.Layout(gtx, (widget.Image{
+					layout.Inset{
+						Top:  unit.Dp(y),
+						Left: offsets["regi-icon"],
+					}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+						return (widget.Image{
 							Src:      paint.NewImageOp(images["regieleki"]),
 							Position: layout.NW,
 							Scale:    .2,
-						}).Layout)
+						}).Layout(gtx)
+					})
 
-						layout.Inset{
-							Top:  unit.Px(x),
-							Left: offsets["regi-label"],
-						}.Layout(gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								l := material.Label(
-									g.normal,
-									g.normal.TextSize.Scale(15.0/16.0),
-									"Regieleki",
-								)
-								l.Color = rgba.N(rgba.White)
+					layout.Inset{
+						Top:  unit.Dp(y),
+						Left: offsets["regi-label"],
+					}.Layout(gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							l := material.Label(
+								g.normal,
+								g.normal.TextSize*unit.Sp(15.0/16.0),
+								"Regieleki",
+							)
+							l.Color = colors["header"].Color()
 
-								return l.Layout(gtx)
-							},
-						)
+							return l.Layout(gtx)
+						})
 
-						layout.Inset{
-							Top:  unit.Px(x + 2),
-							Left: unit.Px(offsets["regi1"].V + offsets["regi-orange"].V),
-						}.Layout(
-							gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								return regis["orange-regieleki-1"].Layout(gtx)
-							},
-						)
-						layout.Inset{
-							Top:  unit.Px(x + 2),
-							Left: unit.Px(offsets["regi1"].V + offsets["regi-purple"].V),
-						}.Layout(
-							gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								return regis["purple-regieleki-1"].Layout(gtx)
-							},
-						)
+					layout.Inset{
+						Top:  unit.Dp(y + 2),
+						Left: unit.Dp(offsets["regi1"] + offsets["regi-orange"]),
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return regis["orange-regieleki-1"].Layout(gtx)
+						})
 
-						layout.Inset{
-							Top:  unit.Px(x + 2),
-							Left: unit.Px(offsets["regi2"].V + offsets["regi-orange"].V),
-						}.Layout(
-							gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								return regis["orange-regieleki-2"].Layout(gtx)
-							},
-						)
-						layout.Inset{
-							Top:  unit.Px(x + 2),
-							Left: unit.Px(offsets["regi2"].V + offsets["regi-purple"].V),
-						}.Layout(
-							gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								return regis["purple-regieleki-2"].Layout(gtx)
-							},
-						)
+					layout.Inset{
+						Top:  unit.Dp(y + 2),
+						Left: unit.Dp(offsets["regi1"] + offsets["regi-purple"]),
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return regis["purple-regieleki-1"].Layout(gtx)
+						})
 
-						layout.Inset{
-							Top:  unit.Px(x + 2),
-							Left: unit.Px(offsets["regi3"].V + offsets["regi-orange"].V),
-						}.Layout(
-							gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								return regis["orange-regieleki-3"].Layout(gtx)
-							},
-						)
-						layout.Inset{
-							Top:  unit.Px(x + 2),
-							Left: unit.Px(offsets["regi3"].V + offsets["regi-purple"].V),
-						}.Layout(
-							gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								return regis["purple-regieleki-3"].Layout(gtx)
-							},
-						)
-					}
+					layout.Inset{
+						Top:  unit.Dp(y + 2),
+						Left: unit.Dp(offsets["regi2"] + offsets["regi-orange"]),
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return regis["orange-regieleki-2"].Layout(gtx)
+						})
 
-					// Registeel.
-					{
-						x += 25
+					layout.Inset{
+						Top:  unit.Dp(y + 2),
+						Left: unit.Dp(offsets["regi2"] + offsets["regi-purple"]),
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return regis["purple-regieleki-2"].Layout(gtx)
+						})
 
-						layout.Inset{
-							Top:  unit.Px(x),
-							Left: offsets["regi-icon"],
-						}.Layout(gtx, (widget.Image{
-							Src:      paint.NewImageOp(images["registeel"]),
-							Position: layout.NW,
-							Scale:    .2,
-						}).Layout)
+					layout.Inset{
+						Top:  unit.Dp(y + 2),
+						Left: unit.Dp(offsets["regi3"] + offsets["regi-orange"]),
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return regis["orange-regieleki-3"].Layout(gtx)
+						})
 
-						layout.Inset{
-							Top:  unit.Px(x),
-							Left: offsets["regi-label"],
-						}.Layout(gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								l := material.Label(
-									g.normal,
-									g.normal.TextSize.Scale(15.0/16.0),
-									"Registeel",
-								)
-								l.Color = rgba.N(rgba.White)
+					layout.Inset{
+						Top:  unit.Dp(y + 2),
+						Left: unit.Dp(offsets["regi3"] + offsets["regi-purple"]),
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return regis["purple-regieleki-3"].Layout(gtx)
+						})
 
-								return l.Layout(gtx)
-							},
-						)
-						layout.Inset{
-							Top:  unit.Px(x + 2),
-							Left: unit.Px(offsets["regi1"].V + offsets["regi-orange"].V),
-						}.Layout(
-							gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								return regis["orange-registeel-1"].Layout(gtx)
-							},
-						)
-						layout.Inset{
-							Top:  unit.Px(x + 2),
-							Left: unit.Px(offsets["regi1"].V + offsets["regi-purple"].V),
-						}.Layout(
-							gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								return regis["purple-registeel-1"].Layout(gtx)
-							},
-						)
-						layout.Inset{
-							Top:  unit.Px(x + 2),
-							Left: unit.Px(offsets["regi2"].V + offsets["regi-orange"].V),
-						}.Layout(
-							gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								return regis["orange-registeel-2"].Layout(gtx)
-							},
-						)
-						layout.Inset{
-							Top:  unit.Px(x + 2),
-							Left: unit.Px(offsets["regi2"].V + offsets["regi-purple"].V),
-						}.Layout(
-							gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								return regis["purple-registeel-2"].Layout(gtx)
-							},
-						)
-						layout.Inset{
-							Top:  unit.Px(x + 2),
-							Left: unit.Px(offsets["regi3"].V + offsets["regi-orange"].V),
-						}.Layout(
-							gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								return regis["orange-registeel-3"].Layout(gtx)
-							},
-						)
-						layout.Inset{
-							Top:  unit.Px(x + 2),
-							Left: unit.Px(offsets["regi3"].V + offsets["regi-purple"].V),
-						}.Layout(
-							gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								return regis["purple-registeel-3"].Layout(gtx)
-							},
-						)
-					}
+					y += 25
 
-					// Regirock.
-					{
-						x += 25
-
-						layout.Inset{
-							Top:  unit.Px(x),
-							Left: offsets["regi-icon"],
-						}.Layout(gtx, (widget.Image{
+					layout.Inset{
+						Top:  unit.Dp(y),
+						Left: offsets["regi-icon"],
+					}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+						return (widget.Image{
 							Src:      paint.NewImageOp(images["regirock"]),
 							Position: layout.NW,
 							Scale:    .2,
-						}).Layout)
+						}).Layout(gtx)
+					})
 
-						layout.Inset{
-							Top:  unit.Px(x),
-							Left: offsets["regi-label"],
-						}.Layout(gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								l := material.Label(
-									g.normal,
-									g.normal.TextSize.Scale(15.0/16.0),
-									"Regirock",
-								)
-								l.Color = rgba.N(rgba.White)
+					layout.Inset{
+						Top:  unit.Dp(y),
+						Left: offsets["regi-label"],
+					}.Layout(gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							l := material.Label(
+								g.normal,
+								g.normal.TextSize*unit.Sp(15.0/16.0),
+								"Registeel",
+							)
+							l.Color = colors["header"].Color()
 
-								return l.Layout(gtx)
-							},
-						)
-						layout.Inset{
-							Top:  unit.Px(x + 2),
-							Left: unit.Px(offsets["regi1"].V + offsets["regi-orange"].V),
-						}.Layout(
-							gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								return regis["orange-regirock-1"].Layout(gtx)
-							},
-						)
-						layout.Inset{
-							Top:  unit.Px(x + 2),
-							Left: unit.Px(offsets["regi1"].V + offsets["regi-purple"].V),
-						}.Layout(
-							gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								return regis["purple-regirock-1"].Layout(gtx)
-							},
-						)
-						layout.Inset{
-							Top:  unit.Px(x + 2),
-							Left: unit.Px(offsets["regi2"].V + offsets["regi-orange"].V),
-						}.Layout(
-							gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								return regis["orange-regirock-2"].Layout(gtx)
-							},
-						)
-						layout.Inset{
-							Top:  unit.Px(x + 2),
-							Left: unit.Px(offsets["regi2"].V + offsets["regi-purple"].V),
-						}.Layout(
-							gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								return regis["purple-regirock-2"].Layout(gtx)
-							},
-						)
-						layout.Inset{
-							Top:  unit.Px(x + 2),
-							Left: unit.Px(offsets["regi3"].V + offsets["regi-orange"].V),
-						}.Layout(
-							gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								return regis["orange-regirock-3"].Layout(gtx)
-							},
-						)
-						layout.Inset{
-							Top:  unit.Px(x + 2),
-							Left: unit.Px(offsets["regi3"].V + offsets["regi-purple"].V),
-						}.Layout(
-							gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								return regis["purple-regirock-3"].Layout(gtx)
-							},
-						)
-					}
+							return l.Layout(gtx)
+						})
 
-					// Regice.
-					{
-						x += 25
+					layout.Inset{
+						Top:  unit.Dp(y + 2),
+						Left: unit.Dp(offsets["regi1"] + offsets["regi-orange"]),
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return regis["orange-registeel-1"].Layout(gtx)
+						})
 
-						layout.Inset{
-							Top:  unit.Px(x),
-							Left: offsets["regi-icon"],
-						}.Layout(gtx, (widget.Image{
+					layout.Inset{
+						Top:  unit.Dp(y + 2),
+						Left: unit.Dp(offsets["regi1"] + offsets["regi-purple"]),
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return regis["purple-registeel-1"].Layout(gtx)
+						})
+
+					layout.Inset{
+						Top:  unit.Dp(y + 2),
+						Left: unit.Dp(offsets["regi2"] + offsets["regi-orange"]),
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return regis["orange-registeel-2"].Layout(gtx)
+						})
+
+					layout.Inset{
+						Top:  unit.Dp(y + 2),
+						Left: unit.Dp(offsets["regi2"] + offsets["regi-purple"]),
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return regis["purple-registeel-2"].Layout(gtx)
+						})
+
+					layout.Inset{
+						Top:  unit.Dp(y + 2),
+						Left: unit.Dp(offsets["regi3"] + offsets["regi-orange"]),
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return regis["orange-registeel-3"].Layout(gtx)
+						})
+
+					layout.Inset{
+						Top:  unit.Dp(y + 2),
+						Left: unit.Dp(offsets["regi3"] + offsets["regi-purple"]),
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return regis["purple-registeel-3"].Layout(gtx)
+						})
+
+					y += 25
+
+					layout.Inset{
+						Top:  unit.Dp(y),
+						Left: offsets["regi-icon"],
+					}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+						return (widget.Image{
+							Src:      paint.NewImageOp(images["regirock"]),
+							Position: layout.NW,
+							Scale:    .2,
+						}).Layout(gtx)
+					})
+
+					layout.Inset{
+						Top:  unit.Dp(y),
+						Left: offsets["regi-label"],
+					}.Layout(gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							l := material.Label(
+								g.normal,
+								g.normal.TextSize*unit.Sp(15.0/16.0),
+								"Regirock",
+							)
+							l.Color = colors["header"].Color()
+
+							return l.Layout(gtx)
+						})
+
+					layout.Inset{
+						Top:  unit.Dp(y + 2),
+						Left: unit.Dp(offsets["regi1"] + offsets["regi-orange"]),
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return regis["orange-regirock-1"].Layout(gtx)
+						})
+
+					layout.Inset{
+						Top:  unit.Dp(y + 2),
+						Left: unit.Dp(offsets["regi1"] + offsets["regi-purple"]),
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return regis["purple-regirock-1"].Layout(gtx)
+						})
+
+					layout.Inset{
+						Top:  unit.Dp(y + 2),
+						Left: unit.Dp(offsets["regi2"] + offsets["regi-orange"]),
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return regis["orange-regirock-2"].Layout(gtx)
+						})
+
+					layout.Inset{
+						Top:  unit.Dp(y + 2),
+						Left: unit.Dp(offsets["regi2"] + offsets["regi-purple"]),
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return regis["purple-regirock-2"].Layout(gtx)
+						})
+
+					layout.Inset{
+						Top:  unit.Dp(y + 2),
+						Left: unit.Dp(offsets["regi3"] + offsets["regi-orange"]),
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return regis["orange-regirock-3"].Layout(gtx)
+						})
+
+					layout.Inset{
+						Top:  unit.Dp(y + 2),
+						Left: unit.Dp(offsets["regi3"] + offsets["regi-purple"]),
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return regis["purple-regirock-3"].Layout(gtx)
+						})
+
+					y += 25
+
+					layout.Inset{
+						Top:  unit.Dp(y),
+						Left: offsets["regi-icon"],
+					}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+						return (widget.Image{
 							Src:      paint.NewImageOp(images["regice"]),
 							Position: layout.NW,
 							Scale:    .2,
-						}).Layout)
+						}).Layout(gtx)
+					})
 
-						layout.Inset{
-							Top:  unit.Px(x),
-							Left: offsets["regi-label"],
-						}.Layout(gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								l := material.Label(
-									g.normal,
-									g.normal.TextSize.Scale(15.0/16.0),
-									"Regice",
-								)
-								l.Color = rgba.N(rgba.White)
-
-								return l.Layout(gtx)
-							},
-						)
-						layout.Inset{
-							Top:  unit.Px(x + 2),
-							Left: unit.Px(offsets["regi1"].V + offsets["regi-orange"].V),
-						}.Layout(
-							gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								return regis["orange-regice-1"].Layout(gtx)
-							},
-						)
-						layout.Inset{
-							Top:  unit.Px(x + 2),
-							Left: unit.Px(offsets["regi1"].V + offsets["regi-purple"].V),
-						}.Layout(
-							gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								return regis["purple-regice-1"].Layout(gtx)
-							},
-						)
-						layout.Inset{
-							Top:  unit.Px(x + 2),
-							Left: unit.Px(offsets["regi2"].V + offsets["regi-orange"].V),
-						}.Layout(
-							gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								return regis["orange-regice-2"].Layout(gtx)
-							},
-						)
-						layout.Inset{
-							Top:  unit.Px(x + 2),
-							Left: unit.Px(offsets["regi2"].V + offsets["regi-purple"].V),
-						}.Layout(
-							gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								return regis["purple-regice-2"].Layout(gtx)
-							},
-						)
-						layout.Inset{
-							Top:  unit.Px(x + 2),
-							Left: unit.Px(offsets["regi3"].V + offsets["regi-orange"].V),
-						}.Layout(
-							gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								return regis["orange-regice-3"].Layout(gtx)
-							},
-						)
-						layout.Inset{
-							Top:  unit.Px(x + 2),
-							Left: unit.Px(offsets["regi3"].V + offsets["regi-purple"].V),
-						}.Layout(
-							gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								return regis["purple-regice-3"].Layout(gtx)
-							},
-						)
-					}
-
-					// Objectives Section Line 2.
-					{
-						x += 30
-
-						layout.Inset{
-							Top:  unit.Px(x),
-							Left: offsets["line2"],
-						}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-							defer clip.Rect{Max: image.Pt(gtx.Constraints.Max.X-int(offsets["line2"].V), 1)}.Push(gtx.Ops).Pop()
-							paint.ColorOp{Color: rgba.N(rgba.Alpha(rgba.White, 0x05))}.Add(gtx.Ops)
-							paint.PaintOp{}.Add(gtx.Ops)
-							return layout.Dimensions{Size: gtx.Constraints.Max}
-						},
-						)
-					}
-
-					// Matching Header.
-					{
-						x += 15
-
-						layout.Inset{
-							Top:  unit.Px(x),
-							Left: offsets["header"],
-						}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+					layout.Inset{
+						Top:  unit.Dp(y),
+						Left: offsets["regi-label"],
+					}.Layout(gtx,
+						func(gtx layout.Context) layout.Dimensions {
 							l := material.Label(
 								g.normal,
-								g.normal.TextSize.Scale(18.0/16.0),
-								"Matching",
+								g.normal.TextSize*unit.Sp(15.0/16.0),
+								"Regice",
 							)
-							l.Font.Weight = 200
-							l.Color = rgba.N(rgba.White)
+							l.Color = colors["header"].Color()
+
 							return l.Layout(gtx)
-						},
+						})
+
+					layout.Inset{
+						Top:  unit.Dp(y + 2),
+						Left: unit.Dp(offsets["regi1"] + offsets["regi-orange"]),
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return regis["orange-regice-1"].Layout(gtx)
+						})
+
+					layout.Inset{
+						Top:  unit.Dp(y + 2),
+						Left: unit.Dp(offsets["regi1"] + offsets["regi-purple"]),
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return regis["purple-regice-1"].Layout(gtx)
+						})
+
+					layout.Inset{
+						Top:  unit.Dp(y + 2),
+						Left: unit.Dp(offsets["regi2"] + offsets["regi-orange"]),
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return regis["orange-regice-2"].Layout(gtx)
+						})
+
+					layout.Inset{
+						Top:  unit.Dp(y + 2),
+						Left: unit.Dp(offsets["regi2"] + offsets["regi-purple"]),
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return regis["purple-regice-2"].Layout(gtx)
+						})
+
+					layout.Inset{
+						Top:  unit.Dp(y + 2),
+						Left: unit.Dp(offsets["regi3"] + offsets["regi-orange"]),
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return regis["orange-regice-3"].Layout(gtx)
+						})
+
+					layout.Inset{
+						Top:  unit.Dp(y + 2),
+						Left: unit.Dp(offsets["regi3"] + offsets["regi-purple"]),
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return regis["purple-regice-3"].Layout(gtx)
+						})
+
+					y += 30
+
+					layout.Inset{
+						Top:  unit.Dp(y),
+						Left: offsets["line2"],
+					}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+						defer clip.Rect{Max: image.Pt(gtx.Constraints.Max.X-int(offsets["line2"]), 1)}.Push(gtx.Ops).Pop()
+						paint.ColorOp{Color: nrgba.White.Alpha(0x05).Color()}.Add(gtx.Ops)
+						paint.PaintOp{}.Add(gtx.Ops)
+						return layout.Dimensions{Size: gtx.Constraints.Max}
+					})
+
+					y += 15
+
+					layout.Inset{
+						Top:  unit.Dp(y),
+						Left: offsets["header"],
+					}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+						l := material.Label(
+							g.normal,
+							g.normal.TextSize*unit.Sp(18.0/16.0),
+							"Matching",
 						)
-					}
+						l.Font.Weight = 200
+						l.Color = colors["header"].Color()
+						return l.Layout(gtx)
+					})
 
-					// Matching Section Line 1.
-					{
-						x += 25
+					y += 25
 
-						layout.Inset{
-							Top:  unit.Px(x),
-							Left: offsets["line1"],
-						}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-							defer clip.Rect{Max: image.Pt(gtx.Constraints.Max.X-int(offsets["line1"].V), 1)}.Push(gtx.Ops).Pop()
-							paint.ColorOp{Color: rgba.N(rgba.Alpha(rgba.White, 0x5F))}.Add(gtx.Ops)
-							paint.PaintOp{}.Add(gtx.Ops)
-							return layout.Dimensions{Size: gtx.Constraints.Max}
-						},
+					layout.Inset{
+						Left: unit.Dp(5),
+						Top:  unit.Dp(y),
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return matching.Layout(gtx, g.normal)
+						})
+
+					y += 155
+
+					layout.Inset{
+						Top:  unit.Dp(y),
+						Left: offsets["line2"],
+					}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+						defer clip.Rect{Max: image.Pt(gtx.Constraints.Max.X-int(offsets["line2"]), 1)}.Push(gtx.Ops).Pop()
+						paint.ColorOp{Color: nrgba.White.Alpha(0x05).Color()}.Add(gtx.Ops)
+						paint.PaintOp{}.Add(gtx.Ops)
+						return layout.Dimensions{Size: gtx.Constraints.Max}
+					})
+
+					y += 15
+
+					layout.Inset{
+						Top:  unit.Dp(y),
+						Left: offsets["header"],
+					}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+						l := material.Label(
+							g.normal,
+							g.normal.TextSize*unit.Sp(18.0/16.0),
+							"Game",
 						)
-					}
+						l.Font.Weight = 200
+						l.Color = colors["header"].Color()
+						return l.Layout(gtx)
+					})
 
-					// Matching.
-					{
-						x += 5
+					y += 25
 
-						layout.Inset{
-							Left: unit.Px(5),
-							Top:  unit.Px(x),
-						}.Layout(
-							gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								return matching.Layout(gtx, g.normal)
-							},
+					layout.Inset{
+						Top:   unit.Dp(y),
+						Left:  unit.Dp(10),
+						Right: unit.Dp(20),
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return controls["start-stop"].Layout(gtx)
+						})
+
+					layout.Inset{
+						Top:   unit.Dp(y),
+						Left:  unit.Dp(65),
+						Right: unit.Dp(20),
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return controls["clear"].Layout(gtx)
+						})
+
+					y += 40
+
+					layout.Inset{
+						Top:  unit.Dp(y),
+						Left: offsets["line2"],
+					}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+						defer clip.Rect{Max: image.Pt(gtx.Constraints.Max.X-int(offsets["line2"]), 1)}.Push(gtx.Ops).Pop()
+						paint.ColorOp{Color: nrgba.White.Alpha(0x05).Color()}.Add(gtx.Ops)
+						paint.PaintOp{}.Add(gtx.Ops)
+						return layout.Dimensions{Size: gtx.Constraints.Max}
+					})
+
+					y += 15
+
+					layout.Inset{
+						Top:  unit.Dp(y),
+						Left: offsets["header"],
+					}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+						l := material.Label(
+							g.normal,
+							g.normal.TextSize*unit.Sp(18.0/16.0),
+							"General",
 						)
-					}
+						l.Font.Weight = 200
+						l.Color = colors["header"].Color()
+						return l.Layout(gtx)
+					})
 
-					// Matching Section Line 2.
-					{
-						x += 135
+					y += 25
 
-						layout.Inset{
-							Top:  unit.Px(x),
-							Left: offsets["line2"],
-						}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-							defer clip.Rect{Max: image.Pt(gtx.Constraints.Max.X-int(offsets["line2"].V), 1)}.Push(gtx.Ops).Pop()
-							paint.ColorOp{Color: rgba.N(rgba.Alpha(rgba.White, 0x05))}.Add(gtx.Ops)
-							paint.PaintOp{}.Add(gtx.Ops)
-							return layout.Dimensions{Size: gtx.Constraints.Max}
-						},
+					layout.Inset{
+						Top:  unit.Dp(y),
+						Left: unit.Dp(5),
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return general.Layout(gtx, g.normal)
+						})
+
+					y += 60
+
+					layout.Inset{
+						Top:  unit.Dp(y),
+						Left: offsets["line2"],
+					}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+						defer clip.Rect{Max: image.Pt(gtx.Constraints.Max.X-int(offsets["line2"]), 1)}.Push(gtx.Ops).Pop()
+						paint.ColorOp{Color: nrgba.White.Alpha(0x05).Color()}.Add(gtx.Ops)
+						paint.PaintOp{}.Add(gtx.Ops)
+						return layout.Dimensions{Size: gtx.Constraints.Max}
+					})
+
+					y += 15
+
+					layout.Inset{
+						Top:  unit.Dp(y),
+						Left: offsets["header"],
+					}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+						l := material.Label(
+							g.normal,
+							g.normal.TextSize*unit.Sp(18.0/16.0),
+							"Advanced",
 						)
-					}
+						l.Font.Weight = 200
+						l.Color = colors["header"].Color()
+						return l.Layout(gtx)
+					})
 
-					// Game Header.
-					{
-						x += 15
+					y += 25
 
-						layout.Inset{
-							Top:  unit.Px(x),
-							Left: offsets["header"],
-						}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-							l := material.Label(
-								g.normal,
-								g.normal.TextSize.Scale(18.0/16.0),
-								"Game",
-							)
-							l.Font.Weight = 200
-							l.Color = rgba.N(rgba.White)
-							return l.Layout(gtx)
-						},
-						)
-					}
+					layout.Inset{
+						Top:   unit.Dp(y),
+						Left:  unit.Dp(10),
+						Right: unit.Dp(20),
+					}.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return advanced["reset"].Layout(gtx)
+						})
 
-					// Game Section Line 1.
-					{
-						x += 25
-
-						layout.Inset{
-							Top:  unit.Px(x),
-							Left: offsets["line1"],
-						}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-							defer clip.Rect{Max: image.Pt(gtx.Constraints.Max.X-int(offsets["line1"].V), 1)}.Push(gtx.Ops).Pop()
-							paint.ColorOp{Color: rgba.N(rgba.Alpha(rgba.White, 0x5F))}.Add(gtx.Ops)
-							paint.PaintOp{}.Add(gtx.Ops)
-							return layout.Dimensions{Size: gtx.Constraints.Max}
-						},
-						)
-					}
-
-					// Game.
-					{
-						x += 5
-
-						layout.Inset{
-							Top:   unit.Px(x),
-							Left:  unit.Px(20),
-							Right: unit.Px(20),
-						}.Layout(
-							gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								return controls["start-stop"].Layout(gtx)
-							},
-						)
-
-						layout.Inset{
-							Top:   unit.Px(x),
-							Left:  unit.Px(80),
-							Right: unit.Px(20),
-						}.Layout(
-							gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								return controls["clear"].Layout(gtx)
-							},
-						)
-					}
-
-					// Game Section Line 2.
-					{
-						x += 30
-
-						layout.Inset{
-							Top:  unit.Px(x),
-							Left: offsets["line2"],
-						}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-							defer clip.Rect{Max: image.Pt(gtx.Constraints.Max.X-int(offsets["line2"].V), 1)}.Push(gtx.Ops).Pop()
-							paint.ColorOp{Color: rgba.N(rgba.Alpha(rgba.White, 0x05))}.Add(gtx.Ops)
-							paint.PaintOp{}.Add(gtx.Ops)
-							return layout.Dimensions{Size: gtx.Constraints.Max}
-						},
-						)
-					}
-				}
+					return layout.Dimensions{Size: gtx.Constraints.Max}
+				})
 
 				e.(system.FrameEvent).Frame(gtx.Ops)
 			case system.StageEvent:
-				w.Raise()
+				w.Perform(system.ActionRaise)
 			case system.DestroyEvent:
 				return
 			}
@@ -1278,7 +1226,7 @@ func (g *GUI) controller() {
 func bottomObjectiveButton(t *team.Team, name string, n int) *button.CircleButton {
 	b := &button.CircleButton{
 		Name:        t.Name,
-		BorderColor: rgba.N(t.RGBA),
+		BorderColor: t.NRGBA,
 		Released:    colors["released"],
 		Pressed:     colors["pressed"],
 		Size:        image.Pt(15, 15),
@@ -1296,14 +1244,13 @@ func bottomObjectiveButton(t *team.Team, name string, n int) *button.CircleButto
 
 func clearButton() *button.Button {
 	b := &button.Button{
-		Text:           "Clear",
-		Released:       colors["disabled"],
-		Pressed:        colors["pressed"],
-		Size:           image.Pt(50, 25),
-		TextSize:       unit.Sp(12),
-		TextOffsetTop:  0,
-		TextOffsetLeft: -2,
-		BorderWidth:    unit.Sp(.5),
+		Text:     "Clear",
+		Released: colors["disabled"],
+		Pressed:  colors["pressed"],
+		Size:     image.Pt(50, 25),
+		TextSize: unit.Sp(12),
+
+		BorderWidth: unit.Sp(.5),
 	}
 
 	b.Click = func(b *button.Button) {
@@ -1321,23 +1268,13 @@ func clearButton() *button.Button {
 }
 
 func plusButton(t *team.Team, n int) *button.Button {
-	off := -1
-	switch n {
-	case 10, 50:
-		off = -4
-	case 100:
-		off = -8
-	}
-
 	b := &button.Button{
-		Text:           fmt.Sprintf("+%d", n),
-		Released:       colors["released"],
-		Pressed:        colors["pressed"],
-		Size:           image.Pt(35, 16),
-		TextSize:       unit.Sp(12),
-		TextOffsetTop:  -4,
-		TextOffsetLeft: float32(off),
-		BorderWidth:    unit.Sp(.5),
+		Text:        fmt.Sprintf("+%d", n),
+		Released:    colors["released"],
+		Pressed:     colors["pressed"],
+		Size:        image.Pt(35, 16),
+		TextSize:    unit.Sp(12),
+		BorderWidth: unit.Sp(.5),
 	}
 
 	b.Click = func(b *button.Button) {
@@ -1361,14 +1298,13 @@ func plusButton(t *team.Team, n int) *button.Button {
 
 func plusMinusButton(t *team.Team) *button.Button {
 	b := &button.Button{
-		Text:           "+",
-		Released:       colors["enabled"],
-		Pressed:        colors["pressed"],
-		Size:           image.Pt(40, 16),
-		TextSize:       unit.Sp(14),
-		TextOffsetTop:  -5,
-		TextOffsetLeft: 5,
-		BorderWidth:    unit.Sp(.5),
+		Text:     "+",
+		Released: colors["enabled"],
+		Pressed:  colors["pressed"],
+		Size:     image.Pt(40, 16),
+		TextSize: unit.Sp(14),
+
+		BorderWidth: unit.Sp(.5),
 	}
 
 	b.Click = func(b *button.Button) {
@@ -1396,7 +1332,7 @@ func plusMinusButton(t *team.Team) *button.Button {
 func regielekiButton(t *team.Team, n int) *button.CircleButton {
 	b := &button.CircleButton{
 		Name:        t.Name,
-		BorderColor: rgba.N(t.RGBA),
+		BorderColor: t.NRGBA,
 		Released:    colors["released"],
 		Pressed:     colors["pressed"],
 		Size:        image.Pt(15, 15),
@@ -1412,16 +1348,46 @@ func regielekiButton(t *team.Team, n int) *button.CircleButton {
 	return b
 }
 
+func resetConfigurationButton() *button.Button {
+	b := &button.Button{
+		Text:     "Configuration",
+		Released: colors["disabled"],
+		Pressed:  colors["pressed"],
+		Size:     image.Pt(125, 25),
+		TextSize: unit.Sp(12),
+
+		BorderWidth: unit.Sp(.5),
+		Click: func(b *button.Button) {
+			Window.ToastYesNo("Reset", fmt.Sprintf("Reset UniteHUD %s configuration?", config.Current.Profile), func() {
+				defer b.Deactivate()
+				defer server.Clear()
+
+				electron.Close()
+
+				err := config.Current.Reset()
+				if err != nil {
+					notify.Error("Failed to reset %s configuration (%v)", config.Current.Profile, err)
+				}
+
+				config.Current.Reload()
+
+				notify.Announce("Reset UniteHUD %s configuration", config.Current.Profile)
+			}, b.Deactivate)
+		},
+	}
+
+	return b
+}
+
 func startStopButton() *button.Button {
 	b := &button.Button{
-		Text:           startLabel,
-		Released:       colors["enabled"],
-		Pressed:        colors["pressed"],
-		Size:           image.Pt(50, 25),
-		TextSize:       unit.Sp(12),
-		TextOffsetTop:  0,
-		TextOffsetLeft: -1,
-		BorderWidth:    unit.Sp(.5),
+		Text:     startLabel,
+		Released: colors["enabled"],
+		Pressed:  colors["pressed"],
+		Size:     image.Pt(50, 25),
+		TextSize: unit.Sp(12),
+
+		BorderWidth: unit.Sp(.5),
 	}
 
 	b.Click = func(b *button.Button) {
@@ -1461,7 +1427,13 @@ func updateControllerUI() {
 		i.Checked.Value = config.Current.Profile == strings.ToLower(i.Text)
 	}
 
+	all := true
+
 	for _, i := range matching.Items {
+		if i.Text != allLabel && !i.Checked.Value {
+			all = false
+		}
+
 		switch i.Text {
 		case scoringLabel:
 			i.Checked.Value = !config.Current.DisableScoring
@@ -1478,6 +1450,8 @@ func updateControllerUI() {
 		case koSelfLabel:
 			i.Checked.Value = !config.Current.DisableDefeated
 			i.Disabled = config.Current.Profile == config.ProfileBroadcaster
+		case allLabel:
+			i.Checked.Value = all
 		}
 	}
 

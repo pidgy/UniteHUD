@@ -9,14 +9,16 @@ import (
 
 	"gioui.org/app"
 	"gioui.org/font/gofont"
+	"gioui.org/io/system"
 	"gioui.org/unit"
 	"gioui.org/widget/material"
 
 	"github.com/pidgy/unitehud/config"
-	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/gui/visual/button"
 	"github.com/pidgy/unitehud/gui/visual/screen"
+	"github.com/pidgy/unitehud/gui/visual/split"
 	"github.com/pidgy/unitehud/gui/visual/textblock"
+	"github.com/pidgy/unitehud/gui/visual/title"
 	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/stats"
 	"github.com/pidgy/unitehud/video"
@@ -26,6 +28,7 @@ type Action string
 
 type GUI struct {
 	*app.Window
+	*title.Bar
 	*screen.Screen
 
 	Preview bool
@@ -48,6 +51,10 @@ type GUI struct {
 	lastToastTime  time.Time
 
 	ecoMode bool
+
+	readyq chan bool
+
+	resizeToMax bool
 }
 
 const (
@@ -67,30 +74,62 @@ const (
 var Window *GUI
 
 func New() {
+	cas, err := textblock.NewCascadiaCode()
+	if err != nil {
+		notify.Warn("Failed to create CPU/RAM graph (%v)", err)
+	}
+	_ = cas
+
 	Window = &GUI{
 		Window: app.NewWindow(
-			app.Title(Title("")),
+			app.Title("UniteHUD"),
+			app.Decorated(false),
 			app.Size(
-				unit.Px(1024),
-				unit.Px(720),
+				unit.Dp(1080),
+				unit.Dp(648+split.DefaultBarSizeAdjustable),
+			),
+			app.MinSize(
+				unit.Dp(1080),
+				unit.Dp(648+split.DefaultBarSizeAdjustable),
 			),
 		),
+
 		Preview: true,
 		Actions: make(chan Action, 1024),
 		resize:  true,
 		ecoMode: true,
+		readyq:  make(chan bool),
+
+		// cascadia = material.NewTheme(cas.Collection())
+		cascadia: material.NewTheme(gofont.Collection()),
+		normal:   material.NewTheme(gofont.Collection()),
+
+		Bar: title.New(
+			title.Default,
+			material.NewTheme(gofont.Collection()),
+			func() {
+				Window.Perform(system.ActionMinimize)
+			},
+			func() {
+				Window.resizeToMax = !Window.resizeToMax
+				if Window.resizeToMax {
+					Window.Perform(system.ActionMaximize)
+					return
+				}
+				Window.Perform(system.ActionUnmaximize)
+			},
+			func() {
+				Window.Perform(system.ActionClose)
+			},
+		),
 	}
 
-	cas, err := textblock.NewCascadiaCode()
-	if err != nil {
-		notify.Error("Failed to create CPU/RAM graph (%v)", err)
-	}
-
-	Window.cascadia = material.NewTheme(cas.Collection())
-	Window.normal = material.NewTheme(gofont.Collection())
+	go Window.loading()
 }
 
 func (g *GUI) Open() {
+	g.readyq <- true
+
 	go func() {
 		g.open = true
 
@@ -104,6 +143,7 @@ func (g *GUI) Open() {
 		var err error
 
 		next := "main"
+
 		for next != "" {
 			switch next {
 			case "main":
@@ -132,6 +172,12 @@ func (g *GUI) Open() {
 	app.Main()
 }
 
+func (g *GUI) Title(t string) string {
+	t = fmt.Sprintf("%s %s", title.Default, t)
+	g.Bar.Title = t
+	return t
+}
+
 func (g *GUI) proc() {
 	handle, err := syscall.GetCurrentProcess()
 	if err != nil {
@@ -153,13 +199,12 @@ func (g *GUI) proc() {
 
 	cpus := float64(runtime.NumCPU()) - 2
 
-	procTicker := 3
-	procTicks := 0
-
 	peakCPU := 0.0
 	peakRAM := 0.0
 
-	for range time.NewTicker(time.Second).C {
+	for {
+		time.Sleep(time.Second)
+
 		err := syscall.GetProcessTimes(handle, &ctime, &etime, &ktime, &utime)
 		if err != nil {
 			notify.Error("Failed to monitor CPU/RAM (%v)", err)
@@ -201,12 +246,6 @@ func (g *GUI) proc() {
 
 		go stats.CPU(cpu)
 		go stats.RAM(ram)
-
-		if procTicker == procTicks {
-
-			procTicks = -1
-		}
-		procTicks++
 	}
 }
 
@@ -214,6 +253,7 @@ func (g *GUI) display(src image.Image) {
 	g.Screen = &screen.Screen{
 		Image:         src,
 		VerticalScale: true,
+		Splash:        true,
 	}
 
 	if g.open {
@@ -254,8 +294,4 @@ func (g *GUI) buttonSpam(b *button.Button) {
 		}
 	},
 	)
-}
-
-func Title(t string) string {
-	return fmt.Sprintf("UniteHUD %s %s", global.Version, t)
 }

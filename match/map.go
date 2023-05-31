@@ -110,23 +110,23 @@ func goals(matrix gocv.Mat, img *image.RGBA) (Goals, bool) {
 				case state.PurpleBaseOpen:
 					println("purple base open: ", maxp.String())
 					purple = append(purple, Tier{Point: maxp, Match: maxv})
-					gocv.Rectangle(&matrix, image.Rectangle{maxp, maxp.Add(image.Pt(25, 25))}, rgba.Black, -1)
-					gocv.PutText(&matrix, fmt.Sprintf("%.1f%%", maxv*100), maxp, gocv.FontHersheyPlain, 1, rgba.White, 2)
+					gocv.Rectangle(&matrix, image.Rectangle{maxp, maxp.Add(image.Pt(25, 25))}, rgba.Black.Color(), -1)
+					gocv.PutText(&matrix, fmt.Sprintf("%.1f%%", maxv*100), maxp, gocv.FontHersheyPlain, 1, rgba.White.Color(), 2)
 				case state.PurpleBaseClosed:
 					println("purple base closed: ", maxp.String())
 					purple = append(purple, Tier{Destroyed: true, Point: maxp, Match: maxv})
-					gocv.Rectangle(&matrix, image.Rectangle{maxp, maxp.Add(image.Pt(25, 25))}, rgba.Black, -1)
-					gocv.PutText(&matrix, fmt.Sprintf("%.1f%%", maxv*100), maxp, gocv.FontHersheyPlain, 1, rgba.White, 2)
+					gocv.Rectangle(&matrix, image.Rectangle{maxp, maxp.Add(image.Pt(25, 25))}, rgba.Black.Color(), -1)
+					gocv.PutText(&matrix, fmt.Sprintf("%.1f%%", maxv*100), maxp, gocv.FontHersheyPlain, 1, rgba.White.Color(), 2)
 				case state.OrangeBaseOpen:
 					println("orange base open: ", maxp.String())
 					orange = append(orange, Tier{Point: maxp, Match: maxv})
-					gocv.Rectangle(&matrix, image.Rectangle{maxp, maxp.Add(image.Pt(25, 25))}, rgba.Black, -1)
-					gocv.PutText(&matrix, fmt.Sprintf("%.1f%%", maxv*100), maxp, gocv.FontHersheyPlain, 1, rgba.White, 2)
+					gocv.Rectangle(&matrix, image.Rectangle{maxp, maxp.Add(image.Pt(25, 25))}, rgba.Black.Color(), -1)
+					gocv.PutText(&matrix, fmt.Sprintf("%.1f%%", maxv*100), maxp, gocv.FontHersheyPlain, 1, rgba.White.Color(), 2)
 				case state.OrangeBaseClosed:
 					println("orange base closed: ", maxp.String(), templates[i].File)
 					orange = append(orange, Tier{Destroyed: true, Point: maxp, Match: maxv})
-					gocv.Rectangle(&matrix, image.Rectangle{maxp, maxp.Add(image.Pt(25, 25))}, rgba.Black, -1)
-					gocv.PutText(&matrix, fmt.Sprintf("%.1f%%", maxv*100), maxp, gocv.FontHersheyPlain, 1, rgba.White, 2)
+					gocv.Rectangle(&matrix, image.Rectangle{maxp, maxp.Add(image.Pt(25, 25))}, rgba.Black.Color(), -1)
+					gocv.PutText(&matrix, fmt.Sprintf("%.1f%%", maxv*100), maxp, gocv.FontHersheyPlain, 1, rgba.White.Color(), 2)
 				}
 			}
 

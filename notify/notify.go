@@ -3,11 +3,10 @@ package notify
 import (
 	"fmt"
 	"image"
-	"image/color"
 	"strings"
 	"time"
 
-	"github.com/pidgy/unitehud/rgba"
+	"github.com/pidgy/unitehud/nrgba"
 )
 
 var (
@@ -20,7 +19,7 @@ var (
 )
 
 type Post struct {
-	color.RGBA
+	nrgba.NRGBA
 	time.Time
 
 	msg    string
@@ -37,15 +36,15 @@ type notify struct {
 var feed = &notify{}
 
 func Announce(format string, a ...interface{}) {
-	feed.log(rgba.Announce, true, false, false, fmt.Sprintf("%s", format), a...)
+	feed.log(nrgba.Announce, true, false, false, format, a...)
 }
 
-func Append(c color.RGBA, format string, a ...interface{}) {
+func Append(c nrgba.NRGBA, format string, a ...interface{}) {
 	feed.log(c, false, false, false, format, a...)
 }
 
 func Bool(b bool, format string, a ...interface{}) {
-	feed.log(rgba.Bool(b), false, false, false, format, a...)
+	feed.log(nrgba.Bool(b), false, false, false, format, a...)
 }
 
 func Clear() {
@@ -60,29 +59,29 @@ func CLS() {
 	feed.logs = []Post{}
 }
 
-func Dedup(c color.RGBA, format string, a ...interface{}) {
-	feed.log(c, true, true, false, format, a...)
+func Dedup(r nrgba.NRGBA, format string, a ...interface{}) {
+	feed.log(r, true, true, false, format, a...)
 }
 
 func Denounce(format string, a ...interface{}) {
-	feed.log(rgba.Denounce, true, false, false, fmt.Sprintf("%s", format), a...)
+	feed.log(nrgba.Denounce, true, false, false, fmt.Sprintf("%s", format), a...)
 }
 
 func Error(format string, a ...interface{}) {
-	feed.log(rgba.DarkRed, true, false, false, fmt.Sprintf("%s", format), a...)
+	feed.log(nrgba.DarkRed, true, false, false, fmt.Sprintf("%s", format), a...)
 }
 
 func Feeds() []Post {
 	return feed.logs
 }
 
-func Feed(c color.RGBA, format string, a ...interface{}) {
-	feed.log(c, true, false, false, format, a...)
+func Feed(r nrgba.NRGBA, format string, a ...interface{}) {
+	feed.log(r, true, false, false, format, a...)
 }
 
 func LastSystem() string {
 	for i := len(feed.logs) - 1; i >= 0; i-- {
-		if feed.logs[i].RGBA == rgba.System {
+		if feed.logs[i].NRGBA == nrgba.System {
 			return feed.logs[i].orig
 		}
 	}
@@ -110,29 +109,29 @@ func Remove(r string) {
 }
 
 func System(format string, a ...interface{}) {
-	feed.log(rgba.System, true, false, true, fmt.Sprintf("%s", format), a...)
+	feed.log(nrgba.System, true, false, true, fmt.Sprintf("%s", format), a...)
 }
 
 func SystemAppend(format string, a ...interface{}) {
-	feed.log(rgba.System, false, false, false, format, a...)
+	feed.log(nrgba.System, false, false, false, format, a...)
 }
 
 func SystemWarn(format string, a ...interface{}) {
-	feed.log(rgba.Pinkity, true, false, false, fmt.Sprintf("%s", format), a...)
+	feed.log(nrgba.Pinkity, true, false, false, fmt.Sprintf("%s", format), a...)
 }
 
-func Unique(c color.RGBA, format string, a ...interface{}) {
+func Unique(c nrgba.NRGBA, format string, a ...interface{}) {
 	feed.log(c, true, false, true, fmt.Sprintf("%s", format), a...)
 }
 
 func Warn(format string, a ...interface{}) {
-	feed.log(rgba.Pinkity, true, false, false, format, a...)
+	feed.log(nrgba.Pinkity, true, false, false, format, a...)
 }
 
-func (n *notify) log(c color.RGBA, clock, dedup, unique bool, format string, a ...interface{}) {
+func (n *notify) log(r nrgba.NRGBA, clock, dedup, unique bool, format string, a ...interface{}) {
 	p := Post{
-		RGBA: c,
-		Time: time.Now(),
+		NRGBA: r,
+		Time:  time.Now(),
 
 		orig:   fmt.Sprintf(format, a...),
 		count:  1,

@@ -88,11 +88,6 @@ function success(data) {
 
     console.log(JSON.stringify(data))
 
-    if (data.version != version) {
-        error(`${data.version} client required`);
-        return shake();
-    }
-
     if (data.profile != "player") {
         error(`Invalid profile (${data.profile})`);
         return shake();

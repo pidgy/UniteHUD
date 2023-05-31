@@ -228,6 +228,13 @@ func (e EventType) Occured(since time.Duration) *Event {
 	return nil
 }
 
+func Start() *Event {
+	if len(Events) == 0 {
+		return &Event{}
+	}
+	return Events[0]
+}
+
 func First(e EventType, since time.Duration) *Event {
 	events := Past(e, since)
 	if len(events) > 0 {
@@ -265,6 +272,28 @@ func Past(e EventType, since time.Duration) []*Event {
 	}
 
 	return events
+}
+
+func Recent(e EventType) bool {
+	for i := len(Events) - 1; i >= 0; i-- {
+		if Events[i].EventType == e {
+			return true
+		}
+	}
+	return false
+}
+
+func (this EventType) Before(that EventType) bool {
+	for i := len(Events) - 1; i >= 0; i-- {
+		switch {
+		case Events[i].EventType == this:
+			return true
+		case Events[i].EventType == that:
+			return false
+		}
+	}
+
+	return false
 }
 
 func ScoredBy(name string) EventType {

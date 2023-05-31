@@ -15,7 +15,7 @@ import (
 	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/notify"
-	"github.com/pidgy/unitehud/rgba"
+	"github.com/pidgy/unitehud/nrgba"
 	"github.com/pidgy/unitehud/state"
 	"github.com/pidgy/unitehud/team"
 )
@@ -92,7 +92,7 @@ func Clients() int {
 
 	for c := range current.clients {
 		if time.Since(current.clients[c]) > time.Second*5 {
-			notify.Feed(rgba.Slate, "Client %s has disconnected", c)
+			notify.Feed(nrgba.Slate, "Client %s has disconnected", c)
 			delete(current.clients, c)
 		}
 	}
@@ -105,7 +105,7 @@ func Holding() int {
 }
 
 func IsFinalStretch() bool {
-	if current.game.Seconds >= 130 {
+	if current.game.Seconds == 0 || current.game.Seconds >= 130 {
 		return false
 	}
 
@@ -189,7 +189,9 @@ func Listen() error {
 	go func() {
 		last := 0
 
-		for range time.NewTicker(time.Minute).C {
+		for {
+			time.Sleep(time.Minute)
+
 			if current.requests < 1 {
 				continue
 			}
@@ -330,15 +332,15 @@ func SetBottomObjective(t *team.Team, name string, n int) {
 	case len(current.Bottom) == n+1 && current.Bottom[n].Team == t.Name && current.Bottom[n].Name == o.Name:
 		// Remove last objective.
 		current.Bottom = current.Bottom[:n]
-		notify.Unique(t.RGBA, "[Control] %s removed", op)
+		notify.Unique(t.NRGBA, "[Control] %s removed", op)
 
 	// Add.
 	case len(current.Bottom) == n:
 		current.Bottom = append(current.Bottom, o)
-		notify.Unique(t.RGBA, "[Control] %s secured", op)
+		notify.Unique(t.NRGBA, "[Control] %s secured", op)
 	case len(current.Bottom) > n+1 && current.Bottom[n].Team != t.Name:
 		current.Bottom[n] = o
-		notify.Unique(t.RGBA, "[Control] %s secure replaced", op)
+		notify.Unique(t.NRGBA, "[Control] %s secure replaced", op)
 
 		// Overwrite.
 	case len(current.Bottom) == n+1 && current.Bottom[n].Team == t.Name && current.Bottom[n].Name != o.Name:
@@ -349,7 +351,7 @@ func SetBottomObjective(t *team.Team, name string, n int) {
 	case len(current.Bottom) == n+1 && current.Bottom[n].Team != t.Name:
 		// Overwrite last objective.
 		current.Bottom[n] = o
-		notify.Unique(t.RGBA, "[Control] %s secure replaced", op)
+		notify.Unique(t.NRGBA, "[Control] %s secure replaced", op)
 	}
 }
 
@@ -415,10 +417,10 @@ func SetRegielekiAt(t *team.Team, n int) {
 	case n != 0 && current.game.Regilekis[n-1] == team.None.Name:
 		notify.Warn("[Control] %s illegal operation (missing previous)", op)
 	case current.game.Regilekis[n] != t.Name:
-		notify.Unique(t.RGBA, "[Control] %s secure replaced", op)
+		notify.Unique(t.NRGBA, "[Control] %s secure replaced", op)
 		current.game.Regilekis[n] = t.Name
 	case n+1 == len(current.game.Regilekis) || current.game.Regilekis[n+1] == team.None.Name:
-		notify.Unique(t.RGBA, "[Control] %s reset", op)
+		notify.Unique(t.NRGBA, "[Control] %s reset", op)
 		current.game.Regilekis[n] = team.None.Name
 	default:
 		notify.Warn("[Control] %s illegal operation", op)

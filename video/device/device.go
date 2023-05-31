@@ -8,7 +8,9 @@ import (
 	"gocv.io/x/gocv"
 
 	"github.com/pidgy/unitehud/config"
+	"github.com/pidgy/unitehud/img"
 	"github.com/pidgy/unitehud/notify"
+	"github.com/pidgy/unitehud/splash"
 	"github.com/pidgy/unitehud/video/device/win32"
 )
 
@@ -18,14 +20,39 @@ var (
 	HD1080 = image.Rect(0, 0, 1920, 1080)
 
 	active = config.NoVideoCaptureDevice
-	base   = gocv.IMRead(fmt.Sprintf(`%s/splash/device.png`, config.Current.Assets()), gocv.IMReadColor) // Global matrix is more efficient?
-	mat    = base.Clone()
+	mat    = splash.DeviceMat().Clone()
 
 	running = false
 	stopped = true
-
-	splash *image.RGBA
 )
+
+func init() {
+	go func() {
+		for ; ; time.Sleep(time.Second * 5) {
+			s, n := sources()
+			if len(s) != len(Sources) {
+				Sources, names = s, n
+				continue
+			}
+
+			for i := range s {
+				if s[i] == Sources[i] {
+					continue
+				}
+
+				Sources, names = s, n
+				continue
+			}
+		}
+	}()
+}
+
+func ActiveName() string {
+	if len(names) > config.Current.VideoCaptureDevice {
+		return names[config.Current.VideoCaptureDevice]
+	}
+	return fmt.Sprintf("Video Capture Device: %d", config.Current.VideoCaptureDevice)
+}
 
 func Capture() (*image.RGBA, error) {
 	return CaptureRect(HD1080)
@@ -40,7 +67,7 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 		return nil, fmt.Errorf("Requested capture area is outside of the legal capture area %s > %s", rect, HD1080)
 	}
 
-	i, err := convert(mat.Region(rect))
+	i, err := img.RGBA(mat.Region(rect))
 	if err != nil {
 		return nil, err
 	}
@@ -84,37 +111,7 @@ func Name(d int) string {
 	if len(names) > d {
 		return names[d]
 	}
-	return fmt.Sprintf("Video Capture Device %d", d)
-}
-
-func Splash() *image.RGBA {
-	if splash == nil {
-		s, err := convert(base)
-		if err != nil {
-			notify.Error("Failed to render device splash screen")
-			return nil
-		}
-
-		splash = s
-	}
-
-	return splash
-}
-
-func convert(mat gocv.Mat) (*image.RGBA, error) {
-	i, err := mat.ToImage()
-	if err != nil {
-		notify.Error("Failed to convert image for %s (%v)", Name(config.Current.VideoCaptureDevice), err)
-		return nil, err
-	}
-
-	img, ok := i.(*image.RGBA)
-	if !ok {
-		notify.Error("Failed to colorize image for %s (%v)", Name(config.Current.VideoCaptureDevice), err)
-		return nil, err
-	}
-
-	return img, nil
+	return fmt.Sprintf("Video Capture Device: %d", d)
 }
 
 func isActivated() bool {
@@ -175,7 +172,7 @@ func startCaptureDevice() error {
 
 		area := image.Rect(0, 0, int(device.Get(gocv.VideoCaptureFrameWidth)), int(device.Get(gocv.VideoCaptureFrameHeight)))
 		if !area.Eq(HD1080) {
-			mat = base.Clone()
+			mat = splash.DeviceMat().Clone()
 			errq <- fmt.Errorf("%s has invalid dimensions: %s", name, area.String())
 			return
 		}
@@ -183,11 +180,7 @@ func startCaptureDevice() error {
 		close(errq)
 
 		for running && active == config.Current.VideoCaptureDevice {
-			if !device.Read(&mat) {
-				notify.Warn("Failed to read from %s", name)
-			}
-
-			if mat.Empty() {
+			if !device.Read(&mat) || mat.Empty() {
 				notify.Warn("Failed to read from %s", name)
 				continue
 			}

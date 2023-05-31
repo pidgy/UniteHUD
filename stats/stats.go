@@ -11,7 +11,7 @@ import (
 
 	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/notify"
-	"github.com/pidgy/unitehud/rgba"
+	"github.com/pidgy/unitehud/nrgba"
 	"github.com/pidgy/unitehud/sort"
 	"github.com/pidgy/unitehud/team"
 )
@@ -192,17 +192,17 @@ func Data() {
 
 		switch {
 		case strings.Contains(line, team.Orange.Name):
-			notify.Append(team.Orange.RGBA, line)
+			notify.Append(team.Orange.NRGBA, line)
 		case strings.Contains(line, team.Purple.Name):
-			notify.Append(team.Purple.RGBA, line)
+			notify.Append(team.Purple.NRGBA, line)
 		case strings.Contains(line, team.First.Name):
-			notify.Append(team.First.RGBA, line)
+			notify.Append(team.First.NRGBA, line)
 		case strings.Contains(line, team.Energy.Name):
-			notify.Append(rgba.DarkYellow, line)
+			notify.Append(nrgba.DarkYellow, line)
 		case strings.Contains(line, team.Time.Name):
-			notify.Append(rgba.Slate, line)
+			notify.Append(nrgba.Slate, line)
 		case strings.Contains(line, team.Game.Name):
-			notify.Append(rgba.Gray, line)
+			notify.Append(nrgba.Gray, line)
 		default:
 			notify.SystemAppend(line)
 		}

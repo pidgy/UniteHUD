@@ -350,7 +350,7 @@ td {
 .banner {
     font-size: 35px;
     position: fixed;
-    bottom: 12px;
+    bottom: 6px;
     left: 0px;
     opacity: 0.5;
 }
@@ -363,7 +363,7 @@ td {
     min-width: 47px;
     max-width: 47px;
     position: fixed;
-    bottom: 3px;
+    bottom: 0px;
     left: 4px;
 }
 

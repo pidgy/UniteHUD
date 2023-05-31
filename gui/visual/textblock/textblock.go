@@ -2,9 +2,9 @@ package textblock
 
 import (
 	"image"
-	"image/color"
 	"os"
 
+	"gioui.org/font"
 	"gioui.org/font/gofont"
 	"gioui.org/font/opentype"
 	"gioui.org/layout"
@@ -16,7 +16,7 @@ import (
 	"gioui.org/widget/material"
 
 	"github.com/pidgy/unitehud/notify"
-	"github.com/pidgy/unitehud/rgba"
+	"github.com/pidgy/unitehud/nrgba"
 )
 
 type TextBlock struct {
@@ -62,7 +62,7 @@ func New(file, face string) (*TextBlock, error) {
 	}
 
 	return &TextBlock{
-		collection: []text.FontFace{{Font: text.Font{Typeface: text.Typeface(face)}, Face: custom}},
+		collection: []text.FontFace{{Font: font.Font{Typeface: font.Typeface(face)}, Face: custom}},
 	}, nil
 }
 
@@ -84,19 +84,19 @@ func (t *TextBlock) Layout(gtx layout.Context, posts []notify.Post) layout.Dimen
 	}
 	th.TextSize = unit.Sp(9)
 
-	Fill(gtx,
-		rgba.N(rgba.Background),
+	fill(gtx,
+		nrgba.Background,
 		func(gtx layout.Context) layout.Dimensions {
 			return layout.Dimensions{Size: gtx.Constraints.Max}
 		},
 	)
 
 	list := material.List(th, t.list)
-	list.Track.Color = color.NRGBA(rgba.Slate)
+	list.Track.Color = nrgba.Slate.Color()
 	list.Track.Color.A = 0x0F
 	layout.Inset{
-		Bottom: unit.Px(5),
-		Left:   unit.Px(5),
+		Bottom: unit.Dp(5),
+		Left:   unit.Dp(5),
 	}.Layout(
 		gtx,
 		func(gtx layout.Context) layout.Dimensions {
@@ -105,7 +105,7 @@ func (t *TextBlock) Layout(gtx layout.Context, posts []notify.Post) layout.Dimen
 				len(posts),
 				func(gtx layout.Context, index int) layout.Dimensions {
 					block := material.H5(th, posts[index].String())
-					block.Color = color.NRGBA(posts[index].RGBA)
+					block.Color = posts[index].Color()
 					block.Alignment = text.Alignment(text.Start)
 					dim := block.Layout(gtx)
 					dim.Size.X = gtx.Constraints.Max.X
@@ -119,14 +119,23 @@ func (t *TextBlock) Layout(gtx layout.Context, posts []notify.Post) layout.Dimen
 }
 
 // colorBox creates a widget with the specified dimensions and color.
-func colorBox(gtx layout.Context, size image.Point, c color.NRGBA) layout.Dimensions {
+func colorBox(gtx layout.Context, size image.Point, bg nrgba.NRGBA) layout.Dimensions {
 	defer clip.Rect{Max: size}.Push(gtx.Ops).Pop()
-	paint.ColorOp{Color: c}.Add(gtx.Ops)
+	paint.ColorOp{Color: bg.Color()}.Add(gtx.Ops)
+	/*
+		// XXX: Do we want gradient?
+		paint.LinearGradientOp{
+			Stop1:  f32.Pt(0, 0),
+			Color1: bg.N(),
+			Stop2:  image.Pt((size.X), float32(size.Y)),
+			Color2: rgba.DarkBlue.N(),
+		}.Add(gtx.Ops)
+	*/
 	paint.PaintOp{}.Add(gtx.Ops)
 
 	return widget.Border{
-		Color: color.NRGBA{R: 100, G: 100, B: 100, A: 50},
-		Width: unit.Px(2),
+		Color: nrgba.LightGray.Color(),
+		Width: unit.Dp(2),
 	}.Layout(
 		gtx,
 		func(gtx layout.Context) layout.Dimensions {
@@ -134,7 +143,7 @@ func colorBox(gtx layout.Context, size image.Point, c color.NRGBA) layout.Dimens
 		})
 }
 
-func Fill(gtx layout.Context, backgroundColor color.NRGBA, w layout.Widget) layout.Dimensions {
-	colorBox(gtx, gtx.Constraints.Max, backgroundColor)
+func fill(gtx layout.Context, bg nrgba.NRGBA, w layout.Widget) layout.Dimensions {
+	colorBox(gtx, gtx.Constraints.Max, bg)
 	return layout.NW.Layout(gtx, w)
 }

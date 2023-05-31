@@ -2,7 +2,6 @@ package help
 
 import (
 	"image"
-	"image/color"
 	"image/png"
 	"os"
 
@@ -14,6 +13,7 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
+	"github.com/pidgy/unitehud/nrgba"
 	"golang.org/x/image/draw"
 )
 
@@ -48,7 +48,7 @@ var images = []string{
 
 func (c *configuration) Layout(gtx layout.Context) layout.Dimensions {
 	fill(gtx,
-		color.NRGBA{R: 25, G: 25, B: 100, A: 50},
+		nrgba.DarkBlue,
 		func(gtx layout.Context) layout.Dimensions {
 			return layout.Dimensions{Size: gtx.Constraints.Max}
 		},
@@ -57,13 +57,13 @@ func (c *configuration) Layout(gtx layout.Context) layout.Dimensions {
 	th := material.NewTheme(gofont.Collection())
 
 	txt := material.H5(th, dialog[c.Page])
-	txt.Color = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
+	txt.Color = nrgba.White.Color()
 	txt.Alignment = text.Middle
 	txt.TextSize = unit.Sp(14)
 
 	layout.Inset{
-		Top:  unit.Px(10),
-		Left: unit.Px(10),
+		Top:  unit.Dp(10),
+		Left: unit.Dp(10),
 	}.Layout(
 		gtx,
 		func(gtx layout.Context) layout.Dimensions {
@@ -77,16 +77,16 @@ func (c *configuration) Layout(gtx layout.Context) layout.Dimensions {
 	}
 
 	layout.Inset{
-		Top:  unit.Px(35),
-		Left: unit.Px(20),
+		Top:  unit.Dp(35),
+		Left: unit.Dp(20),
 	}.Layout(
 		gtx,
 		func(gtx layout.Context) layout.Dimensions {
 			defer clip.Rect{Max: img.Bounds().Max}.Push(gtx.Ops).Pop()
 
 			return widget.Border{
-				Color: color.NRGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0xFF},
-				Width: unit.Px(2),
+				Color: nrgba.White.Color(),
+				Width: unit.Dp(2),
 			}.Layout(
 				gtx,
 				func(gtx layout.Context) layout.Dimensions {
@@ -123,14 +123,14 @@ func img(name string, max image.Point) image.Image {
 	return img
 }
 
-func colorBox(gtx layout.Context, size image.Point, c color.NRGBA) layout.Dimensions {
+func colorBox(gtx layout.Context, size image.Point, n nrgba.NRGBA) layout.Dimensions {
 	defer clip.Rect{Max: size}.Push(gtx.Ops).Pop()
-	paint.ColorOp{Color: c}.Add(gtx.Ops)
+	paint.ColorOp{Color: n.Color()}.Add(gtx.Ops)
 	paint.PaintOp{}.Add(gtx.Ops)
 
 	return widget.Border{
-		Color: color.NRGBA{R: 100, G: 100, B: 100, A: 50},
-		Width: unit.Px(2),
+		Color: nrgba.LightGray.Color(),
+		Width: unit.Dp(2),
 	}.Layout(
 		gtx,
 		func(gtx layout.Context) layout.Dimensions {
@@ -138,7 +138,7 @@ func colorBox(gtx layout.Context, size image.Point, c color.NRGBA) layout.Dimens
 		})
 }
 
-func fill(gtx layout.Context, backgroundColor color.NRGBA, w layout.Widget) layout.Dimensions {
-	colorBox(gtx, gtx.Constraints.Max, backgroundColor)
+func fill(gtx layout.Context, n nrgba.NRGBA, w layout.Widget) layout.Dimensions {
+	colorBox(gtx, gtx.Constraints.Max, n)
 	return layout.NW.Layout(gtx, w)
 }

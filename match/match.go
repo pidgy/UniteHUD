@@ -34,11 +34,11 @@ const (
 	Override  Result = 2
 )
 
-var (
-	mask = gocv.NewMat()
-)
+func (m *Match) AsImage(mat gocv.Mat, points int) (image.Image, error) {
+	if config.Current.DisablePreviews {
+		return nil, nil
+	}
 
-func (m *Match) Identify(mat gocv.Mat, points int) (image.Image, error) {
 	clone := mat.Clone()
 	defer clone.Close()
 
@@ -52,7 +52,7 @@ func (m *Match) Identify(mat gocv.Mat, points int) (image.Image, error) {
 		image.Pt(region.Cols()/3*2-25, region.Rows()/2+7),
 		gocv.FontHersheySimplex,
 		1,
-		rgba.White,
+		rgba.White.Color(),
 		4,
 	)
 

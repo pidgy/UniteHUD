@@ -47,31 +47,14 @@ func Open() error {
 	return window.Open()
 }
 
-func Reattach() error {
-	if screen.IsDisplay() {
-		return nil
-	}
-
-	if device.IsActive() {
-		return nil
-	}
-
-	return window.Reattach()
-
+func Windows() []string {
+	return window.Sources
 }
 
-func Resize16x9() error {
-	if screen.IsDisplay() {
-		return nil
-	}
-
-	if device.IsActive() {
-		return nil
-	}
-
-	return window.Resize16x9()
+func Devices() []int {
+	return device.Sources
 }
 
-func Sources() (windows []string, devices []int, screens []string) {
-	return window.Sources, device.Sources, screen.Sources
+func Screens() []string {
+	return screen.Sources
 }

@@ -2,7 +2,6 @@ package button
 
 import (
 	"image"
-	"image/color"
 
 	"gioui.org/io/pointer"
 	"gioui.org/layout"
@@ -11,7 +10,7 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget/material"
 	"github.com/pidgy/unitehud/gui/visual/screen"
-	"github.com/pidgy/unitehud/rgba"
+	"github.com/pidgy/unitehud/nrgba"
 )
 
 type Image struct {
@@ -33,13 +32,13 @@ func (i *Image) Layout(th *material.Theme, gtx layout.Context) layout.Dimensions
 		i.Screen.Image = image.NewRGBA(i.Screen.Bounds())
 
 		hidden := material.H5(th, "Hidden")
-		hidden.Color = color.NRGBA(rgba.White)
+		hidden.Color = nrgba.White.Color()
 		hidden.Alignment = text.Middle
 		hidden.TextSize = unit.Sp(12)
 
 		layout.Inset{
-			Top:  unit.Px(18),
-			Left: unit.Px(29),
+			Top:  unit.Dp(18),
+			Left: unit.Dp(29),
 		}.Layout(gtx, hidden.Layout)
 	}
 
@@ -51,18 +50,18 @@ func (i *Image) Layout(th *material.Theme, gtx layout.Context) layout.Dimensions
 			switch e.Type {
 			case pointer.Enter:
 				i.hover = true
-				i.Screen.BorderColor = rgba.N(rgba.White)
+				i.Screen.BorderColor = nrgba.White
 				i.Screen.Border = true
 			case pointer.Leave:
 				i.hover = false
-				i.Screen.BorderColor = rgba.N(rgba.Gray)
+				i.Screen.BorderColor = nrgba.Gray
 				i.Screen.Border = false
 			case pointer.Press:
 			case pointer.Release:
 				if i.hover && i.Click != nil {
 					i.Click(i)
 
-					i.Screen.BorderColor = rgba.N(rgba.Gray)
+					i.Screen.BorderColor = nrgba.Gray
 					i.Screen.Border = false
 				}
 			}

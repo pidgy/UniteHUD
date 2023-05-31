@@ -7,13 +7,11 @@ import (
 	"fmt"
 	"image"
 	"reflect"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
 	"unsafe"
 
-	"github.com/disintegration/gift"
 	"github.com/nfnt/resize"
 
 	"github.com/pidgy/unitehud/config"
@@ -59,10 +57,12 @@ func init() {
 	proc.SetProcessDpiAwareness.Call(uintptr(2)) // PROCESS_PER_MONITOR_DPI_AWARE
 
 	go func() {
-		for range time.NewTicker(time.Second * 5).C {
+		for {
+			time.Sleep(time.Second * 5)
+
 			windows, _, err := list()
 			if err != nil {
-
+				notify.Error("Failed to list windows (%v)", err)
 			}
 
 			Sources = windows
@@ -107,6 +107,10 @@ func Capture() (*image.RGBA, error) {
 }
 
 func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
+	/*if config.Current.Scale > 1.0 {
+		return captureRectScaled(rect)
+	}*/
+
 	handle, err := find(config.Current.Window)
 	if err != nil {
 		notify.Error("%v", err)
@@ -127,7 +131,7 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 	}
 	defer proc.DeleteDC.Call(dst)
 
-	// Determine the width/height of our capture
+	// Determine the width/height of our capture.
 	width := rect.Dx()
 	height := rect.Dy()
 
@@ -136,7 +140,7 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 	bitmapInfo.BmiHeader = proc.WindowsBitmapInfoHeader{
 		BiSize:        uint32(reflect.TypeOf(bitmapInfo.BmiHeader).Size()),
 		BiWidth:       int32(width),
-		BiHeight:      int32(height),
+		BiHeight:      -int32(height), // Negative value will flip image vertically.
 		BiPlanes:      1,
 		BiBitCount:    32,
 		BiCompression: proc.BIRGBCompression,
@@ -159,15 +163,38 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 	// Select the object and paint it.
 	proc.SelectObject.Call(dst, bitmap)
 
-	ret, _, err := proc.BitBlt.Call(dst, 0, 0,
-		uintptr(width), uintptr(height),
-		src,
-		uintptr(rect.Min.X), uintptr(rect.Min.Y),
-		uintptr(proc.CaptureBLT|proc.SrcCopy),
-	)
+	var ret uintptr
+	switch config.Current.Scale {
+	case 1:
+		ret, _, _ = proc.BitBlt.Call(
+			dst,
+			0,
+			0,
+			uintptr(width),
+			uintptr(height),
+			src,
+			uintptr(rect.Min.X),
+			uintptr(rect.Min.Y),
+			uintptr(proc.CaptureBLT|proc.SrcCopy),
+		)
+	default: // Scaled.
+		ret, _, _ = proc.StretchBlt.Call(
+			dst,
+			0,
+			0,
+			uintptr(int(float64(width)*config.Current.Scale)),
+			uintptr(int(float64(height)*config.Current.Scale)),
+			src,
+			uintptr(rect.Min.X),
+			uintptr(rect.Min.Y),
+			uintptr(width),
+			uintptr(height),
+			uintptr(proc.CaptureBLT|proc.SrcCopy),
+		)
+	}
 	if ret == 0 {
 		notify.Error("Failed to capture \"%s\" window", config.Current.Window)
-		return nil, err
+		return nil, fmt.Errorf("bitblt returned: %d", ret)
 	}
 
 	// Convert the bitmap to an image.Image. We first start by directly
@@ -197,51 +224,7 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 		),
 	}
 
-	img2 := image.NewRGBA(img.Bounds())
-
-	if config.Current.Window == config.BrowserWindow {
-		gift.New(
-			gift.FlipVertical(),
-			/*
-				gift.ResizeToFill(1920, 1080, gift.CubicResampling, gift.TopLeftAnchor),
-				gift.CropToSize(1920, 1080, gift.TopLeftAnchor),
-			*/
-		).Draw(img2, img)
-
-		return img2, nil
-		//return resize.Resize(uint(float64(img.Rect.Max.X)*1.3), uint(float64(img.Rect.Max.Y)*1.3), img2, resize.Lanczos3).(*image.RGBA), nil
-	} else if config.Current.Scale == 1 {
-		gift.New(
-			gift.FlipVertical(),
-		).Draw(img2, img)
-
-		return img2, nil
-	}
-
-	/*
-		r := img.Rect
-		r.Min = r.Min.Add(image.Pt(config.Current.Shift.W, config.Current.Shift.S))
-		r.Max = r.Max.Add(image.Pt(0, config.Current.Shift.S))
-		r.Max = r.Max.Sub(image.Pt(config.Current.Shift.E, 0))
-	*/
-
-	// img.Rect.Max.X += config.Current.Shift.E
-
-	scaledW := int(float64(width) * config.Current.Scale)
-	scaledH := int(float64(height) * config.Current.Scale)
-
-	gift.New(
-		gift.FlipVertical(),
-		gift.ResizeToFill(scaledW, scaledH, gift.LanczosResampling, gift.CenterAnchor),
-		//gift.Resize(scaledW, scaledH, gift.LanczosResampling),
-	).Draw(img2, img)
-
-	img3 := image.NewRGBA(img2.Bounds())
-	gift.New(
-		gift.CropToSize(width, height, gift.CenterAnchor),
-	).Draw(img3, img2)
-
-	return img3, nil
+	return img, nil
 }
 
 func IsWindow() bool {
@@ -288,8 +271,6 @@ func Lost() bool {
 	return config.Current.LostWindow != ""
 }
 
-const max = 5
-
 var attempts = 0
 
 func Reattach() error {
@@ -325,40 +306,6 @@ func Reattach() error {
 	return nil
 }
 
-func Resize16x9() error {
-	h, err := find(config.Current.Window)
-	if err != nil {
-		return err
-	}
-	ret, _, _ := proc.MoveWindow.Call(
-		uintptr(h),
-		uintptr(0),
-		uintptr(0),
-		uintptr(1920),
-		uintptr(1080),
-		uintptr(1),
-	)
-	if ret == 0 {
-		return fmt.Errorf("failed to resize \"%s\"", config.Current.Window)
-	}
-	return nil
-}
-
-func StartingWith(name string) error {
-	windows, _, err := list()
-	if err != nil {
-		return err
-	}
-
-	for _, w := range windows {
-		if strings.HasPrefix(w, name) {
-			return nil
-		}
-	}
-
-	return fmt.Errorf("Failed to find window starting with \"%s\"", name)
-}
-
 func enumWindows(enumFunc uintptr, lparam uintptr) (err error) {
 	r1, _, e1 := syscall.Syscall(proc.EnumWindows.Addr(), 2, uintptr(enumFunc), uintptr(lparam), 0)
 	if r1 == 0 {
@@ -391,7 +338,12 @@ func find(name string) (syscall.Handle, error) {
 
 	// First look for the normal window
 	// ret, _, _ := proc.FindWindow.Call(0, uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr("AppName"))))
-	ret, _, _ := proc.FindWindow.Call(0, uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(name))))
+	argv, err := syscall.UTF16PtrFromString(name)
+	if err != nil {
+		return handle, err
+	}
+
+	ret, _, _ := proc.FindWindow.Call(0, uintptr(unsafe.Pointer(argv)))
 	if ret == 0 {
 		config.Current.LostWindow = config.Current.Window
 		config.Current.Window = config.MainDisplay

@@ -1,14 +1,18 @@
 package split
 
 import (
+	"fmt"
 	"image"
 
-	"gioui.org/f32"
 	"gioui.org/io/pointer"
 	"gioui.org/layout"
 	"gioui.org/op"
 	"gioui.org/op/clip"
+	"gioui.org/op/paint"
 	"gioui.org/unit"
+	"github.com/pidgy/unitehud/cursor"
+	"github.com/pidgy/unitehud/img"
+	"github.com/pidgy/unitehud/nrgba"
 )
 
 type Split interface {
@@ -21,31 +25,45 @@ type Vertical split
 type split struct {
 	// ratio keeps the current layout.
 	// 0 is center, -1 completely to the left, 1 completely to the right.
-	Ratio float32
+	Ratio   float32
+	base    float32
+	baseSet bool
 
 	Adjustable bool
 
 	// width for resizing the layout.
-	bar unit.Value
+	bar unit.Dp
 
 	drag         bool
 	dragID       pointer.ID
 	dragX, dragY float32
 }
 
-var defaultBarWidth = unit.Dp(0)
+var (
+	DefaultBarSizeAdjustable = unit.Dp(50)
+	defaultBarSize           = unit.Dp(0)
+
+	dragIcon = img.Icon("drag")
+)
 
 func (h *Horizontal) Layout(gtx layout.Context, top, bottom layout.Widget) layout.Dimensions {
-	bar := gtx.Px(h.bar)
-	if bar <= 1 {
-		bar = gtx.Px(defaultBarWidth)
+	size := gtx.Dp(h.bar)
+	if size <= 1 {
+		size = gtx.Dp(defaultBarSize)
+		if h.Adjustable {
+			size = gtx.Dp(DefaultBarSizeAdjustable)
+		}
 	}
 
 	proportion := (h.Ratio + 1) / 2
-	topSize := int(proportion*float32(gtx.Constraints.Max.Y) - float32(bar))
-
-	bottomOffset := topSize + bar
+	topSize := int(proportion*float32(gtx.Constraints.Max.Y) - float32(size))
+	bottomOffset := topSize + size
 	bottomSize := gtx.Constraints.Max.Y - bottomOffset
+
+	if !h.baseSet {
+		h.base = h.Ratio
+		h.baseSet = true
+	}
 
 	if h.Adjustable {
 		// handle input
@@ -57,7 +75,7 @@ func (h *Horizontal) Layout(gtx layout.Context, top, bottom layout.Widget) layou
 
 			switch e.Type {
 			case pointer.Enter:
-				pointer.CursorNameOp{Name: pointer.CursorGrab}.Add(gtx.Ops)
+				cursor.Is(pointer.CursorGrab)
 			case pointer.Press:
 				if h.drag {
 					break
@@ -66,7 +84,7 @@ func (h *Horizontal) Layout(gtx layout.Context, top, bottom layout.Widget) layou
 				h.dragID = e.PointerID
 				h.dragY = e.Position.Y
 
-				pointer.CursorNameOp{Name: pointer.CursorGrab}.Add(gtx.Ops)
+				cursor.Is(pointer.CursorGrab)
 			case pointer.Drag:
 				if h.dragID != e.PointerID {
 					break
@@ -77,11 +95,17 @@ func (h *Horizontal) Layout(gtx layout.Context, top, bottom layout.Widget) layou
 
 				deltaRatio := deltaY * 2 / float32(gtx.Constraints.Max.Y)
 				h.Ratio += deltaRatio
+				if h.Ratio > h.base {
+					h.Ratio = h.base
+				}
+
+				fmt.Printf("%.5f\n", h.Ratio+deltaRatio)
 
 			case pointer.Release:
 				fallthrough
 			case pointer.Cancel:
-				pointer.CursorNameOp{Name: pointer.CursorGrab}.Add(gtx.Ops)
+				cursor.Is(pointer.CursorGrab)
+
 				h.drag = false
 			}
 		}
@@ -89,7 +113,8 @@ func (h *Horizontal) Layout(gtx layout.Context, top, bottom layout.Widget) layou
 		// register for input
 		barRect := image.Rect(0, topSize, gtx.Constraints.Max.X, bottomOffset)
 		area := clip.Rect(barRect).Push(gtx.Ops)
-		pointer.InputOp{Tag: h,
+		pointer.InputOp{
+			Tag:   h,
 			Types: pointer.Press | pointer.Drag | pointer.Release | pointer.Enter,
 			Grab:  h.drag,
 		}.Add(gtx.Ops)
@@ -102,19 +127,17 @@ func (h *Horizontal) Layout(gtx layout.Context, top, bottom layout.Widget) layou
 		top(gtx)
 	}
 
-	/*
-		{
-			gtx := gtx
-			barRect := image.Rect(0, topSize, gtx.Constraints.Max.X, bottomOffset)
-			bg := clip.Rect(barRect).Push(gtx.Ops)
-			paint.ColorOp{Color: color.NRGBA{R: 255, G: 255, B: 255, A: 255}}.Add(gtx.Ops)
-			paint.PaintOp{}.Add(gtx.Ops)
-			bg.Pop()
-		}
-	*/
+	{
+		gtx := gtx
+		barRect := image.Rect(0, topSize, gtx.Constraints.Max.X, bottomOffset)
+		bg := clip.Rect(barRect).Push(gtx.Ops)
+		paint.ColorOp{Color: nrgba.Splash.Color()}.Add(gtx.Ops)
+		paint.PaintOp{}.Add(gtx.Ops)
+		bg.Pop()
+	}
 
 	{
-		off := op.Offset(f32.Pt(0, float32(bottomOffset))).Push(gtx.Ops)
+		off := op.Offset(image.Pt(0, bottomOffset)).Push(gtx.Ops)
 		gtx := gtx
 		gtx.Constraints = layout.Exact(image.Pt(gtx.Constraints.Max.X, bottomSize))
 		bottom(gtx)
@@ -125,16 +148,23 @@ func (h *Horizontal) Layout(gtx layout.Context, top, bottom layout.Widget) layou
 }
 
 func (v *Vertical) Layout(gtx layout.Context, left, right layout.Widget) layout.Dimensions {
-	bar := gtx.Px(v.bar)
-	if bar <= 1 {
-		bar = gtx.Px(defaultBarWidth)
+	barSize := gtx.Dp(v.bar)
+	if barSize <= 1 {
+		barSize = gtx.Dp(defaultBarSize)
+		if v.Adjustable {
+			barSize = gtx.Dp(DefaultBarSizeAdjustable)
+		}
 	}
 
 	proportion := (v.Ratio + 1) / 2
-	leftsize := int(proportion*float32(gtx.Constraints.Max.X) - float32(bar))
-
-	rightoffset := leftsize + bar
+	leftsize := int(proportion*float32(gtx.Constraints.Max.X) - float32(barSize))
+	rightoffset := leftsize + barSize
 	rightsize := gtx.Constraints.Max.X - rightoffset
+
+	if !v.baseSet {
+		v.base = v.Ratio
+		v.baseSet = true
+	}
 
 	if v.Adjustable {
 		// handle input
@@ -188,7 +218,7 @@ func (v *Vertical) Layout(gtx layout.Context, left, right layout.Widget) layout.
 	}
 
 	{
-		off := op.Offset(f32.Pt(float32(rightoffset), 0)).Push(gtx.Ops)
+		off := op.Offset(image.Pt((rightoffset), 0)).Push(gtx.Ops)
 		gtx := gtx
 		gtx.Constraints = layout.Exact(image.Pt(rightsize, gtx.Constraints.Max.Y))
 		right(gtx)

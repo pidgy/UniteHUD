@@ -2,13 +2,12 @@ package team
 
 import (
 	"image"
-	"image/color"
 	"time"
 
 	"gocv.io/x/gocv"
 
 	"github.com/pidgy/unitehud/duplicate"
-	"github.com/pidgy/unitehud/rgba"
+	"github.com/pidgy/unitehud/nrgba"
 )
 
 // Team represents a team side in Pokémon Unite.
@@ -16,7 +15,7 @@ type Team struct {
 	Name                 string `json:"name"`
 	title                string
 	Alias                string `json:"-"`
-	color.RGBA           `json:"-"`
+	nrgba.NRGBA          `json:"-"`
 	*duplicate.Duplicate `json:"-"`
 
 	Killed           time.Time
@@ -34,7 +33,7 @@ var (
 		Name:  "balls",
 		title: "Balls",
 
-		RGBA:      rgba.Purple,
+		NRGBA:     nrgba.Purple,
 		Duplicate: duplicate.New(-1, gocv.NewMat(), gocv.NewMat()),
 
 		HoldingMax: 50,
@@ -46,7 +45,7 @@ var (
 		Name:  "first",
 		title: "First",
 
-		RGBA:      color.RGBA(rgba.LightPurple),
+		NRGBA:     nrgba.LightPurple,
 		Duplicate: duplicate.New(-1, gocv.NewMat(), gocv.NewMat()),
 
 		Acceptance: .64,
@@ -56,7 +55,7 @@ var (
 		Name:  "game",
 		title: "Game",
 
-		RGBA:      rgba.White,
+		NRGBA:     nrgba.White,
 		Duplicate: duplicate.New(-1, gocv.NewMat(), gocv.NewMat()),
 
 		Delay:      time.Second * 2,
@@ -66,7 +65,7 @@ var (
 		Name:  "none",
 		title: "None",
 
-		RGBA: rgba.Slate,
+		NRGBA: nrgba.Slate,
 
 		Duplicate: duplicate.New(-1, gocv.NewMat(), gocv.NewMat()),
 	}
@@ -75,7 +74,7 @@ var (
 		Name:  "orange",
 		title: "Orange",
 
-		RGBA:      rgba.Orange,
+		NRGBA:     nrgba.Orange,
 		Duplicate: duplicate.New(-1, gocv.NewMat(), gocv.NewMat()),
 
 		Acceptance: .84,
@@ -89,7 +88,7 @@ var (
 		Name:  "purple",
 		title: "Purple",
 
-		RGBA:      rgba.Purple,
+		NRGBA:     nrgba.Purple,
 		Duplicate: duplicate.New(-1, gocv.NewMat(), gocv.NewMat()),
 
 		Acceptance: Orange.Acceptance,
@@ -100,7 +99,7 @@ var (
 		Name:  "self",
 		title: "Self",
 
-		RGBA:      rgba.User,
+		NRGBA:     nrgba.User,
 		Duplicate: duplicate.New(-1, gocv.NewMat(), gocv.NewMat()),
 
 		Acceptance: .75,
@@ -110,7 +109,7 @@ var (
 		Name:  "time",
 		title: "Time",
 
-		RGBA:      rgba.White,
+		NRGBA:     nrgba.White,
 		Duplicate: duplicate.New(-1, gocv.NewMat(), gocv.NewMat()),
 
 		Acceptance: .8,
@@ -139,16 +138,16 @@ func Clear() {
 	}
 }
 
-func Color(name string) color.RGBA {
+func Color(name string) nrgba.NRGBA {
 	switch name {
 	case Self.Name:
-		return Self.RGBA
+		return Self.NRGBA
 	case Orange.Name:
-		return Orange.RGBA
+		return Orange.NRGBA
 	case Purple.Name:
-		return Purple.RGBA
+		return Purple.NRGBA
 	default:
-		return None.RGBA
+		return None.NRGBA
 	}
 }
 

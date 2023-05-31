@@ -15,6 +15,39 @@ import (
 	"github.com/pidgy/unitehud/team"
 )
 
+var (
+	mask = gocv.NewMat()
+)
+
+func AsTimeImage(mat gocv.Mat, kitchen string) (image.Image, error) {
+	if config.Current.DisablePreviews {
+		return nil, nil
+	}
+
+	clone := mat.Clone()
+	defer clone.Close()
+
+	rect := image.Rect(clone.Cols()/4, 0, clone.Cols()-25, clone.Rows())
+	region := clone.Region(rect)
+
+	gocv.PutText(
+		&region,
+		kitchen,
+		image.Pt(15, 75),
+		gocv.FontHersheySimplex,
+		1,
+		rgba.DarkYellow.Color(),
+		4,
+	)
+
+	crop, err := region.ToImage()
+	if err != nil {
+		return nil, err
+	}
+
+	return crop, nil
+}
+
 func Time(matrix gocv.Mat, img *image.RGBA) (seconds int, kitchen string) {
 	clock := [4]int{-1, -1, -1, -1}
 	locs := []int{math.MaxInt32, math.MaxInt32, math.MaxInt32, math.MaxInt32}
@@ -94,7 +127,7 @@ func Time(matrix gocv.Mat, img *image.RGBA) (seconds int, kitchen string) {
 	secs := clock[2]*10 + clock[3]
 	kitchen = fmt.Sprintf("%d%d:%d%d", clock[0], clock[1], clock[2], clock[3])
 
-	if clock[0] != 0 || minutes > 9 {
+	if clock[0] != 0 || minutes > 10 || secs > 59 {
 		notify.Error("Invalid time detected %s", kitchen)
 		return 0, "00:00"
 	}
@@ -102,30 +135,4 @@ func Time(matrix gocv.Mat, img *image.RGBA) (seconds int, kitchen string) {
 	server.SetTime(minutes, secs)
 
 	return minutes*60 + secs, kitchen
-}
-
-func IdentifyTime(mat gocv.Mat, kitchen string) (image.Image, error) {
-	clone := mat.Clone()
-	defer clone.Close()
-
-	rect := image.Rect(clone.Cols()/4, 0, clone.Cols()-25, clone.Rows())
-	region := clone.Region(rect)
-
-	gocv.PutText(
-		&region,
-		kitchen,
-		image.Pt(15, 75),
-		gocv.FontHersheySimplex,
-		1,
-		rgba.White,
-		4,
-	)
-
-	crop, err := region.ToImage()
-	if err != nil {
-
-		return nil, err
-	}
-
-	return crop, nil
 }

@@ -119,13 +119,6 @@ func (m *Match) first(matrix gocv.Mat) (Result, int) {
 			}
 		}
 
-		/*
-			// If the first round of matching justifies quick sorting, we can exit early.
-			if sort.ByLocation(sorted) || sort.ByValues(sorted) {
-				return m.validate(matrix, sorted.Value())
-			}
-		*/
-
 		inset += mins[round] + 15
 		if inset > matrix.Cols() {
 			break
@@ -279,6 +272,7 @@ func delta(a, b int) int {
 	}
 	return b - a
 }
+
 func sliceToValue(points []int) (Result, int) {
 	// Enforce a length 3 array to validate checks below.
 	if len(points) == 2 {
