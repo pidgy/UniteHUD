@@ -249,7 +249,6 @@ func KOs() {
 func Objectives() {
 	top, bottom, middle := time.Time{}, time.Time{}, time.Time{}
 
-	notify.Announce("len: %d", len(config.Current.Templates["secure"][team.Game.Name]))
 	for {
 		time.Sleep(time.Second)
 
