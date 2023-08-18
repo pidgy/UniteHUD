@@ -3,7 +3,6 @@ package detect
 import (
 	"fmt"
 	"image"
-	"image/png"
 	"os"
 	"strings"
 	"time"
@@ -13,14 +12,15 @@ import (
 	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/debug"
 	"github.com/pidgy/unitehud/duplicate"
-	"github.com/pidgy/unitehud/gui"
 	"github.com/pidgy/unitehud/history"
 	"github.com/pidgy/unitehud/match"
 	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/server"
+	"github.com/pidgy/unitehud/splash"
 	"github.com/pidgy/unitehud/state"
 	"github.com/pidgy/unitehud/team"
 	"github.com/pidgy/unitehud/video"
+	"github.com/pidgy/unitehud/video/monitor"
 	"github.com/pidgy/unitehud/video/window"
 )
 
@@ -71,14 +71,14 @@ func Defeated() {
 	for {
 		time.Sleep(time.Second)
 
-		if Idle || gui.Window.Screen == nil || config.Current.DisableDefeated {
+		if Idle || config.Current.DisableDefeated {
 			modified = config.Current.Templates["killed"][team.Game.Name]
 			unmodified = config.Current.Templates["killed"][team.Game.Name]
 			continue
 		}
 
 		if area.Empty() {
-			b := gui.Window.Screen.Bounds()
+			b := monitor.MainResolution()
 			area = image.Rect(b.Max.X/3, b.Max.Y/2, b.Max.X-b.Max.X/3, b.Max.Y-b.Max.Y/3)
 		}
 
@@ -207,7 +207,7 @@ func KOs() {
 	for {
 		time.Sleep(time.Millisecond * 1500)
 
-		if Idle || gui.Window.Screen == nil || config.Current.DisableKOs {
+		if Idle || config.Current.DisableKOs {
 			last = nil
 			continue
 		}
@@ -249,10 +249,11 @@ func KOs() {
 func Objectives() {
 	top, bottom, middle := time.Time{}, time.Time{}, time.Time{}
 
+	notify.Announce("len: %d", len(config.Current.Templates["secure"][team.Game.Name]))
 	for {
 		time.Sleep(time.Second)
 
-		if Idle || gui.Window.Screen == nil || config.Current.DisableObjectives {
+		if Idle || config.Current.DisableObjectives {
 			top, bottom, middle = time.Time{}, time.Time{}, time.Time{}
 			continue
 		}
@@ -379,16 +380,7 @@ func PressButtonToScore() {
 }
 
 func Preview() {
-	f, err := os.Open(`assets\splash\projector.png`)
-	if err != nil {
-		notify.Error("Failed to open splash capture screen (%v)", err)
-	}
-	if f != nil {
-		notify.Preview, err = png.Decode(f)
-		if err != nil {
-			notify.Error("Failed to decode splash capture screen (%v)", err)
-		}
-	}
+	notify.Preview = splash.Projector()
 
 	tick := time.NewTicker(time.Second * 5)
 	poll := time.NewTicker(time.Second * 5)
@@ -517,12 +509,12 @@ func States() {
 	for {
 		time.Sleep(time.Second * 2)
 
-		if Idle || gui.Window.Screen == nil {
+		if Idle {
 			continue
 		}
 
 		if area.Empty() {
-			area = gui.StateArea()
+			area = video.StateArea()
 		}
 
 		matrix, img, err := capture(area)

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/nrgba"
 )
 
@@ -56,7 +57,15 @@ func Clear() {
 }
 
 func CLS() {
-	feed.logs = []Post{}
+	feed.logs = feed.logs[:0]
+}
+
+func Debug(format string, a ...interface{}) {
+	if !global.DebugMode {
+		return
+	}
+
+	feed.log(nrgba.SeaBlue.Alpha(50), true, true, false, format, a...)
 }
 
 func Dedup(r nrgba.NRGBA, format string, a ...interface{}) {
@@ -64,11 +73,11 @@ func Dedup(r nrgba.NRGBA, format string, a ...interface{}) {
 }
 
 func Denounce(format string, a ...interface{}) {
-	feed.log(nrgba.Denounce, true, false, false, fmt.Sprintf("%s", format), a...)
+	feed.log(nrgba.Denounce, true, false, false, format, a...)
 }
 
 func Error(format string, a ...interface{}) {
-	feed.log(nrgba.DarkRed, true, false, false, fmt.Sprintf("%s", format), a...)
+	feed.log(nrgba.DarkRed, true, false, false, format, a...)
 }
 
 func Feeds() []Post {
@@ -77,6 +86,13 @@ func Feeds() []Post {
 
 func Feed(r nrgba.NRGBA, format string, a ...interface{}) {
 	feed.log(r, true, false, false, format, a...)
+}
+
+func Iter(i int) (string, int) {
+	if len(feed.logs) > i {
+		return feed.logs[i].orig, i + 1
+	}
+	return "", i
 }
 
 func LastSystem() string {
@@ -109,7 +125,7 @@ func Remove(r string) {
 }
 
 func System(format string, a ...interface{}) {
-	feed.log(nrgba.System, true, false, true, fmt.Sprintf("%s", format), a...)
+	feed.log(nrgba.System, true, false, true, format, a...)
 }
 
 func SystemAppend(format string, a ...interface{}) {
@@ -117,11 +133,11 @@ func SystemAppend(format string, a ...interface{}) {
 }
 
 func SystemWarn(format string, a ...interface{}) {
-	feed.log(nrgba.Pinkity, true, false, false, fmt.Sprintf("%s", format), a...)
+	feed.log(nrgba.Pinkity, true, false, false, format, a...)
 }
 
 func Unique(c nrgba.NRGBA, format string, a ...interface{}) {
-	feed.log(c, true, false, true, fmt.Sprintf("%s", format), a...)
+	feed.log(c, true, false, true, format, a...)
 }
 
 func Warn(format string, a ...interface{}) {
@@ -129,6 +145,10 @@ func Warn(format string, a ...interface{}) {
 }
 
 func (n *notify) log(r nrgba.NRGBA, clock, dedup, unique bool, format string, a ...interface{}) {
+	if global.DebugMode {
+		fmt.Printf("DebugHUD: %s\n", fmt.Sprintf(format, a...))
+	}
+
 	p := Post{
 		NRGBA: r,
 		Time:  time.Now(),

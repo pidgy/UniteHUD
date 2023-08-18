@@ -5,7 +5,6 @@ import (
 	"image/png"
 	"os"
 
-	"gioui.org/font/gofont"
 	"gioui.org/layout"
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
@@ -13,6 +12,7 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
+	"github.com/pidgy/unitehud/fonts"
 	"github.com/pidgy/unitehud/nrgba"
 	"golang.org/x/image/draw"
 )
@@ -54,9 +54,7 @@ func (c *configuration) Layout(gtx layout.Context) layout.Dimensions {
 		},
 	)
 
-	th := material.NewTheme(gofont.Collection())
-
-	txt := material.H5(th, dialog[c.Page])
+	txt := material.H5(fonts.Default().Theme, dialog[c.Page])
 	txt.Color = nrgba.White.Color()
 	txt.Alignment = text.Middle
 	txt.TextSize = unit.Sp(14)

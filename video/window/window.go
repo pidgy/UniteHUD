@@ -16,9 +16,8 @@ import (
 
 	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/notify"
+	"github.com/pidgy/unitehud/video/monitor"
 	"github.com/pidgy/unitehud/video/proc"
-	"github.com/pidgy/unitehud/video/screen"
-	"github.com/pidgy/unitehud/video/window/electron"
 )
 
 var (
@@ -79,7 +78,7 @@ func Capture() (*image.RGBA, error) {
 			config.Current.LostWindow = config.Current.Window
 		}
 		config.Current.Window = config.MainDisplay
-		return screen.Capture()
+		return monitor.Capture()
 	}
 
 	// Determine the full width and height of the window.
@@ -90,7 +89,7 @@ func Capture() (*image.RGBA, error) {
 			config.Current.LostWindow = config.Current.Window
 		}
 		config.Current.Window = config.MainDisplay
-		return screen.Capture()
+		return monitor.Capture()
 	}
 
 	img, err := CaptureRect(rect)
@@ -100,7 +99,7 @@ func Capture() (*image.RGBA, error) {
 			config.Current.LostWindow = config.Current.Window
 		}
 		config.Current.Window = config.MainDisplay
-		return screen.Capture()
+		return monitor.Capture()
 	}
 
 	return img, err
@@ -114,7 +113,7 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 	handle, err := find(config.Current.Window)
 	if err != nil {
 		notify.Error("%v", err)
-		return screen.CaptureRect(rect)
+		return monitor.CaptureRect(rect)
 	}
 
 	// Get the device context for screenshotting.
@@ -227,18 +226,23 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 	return img, nil
 }
 
-func IsWindow() bool {
+func This(title string) (syscall.Handle, error) {
+	var handle syscall.Handle
+
+	// First look for the normal window
+	ret, _, _ := proc.FindWindow.Call(0, uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(title))))
+	if ret == 0 {
+		return handle, fmt.Errorf("Failed to find \"%s\" window", title)
+	}
+
+	return syscall.Handle(ret), nil
+}
+
+func IsOpen() bool {
 	return !Lost()
 }
 
 func Open() error {
-	if config.Current.Window == config.BrowserWindow {
-		err := electron.Open()
-		if err != nil {
-			notify.Error("%v", err)
-		}
-	}
-
 	windows, _, err := list()
 	if err != nil {
 		return err
@@ -248,14 +252,14 @@ func Open() error {
 
 	for _, win := range windows {
 		if win == config.Current.Window {
-			if !screen.IsDisplay() {
+			if !monitor.IsDisplay() {
 				config.Current.LostWindow = ""
 			}
 			return nil
 		}
 	}
 
-	if screen.IsDisplay() {
+	if monitor.IsDisplay() {
 		return nil
 	}
 

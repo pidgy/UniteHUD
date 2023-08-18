@@ -2,7 +2,7 @@ module github.com/pidgy/unitehud
 
 go 1.16
 
-//v0.0.0-20220113184748-9209fd91431f
+// Previous gioui -> v0.0.0-20220113184748-9209fd91431f
 
 require (
 	gioui.org v0.0.0-20230512135434-8571b25ff7cb
@@ -25,8 +25,8 @@ require (
 	github.com/youpy/go-wav v0.3.2
 	github.com/zaf/g711 v0.0.0-20220109202201-cf0017bf0359 // indirect
 	gocv.io/x/gocv v0.28.0
-	golang.org/x/image v0.6.0
-	golang.org/x/sys v0.6.0
+	golang.org/x/image v0.7.0
+	golang.org/x/sys v0.7.0
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	nhooyr.io/websocket v1.8.7
 )

@@ -3,38 +3,50 @@ package gui
 import (
 	"fmt"
 	"image"
+	"math"
+	"os"
 	"runtime"
 	"syscall"
 	"time"
 
 	"gioui.org/app"
-	"gioui.org/font/gofont"
 	"gioui.org/io/system"
+	"gioui.org/layout"
+	"gioui.org/op"
 	"gioui.org/unit"
 	"gioui.org/widget/material"
 
-	"github.com/pidgy/unitehud/config"
-	"github.com/pidgy/unitehud/gui/visual/button"
-	"github.com/pidgy/unitehud/gui/visual/screen"
-	"github.com/pidgy/unitehud/gui/visual/split"
-	"github.com/pidgy/unitehud/gui/visual/textblock"
+	"github.com/pidgy/unitehud/fonts"
+	"github.com/pidgy/unitehud/gui/is"
 	"github.com/pidgy/unitehud/gui/visual/title"
 	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/stats"
-	"github.com/pidgy/unitehud/video"
+	"github.com/pidgy/unitehud/video/monitor"
+	"github.com/pidgy/unitehud/video/proc"
 )
 
 type Action string
 
 type GUI struct {
+	loaded bool
+
+	is is.Is
+
 	*app.Window
 	*title.Bar
-	*screen.Screen
+
+	min, max  image.Point
+	size, pos image.Point
+	shift     image.Point
+
+	HWND uintptr
 
 	Preview bool
 	open    bool
 
-	resize  bool
+	resizing bool
+
+	resizex bool
 	resized bool
 
 	Actions chan Action
@@ -44,7 +56,7 @@ type GUI struct {
 	cpu, ram, uptime string
 	time             time.Time
 
-	cascadia, normal *material.Theme
+	cascadia, normal, toast *material.Theme
 
 	toastActive    bool
 	lastToastError error
@@ -52,9 +64,13 @@ type GUI struct {
 
 	ecoMode bool
 
-	readyq chan bool
-
 	resizeToMax bool
+
+	fps struct {
+		frames int
+		max    int
+		ticks  int
+	}
 }
 
 const (
@@ -74,61 +90,68 @@ const (
 var Window *GUI
 
 func New() {
-	cas, err := textblock.NewCascadiaCode()
-	if err != nil {
-		notify.Warn("Failed to create CPU/RAM graph (%v)", err)
-	}
-	_ = cas
+	min := image.Pt(1080, 700)
+	max := monitor.MainResolution().Max
+
+	notify.System("Generating UI")
 
 	Window = &GUI{
-		Window: app.NewWindow(
-			app.Title("UniteHUD"),
-			app.Decorated(false),
-			app.Size(
-				unit.Dp(1080),
-				unit.Dp(648+split.DefaultBarSizeAdjustable),
-			),
-			app.MinSize(
-				unit.Dp(1080),
-				unit.Dp(648+split.DefaultBarSizeAdjustable),
-			),
-		),
+		is: is.Loading,
+
+		Window: app.NewWindow(app.Title(title.Default), app.Decorated(false)),
+
+		HWND: 0,
+
+		min: min,
+		max: max,
+
+		size: min,
+		pos:  max.Sub(min).Div(2),
 
 		Preview: true,
 		Actions: make(chan Action, 1024),
-		resize:  true,
+
+		resizing: false,
+		resizex:  true,
+
 		ecoMode: true,
-		readyq:  make(chan bool),
 
-		// cascadia = material.NewTheme(cas.Collection())
-		cascadia: material.NewTheme(gofont.Collection()),
-		normal:   material.NewTheme(gofont.Collection()),
+		normal:   fonts.Default().Theme,
+		cascadia: fonts.Cascadia().Theme,
+		toast:    fonts.Default().Theme,
 
-		Bar: title.New(
-			title.Default,
-			material.NewTheme(gofont.Collection()),
-			func() {
-				Window.Perform(system.ActionMinimize)
-			},
-			func() {
-				Window.resizeToMax = !Window.resizeToMax
-				if Window.resizeToMax {
-					Window.Perform(system.ActionMaximize)
-					return
-				}
-				Window.Perform(system.ActionUnmaximize)
-			},
-			func() {
-				Window.Perform(system.ActionClose)
-			},
-		),
+		fps: struct {
+			frames int
+			max    int
+			ticks  int
+		}{0, 60, 0},
 	}
 
+	Window.Bar = title.New(
+		title.Default,
+		func() {
+			Window.Perform(system.ActionMinimize)
+		},
+		func() {
+			Window.maximize()
+		},
+		func() {
+			Window.Perform(system.ActionClose)
+		},
+	)
+
+	notify.System("Default dimensions detected: %s", max.String())
+
 	go Window.loading()
+
+	go Window.draw()
 }
 
 func (g *GUI) Open() {
-	g.readyq <- true
+	defer os.Exit(0)
+
+	g.next(is.MainMenu)
+	//g.next(is.TabMenu)
 
 	go func() {
 		g.open = true
@@ -138,29 +161,20 @@ func (g *GUI) Open() {
 			g.Actions <- Closing
 		}()
 
-		go g.preview()
-
-		var err error
-
-		next := "main"
-
-		for next != "" {
-			switch next {
-			case "main":
-				g.resize = false
-
-				next, err = g.main()
-				if err != nil {
-					g.ToastError(err)
-				}
-			case "configure":
-				g.resize = true
-
-				next, err = g.configure()
-				if err != nil {
-					g.ToastError(err)
-				}
+		for g.is != is.Closing {
+			switch g.is {
+			case is.TabMenu:
+				g.tabs()
+			case is.Loading:
+				notify.Debug("still loading")
+			case is.MainMenu:
+				g.resizex = false
+				g.main()
+			case is.Projecting:
+				g.resizex = true
+				g.projector()
 			default:
+				g.ToastError(fmt.Errorf("Unexpected configuration... shutting down"))
 				return
 			}
 		}
@@ -168,14 +182,99 @@ func (g *GUI) Open() {
 
 	go g.proc()
 
-	//g.Window.Option(app.Fullscreen.Option())
-	app.Main()
+	if g.is != is.Closing {
+		app.Main()
+	}
 }
 
-func (g *GUI) Title(t string) string {
-	t = fmt.Sprintf("%s %s", title.Default, t)
-	g.Bar.Title = t
-	return t
+func (g *GUI) SetWindowPos(shift image.Point) {
+	if g.fullscreen() || g.HWND == 0 || g.resizing {
+		return
+	}
+	g.resizing = true
+
+	go func() {
+		defer func() { g.resizing = false }()
+
+		if shift.Eq(g.shift) {
+			return
+		}
+
+		pos := g.pos.Add(shift)
+		if !pos.In(image.Rectangle{Min: image.Pt(0, 0).Sub(g.size), Max: g.max.Add(g.size)}) {
+			return
+		}
+
+		g.pos = pos
+		g.shift = shift
+
+		proc.SetWindowPos.Call(g.HWND, uintptr(0), uintptr(g.pos.X), uintptr(g.pos.Y), 0, 0, uintptr(proc.SWPNoSize))
+	}()
+}
+
+func (g *GUI) draw() {
+	for {
+		tps := time.Second / time.Duration(g.fps.max+1)
+		tick := time.NewTicker(tps)
+		persecond := time.NewTicker(time.Second)
+		g.fps.ticks = 0
+
+		notify.Debug("Running at %dfps", g.fps.max)
+
+		for fps := g.fps.max; fps == g.fps.max; {
+			if g.resizing {
+				continue
+			}
+
+			select {
+			case <-persecond.C:
+				g.fps.frames = g.fps.ticks
+				g.fps.ticks = 0
+			case <-tick.C:
+				if g.fps.ticks < g.fps.max {
+					g.Invalidate()
+					g.fps.ticks++
+				}
+			}
+		}
+	}
+}
+
+func (g *GUI) fullscreen() bool {
+	return g.size == g.max
+}
+
+func (g *GUI) frame(gtx layout.Context, e system.FrameEvent) {
+	op.InvalidateOp{}.Add(gtx.Ops)
+
+	e.Frame(gtx.Ops)
+
+	p, ok := g.Bar.Dragging()
+	if ok {
+		g.SetWindowPos(p)
+		return
+	}
+}
+
+func (g *GUI) maximize() {
+	if !g.fullscreen() {
+		//max := monitor.MainResolution().Max
+		//g.Option(app.MaxSize(unit.Dp(max.X), unit.Dp(max.Y)), app.Fullscreen.Option())
+
+		g.Perform(system.ActionMaximize)
+		g.size = g.max
+		go proc.SetWindowPos.Call(g.HWND, uintptr(0), uintptr(0), uintptr(0), 0, 0, uintptr(proc.SWPNoSize))
+		return
+	}
+
+	g.Perform(system.ActionUnmaximize)
+	g.size = g.min
+	g.Option(app.Size(unit.Dp(g.min.X), unit.Dp(g.min.Y)))
+}
+
+func (g *GUI) next(i is.Is) {
+	notify.Debug("Next state set to \"%s\"", i)
+	g.is = i
 }
 
 func (g *GUI) proc() {
@@ -249,49 +348,22 @@ func (g *GUI) proc() {
 	}
 }
 
-func (g *GUI) display(src image.Image) {
-	g.Screen = &screen.Screen{
-		Image:         src,
-		VerticalScale: true,
-		Splash:        true,
-	}
+// func (g *GUI) setFPS(fps int) {
+// 	if g.fps.max == fps {
+// 		return
+// 	}
 
-	if g.open {
-		// Prevent capturing once the window has been resized.
-		if !g.resized {
-			g.resize = false
-			g.resized = true
-			g.Preview = false
-		}
-	}
-}
+// 	g.fps.max = fps
 
-func (g *GUI) preview() {
-	for ; ; time.Sleep(time.Millisecond * 50) {
-		if g.Preview {
-			img, err := video.Capture()
-			if err != nil {
-				g.ToastError(err)
-				continue
-			}
+// 	go g.draw(fps)
+// }
 
-			g.display(img)
-		}
-
-		// Redraw the image.
-		g.Invalidate()
+func (g *GUI) toMain(next *string) {
+	if *next == "" {
+		*next = "main"
 	}
 }
 
-// buttonSpam ensures we only execute a config reload once before cooling down.
-func (g *GUI) buttonSpam(b *button.Button) {
-	b.LastPressed = time.Now()
-
-	time.AfterFunc(time.Second, func() {
-		if time.Since(b.LastPressed) >= time.Second {
-			config.Current.Reload()
-			g.Preview = true
-		}
-	},
-	)
+func max(i, j int) int {
+	return int(math.Max(float64(i), float64(j)))
 }

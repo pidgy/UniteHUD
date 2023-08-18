@@ -1,8 +1,8 @@
 package gui
 
 import (
+	"fmt"
 	"image"
-	"runtime"
 	"sort"
 	"time"
 
@@ -17,202 +17,141 @@ import (
 	"github.com/pidgy/unitehud/gui/visual/area"
 	"github.com/pidgy/unitehud/gui/visual/button"
 	"github.com/pidgy/unitehud/gui/visual/screen"
+	"github.com/pidgy/unitehud/gui/visual/title"
 	"github.com/pidgy/unitehud/nrgba"
 	"github.com/pidgy/unitehud/video"
 )
 
 var previewCapturesOpen = false
 
-func (g *GUI) previewCaptures(captures []*area.Capture) {
-	go func() {
-		runtime.LockOSThread()
-		defer runtime.UnlockOSThread()
+func (g *GUI) previewCaptures(a *areas) {
+	if previewCapturesOpen {
+		return
+	}
+	previewCapturesOpen = true
+	defer func() { previewCapturesOpen = false }()
 
-		if previewCapturesOpen {
+	captures := []*area.Capture{
+		a.energy.Capture,
+		a.ko.Capture,
+		a.objective.Capture,
+		a.score.Capture,
+		a.screen,
+		a.state.Capture,
+		a.time.Capture,
+	}
+
+	// Ordered by widest.
+	sort.Slice(captures, func(i, j int) bool {
+		return captures[i].Base.Dy() > captures[j].Base.Dy()
+	})
+
+	images := []*button.Image{}
+
+	for _, cap := range captures {
+		img, err := video.CaptureRect(cap.Base)
+		if err != nil {
+			g.ToastError(err)
 			return
 		}
-		previewCapturesOpen = true
-		defer func() { previewCapturesOpen = false }()
 
-		// Order by widest.
-		sort.Slice(captures, func(i, j int) bool {
-			return captures[i].Base.Dy() > captures[j].Base.Dy()
-		})
+		images = append(images, g.makePreviewCaptureButton(cap, img))
+	}
 
-		images := []*button.Image{}
+	header := fmt.Sprintf("%s %s", g.Title, "Capture Preview")
 
-		for _, cap := range captures {
-			img, err := video.CaptureRect(cap.Base)
-			if err != nil {
-				g.ToastError(err)
-				return
-			}
+	w := app.NewWindow(
+		app.Title(header),
+		app.Size(unit.Dp(g.min.X), unit.Dp(g.min.Y)),
+		app.MinSize(unit.Dp(g.min.X), unit.Dp(g.min.Y)),
+		app.MaxSize(unit.Dp(g.max.X), unit.Dp(g.max.Y)),
+		app.Decorated(false),
+	)
 
-			images = append(images, g.makePreviewCaptureButton(cap, img))
-		}
-
-		w := app.NewWindow(
-			app.Title("UniteHUD Capture Preview"),
-			app.Size(unit.Dp(852), unit.Dp(480)),
-			app.MinSize(unit.Dp(852), unit.Dp(480)),
-		)
-
-		go func() {
-			for ; previewCapturesOpen; time.Sleep(time.Second) {
-				for i, cap := range captures {
-					img, err := video.CaptureRect(cap.Base)
-					if err != nil {
-						g.ToastError(err)
-						return
-					}
-
-					images[i].SetImage(img)
+	go func() {
+		for ; previewCapturesOpen; time.Sleep(time.Second) {
+			for i, cap := range captures {
+				img, err := video.CaptureRect(cap.Base)
+				if err != nil {
+					g.ToastError(err)
+					return
 				}
-			}
-		}()
 
-		list := &widget.List{
-			Scrollbar: widget.Scrollbar{},
-			List: layout.List{
-				Axis:      layout.Vertical,
-				Alignment: layout.Baseline,
-			},
-		}
-		style := material.List(g.normal, list)
-		style.Track.Color = nrgba.Gray.Color()
-
-		var ops op.Ops
-
-		for event := range w.Events() {
-			switch e := event.(type) {
-			case system.DestroyEvent:
-				return
-			case system.StageEvent:
-				w.Perform(system.ActionCenter)
-				w.Perform(system.ActionRaise)
-			case system.FrameEvent:
-				gtx := layout.NewContext(&ops, e)
-
-				ops.Reset()
-
-				colorBox(gtx, gtx.Constraints.Max, nrgba.DarkGray)
-
-				layout.Flex{
-					Spacing:   layout.SpaceEnd,
-					Alignment: layout.Baseline,
-					Axis:      layout.Vertical,
-				}.Layout(gtx,
-					// Top vertical spacer.
-					g.drawPreviewFlexChildSpacer(gtx),
-
-					// Top vertical.
-					layout.Flexed(0.5, func(gtx layout.Context) layout.Dimensions {
-						return g.drawHorizontalPreview(gtx, images, captures, 0, 1, 2)
-					}),
-
-					// Center/Bottom vertical spacer.
-					g.drawPreviewFlexChildSpacer(gtx),
-
-					// Bottom vertical.
-					layout.Flexed(0.5, func(gtx layout.Context) layout.Dimensions {
-						return g.drawHorizontalPreview(gtx, images, captures, 3, 4, 5, 6)
-					}),
-				)
-
-				/*
-					for i := range images {
-						if captures[i].Base.Dx() > 1000 {
-							continue
-						}
-
-						base := captures[i].Base.Sub(captures[i].Base.Max.Div(2))
-
-						s := clip.Rect(base).Push(gtx.Ops)
-
-						widget.Image{
-							Src:      paint.NewImageOp(images[i]),
-							Position: layout.Center,
-							Fit:      widget.ScaleDown,
-						}.Layout(gtx)
-
-						paint.PaintOp{}.Add(gtx.Ops)
-						s.Pop()
-					}
-				*/
-				w.Invalidate()
-
-				e.Frame(gtx.Ops)
+				images[i].SetImage(img)
 			}
 		}
 	}()
-}
 
-func (g *GUI) drawHorizontalPreview(gtx layout.Context, images []*button.Image, captures []*area.Capture, indicies ...int) layout.Dimensions {
-	children := append([]layout.FlexChild{}, g.drawPreviewFlexChildSpacer(gtx))
-	for _, i := range indicies {
-		if i >= len(images) || i >= len(captures) {
-			break
-		}
-
-		children = append(children,
-			g.drawPreviewFlexChild(gtx, images[i], captures[i]),
-			g.drawPreviewFlexChildSpacer(gtx),
-		)
+	list := &widget.List{
+		Scrollbar: widget.Scrollbar{},
+		List: layout.List{
+			Axis:      layout.Vertical,
+			Alignment: layout.Baseline,
+		},
 	}
-	children = append(children, g.drawPreviewFlexChildSpacer(gtx))
+	style := material.List(g.normal, list)
+	style.Track.Color = nrgba.Gray.Color()
 
-	layout.Flex{
-		Spacing:   layout.SpaceEnd,
-		Alignment: layout.Baseline,
-		Axis:      layout.Horizontal,
-	}.Layout(gtx, children...)
-
-	return dimensions(gtx)
-}
-
-func (g *GUI) drawPreviewFlexChild(gtx layout.Context, img *button.Image, cap *area.Capture) layout.FlexChild {
-	return layout.Flexed(0.3, func(gtx layout.Context) layout.Dimensions {
-		return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
-			layout.Flexed(.1, g.drawPreviewLabel(gtx, cap)),
-			layout.Flexed(.9, g.drawPreviewImage(gtx, img, cap)),
-		)
+	max := false
+	bar := title.New(header, nil, func() {
+		max = !max
+		if !max {
+			w.Perform(system.ActionUnmaximize)
+		} else {
+			w.Perform(system.ActionMaximize)
+		}
+	}, func() {
+		w.Perform(system.ActionClose)
 	})
-}
 
-func (g *GUI) drawPreviewFlexChildSpacer(gtx layout.Context) layout.FlexChild {
-	return layout.Rigid(layout.Spacer{Width: unit.Dp(5), Height: unit.Dp(5)}.Layout)
-}
+	var ops op.Ops
 
-func (g *GUI) drawPreviewImage(gtx layout.Context, img *button.Image, cap *area.Capture) layout.Widget {
-	return func(gtx layout.Context) layout.Dimensions {
-		return layout.UniformInset(unit.Dp(5)).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-			return img.Layout(g.normal, gtx)
-		})
-	}
-}
+	for event := range w.Events() {
+		switch e := event.(type) {
+		case system.DestroyEvent:
+			return
+		case system.StageEvent:
+			w.Perform(system.ActionCenter)
+			w.Perform(system.ActionRaise)
+		case system.FrameEvent:
+			gtx := layout.NewContext(&ops, e)
 
-func (g *GUI) drawPreviewHeader(gtx layout.Context, txt string) layout.Dimensions {
-	label := material.H5(g.normal, txt)
-	label.Color = nrgba.White.Color()
-	return layout.W.Layout(gtx, func(gtx layout.Context) layout.Dimensions { return label.Layout(gtx) })
-}
+			bar.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+				colorBox(gtx, gtx.Constraints.Max, nrgba.Background)
 
-func (g *GUI) drawPreviewLabel(gtx layout.Context, cap *area.Capture) layout.Widget {
-	return func(gtx layout.Context) layout.Dimensions {
-		label := material.Label(g.normal, unit.Sp(18), cap.Option)
-		label.Color = nrgba.Highlight.Color()
-		label.Font.Weight = 200
+				return style.Layout(gtx, len(images), func(gtx layout.Context, index int) layout.Dimensions {
+					cap := captures[index]
+					img := images[index]
 
-		if cap.Matched != nil {
-			label.Text = cap.Matched.Text
-			label.Color = cap.Matched.Color()
-		}
+					label := material.Label(g.normal, unit.Sp(18), cap.Option)
+					label.Color = nrgba.Highlight.Color()
+					label.Font.Weight = 200
 
-		return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-			return layout.Inset{Top: unit.Dp(5)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-				return label.Layout(gtx)
+					if cap.Matched != nil {
+						label.Text = cap.Matched.Text
+						label.Color = cap.Matched.Color()
+					}
+
+					return layout.UniformInset(unit.Dp(5)).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+						return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
+							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+								return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+									return layout.Inset{Top: unit.Dp(5)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+										return label.Layout(gtx)
+									})
+								})
+							}),
+							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+								return img.Layout(g.normal, gtx)
+							}),
+						)
+					})
+				})
 			})
-		})
+			w.Invalidate()
+
+			e.Frame(gtx.Ops)
+		}
 	}
 }
 

@@ -63,9 +63,6 @@ func signals() {
 }
 
 func main() {
-	// runtime.LockOSThread()
-	//defer runtime.UnlockOSThread()
-
 	go signals()
 
 	gui.New()

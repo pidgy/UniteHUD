@@ -22,7 +22,6 @@ import (
 
 const (
 	MainDisplay          = "Main Display"
-	BrowserWindow        = "UniteHUD Browser"
 	ProjectorWindow      = "UniteHUD Projector"
 	NoVideoCaptureDevice = -1
 
@@ -50,7 +49,6 @@ type Config struct {
 	Shift                    Shift
 	Acceptance               float32
 	Profile                  string
-	BrowserWindowURL         string
 	DisableBrowserFormatting bool
 	Platform                 string
 
@@ -308,7 +306,7 @@ func Load(profile string) error {
 		Current.SetProfile(profile)
 	}
 
-	notify.System("Loading configuration from %s", Current.File())
+	notify.System("Loading %s configuration from %s", profile, Current.File())
 
 	ok := open()
 	if !ok {

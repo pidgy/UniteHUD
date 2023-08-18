@@ -3,8 +3,9 @@ package video
 import (
 	"image"
 
+	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/video/device"
-	"github.com/pidgy/unitehud/video/screen"
+	"github.com/pidgy/unitehud/video/monitor"
 	"github.com/pidgy/unitehud/video/window"
 )
 
@@ -13,8 +14,8 @@ func Capture() (img *image.RGBA, err error) {
 		return device.Capture()
 	}
 
-	if screen.IsDisplay() {
-		return screen.Capture()
+	if monitor.IsDisplay() {
+		return monitor.Capture()
 	}
 
 	return window.Capture()
@@ -25,8 +26,8 @@ func CaptureRect(rect image.Rectangle) (img *image.RGBA, err error) {
 		return device.CaptureRect(rect)
 	}
 
-	if screen.IsDisplay() {
-		return screen.CaptureRect(rect)
+	if monitor.IsDisplay() {
+		return monitor.CaptureRect(rect)
 	}
 
 	return window.CaptureRect(rect)
@@ -37,7 +38,7 @@ func Close() {
 }
 
 func Open() error {
-	screen.Open()
+	monitor.Open()
 
 	err := device.Open()
 	if err != nil {
@@ -56,5 +57,17 @@ func Devices() []int {
 }
 
 func Screens() []string {
-	return screen.Sources
+	return monitor.Sources
+}
+
+func StateArea() image.Rectangle {
+	i, err := Capture()
+	if err != nil {
+		notify.Error("Failed to capture area for state events (%v)", err)
+		return image.Rect(0, 0, 0, 0)
+	}
+
+	b := i.Bounds()
+	return image.Rect(b.Max.X/3, 0, b.Max.X-b.Max.X/3, b.Max.Y)
+	//return i.Bounds()
 }

@@ -26,6 +26,8 @@ const (
 	MergePaint       = 0x00BB0226
 	SrcInvert        = 0x00660046
 	CreateNoWindow   = 0x08000000
+
+	SWPNoSize = 0x0001
 )
 
 var (
@@ -38,7 +40,8 @@ var (
 	GetWindowTextW               = user32.MustFindProc("GetWindowTextW")
 	IsWindowVisible              = user32.MustFindProc("IsWindowVisible")
 	UpdateWindow                 = user32.MustFindProc("UpdateWindow")
-	SetWindowLongA               = user32.MustFindProc("SetWindowLongA")
+	GetWindowLong                = user32.MustFindProc("GetWindowLongW")
+	SetWindowLongPtrW            = user32.MustFindProc("SetWindowLongPtrW")
 	GetTopWindow                 = user32.MustFindProc("GetTopWindow")
 	FindWindow                   = user32.MustFindProc("FindWindowW")
 	MoveWindow                   = user32.MustFindProc("MoveWindow")
@@ -50,6 +53,9 @@ var (
 	SetForegroundWindow          = user32.MustFindProc("SetForegroundWindow")
 	SetWindowPlacement           = user32.MustFindProc("SetWindowPlacement")
 	GetWindowPlacement           = user32.MustFindProc("GetWindowPlacement")
+	SetWindowPos                 = user32.MustFindProc("SetWindowPos")
+	ShowWindow                   = user32.MustFindProc("ShowWindow")
+	GetSystemMetrics             = user32.MustFindProc("GetSystemMetrics")
 
 	gdi32                  = syscall.MustLoadDLL("gdi32.dll")
 	BitBlt                 = gdi32.MustFindProc("BitBlt")

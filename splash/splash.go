@@ -23,7 +23,23 @@ var (
 
 	loadingMat             = gocv.IMRead(fmt.Sprintf(`%s/splash/loading.png`, config.Current.Assets()), gocv.IMReadColor)
 	loadingImg image.Image = nil
+
+	projectorMat             = gocv.IMRead(fmt.Sprintf(`%s/splash/projector.png`, config.Current.Assets()), gocv.IMReadColor)
+	projectorImg image.Image = nil
 )
+
+func AsRGBA(i image.Image) *image.RGBA {
+	if i == nil {
+		return &image.RGBA{}
+	}
+
+	rgba, ok := i.(*image.RGBA)
+	if !ok {
+		return &image.RGBA{Rect: i.Bounds()}
+	}
+
+	return rgba
+}
 
 func Default() image.Image {
 	if defaultImg == nil {
@@ -77,4 +93,17 @@ func Loading() image.Image {
 	}
 
 	return loadingImg
+}
+
+func Projector() image.Image {
+	if projectorImg == nil {
+		i, err := projectorMat.ToImage()
+		if err != nil {
+			notify.Warn("Failed to convert splash image (%v)", err)
+			return img.Empty
+		}
+		projectorImg = i
+	}
+
+	return projectorImg
 }

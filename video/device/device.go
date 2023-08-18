@@ -12,12 +12,11 @@ import (
 	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/splash"
 	"github.com/pidgy/unitehud/video/device/win32"
+	"github.com/pidgy/unitehud/video/monitor"
 )
 
 var (
 	Sources, names = sources()
-
-	HD1080 = image.Rect(0, 0, 1920, 1080)
 
 	active = config.NoVideoCaptureDevice
 	mat    = splash.DeviceMat().Clone()
@@ -48,6 +47,9 @@ func init() {
 }
 
 func ActiveName() string {
+	if config.Current.VideoCaptureDevice == config.NoVideoCaptureDevice {
+		return "Disabled"
+	}
 	if len(names) > config.Current.VideoCaptureDevice {
 		return names[config.Current.VideoCaptureDevice]
 	}
@@ -55,7 +57,7 @@ func ActiveName() string {
 }
 
 func Capture() (*image.RGBA, error) {
-	return CaptureRect(HD1080)
+	return CaptureRect(monitor.MainResolution())
 }
 
 func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
@@ -63,8 +65,8 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 		return nil, nil
 	}
 
-	if !rect.In(HD1080) {
-		return nil, fmt.Errorf("Requested capture area is outside of the legal capture area %s > %s", rect, HD1080)
+	if !rect.In(monitor.MainResolution()) {
+		return nil, fmt.Errorf("Requested capture area is outside of the legal boundary %s intersects %s", rect, monitor.MainResolution())
 	}
 
 	i, err := img.RGBA(mat.Region(rect))
@@ -84,6 +86,8 @@ func Close() {
 	for !stopped {
 		time.Sleep(time.Nanosecond)
 	}
+
+	config.Current.VideoCaptureDevice = config.NoVideoCaptureDevice
 }
 
 func IsActive() bool {
@@ -167,11 +171,11 @@ func startCaptureDevice() error {
 		}
 		defer device.Close()
 
-		device.Set(gocv.VideoCaptureFrameWidth, float64(HD1080.Dx()))
-		device.Set(gocv.VideoCaptureFrameHeight, float64(HD1080.Dy()))
+		device.Set(gocv.VideoCaptureFrameWidth, float64(monitor.MainResolution().Dx()))
+		device.Set(gocv.VideoCaptureFrameHeight, float64(monitor.MainResolution().Dy()))
 
 		area := image.Rect(0, 0, int(device.Get(gocv.VideoCaptureFrameWidth)), int(device.Get(gocv.VideoCaptureFrameHeight)))
-		if !area.Eq(HD1080) {
+		if !area.Eq(monitor.MainResolution()) {
 			mat = splash.DeviceMat().Clone()
 			errq <- fmt.Errorf("%s has invalid dimensions: %s", name, area.String())
 			return

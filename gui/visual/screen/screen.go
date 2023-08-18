@@ -46,7 +46,7 @@ func (s *Screen) Scale(gtx layout.Context) float32 {
 	}
 
 	if s.VerticalScale {
-		return float32(gtx.Constraints.Max.Y) / float32(s.Image.Bounds().Dy())
+		return float32(gtx.Constraints.Max.Y) / float32(s.Image.Bounds().Dy()) //+ float32(gtx.Constraints.Max.X)/float32(s.Image.Bounds().Dx())
 	}
 
 	return float32(gtx.Constraints.Max.X) / float32(s.Image.Bounds().Dx())
@@ -79,5 +79,7 @@ func (s *Screen) layout(gtx layout.Context) layout.Dimensions {
 		Color:        s.BorderColor.Color(),
 		Width:        unit.Dp(3),
 		CornerRadius: unit.Dp(1),
-	}.Layout(gtx, func(gtx layout.Context) layout.Dimensions { return s.Dims })
+	}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+		return s.Dims
+	})
 }

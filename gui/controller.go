@@ -257,13 +257,6 @@ var (
 				return
 			}
 
-			if config.Current.Window == config.BrowserWindow {
-				err = electron.Open()
-				if err != nil {
-					notify.Error("Failed to open %s (%v)", config.BrowserWindow, err)
-				}
-			}
-
 			notify.System("Profile set to %s mode", i.Text)
 
 			time.AfterFunc(time.Second, func() {
@@ -1417,11 +1410,15 @@ func startStopButton() *button.Button {
 func updateControllerUI() {
 	for _, b := range self {
 		b.Disabled = config.Current.Profile == config.ProfileBroadcaster
-		b.Active = b.Disabled
+		if b.Disabled {
+			b.Deactivate()
+		}
 	}
 
 	negated[team.Self].Disabled = config.Current.Profile == config.ProfileBroadcaster
-	negated[team.Self].Active = negated[team.Self].Disabled
+	if negated[team.Self].Disabled {
+		negated[team.Self].Deactivate()
+	}
 
 	for _, i := range profile.Items {
 		i.Checked.Value = config.Current.Profile == strings.ToLower(i.Text)

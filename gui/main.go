@@ -5,26 +5,23 @@ import (
 	"image"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
 	"gioui.org/app"
 	"gioui.org/font"
-	"gioui.org/io/pointer"
 	"gioui.org/io/system"
 	"gioui.org/layout"
 	"gioui.org/op"
-	"gioui.org/op/clip"
-	"gioui.org/op/paint"
 	"gioui.org/text"
 	"gioui.org/unit"
 	"gioui.org/widget/material"
-	"github.com/skratchdot/open-golang/open"
 
 	"github.com/pidgy/unitehud/config"
-	"github.com/pidgy/unitehud/cursor"
+	"github.com/pidgy/unitehud/debug"
+	"github.com/pidgy/unitehud/fonts"
 	"github.com/pidgy/unitehud/global"
+	"github.com/pidgy/unitehud/gui/is"
 	"github.com/pidgy/unitehud/gui/visual/button"
 	"github.com/pidgy/unitehud/gui/visual/screen"
 	"github.com/pidgy/unitehud/gui/visual/spinner"
@@ -39,25 +36,29 @@ import (
 	"github.com/pidgy/unitehud/stats"
 	"github.com/pidgy/unitehud/team"
 	"github.com/pidgy/unitehud/video/device"
+	"github.com/pidgy/unitehud/video/monitor"
+	"github.com/pidgy/unitehud/video/window"
+	"github.com/skratchdot/open-golang/open"
 )
 
-func (g *GUI) main() (next string, err error) {
-	g.Window.Perform(system.ActionCenter)
-	g.Window.Perform(system.ActionRaise)
+func (g *GUI) main() {
+	g.Window.Option(
+		app.Size(
+			unit.Dp(g.min.X),
+			unit.Dp(g.min.Y),
+		),
+		app.MinSize(
+			unit.Dp(g.min.X),
+			unit.Dp(g.min.Y),
+		),
+		app.MaxSize(
+			unit.Dp(g.max.X),
+			unit.Dp(g.max.Y),
+		),
+	)
 
 	split := &split.Vertical{
 		Ratio: .70,
-	}
-
-	configButton := &button.Button{
-		Text:        "Configure",
-		Released:    nrgba.Gray,
-		Pressed:     nrgba.Transparent30,
-		BorderWidth: unit.Sp(1.5),
-		Click: func(b *button.Button) {
-			defer b.Deactivate()
-			next = "configure"
-		},
 	}
 
 	spinRun := spinner.Running()
@@ -66,130 +67,87 @@ func (g *GUI) main() (next string, err error) {
 	spinStop := spinner.Stopped()
 	defer spinStop.Stop()
 
-	spinRecord := spinner.Recording()
-	defer spinRecord.Stop()
-
-	recordButton := &button.Button{
-		Text:        "Record",
-		Disabled:    true,
-		BorderWidth: unit.Sp(1.5),
-		Click: func(b *button.Button) {
-			defer b.Deactivate()
-			g.Actions <- Record
-		},
-	}
-
 	stopButton := &button.Button{
-		Text:        "Stop",
-		Disabled:    true,
-		Released:    nrgba.Disabled,
-		BorderWidth: unit.Sp(1.5),
+		Text:            "Stop",
+		OnHoverHint:     func() { g.Bar.ToolTip("Stop capturing events") },
+		Disabled:        true,
+		Released:        nrgba.Disabled,
+		BorderWidth:     unit.Sp(1.5),
+		Size:            image.Pt(60, 25),
+		TextInsetBottom: -2,
 	}
 
 	startButton := &button.Button{
-		Text:        "Start",
-		Released:    nrgba.Gray,
-		Pressed:     nrgba.Transparent30,
-		BorderWidth: unit.Sp(1.5),
-		Click: func(b *button.Button) {
+		Text:            "Start",
+		OnHoverHint:     func() { g.Bar.ToolTip("Start capturing events") },
+		Released:        nrgba.PastelGreen.Alpha(150),
+		Pressed:         nrgba.Transparent30,
+		BorderWidth:     unit.Sp(1.5),
+		Size:            stopButton.Size,
+		TextInsetBottom: stopButton.TextInsetBottom,
+		Click: func(this *button.Button) {
 			g.Preview = false
 
-			configButton.Active = true
-			configButton.Disabled = true
-			configButton.Released = nrgba.Disabled
-
-			stopButton.Active = false
+			stopButton.Deactivate()
 			stopButton.Disabled = false
-			stopButton.Released = nrgba.Gray
+			stopButton.Released = nrgba.PastelRed.Alpha(150)
 
-			b.Active = false
-			b.Disabled = true
-			b.Released = nrgba.Disabled
-
-			recordButton.Active = false
-			recordButton.Disabled = false
-			recordButton.Released = nrgba.Gray
+			this.Deactivate()
+			this.Disabled = true
+			this.Released = nrgba.Disabled
 
 			g.Actions <- Config
 			g.Running = true
 		},
 	}
 
-	logButton := &button.Button{
-		Text:        "Logs",
-		Disabled:    false,
-		Released:    nrgba.Gray,
-		Pressed:     nrgba.Transparent30,
-		BorderWidth: unit.Sp(1.5),
-		Click: func(b *button.Button) {
-			defer b.Deactivate()
+	stopButton.Click = func(this *button.Button) {
+		this.Deactivate()
+		this.Disabled = true
+		this.Released = nrgba.Disabled
 
-			g.Actions <- Log
-		},
-	}
-
-	stopButton.Click = func(b *button.Button) {
-		configButton.Active = false
-		configButton.Disabled = false
-		configButton.Released = nrgba.Gray
-
-		stopButton.Active = false
-		stopButton.Disabled = true
-		stopButton.Released = nrgba.Disabled
-
-		startButton.Active = false
+		startButton.Deactivate()
 		startButton.Disabled = false
-		startButton.Released = nrgba.Gray
-
-		recordButton.Active = false
-		recordButton.Disabled = true
-		recordButton.Released = nrgba.Disabled
+		startButton.Released = nrgba.PastelGreen.Alpha(150)
 
 		g.Actions <- Stop
 		g.Running = false
+		g.Preview = true
 	}
 
-	updateRecordButton := func() {
-		if config.Current.Record {
-			recordButton.Text = "Recording"
-			recordButton.Released = nrgba.DarkRed
-		} else {
-			recordButton.Text = "Record"
-			recordButton.Released = nrgba.Gray
-			if recordButton.Disabled {
-				recordButton.Released = nrgba.Disabled
-			}
-		}
-	}
-
-	openButton := &button.Button{
-		Text:        "Open",
-		Released:    nrgba.Gray,
-		Pressed:     nrgba.Transparent30,
-		BorderWidth: unit.Sp(1.5),
-		Click: func(b *button.Button) {
-			defer b.Deactivate()
-
-			g.Actions <- Open
-		},
-	}
-
-	notifyFeedTextBlock, err := textblock.NewCascadiaCodeSemiBold()
+	notifyFeedTextBlock, err := textblock.New(fonts.Cascadia())
 	if err != nil {
 		notifyFeedTextBlock = &textblock.TextBlock{}
 		notify.Error("Failed to load font: (%v)", err)
 	}
 
-	statsButton := &button.Button{
-		Text:     "¼",
-		Released: nrgba.CoolBlue,
-		Pressed:  nrgba.Transparent30,
-		Size:     image.Pt(30, 16),
-		TextSize: unit.Sp(12),
+	defer g.Bar.Remove(g.Bar.Custom(&button.Button{
+		Text:        "⚙",
+		OnHoverHint: func() { g.Bar.ToolTip("Configure capture settings") },
+		Released:    nrgba.PurpleBlue,
+		TextSize:    unit.Sp(16),
+		Font:        fonts.NishikiTeki(),
 
-		BorderWidth: unit.Sp(.5),
-		Click: func(b *button.Button) {
-			defer b.Deactivate()
+		Click: func(this *button.Button) {
+			defer this.Deactivate()
+
+			if !stopButton.Disabled {
+				stopButton.Click(stopButton)
+			}
+
+			g.next(is.Projecting)
+		},
+	}))
+
+	defer g.Bar.Remove(g.Bar.Custom(&button.Button{
+		Text:        "¼",
+		OnHoverHint: func() { g.Bar.ToolTip("View capture statistics") },
+		Released:    nrgba.Pinkity,
+		TextSize:    unit.Sp(14),
+		Font:        fonts.NishikiTeki(),
+
+		Click: func(this *button.Button) {
+			defer this.Deactivate()
 
 			stats.Data()
 
@@ -200,40 +158,38 @@ func (g *GUI) main() (next string, err error) {
 				notify.System(s)
 			}
 		},
-	}
+	}))
 
-	historyButton := &button.Button{
-		Text:     "±",
-		Released: nrgba.BloodOrange,
-		Pressed:  nrgba.Transparent30,
-		Size:     image.Pt(30, 15),
-		TextSize: unit.Sp(14),
+	defer g.Bar.Remove(g.Bar.Custom(&button.Button{
+		Text:        "🗠",
+		TextSize:    unit.Sp(16),
+		OnHoverHint: func() { g.Bar.ToolTip("View event history") },
+		Released:    nrgba.Seafoam,
+		Font:        fonts.NishikiTeki(),
 
-		BorderWidth: unit.Sp(.5),
-		Click: func(b *button.Button) {
-			defer b.Deactivate()
+		Click: func(this *button.Button) {
+			defer this.Deactivate()
 
 			history.Dump()
 		},
-	}
+	}))
 
-	obsButton := &button.Button{
-		Text:     "obs",
-		Released: nrgba.Purple,
-		Pressed:  nrgba.Purple,
-		Size:     image.Pt(30, 15),
-		TextSize: unit.Sp(12),
+	defer g.Bar.Remove(g.Bar.Custom(&button.Button{
+		Text:        "obs",
+		OnHoverHint: func() { g.Bar.ToolTip("Open OBS client folder") },
+		Released:    nrgba.Purple,
+		TextSize:    unit.Sp(12),
+		Font:        fonts.NishikiTeki(),
 
-		BorderWidth: unit.Sp(.5),
-		Click: func(b *button.Button) {
-			defer b.Deactivate()
+		Click: func(this *button.Button) {
+			defer this.Deactivate()
 
 			drag := "Drag \"UniteHUD Client\" into any OBS scene."
 			if config.Current.Profile == config.ProfileBroadcaster {
 				drag = "Drag \"UniteHUD Broadcaster\" into any OBS scene."
 			}
 
-			g.ToastOK("UniteHUD Overlay", drag, func() {
+			g.ToastOK("Overlay", drag, func() {
 				ex, err := os.Executable()
 				if err != nil {
 					notify.Error("Failed to open www/ directory: %v", err)
@@ -249,36 +205,38 @@ func (g *GUI) main() (next string, err error) {
 			},
 			)
 		},
-	}
+	}))
 
-	clearButton := &button.Button{
-		Text:     "cls",
-		Released: nrgba.PaleRed,
-		Pressed:  nrgba.DarkRed,
-		Size:     image.Pt(30, 15),
-		TextSize: unit.Sp(12),
+	defer g.Bar.Remove(g.Bar.Custom(&button.Button{
+		Text:        "🗘",
+		OnHoverHint: func() { g.Bar.ToolTip("Clear event history") },
+		Released:    nrgba.Orange,
+		TextSize:    unit.Sp(14),
+		Font:        fonts.NishikiTeki(),
 
-		BorderWidth: unit.Sp(.5),
-		Click: func(b *button.Button) {
-			defer b.Deactivate()
+		Click: func(this *button.Button) {
+			defer this.Deactivate()
 
 			notify.CLS()
 			notify.System("Cleared")
 		},
-	}
+	}))
 
-	ecoButton := &button.Button{
-		Text:     "eco",
-		Released: nrgba.ForestGreen,
-		Pressed:  nrgba.Transparent30,
-		Size:     image.Pt(30, 15),
-		TextSize: unit.Sp(12),
+	defer g.Bar.Remove(g.Bar.Custom(&button.Button{
+		Text:        "⚶",
+		OnHoverHint: func() { g.Bar.ToolTip("Toggle resource saver") },
+		Released:    nrgba.ForestGreen,
+		Pressed:     nrgba.PaleRed.Alpha(50),
+		TextSize:    unit.Sp(16),
+		Font:        fonts.NishikiTeki(),
 
-		BorderWidth: unit.Sp(.5),
-		Active:      !g.ecoMode,
-		Click: func(b *button.Button) {
+		Click: func(this *button.Button) {
 			g.ecoMode = !g.ecoMode
-			b.Active = !g.ecoMode
+
+			this.Activate()
+			if g.ecoMode {
+				this.Deactivate()
+			}
 
 			if g.ecoMode {
 				notify.System("Resource saver has been enabled")
@@ -286,46 +244,241 @@ func (g *GUI) main() (next string, err error) {
 				notify.System("Resource saver has been disabled")
 			}
 		},
-	}
+	}))
 
-	controllerButton := &button.Button{
-		Text:     "ctrl",
-		Released: nrgba.DreamyBlue,
-		Pressed:  nrgba.Transparent30,
-		Size:     image.Pt(30, 15),
-		TextSize: unit.Sp(12),
+	defer g.Bar.Remove(g.Bar.Custom(&button.Button{
+		Text:        "🗁",
+		OnHoverHint: func() { g.Bar.ToolTip("Open log directory") },
+		Released:    nrgba.PastelBabyBlue,
+		TextSize:    unit.Sp(16),
+		Font:        fonts.NishikiTeki(),
 
-		BorderWidth: unit.Sp(.5),
-		Click: func(b *button.Button) {
-			defer b.Deactivate()
+		Click: func(this *button.Button) {
+			defer this.Deactivate()
 
-			if controller {
-				g.ToastError(fmt.Errorf("%s is already open", controllerTitle))
-				return
+			debug.Log()
+
+			err := debug.Open()
+			if err != nil {
+				notify.Error("Failed to open \"%s\" (%v)", debug.Dir, err)
+			}
+		},
+	}))
+
+	defer g.Bar.Remove(g.Bar.Custom(&button.Button{
+		Text:        "●",
+		OnHoverHint: func() { g.Bar.ToolTip("Record matched events") },
+		TextColor:   nrgba.PastelRed,
+		Released:    nrgba.Transparent,
+		TextSize:    unit.Sp(16),
+		Font:        fonts.NishikiTeki(),
+
+		Click: func(this *button.Button) {
+			defer this.Deactivate()
+
+			config.Current.Record = !config.Current.Record
+
+			str := "Closing"
+			if config.Current.Record {
+				str = "Recording"
 			}
 
-			g.controller()
-		},
-	}
+			notify.System("%s template match results in %s", str, debug.Dir)
 
-	previewImage := &button.Image{
+			switch config.Current.Record {
+			case true:
+				this.Text = "■"
+
+				notify.System("Using \"%s\" directory for recording data", debug.Dir)
+			case false:
+				this.Text = "●"
+
+				notify.System("Closing open files in %s", debug.Dir)
+
+				err := debug.Open()
+				if err != nil {
+					notify.Error("Failed to open \"%s\" (%v)", debug.Dir, err)
+				}
+			}
+		},
+	}))
+
+	projectorWindowButton := &button.Image{
+		HintEvent: func() { g.Bar.ToolTip("Open projector window") },
+
 		Screen: &screen.Screen{
 			Border:      true,
 			BorderColor: nrgba.Transparent,
 		},
 		Click: func(b *button.Image) {
-			if !projecting {
-				go g.Project()
-				projecting = true
+			if !stopButton.Disabled {
+				stopButton.Click(stopButton)
 			}
+
+			g.next(is.Projecting)
 		},
 	}
 
-	cursor.Is(pointer.CursorDefault)
+	header := material.H6(g.normal, global.Version)
+	header.Color = nrgba.White.Alpha(25).Color()
+	header.Alignment = text.Middle
+
+	profileHeader := material.Caption(g.normal, "")
+	profileHeader.Color = nrgba.DreamyPurple.Color()
+	profileHeader.Alignment = text.Middle
+	profileHeader.Font.Weight = font.ExtraBold
+	profileHeader.TextSize = unit.Sp(14)
+
+	windowHeader := material.Caption(g.normal, "")
+	windowHeader.Color = nrgba.DarkSeafoam.Color()
+	windowHeader.Alignment = text.Middle
+	windowHeader.Font.Weight = font.ExtraBold
+	windowHeader.TextSize = unit.Sp(14)
+
+	cpuLabel := material.H5(g.normal, "")
+	cpuLabel.Color = nrgba.White.Color()
+	cpuLabel.Alignment = text.Middle
+	cpuLabel.TextSize = unit.Sp(14)
+
+	cpuGraph := material.H5(g.cascadia, "")
+	cpuGraph.Color = nrgba.Gray.Color()
+	cpuGraph.TextSize = unit.Sp(9)
+
+	ramLabel := material.H5(g.normal, "")
+	ramLabel.Color = nrgba.White.Color()
+	ramLabel.Alignment = text.Middle
+	ramLabel.TextSize = unit.Sp(14)
+
+	ramGraph := material.H5(g.cascadia, "")
+	ramGraph.Color = nrgba.Gray.Color()
+	ramGraph.TextSize = unit.Sp(9)
+
+	holdingLabel := material.H5(g.normal, "")
+	holdingLabel.Color = team.Self.NRGBA.Color()
+	holdingLabel.Alignment = text.Middle
+	holdingLabel.TextSize = unit.Sp(14)
+
+	connectedClientsLabel := material.H5(g.normal, "")
+	connectedClientsLabel.Alignment = text.Middle
+	connectedClientsLabel.TextSize = unit.Sp(14)
+
+	purpleScoreScreen := &screen.Screen{
+		Border:      true,
+		BorderColor: team.Purple.NRGBA,
+		Image:       notify.PurpleScore,
+	}
+
+	orangeScoreScreen := &screen.Screen{
+		Border:      true,
+		BorderColor: team.Orange.NRGBA,
+		Image:       notify.OrangeScore,
+	}
+
+	energyScoreScreen := &screen.Screen{
+		Border:      true,
+		BorderColor: team.Energy.NRGBA,
+		Image:       notify.Energy,
+	}
+
+	timeScreen := &screen.Screen{
+		Border:      true,
+		BorderColor: team.Time.NRGBA,
+		Image:       notify.Time,
+	}
+
+	dbgLabel := material.H5(g.normal, "DBG")
+	dbgLabel.Alignment = text.Middle
+	dbgLabel.TextSize = unit.Sp(14)
+	dbgLabel.Color = nrgba.SeaBlue.Color()
+
+	symbolLabel := material.H5(g.normal, "")
+	symbolLabel.Alignment = text.Middle
+	symbolLabel.TextSize = unit.Sp(16)
+	symbolLabel.Font.Weight = font.ExtraBold
+	symbolLabel.Color = nrgba.Slate.Color()
+
+	acronymLabel := material.H5(g.normal, "IDLE")
+	acronymLabel.Alignment = text.Middle
+	acronymLabel.TextSize = unit.Sp(14)
+	acronymLabel.Color = nrgba.Slate.Color()
+
+	fpsLabel := material.H5(g.normal, "0 FPS")
+	fpsLabel.Alignment = text.Middle
+	fpsLabel.TextSize = unit.Sp(14)
+
+	purpleScoreLabel := material.H5(g.normal, "0")
+	purpleScoreLabel.Color = team.Purple.NRGBA.Color()
+	purpleScoreLabel.Alignment = text.Middle
+	purpleScoreLabel.TextSize = unit.Sp(14)
+
+	orangeScoreLabel := material.H5(g.normal, "0")
+	orangeScoreLabel.Color = team.Orange.NRGBA.Color()
+	orangeScoreLabel.Alignment = text.Middle
+	orangeScoreLabel.TextSize = unit.Sp(14)
+
+	selfScoreLabel := material.H5(g.normal, "0")
+	selfScoreLabel.Color = team.Self.NRGBA.Color()
+	selfScoreLabel.Alignment = text.Middle
+	selfScoreLabel.TextSize = unit.Sp(14)
+
+	clockLabel := material.H5(g.normal, "00:00")
+	clockLabel.Color = nrgba.White.Color()
+	clockLabel.Alignment = text.Middle
+	clockLabel.TextSize = unit.Sp(14)
+
+	regielekiLabels, regielekiUnderlineLabels := []material.LabelStyle{
+		material.H5(g.normal, "E"),
+		material.H5(g.normal, "E"),
+		material.H5(g.normal, "E"),
+	}, []material.LabelStyle{
+		material.H5(g.normal, "_"),
+		material.H5(g.normal, "_"),
+		material.H5(g.normal, "_"),
+	}
+
+	for i := range regielekiLabels {
+		regielekiLabels[i].Color = team.None.Color()
+		regielekiLabels[i].Alignment = text.Middle
+		regielekiLabels[i].TextSize = unit.Sp(14)
+
+		regielekiUnderlineLabels[i].Color = team.None.Color()
+		regielekiUnderlineLabels[i].Alignment = regielekiLabels[i].Alignment
+		regielekiUnderlineLabels[i].TextSize = unit.Sp(18)
+		regielekiUnderlineLabels[i].Font.Weight = font.Bold
+	}
+
+	regiBottomLabels, regiBottomUnderlineLabels := []material.LabelStyle{
+		material.H5(g.normal, "R"),
+		material.H5(g.normal, "R"),
+		material.H5(g.normal, "R"),
+	}, []material.LabelStyle{
+		material.H5(g.normal, "_"),
+		material.H5(g.normal, "_"),
+		material.H5(g.normal, "_"),
+	}
+
+	for i := range regiBottomLabels {
+		regiBottomLabels[i].Color = team.None.Color()
+		regiBottomLabels[i].Alignment = text.Middle
+		regiBottomLabels[i].TextSize = unit.Sp(14)
+
+		regiBottomUnderlineLabels[i].Color = regiBottomLabels[i].Color
+		regiBottomUnderlineLabels[i].Alignment = regiBottomLabels[i].Alignment
+		regiBottomUnderlineLabels[i].TextSize = unit.Sp(18)
+		regiBottomUnderlineLabels[i].Font.Weight = font.Bold
+	}
+
+	uptimeLabel := material.H5(g.normal, g.uptime)
+	uptimeLabel.Color = nrgba.Slate.Color()
+	uptimeLabel.Alignment = text.Middle
+	uptimeLabel.TextSize = unit.Sp(14)
+
+	g.Window.Perform(system.ActionCenter)
+	g.Window.Perform(system.ActionRaise)
 
 	var ops op.Ops
 
-	for next == "" {
+	for g.is == is.MainMenu {
 		if !g.open {
 			time.Sleep(time.Millisecond * 10)
 			continue
@@ -341,111 +494,79 @@ func (g *GUI) main() (next string, err error) {
 			stopButton.Click(stopButton)
 		}
 
-		e := <-g.Events()
-		switch e := e.(type) {
+		switch e := (<-g.Events()).(type) {
 		case app.ConfigEvent:
+		case system.StageEvent:
+		case app.ViewEvent:
+			g.HWND = e.HWND
 		case system.DestroyEvent:
-			return "", e.Err
+			g.next(is.Closing)
+			return
 		case system.FrameEvent:
 			gtx := layout.NewContext(&ops, e)
 
-			app.Title(g.Title(""))
+			g.size = e.Size
 
-			cursor.Draw(gtx)
-
-			if g.Bar.Drag {
-				system.ActionInputOp(system.ActionMove).Add(gtx.Ops)
-
-			}
-
-			background := clip.Rect{
-				Max: gtx.Constraints.Max,
-			}.Push(gtx.Ops)
-			paint.ColorOp{Color: nrgba.Transparent30.Color()}.Add(gtx.Ops)
-			paint.PaintOp{}.Add(gtx.Ops)
-			background.Pop()
+			colorBox(gtx, gtx.Constraints.Max, nrgba.Transparent30)
 
 			g.Bar.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				return split.Layout(gtx,
 					func(gtx layout.Context) layout.Dimensions {
 						return fill(
 							gtx,
-							nrgba.BackgroundAlt,
+							nrgba.Background,
 							func(gtx layout.Context) layout.Dimensions {
 								{
-									header := material.H6(g.normal, title.Default)
-									header.Color = nrgba.White.Color()
-									header.Alignment = text.Middle
+									// layout.Inset{
+									// 	Top:  unit.Dp(2),
+									// 	Left: unit.Dp(4),
+									// }.Layout(gtx, header.Layout)
 
+									profileHeader.Text = fmt.Sprintf("%s // %s", strings.Title(config.Current.Profile), strings.Title(config.Current.Platform))
 									layout.Inset{
 										Left: unit.Dp(4),
-										Top:  unit.Dp(2),
-									}.Layout(gtx, header.Layout)
-
-									profileHeader := material.Caption(g.normal, fmt.Sprintf("%s // %s", strings.Title(config.Current.Profile), strings.Title(config.Current.Platform)))
-									profileHeader.Color = nrgba.DreamyPurple.Color()
-									profileHeader.Alignment = text.Middle
-									profileHeader.Font.Weight = font.Bold
-
-									layout.Inset{
-										Left: unit.Dp(4),
-										Top:  unit.Dp(27),
+										Top:  unit.Dp(35),
 									}.Layout(gtx, profileHeader.Layout)
 
-									win := config.Current.Window
-									if device.IsActive() {
-										win = device.Name(config.Current.VideoCaptureDevice)
+									switch {
+									case device.IsActive():
+										if windowHeader.Text == "" || windowHeader.Text == config.Current.Window {
+											windowHeader.Text = device.Name(config.Current.VideoCaptureDevice)
+										}
+									case window.IsOpen():
+										windowHeader.Text = config.Current.Window
+									case monitor.IsDisplay():
+										windowHeader.Text = config.Current.Window
 									}
-
-									windowHeader := material.Caption(g.normal, win)
-									windowHeader.Color = nrgba.DarkSeafoam.Color()
-									windowHeader.Alignment = text.Middle
-									windowHeader.Font.Weight = font.Bold
-
 									if config.Current.LostWindow != "" {
-										windowHeader = material.Caption(g.normal, config.Current.LostWindow)
+										windowHeader.Text = config.Current.LostWindow
 										windowHeader.Color = nrgba.PaleRed.Color()
 									}
-
 									layout.Inset{
 										Left: unit.Dp(4),
-										Top:  unit.Dp(45),
+										Top:  unit.Dp(50),
 									}.Layout(gtx, windowHeader.Layout)
 								}
 								{
-									cpu := material.H5(g.normal, g.cpu)
-									cpu.Color = nrgba.White.Color()
-									cpu.Alignment = text.Middle
-									cpu.TextSize = unit.Sp(11)
-
+									cpuLabel.Text = g.cpu
 									layout.Inset{
 										Top:  unit.Dp(28),
 										Left: unit.Dp(float32(gtx.Constraints.Max.X - 408)),
-									}.Layout(gtx, cpu.Layout)
+									}.Layout(gtx, cpuLabel.Layout)
 
-									cpuGraph := material.H5(g.cascadia, stats.CPUData())
-									cpuGraph.Color = nrgba.Gray.Color()
-									cpuGraph.TextSize = unit.Sp(9)
-
+									cpuGraph.Text = stats.CPUData()
 									layout.Inset{
 										Top:  unit.Dp(1),
 										Left: unit.Dp(float32(gtx.Constraints.Max.X - 450)),
 									}.Layout(gtx, cpuGraph.Layout)
 
-									ram := material.H5(g.normal, g.ram)
-									ram.Color = nrgba.White.Color()
-									ram.Alignment = text.Middle
-									ram.TextSize = unit.Sp(11)
-
+									ramLabel.Text = g.ram
 									layout.Inset{
 										Top:  unit.Dp(28),
 										Left: unit.Dp(float32(gtx.Constraints.Max.X - 248)),
-									}.Layout(gtx, ram.Layout)
+									}.Layout(gtx, ramLabel.Layout)
 
-									ramGraph := material.H5(g.cascadia, stats.RAMData())
-									ramGraph.Color = nrgba.Gray.Color()
-									ramGraph.TextSize = unit.Sp(9)
-
+									ramGraph.Text = stats.RAMData()
 									layout.Inset{
 										Top:  unit.Dp(1),
 										Left: unit.Dp(float32(gtx.Constraints.Max.X - 300)),
@@ -455,196 +576,161 @@ func (g *GUI) main() (next string, err error) {
 									if team.Energy.Holding < 10 {
 										h = "0" + h
 									}
-									holding := material.H5(g.normal, h)
-									holding.Color = team.Self.NRGBA.Color()
-									holding.Alignment = text.Middle
-									holding.TextSize = unit.Sp(13)
 
+									holdingLabel.Text = h
 									layout.Inset{
 										Top:  unit.Dp(50),
 										Left: unit.Dp(float32(gtx.Constraints.Max.X - 35)),
-									}.Layout(gtx, holding.Layout)
+									}.Layout(gtx, holdingLabel.Layout)
 								}
 								{
 									clients := server.Clients()
-
-									connectedClients := material.H5(g.normal, fmt.Sprintf("OBS %d", clients))
-									connectedClients.Color = nrgba.PaleRed.Color()
 									if clients > 0 {
-										connectedClients.Color = nrgba.Seafoam.Color()
+										connectedClientsLabel.Color = nrgba.Seafoam.Color()
+									} else {
+										connectedClientsLabel.Color = nrgba.PaleRed.Color()
 									}
-									connectedClients.Alignment = text.Middle
-									connectedClients.TextSize = unit.Sp(11)
 
+									connectedClientsLabel.Text = fmt.Sprintf("OBS %d", clients)
 									layout.Inset{
 										Top:  unit.Dp(34),
 										Left: unit.Dp(float32(gtx.Constraints.Max.X - 135)),
-									}.Layout(gtx, connectedClients.Layout)
+									}.Layout(gtx, connectedClientsLabel.Layout)
 								}
 								{
-									symbol := material.H5(g.normal, spinStop.Next())
-									symbol.Alignment = text.Middle
-									symbol.TextSize = unit.Sp(14)
-									symbol.Font.Weight = font.ExtraBold
-									symbol.Color = nrgba.Slate.Color()
-
-									acronym := material.H5(g.normal, "IDLE")
-									acronym.Alignment = text.Middle
-									acronym.TextSize = unit.Sp(11)
-									acronym.Color = nrgba.Slate.Color()
-
 									down := float32(1)
 									left := 1
 
-									if config.Current.Record {
-										symbol.Text = spinRecord.Next()
-										symbol.Color = nrgba.Red.Color()
-										symbol.TextSize = unit.Sp(20)
-										acronym.Font.Weight = font.ExtraBold
+									if g.Running {
+										symbolLabel.Text = spinRun.Next()
+										symbolLabel.Color = nrgba.Green.Color()
 
-										acronym.Text = "REC"
-										acronym.Color = nrgba.Red.Color()
+										acronymLabel.Text = "RUN"
+										acronymLabel.Color = nrgba.Green.Color()
 
-										left = 0
-										down = 0
-									} else if g.Running {
-										symbol.Text = spinRun.Next()
-										symbol.Color = nrgba.Green.Color()
-
-										acronym.Text = "RUN"
-										acronym.Color = nrgba.Green.Color()
-
-										left = 3
+										left = 1
 										down = .5
+									} else {
+										acronymLabel.Color = nrgba.Slate.Color()
+										symbolLabel.Color = nrgba.Slate.Color()
+										acronymLabel.Text = "IDLE"
 									}
 
+									symbolLabel.Text = spinStop.Next()
 									layout.Inset{
-										Top:  unit.Dp(46 + down),
+										Top:  unit.Dp(48 + down),
 										Left: unit.Dp(float32(gtx.Constraints.Max.X - 145 - left)),
-									}.Layout(gtx, symbol.Layout)
+									}.Layout(gtx, symbolLabel.Layout)
 
 									layout.Inset{
 										Top:  unit.Dp(50),
 										Left: unit.Dp(float32(gtx.Constraints.Max.X - 135)),
-									}.Layout(gtx, acronym.Layout)
+									}.Layout(gtx, acronymLabel.Layout)
 
 									if global.DebugMode {
-										dbg := material.H5(g.normal, "DBG")
-										dbg.Alignment = text.Middle
-										dbg.TextSize = unit.Sp(11)
-										dbg.Color = nrgba.SeaBlue.Color()
-
 										layout.Inset{
 											Top:  unit.Dp(18),
 											Left: unit.Dp(float32(gtx.Constraints.Max.X - 135)),
-										}.Layout(gtx, dbg.Layout)
+										}.Layout(gtx, dbgLabel.Layout)
 									}
+
+									switch {
+									case g.fps.frames == g.fps.max:
+										fpsLabel.Color = nrgba.Green.Color()
+									case g.fps.frames < g.fps.max/3:
+										fpsLabel.Color = nrgba.Red.Color()
+									case g.fps.frames < g.fps.max/2:
+										fpsLabel.Color = nrgba.Orange.Color()
+									case g.fps.frames < g.fps.max:
+										fpsLabel.Color = nrgba.Yellow.Color()
+									}
+
+									fpsLabel.Text = fmt.Sprintf("%d FPS", g.fps.frames)
+									layout.Inset{
+										Top:  unit.Dp(2),
+										Left: unit.Dp(float32(gtx.Constraints.Max.X - 135)),
+									}.Layout(gtx, fpsLabel.Layout)
 								}
 								{
 									o, p, s := server.Scores()
 
-									purple := material.H5(g.normal, fmt.Sprintf("%d", p))
-									purple.Color = team.Purple.NRGBA.Color()
-									purple.Alignment = text.Middle
-									purple.TextSize = unit.Sp(13)
-
+									purpleScoreLabel.Text = fmt.Sprintf("%d", p)
 									layout.Inset{
 										Top:  unit.Dp(2),
 										Left: unit.Dp(float32(gtx.Constraints.Max.X - 35)),
-									}.Layout(gtx, purple.Layout)
+									}.Layout(gtx, purpleScoreLabel.Layout)
 
-									orange := material.H5(g.normal, fmt.Sprintf("%d", o))
-									orange.Color = team.Orange.NRGBA.Color()
-									orange.Alignment = text.Middle
-									orange.TextSize = unit.Sp(13)
-
+									orangeScoreLabel.Text = fmt.Sprintf("%d", o)
 									layout.Inset{
 										Top:  unit.Dp(18),
 										Left: unit.Dp(float32(gtx.Constraints.Max.X - 35)),
-									}.Layout(gtx, orange.Layout)
+									}.Layout(gtx, orangeScoreLabel.Layout)
 
-									self := material.H5(g.normal, strconv.Itoa(s))
-									self.Color = team.Self.NRGBA.Color()
-									self.Alignment = text.Middle
-									self.TextSize = unit.Sp(13)
-
+									selfScoreLabel.Text = fmt.Sprintf("%d", s)
 									layout.Inset{
 										Top:  unit.Dp(34),
 										Left: unit.Dp(float32(gtx.Constraints.Max.X - 35)),
-									}.Layout(gtx, self.Layout)
+									}.Layout(gtx, selfScoreLabel.Layout)
 								}
 								{
-									clock := material.H5(g.normal, server.Clock())
-									clock.Color = nrgba.White.Color()
-									clock.Alignment = text.Middle
-									clock.TextSize = unit.Sp(13)
+									clockLabel.Text = server.Clock()
 									layout.Inset{
 										Top:  unit.Dp(2),
 										Left: unit.Dp(float32(gtx.Constraints.Max.X - 90)),
-									}.Layout(gtx, clock.Layout)
+									}.Layout(gtx, clockLabel.Layout)
 								}
 								{
-									regis := server.Regielekis()
-
-									for i, t := range regis {
-										if t == team.None.Name {
-											continue
+									for i, t := range server.Regielekis() {
+										regielekiLabels[i].Color = team.None.Color()
+										if t != team.None.Name {
+											regielekiLabels[i].Color = nrgba.Regieleki.Color()
 										}
 
-										r := material.H5(g.normal, "E")
-										r.Color = nrgba.Regieleki.Color()
-										r.Alignment = text.Middle
-										r.TextSize = unit.Sp(12)
+										regielekiUnderlineLabels[i].Color = team.Color(t).Color()
+									}
+
+									for i := range regielekiLabels {
 										layout.Inset{
 											Top:  unit.Dp(18),
 											Left: unit.Dp(float32(gtx.Constraints.Max.X-90) + float32(i*12)),
-										}.Layout(gtx, r.Layout)
+										}.Layout(gtx, regielekiLabels[i].Layout)
 
-										u := material.H5(g.normal, "_")
-										u.Color = team.Color(t).Color()
-										u.Alignment = text.Middle
-										u.TextSize = unit.Sp(18)
-										u.Font.Weight = font.Bold
 										layout.Inset{
 											Top:  unit.Dp(15),
 											Left: unit.Dp(float32(gtx.Constraints.Max.X-90) + float32(i*12)),
-										}.Layout(gtx, u.Layout)
+										}.Layout(gtx, regielekiUnderlineLabels[i].Layout)
 									}
 								}
 								{
-									regis := server.Bottom()
+									b := server.Bottom()
+									for i := range regiBottomLabels {
+										regiBottomLabels[i].Color = team.None.Color()
+										regiBottomLabels[i].Text = "R"
+										regiBottomUnderlineLabels[i].Color = regiBottomLabels[i].Color
 
-									for i, t := range regis {
-										r := material.H5(g.normal, strings.ToUpper(string(t.Name[4])))
-										r.Color = nrgba.Objective(t.Name).Color()
-										r.Alignment = text.Middle
-										r.TextSize = unit.Sp(12)
+										if i < len(b) {
+											t := b[i]
+											regiBottomLabels[i].Text = strings.ToUpper(string(t.Name[4]))
+											regiBottomLabels[i].Color = nrgba.Objective(t.Name).Color()
+											regiBottomUnderlineLabels[i].Color = team.Color(t.Team).Color()
+										}
+
 										layout.Inset{
 											Top:  unit.Dp(34),
 											Left: unit.Dp(float32(gtx.Constraints.Max.X-90) + float32(i*12)),
-										}.Layout(gtx, r.Layout)
+										}.Layout(gtx, regiBottomLabels[i].Layout)
 
-										u := material.H5(g.normal, "_")
-										u.Color = team.Color(t.Team).Color()
-										u.Alignment = text.Middle
-										u.TextSize = unit.Sp(18)
-										u.Font.Weight = font.Bold
 										layout.Inset{
 											Top:  unit.Dp(31),
 											Left: unit.Dp(float32(gtx.Constraints.Max.X-90) + float32(i*12)),
-										}.Layout(gtx, u.Layout)
+										}.Layout(gtx, regiBottomUnderlineLabels[i].Layout)
 									}
 								}
 								{
-									uptime := material.H5(g.normal, g.uptime)
-									uptime.Color = nrgba.Slate.Color()
-									uptime.Alignment = text.Middle
-									uptime.TextSize = unit.Sp(13)
-
 									layout.Inset{
 										Top:  unit.Dp(50),
 										Left: unit.Dp(float32(gtx.Constraints.Max.X - 90)),
-									}.Layout(gtx, uptime.Layout)
+									}.Layout(gtx, uptimeLabel.Layout)
 								}
 								{
 									layout.Inset{
@@ -664,198 +750,73 @@ func (g *GUI) main() (next string, err error) {
 					func(gtx layout.Context) layout.Dimensions {
 						return fill(
 							gtx,
-							nrgba.BackgroundAlt,
+							nrgba.Background,
 							func(gtx layout.Context) layout.Dimensions {
-								{
-									updateRecordButton()
-
-									layout.Inset{
-										Left: unit.Dp(float32(gtx.Constraints.Max.X - statsButton.Size.X - 2)),
-										Top:  unit.Dp(float32(gtx.Constraints.Min.Y + 2)),
-									}.Layout(
-										gtx,
-										func(gtx layout.Context) layout.Dimensions {
-											return statsButton.Layout(gtx)
-										},
-									)
-
-									layout.Inset{
-										Left: unit.Dp(float32(gtx.Constraints.Max.X - historyButton.Size.X*2 - 2)),
-										Top:  unit.Dp(float32(gtx.Constraints.Min.Y + 2)),
-									}.Layout(
-										gtx,
-										func(gtx layout.Context) layout.Dimensions {
-											return historyButton.Layout(gtx)
-										},
-									)
-
-									layout.Inset{
-										Left: unit.Dp(float32(gtx.Constraints.Max.X - obsButton.Size.X - 2)),
-										Top:  unit.Dp(float32(gtx.Constraints.Min.Y + obsButton.Size.Y + 2)),
-									}.Layout(
-										gtx,
-										func(gtx layout.Context) layout.Dimensions {
-											return obsButton.Layout(gtx)
-										},
-									)
-
-									layout.Inset{
-										Left: unit.Dp(float32(gtx.Constraints.Max.X - clearButton.Size.X*2 - 2)),
-										Top:  unit.Dp(float32(gtx.Constraints.Min.Y + clearButton.Size.Y + 2)),
-									}.Layout(
-										gtx,
-										func(gtx layout.Context) layout.Dimensions {
-											return clearButton.Layout(gtx)
-										},
-									)
-
-									layout.Inset{
-										Left: unit.Dp(float32(gtx.Constraints.Max.X - ecoButton.Size.X - 2)),
-										Top:  unit.Dp(float32(gtx.Constraints.Min.Y + ecoButton.Size.Y*2 + 2)),
-									}.Layout(
-										gtx,
-										func(gtx layout.Context) layout.Dimensions {
-											return ecoButton.Layout(gtx)
-										},
-									)
-
-									layout.Inset{
-										Left: unit.Dp(float32(gtx.Constraints.Max.X - controllerButton.Size.X*2 - 2)),
-										Top:  unit.Dp(float32(gtx.Constraints.Min.Y + controllerButton.Size.Y*2 + 2)),
-									}.Layout(
-										gtx,
-										func(gtx layout.Context) layout.Dimensions {
-											return controllerButton.Layout(gtx)
-										},
-									)
-								}
 								// Right-side criteria.
 								{
 									layout.Inset{
-										Left: unit.Dp(float32(gtx.Constraints.Max.X - 150)),
-										Top:  unit.Dp(float32(gtx.Constraints.Max.Y - 370)),
+										Top: unit.Dp(float32(gtx.Constraints.Max.Y - int(float32(startButton.Size.Y)*1.5))),
 									}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-										previewImage.SetImage(notify.Preview)
-
-										return layout.UniformInset(unit.Dp(10)).Layout(gtx,
-											func(gtx layout.Context) layout.Dimensions {
-												return previewImage.Layout(g.cascadia, gtx)
-											},
+										return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
+											layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+												return layout.Flex{Axis: layout.Horizontal}.Layout(
+													gtx,
+													layout.Flexed(.5, layout.Spacer{Width: unit.Dp(25)}.Layout),
+													layout.Rigid(startButton.Layout),
+													layout.Flexed(.5, layout.Spacer{Width: unit.Dp(25)}.Layout),
+													layout.Rigid(stopButton.Layout),
+													layout.Flexed(.5, layout.Spacer{Width: unit.Dp(25)}.Layout),
+												)
+											}),
 										)
 									})
-
-									layout.Inset{
-										Left: unit.Dp(float32(gtx.Constraints.Max.X - 125)),
-										Top:  unit.Dp(float32(gtx.Constraints.Max.Y - 265)),
-									}.Layout(
-										gtx,
-										func(gtx layout.Context) layout.Dimensions {
-											return startButton.Layout(gtx)
-										},
-									)
-
-									layout.Inset{
-										Left: unit.Dp(float32(gtx.Constraints.Max.X - 125)),
-										Top:  unit.Dp(float32(gtx.Constraints.Max.Y - 210)),
-									}.Layout(
-										gtx,
-										func(gtx layout.Context) layout.Dimensions {
-											return stopButton.Layout(gtx)
-										},
-									)
-
-									layout.Inset{
-										Left: unit.Dp(float32(gtx.Constraints.Max.X - 125)),
-										Top:  unit.Dp(float32(gtx.Constraints.Max.Y - 155)),
-									}.Layout(gtx,
-										func(gtx layout.Context) layout.Dimensions {
-											return configButton.Layout(gtx)
-										},
-									)
-
-									if recordButton.Disabled {
-										layout.Inset{
-											Left: unit.Dp(float32(gtx.Constraints.Max.X - 125)),
-											Top:  unit.Dp(float32(gtx.Constraints.Max.Y - 100)),
-										}.Layout(
-											gtx,
-											func(gtx layout.Context) layout.Dimensions {
-												return logButton.Layout(gtx)
-											},
-										)
-									} else {
-										layout.Inset{
-											Left: unit.Dp(float32(gtx.Constraints.Max.X - 125)),
-											Top:  unit.Dp(float32(gtx.Constraints.Max.Y - 100)),
-										}.Layout(
-											gtx,
-											func(gtx layout.Context) layout.Dimensions {
-												return recordButton.Layout(gtx)
-											},
-										)
-									}
-
-									layout.Inset{
-										Left: unit.Dp(float32(gtx.Constraints.Max.X - 125)),
-										Top:  unit.Dp(float32(gtx.Constraints.Max.Y - 45)),
-									}.Layout(
-										gtx,
-										func(gtx layout.Context) layout.Dimensions {
-											return openButton.Layout(gtx)
-										},
-									)
 								}
+
 								// Event images.
 								{
+
 									layout.Inset{
-										Top:  unit.Dp(65),
+										Top: unit.Dp(60),
+									}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+										projectorWindowButton.SetImage(notify.Preview)
+										return layout.UniformInset(unit.Dp(5)).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+											return projectorWindowButton.Layout(g.cascadia, gtx)
+										})
+									})
+
+									layout.Inset{
+										Top:  unit.Dp(147),
 										Left: unit.Dp(float32(gtx.Constraints.Max.X - 150)),
 									}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 										return layout.UniformInset(unit.Dp(5)).Layout(gtx,
-											(&screen.Screen{
-												Border:      true,
-												BorderColor: team.Purple.NRGBA,
-												Image:       notify.PurpleScore,
-											}).Layout,
+											purpleScoreScreen.Layout,
 										)
 									})
 
 									layout.Inset{
-										Top:  unit.Dp(127),
+										Top:  unit.Dp(209),
 										Left: unit.Dp(float32(gtx.Constraints.Max.X - 150)),
 									}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 										return layout.UniformInset(unit.Dp(5)).Layout(gtx,
-											(&screen.Screen{
-												Border:      true,
-												BorderColor: team.Orange.NRGBA,
-												Image:       notify.OrangeScore,
-											}).Layout,
+											orangeScoreScreen.Layout,
 										)
 									})
 
 									layout.Inset{
-										Top:  unit.Dp(189),
+										Top:  unit.Dp(271),
 										Left: unit.Dp(float32(gtx.Constraints.Max.X - 68)),
 									}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 										return layout.UniformInset(unit.Dp(5)).Layout(gtx,
-											(&screen.Screen{
-												Border:      true,
-												BorderColor: team.Energy.NRGBA,
-												Image:       notify.Energy,
-											}).Layout,
+											energyScoreScreen.Layout,
 										)
 									})
 
 									layout.Inset{
-										Top:  unit.Dp(251),
+										Top:  unit.Dp(333),
 										Left: unit.Dp(float32(gtx.Constraints.Max.X - 68)),
 									}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 										return layout.UniformInset(unit.Dp(5)).Layout(gtx,
-											(&screen.Screen{
-												Border:      true,
-												BorderColor: team.Time.NRGBA,
-												Image:       notify.Time,
-											}).Layout,
+											timeScreen.Layout,
 										)
 									})
 								}
@@ -867,9 +828,7 @@ func (g *GUI) main() (next string, err error) {
 				)
 			})
 
-			e.Frame(gtx.Ops)
+			g.frame(gtx, e)
 		}
 	}
-
-	return next, nil
 }

@@ -7,7 +7,6 @@ import (
 	"syscall"
 	"time"
 
-	"gioui.org/font/gofont"
 	"gioui.org/io/pointer"
 	"gioui.org/layout"
 	"gioui.org/op/clip"
@@ -18,12 +17,14 @@ import (
 	"gocv.io/x/gocv"
 
 	"github.com/pidgy/unitehud/config"
+	"github.com/pidgy/unitehud/fonts"
 	"github.com/pidgy/unitehud/gui/visual/button"
+	"github.com/pidgy/unitehud/gui/visual/title"
 	"github.com/pidgy/unitehud/nrgba"
 	"github.com/pidgy/unitehud/video"
 	"github.com/pidgy/unitehud/video/device"
+	"github.com/pidgy/unitehud/video/monitor"
 	"github.com/pidgy/unitehud/video/proc"
-	"github.com/pidgy/unitehud/video/screen"
 	"github.com/pidgy/unitehud/video/window"
 )
 
@@ -45,7 +46,7 @@ type Area struct {
 
 	*Capture
 
-	Match    func(*Area) bool
+	Match    func(*Area) (bool, error)
 	Cooldown time.Duration
 	readyq   chan bool
 
@@ -61,6 +62,11 @@ type Area struct {
 	lastDimsSize image.Point
 	lastRelease  time.Time
 	lastScale    float64
+
+	matched struct {
+		err error
+		ok  bool
+	}
 }
 
 type Capture struct {
@@ -71,84 +77,44 @@ type Capture struct {
 	Matched *Area
 }
 
-func (a *Area) Layout(gtx layout.Context, dims layout.Dimensions, img image.Image) error {
-	if img == nil || dims.Size.X == 0 || a.Base.Max.X == 0 {
+func (a *Area) Layout(gtx layout.Context, dims layout.Constraints, img image.Image) (err error) {
+	if img == nil || dims.Max.X == 0 || a.Base.Max.X == 0 {
 		return nil
 	}
-	defer a.match()
+	defer func() { err = a.match() }()
 
 	if a.Button == nil {
-		a.Button = &button.Button{Active: false}
+		a.Button = &button.Button{}
 	}
 
 	if a.Theme == nil {
-		a.Theme = material.NewTheme(gofont.Collection())
+		a.Theme = fonts.Default().Theme
 	}
 
 	// Scale
-	a.TextSize = unit.Sp(24) * unit.Sp(float32(dims.Size.X)/float32(img.Bounds().Max.X))
+	a.TextSize = unit.Sp(24) * unit.Sp(float32(dims.Max.X)/float32(img.Bounds().Max.X))
+
+	rect := clip.Rect{
+		Min: a.Min.Add(image.Pt(0, title.Height)),
+		Max: a.Max.Add(image.Pt(0, title.Height)),
+	}
 
 	if a.Hidden {
-		layout.UniformInset(unit.Dp(0)).Layout(
-			gtx,
-			func(gtx layout.Context) layout.Dimensions {
-				area := clip.Rect{
-					Min: a.Min,
-					Max: a.Max,
-				}.Push(gtx.Ops)
-				defer area.Pop()
-
-				paint.ColorOp{Color: a.Alpha(alpha).Color()}.Add(gtx.Ops)
-				paint.PaintOp{}.Add(gtx.Ops)
-
-				return layout.Dimensions{Size: a.Max.Sub(a.Min)}
-			},
-		)
-
-		layout.Inset{
-			Left: unit.Dp(float32(a.Min.X)),
-			Top:  unit.Dp(float32(a.Min.Y)),
-		}.Layout(
-			gtx,
-			func(gtx layout.Context) layout.Dimensions {
-				title := material.Body1(a.Theme, a.Text)
-				title.TextSize = a.TextSize
-				title.Font.Weight = 500
-				title.Color = nrgba.White.Color()
-				layout.Inset{
-					Left: unit.Dp(2),
-					Top:  unit.Dp(1),
-				}.Layout(gtx, title.Layout)
-
-				sub := material.Body2(a.Theme, a.Subtext)
-				sub.TextSize = a.TextSize * unit.Sp(.75) // Scale.
-				sub.Font.Weight = 1000
-				sub.Color = nrgba.White.Alpha(175).Color()
-
-				layout.Inset{
-					Left: unit.Dp(2),
-					Top:  unit.Dp(unit.Sp(a.Max.Sub(a.Min).Y) - a.TextSize),
-				}.Layout(gtx, sub.Layout)
-
-				return layout.Dimensions{Size: a.Max.Sub(a.Min)}
-			},
-		)
-
 		return nil
 	}
 
-	if !a.lastDimsSize.Eq(dims.Size) {
+	if !a.lastDimsSize.Eq(dims.Max) {
 		minXScale := float32(a.Base.Min.X) / float32(img.Bounds().Max.X)
 		maxXScale := float32(a.Base.Max.X) / float32(img.Bounds().Max.X)
 		minYScale := float32(a.Base.Min.Y) / float32(img.Bounds().Max.Y)
 		maxYScale := float32(a.Base.Max.Y) / float32(img.Bounds().Max.Y)
 
-		a.Min.X = int(float32(dims.Size.X) * minXScale)
-		a.Max.X = int(float32(dims.Size.X) * maxXScale)
-		a.Min.Y = int(float32(dims.Size.Y) * minYScale)
-		a.Max.Y = int(float32(dims.Size.Y) * maxYScale)
+		a.Min.X = int(float32(dims.Max.X) * minXScale)
+		a.Max.X = int(float32(dims.Max.X) * maxXScale)
+		a.Min.Y = int(float32(dims.Max.Y) * minYScale)
+		a.Max.Y = int(float32(dims.Max.Y) * maxYScale)
 
-		a.lastDimsSize = dims.Size
+		a.lastDimsSize = dims.Max
 
 		if a.lastScale == 0 {
 			a.baseMin, a.baseMax = a.Min, a.Max
@@ -178,9 +144,6 @@ func (a *Area) Layout(gtx layout.Context, dims layout.Dimensions, img image.Imag
 			a.NRGBA.A = alpha
 		case pointer.Cancel:
 		case pointer.Press:
-			if !a.Active {
-				break
-			}
 		case pointer.Release:
 			if a.Drag {
 				a.Drag = false
@@ -190,14 +153,14 @@ func (a *Area) Layout(gtx layout.Context, dims layout.Dimensions, img image.Imag
 				baseMinYScale := float32(a.Min.Y) * float32(img.Bounds().Max.Y)
 				baseMaxYScale := float32(a.Max.Y) * float32(img.Bounds().Max.Y)
 
-				a.Base.Min.X = int(baseMinXScale / float32(dims.Size.X))
-				a.Base.Max.X = int(baseMaxXScale / float32(dims.Size.X))
-				a.Base.Min.Y = int(baseMinYScale / float32(dims.Size.Y))
-				a.Base.Max.Y = int(baseMaxYScale / float32(dims.Size.Y))
+				a.Base.Min.X = int(baseMinXScale / float32(dims.Max.X))
+				a.Base.Max.X = int(baseMaxXScale / float32(dims.Max.X))
+				a.Base.Min.Y = int(baseMinYScale / float32(dims.Max.Y))
+				a.Base.Max.Y = int(baseMaxYScale / float32(dims.Max.Y))
 			} else {
 				s := time.Since(a.lastRelease)
 				if s > time.Millisecond*100 && s < time.Millisecond*500 {
-					err := a.Capture.Open()
+					err = a.Capture.Open()
 					if err != nil {
 						return err
 					}
@@ -221,23 +184,17 @@ func (a *Area) Layout(gtx layout.Context, dims layout.Dimensions, img image.Imag
 	layout.UniformInset(unit.Dp(0)).Layout(
 		gtx,
 		func(gtx layout.Context) layout.Dimensions {
-			area := clip.Rect{
-				Min: a.Min,
-				Max: a.Max,
-			}.Push(gtx.Ops)
+			area := rect.Push(gtx.Ops)
 			defer area.Pop()
 
 			paint.ColorOp{Color: a.Alpha(alpha).Color()}.Add(gtx.Ops)
 			paint.PaintOp{}.Add(gtx.Ops)
 
-			return layout.Dimensions{Size: a.Max.Sub(a.Min)}
+			return layout.Dimensions{Size: rect.Max.Sub(rect.Min)}
 		},
 	)
 
-	area := clip.Rect{
-		Min: a.Min,
-		Max: a.Max,
-	}.Push(gtx.Ops)
+	area := rect.Push(gtx.Ops)
 	pointer.InputOp{
 		Tag:   a,
 		Types: pointer.Press | pointer.Drag | pointer.Release | pointer.Leave | pointer.Enter | pointer.Move,
@@ -245,26 +202,28 @@ func (a *Area) Layout(gtx layout.Context, dims layout.Dimensions, img image.Imag
 	}.Add(gtx.Ops)
 	area.Pop()
 
-	layout.Inset{
-		Left: unit.Dp(float32(a.Min.X)),
-		Top:  unit.Dp(float32(a.Min.Y)),
-	}.Layout(
-		gtx,
-		func(gtx layout.Context) layout.Dimensions {
-			return widget.Border{
-				Color: a.Alpha(255).Color(),
-				Width: unit.Dp(2),
-			}.Layout(
-				gtx,
-				func(gtx layout.Context) layout.Dimensions {
-					defer clip.Rect{Min: a.Min, Max: a.Max}.Push(gtx.Ops).Pop()
-					return layout.Dimensions{Size: a.Max.Sub(a.Min)}
-				})
-		})
+	if !a.Hidden {
+		layout.Inset{
+			Left: unit.Dp(rect.Min.X),
+			Top:  unit.Dp(rect.Min.Y),
+		}.Layout(
+			gtx,
+			func(gtx layout.Context) layout.Dimensions {
+				return widget.Border{
+					Color: a.Alpha(255).Color(),
+					Width: unit.Dp(2),
+				}.Layout(
+					gtx,
+					func(gtx layout.Context) layout.Dimensions {
+						defer rect.Push(gtx.Ops).Pop()
+						return layout.Dimensions{Size: rect.Max.Sub(rect.Min)}
+					})
+			})
+	}
 
 	layout.Inset{
-		Left: unit.Dp(float32(a.Min.X)),
-		Top:  unit.Dp(float32(a.Min.Y)),
+		Left: unit.Dp(rect.Min.X),
+		Top:  unit.Dp(rect.Min.Y),
 	}.Layout(
 		gtx,
 		func(gtx layout.Context) layout.Dimensions {
@@ -278,6 +237,7 @@ func (a *Area) Layout(gtx layout.Context, dims layout.Dimensions, img image.Imag
 			}.Layout(gtx, title.Layout)
 
 			sub := material.Body2(a.Theme, a.Subtext)
+
 			// Scale.
 			sub.TextSize = a.TextSize * unit.Sp(.75)
 			sub.Font.Weight = 1000
@@ -285,14 +245,14 @@ func (a *Area) Layout(gtx layout.Context, dims layout.Dimensions, img image.Imag
 
 			layout.Inset{
 				Left: unit.Dp(2),
-				Top:  unit.Dp(unit.Sp(a.Max.Sub(a.Min).Y) - a.TextSize),
+				Top:  unit.Dp(unit.Sp(rect.Max.Sub(rect.Min).Y) - a.TextSize),
 			}.Layout(gtx, sub.Layout)
 
-			return layout.Dimensions{Size: a.Max.Sub(a.Min)}
+			return layout.Dimensions{Size: rect.Max.Sub(rect.Min)}
 		},
 	)
 
-	return nil
+	return
 }
 
 func (c *Capture) Rectangle() image.Rectangle {
@@ -303,9 +263,9 @@ func (a *Area) Reset() {
 	a.lastDimsSize = image.Pt(0, 0)
 }
 
-func (a *Area) match() {
+func (a *Area) match() error {
 	if a.Drag || a.Focus {
-		return
+		return nil
 	}
 
 	if a.readyq == nil {
@@ -313,23 +273,27 @@ func (a *Area) match() {
 		go func() { a.readyq <- true }()
 	}
 
-	if !device.IsActive() && !screen.IsDisplay() && !window.IsWindow() {
-		return
+	if !device.IsActive() && !monitor.IsDisplay() && !window.IsOpen() {
+		return nil
 	}
 
 	select {
 	case <-a.readyq:
 		go func() {
-			if a.Match(a) {
+			a.matched.ok, a.matched.err = a.Match(a)
+
+			a.Capture.Matched = nil
+			if a.matched.ok {
 				a.Capture.Matched = a
-			} else {
-				a.Capture.Matched = nil
 			}
+
 			time.Sleep(a.Cooldown)
 			a.readyq <- true
 		}()
 	default:
 	}
+
+	return a.matched.err
 }
 
 func (c *Capture) Open() error {

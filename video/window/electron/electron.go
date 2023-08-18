@@ -2,14 +2,17 @@ package electron
 
 import (
 	"fmt"
-	"os"
-	"runtime"
-	"strings"
+	"time"
 
 	"github.com/asticode/go-astikit"
 	"github.com/asticode/go-astilectron"
 	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/notify"
+	"github.com/pidgy/unitehud/video/monitor"
+)
+
+const (
+	Title = "UniteHUD Overlay"
 )
 
 var (
@@ -23,38 +26,34 @@ func Close() {
 	}()
 
 	if window != nil {
-		notify.System("Closing %s (%s)", config.BrowserWindow, config.Current.BrowserWindowURL)
+		notify.System("Closing %s", Title)
 
 		err := window.Destroy()
 		if err != nil {
-			notify.Warn("Failed to close %s (%v)", config.BrowserWindow, err)
+			notify.Warn("Failed to close %s (%v)", Title, err)
 		}
 	}
 
 	if app != nil {
-		notify.System("Closing %s Controller (%s)", config.BrowserWindow, config.Current.BrowserWindowURL)
+		notify.System("Closing %s Controller", Title)
 
 		err := app.Quit()
 		if err != nil {
-			notify.Warn("Failed to close %s Controller (%v)", config.BrowserWindow, err)
+			notify.Warn("Failed to close %s Controller (%v)", Title, err)
 		}
 	}
 }
 
+func IsOpen() bool {
+	return app != nil && window != nil
+}
+
 func Open() error {
-	if app != nil && window != nil {
+	if IsOpen() {
 		return nil
 	}
 
-	if config.Current.BrowserWindowURL == "" {
-		resetWindow(astilectron.Event{})
-		return fmt.Errorf("Failed to open %s (no url provided)", config.BrowserWindow)
-	}
-
-	notify.System("Opening %s (%s)", config.BrowserWindow, config.Current.BrowserWindowURL)
-
-	// Prevent main thread blocking errors in a goroutine.
-	runtime.LockOSThread()
+	notify.System("Opening %s", Title)
 
 	err := openApp()
 	if err != nil {
@@ -73,13 +72,13 @@ func openApp() error {
 	var err error
 
 	app, err = astilectron.New(nil, astilectron.Options{
-		AppName:            config.BrowserWindow,
+		AppName:            Title,
 		BaseDirectoryPath:  ".",
 		DataDirectoryPath:  "./assets/electron",
 		AppIconDefaultPath: "./assets/icon/icon.png",
 	})
 	if err != nil {
-		return fmt.Errorf("Failed to start app for %s (%v)", config.BrowserWindow, err)
+		return fmt.Errorf("Failed to start app for %s (%v)", Title, err)
 	}
 
 	app.HandleSignals()
@@ -95,79 +94,64 @@ func openWindow() error {
 	errq := make(chan error)
 
 	go func() {
-		hd, ok := embedded(config.Current.BrowserWindowURL)
-		if !ok {
-			notify.System("%s is optimized for youtube.com/embed URLs", config.BrowserWindow)
+		url := `./www/UniteHUD Client.html`
+		if config.Current.Profile == config.ProfileBroadcaster {
+			url = "./www/UniteHUD Broadcaster.html"
 		}
 
-		w, h := 1920, 1080
+		area := monitor.MainResolution()
+		w, h := area.Max.X, area.Max.X
 
 		var err error
 
-		window, err = app.NewWindow(hd, &astilectron.WindowOptions{
-			AlwaysOnTop:            astikit.BoolPtr(false),
-			BackgroundColor:        astikit.StrPtr("#0a0814"),
-			Center:                 astikit.BoolPtr(true),
-			Closable:               astikit.BoolPtr(config.Current.DisableBrowserFormatting),
-			EnableLargerThanScreen: astikit.BoolPtr(true),
-			Focusable:              astikit.BoolPtr(config.Current.DisableBrowserFormatting),
+		window, err = app.NewWindow(url, &astilectron.WindowOptions{
+			Width:     astikit.IntPtr(w),
+			Height:    astikit.IntPtr(h),
+			MaxWidth:  astikit.IntPtr(w),
+			MaxHeight: astikit.IntPtr(h),
+			MinWidth:  astikit.IntPtr(w),
+			MinHeight: astikit.IntPtr(h),
+
+			Fullscreen:  astikit.BoolPtr(true),
+			Minimizable: astikit.BoolPtr(false),
+			Resizable:   astikit.BoolPtr(true),
+			Center:      astikit.BoolPtr(true),
+			Closable:    astikit.BoolPtr(true),
+
+			Transparent: astikit.BoolPtr(true),
+			AlwaysOnTop: astikit.BoolPtr(true),
+
+			EnableLargerThanScreen: astikit.BoolPtr(false),
+			Focusable:              astikit.BoolPtr(false),
 			Frame:                  astikit.BoolPtr(false),
-			HasShadow:              astikit.BoolPtr(true),
-			Height:                 astikit.IntPtr(h),
+			HasShadow:              astikit.BoolPtr(false),
 			Icon:                   astikit.StrPtr("./assets/icon/icon_browser.png"),
-			MaxWidth:               astikit.IntPtr(w),
-			MaxHeight:              astikit.IntPtr(h),
-			Minimizable:            astikit.BoolPtr(false),
-			Resizable:              astikit.BoolPtr(false),
-			Show:                   astikit.BoolPtr(true),
-			Width:                  astikit.IntPtr(w),
-			WebPreferences: &astilectron.WebPreferences{
-				BackgroundThrottling: astikit.BoolPtr(false),
-				Webaudio:             astikit.BoolPtr(false),
-			},
+
+			Show: astikit.BoolPtr(true),
+
+			WebPreferences: &astilectron.WebPreferences{},
 		})
 		if err != nil {
-			errq <- fmt.Errorf("Failed to create %s (%v)", config.BrowserWindow, err)
+			errq <- fmt.Errorf("Failed to create %s (%v)", Title, err)
 			return
 		}
+
+		waitq := make(chan bool)
+		app.On(astilectron.EventNameAppEventReady, func(e astilectron.Event) (deleteListener bool) {
+			println("waiting")
+			time.Sleep(time.Second * 3)
+			return <-waitq
+		})
 
 		err = window.Create()
 		if err != nil {
-			errq <- fmt.Errorf("Failed to open %s (%v)", config.BrowserWindow, err)
+			errq <- fmt.Errorf("Failed to open %s (%v)", Title, err)
 			return
 		}
 
-		err = window.SetBounds(astilectron.RectangleOptions{
-			SizeOptions: astilectron.SizeOptions{
-				Height: astikit.IntPtr(h),
-				Width:  astikit.IntPtr(w),
-			},
-			PositionOptions: astilectron.PositionOptions{
-				X: astikit.IntPtr(0),
-				Y: astikit.IntPtr(10),
-			},
-		})
-		if err != nil {
-			notify.Warn("Failed to set %s bounds (%v)", config.BrowserWindow, err)
-		}
-
-		if !config.Current.DisableBrowserFormatting {
-			for _, script := range []string{"style.js", "video.js", "ads.js"} {
-				buf, err := os.ReadFile(fmt.Sprintf("assets/js/%s", script))
-				if err != nil {
-					notify.Warn("Failed to find %s %s script (%v)", config.BrowserWindow, script, err)
-					continue
-				}
-
-				err = window.ExecuteJavaScript(string(buf))
-				if err != nil {
-					notify.Warn("Failed to execute %s %s script (%v)", config.BrowserWindow, script, err)
-					continue
-				}
-			}
-		}
-
 		close(errq)
+
+		waitq <- true
 
 		app.Wait()
 	}()
@@ -180,32 +164,8 @@ func resetWindow(e astilectron.Event) (deleteListener bool) {
 		return true
 	}
 
-	notify.SystemWarn("%s closed by user, display has been set to %s", config.BrowserWindow, config.MainDisplay)
+	notify.SystemWarn("%s closed by user, display has been set to %s", Title, config.MainDisplay)
 	config.Current.Window = config.MainDisplay
 
 	return true
-}
-
-func embedded(url string) (string, bool) {
-	if config.Current.DisableBrowserFormatting {
-		return url, true
-	}
-
-	args := strings.Split(url, "youtube.com")
-	if len(args) > 2 {
-		return url, false
-	}
-
-	switch {
-	case strings.Contains(url, "watch?v="):
-		// youtube.com/watch?v=9WYKYLOm5zo
-		// -> youtube.com/embed/9WYKYLOm5zo
-		return fmt.Sprintf("%s?autoplay=1&vq=hd1080&mute=1", strings.ReplaceAll(url, "watch?v=", "embed/")), true
-	case strings.Contains(url, "live/"):
-		// youtube.com/live/9WYKYLOm5zo
-		// -> youtube.com/embed/9WYKYLOm5zo
-		return fmt.Sprintf("%s?autoplay=1&vq=hd1080&mute=1", strings.ReplaceAll(url, "live/", "embed/")), true
-	default:
-		return fmt.Sprintf("%s?autoplay=1&vq=hd1080&mute=1", url), true
-	}
 }

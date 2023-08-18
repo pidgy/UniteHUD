@@ -4,6 +4,7 @@ import (
 	"image"
 
 	"gioui.org/font"
+	"gioui.org/io/pointer"
 	"gioui.org/layout"
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
@@ -11,6 +12,7 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 
+	"github.com/pidgy/unitehud/cursor"
 	"github.com/pidgy/unitehud/nrgba"
 )
 
@@ -40,6 +42,49 @@ type Item struct {
 	Callback func(*Item)
 }
 
+func (l *List) Checked() *Item {
+	for _, item := range l.Items {
+		if item.Checked.Value {
+			return item
+		}
+	}
+	return nil
+}
+
+func (l *List) Default() *Item {
+	if len(l.Items) == 0 {
+		return &Item{}
+	}
+	return l.Items[0]
+}
+
+func (l *List) Disable() {
+	for _, item := range l.Items {
+		item.Checked.Value = false
+		if item.Text == "Disabled" {
+			item.Checked.Value = true
+		}
+	}
+}
+
+func (l *List) Disabled() {
+	for _, item := range l.Items {
+		if item.Text == "Disabled" {
+			item.Checked.Value = true
+			return
+		}
+	}
+}
+
+func (l *List) Enabled() {
+	for _, item := range l.Items {
+		if item.Text == "Disabled" {
+			item.Checked.Value = false
+			return
+		}
+	}
+}
+
 // Layout handles drawing the letters view.
 func (l *List) Layout(gtx layout.Context, th *material.Theme) layout.Dimensions {
 	if l.list == nil {
@@ -62,8 +107,12 @@ func (l *List) Layout(gtx layout.Context, th *material.Theme) layout.Dimensions 
 		check := material.CheckBox(th, &item.Checked, item.Text)
 		check.Font.Weight = font.Weight(item.Weight)
 		check.Color = nrgba.White.Color()
-		check.Size = unit.Dp(14)
-		check.TextSize = unit.Sp(14)
+		check.Size = unit.Dp(l.TextSize)
+		check.TextSize = unit.Sp(l.TextSize)
+		if l.TextSize == 0 {
+			check.Size = unit.Dp(14)
+			check.TextSize = unit.Sp(14)
+		}
 		check.IconColor = nrgba.White.Alpha(50).Color()
 
 		if item.Checked.Changed() {
@@ -99,7 +148,7 @@ func (l *List) Layout(gtx layout.Context, th *material.Theme) layout.Dimensions 
 			check.Color = Disabled
 		}
 		switch {
-		case item.Checked.Hovered():
+		case item.Checked.Hovered(), item.Checked.Focused():
 			hoverItem(gtx, index)
 		case item.Checked.Value:
 			selectedItem(gtx, index)
@@ -131,6 +180,8 @@ func (l *List) Layout(gtx layout.Context, th *material.Theme) layout.Dimensions 
 }
 
 func selectedItem(gtx layout.Context, index int) {
+	cursor.Is(pointer.CursorDefault)
+
 	widget.Border{
 		Color:        nrgba.White.Alpha(5).Color(),
 		Width:        unit.Dp(1),
@@ -153,6 +204,8 @@ func selectedItem(gtx layout.Context, index int) {
 }
 
 func hoverItem(gtx layout.Context, index int) {
+	cursor.Is(pointer.CursorPointer)
+
 	colorRect(gtx,
 		clip.Rect{
 			Min: image.Pt(
