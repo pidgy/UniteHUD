@@ -125,6 +125,10 @@ func New() {
 			max    int
 			ticks  int
 		}{0, 60, 0},
+
+		cpu:    "0%",
+		ram:    "0MB",
+		uptime: "00:00",
 	}
 
 	Window.Bar = title.New(

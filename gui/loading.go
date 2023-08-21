@@ -30,7 +30,7 @@ type loading struct {
 func (g *GUI) loading() {
 	l := &loading{
 		message: "Loading...",
-		tick:    time.NewTicker(time.Second / 2).C,
+		tick:    time.NewTicker(time.Millisecond * 250).C,
 	}
 
 	go l.while(g)
@@ -51,10 +51,10 @@ func (g *GUI) loading() {
 	dims := layout.Dimensions{}
 	inset := layout.Inset{}
 
-	messageLabel := material.Label(fonts.Calibri().Theme, unit.Sp(28), l.message)
+	messageLabel := material.Label(fonts.Calibri().Theme, unit.Sp(18.5), l.message)
 	messageLabel.Alignment = text.Middle
 	messageLabel.Color = nrgba.White.Color()
-	messageLabel.Font.Weight = 400
+	messageLabel.Font.Weight = 50
 
 	g.Window.Perform(system.ActionCenter)
 	g.Window.Perform(system.ActionRaise)
@@ -62,8 +62,7 @@ func (g *GUI) loading() {
 	var ops op.Ops
 
 	for g.is == is.Loading {
-		e := <-g.Events()
-		switch e := e.(type) {
+		switch e := (<-g.Events()).(type) {
 		case app.ViewEvent:
 			g.HWND = e.HWND
 		case system.DestroyEvent:
@@ -99,7 +98,6 @@ func (g *GUI) loading() {
 						return messageLabel.Layout(gtx)
 					})
 				})
-
 			})
 
 			g.frame(gtx, e)
@@ -110,10 +108,9 @@ func (g *GUI) loading() {
 }
 
 func (l *loading) while(g *GUI) {
-	for iter := 0; g.is == is.Loading; {
-		select {
-		case <-l.tick:
-			l.message, iter = notify.Iter(iter)
-		}
+	i := 0
+
+	for ; g.is == is.Loading; <-l.tick {
+		l.message, i = notify.Iter(i)
 	}
 }

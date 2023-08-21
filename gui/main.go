@@ -469,7 +469,7 @@ func (g *GUI) main() {
 	}
 
 	uptimeLabel := material.H5(g.normal, g.uptime)
-	uptimeLabel.Color = nrgba.Slate.Color()
+	uptimeLabel.Color = nrgba.DreamyPurple.Color()
 	uptimeLabel.Alignment = text.Middle
 	uptimeLabel.TextSize = unit.Sp(14)
 
@@ -727,6 +727,8 @@ func (g *GUI) main() {
 									}
 								}
 								{
+									uptimeLabel.Text = g.uptime
+
 									layout.Inset{
 										Top:  unit.Dp(50),
 										Left: unit.Dp(float32(gtx.Constraints.Max.X - 90)),

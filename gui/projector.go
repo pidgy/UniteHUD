@@ -64,7 +64,7 @@ func (g *GUI) projector() {
 		theme: g.normal,
 		since: time.Now(),
 
-		listTextSize: float32(12),
+		listTextSize: float32(14),
 	}
 
 	session, err := audio.New(audio.Disabled, audio.Default)

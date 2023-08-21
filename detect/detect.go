@@ -269,7 +269,7 @@ func Objectives() {
 			continue
 		}
 
-		done := false
+		early := false
 
 		if time.Since(top) > time.Minute {
 			switch e := state.EventType(e); e {
@@ -279,55 +279,65 @@ func Objectives() {
 				server.SetRegieleki(team.Orange)
 				top = time.Now()
 
-				done = true
+				early = true
 			case state.RegielekiSecurePurple:
 				state.Add(e, server.Clock(), 0)
 				notify.Feed(team.Purple.NRGBA, "[%s] [%s] Regieleki secured", server.Clock(), strings.Title(team.Purple.Name))
 				server.SetRegieleki(team.Purple)
 				top = time.Now()
 
-				done = true
+				early = true
 			}
 		}
 
-		if !done && time.Since(bottom) > time.Minute {
+		if !early && time.Since(bottom) > time.Minute {
 			switch e := state.EventType(e); e {
 			case state.RegiceSecureOrange:
 				state.Add(e, server.Clock(), 0)
 				notify.Feed(team.Orange.NRGBA, "[%s] [%s] Regice secured", server.Clock(), strings.Title(team.Orange.Name))
 				server.SetRegice(team.Orange)
 				bottom = time.Now()
+
+				early = true
 			case state.RegiceSecurePurple:
 				state.Add(e, server.Clock(), 0)
 				notify.Feed(team.Purple.NRGBA, "[%s] [%s] Regice secured", server.Clock(), strings.Title(team.Purple.Name))
 				server.SetRegice(team.Purple)
 				bottom = time.Now()
 
+				early = true
 			case state.RegirockSecureOrange:
 				state.Add(e, server.Clock(), 0)
 				notify.Feed(team.Orange.NRGBA, "[%s] [%s] Regirock secured", server.Clock(), strings.Title(team.Orange.Name))
 				server.SetRegirock(team.Orange)
 				bottom = time.Now()
+
+				early = true
 			case state.RegirockSecurePurple:
 				state.Add(e, server.Clock(), 0)
 				notify.Feed(team.Purple.NRGBA, "[%s] [%s] Regirock secured", server.Clock(), strings.Title(team.Purple.Name))
 				server.SetRegirock(team.Purple)
 				bottom = time.Now()
 
+				early = true
 			case state.RegisteelSecureOrange:
 				state.Add(e, server.Clock(), 0)
 				notify.Feed(team.Orange.NRGBA, "[%s] [%s] Registeel secured", server.Clock(), strings.Title(team.Orange.Name))
 				server.SetRegisteel(team.Orange)
 				bottom = time.Now()
+
+				early = true
 			case state.RegisteelSecurePurple:
 				state.Add(e, server.Clock(), 0)
 				notify.Feed(team.Purple.NRGBA, "[%s] [%s] Registeel secured", server.Clock(), strings.Title(team.Purple.Name))
 				server.SetRegisteel(team.Purple)
 				bottom = time.Now()
+
+				early = true
 			}
 		}
 
-		if !done && time.Since(middle) > time.Minute {
+		if !early && time.Since(middle) > time.Minute {
 			switch e := state.EventType(e); e {
 			case state.RayquazaSecureOrange:
 				state.Add(e, server.Clock(), 0)
@@ -335,11 +345,14 @@ func Objectives() {
 				server.SetRayquaza(team.Orange)
 				middle = time.Now()
 
+				early = true
 			case state.RayquazaSecurePurple:
 				state.Add(e, server.Clock(), 0)
 				notify.Feed(team.Purple.NRGBA, "[%s] [%s] Rayquaza secured", server.Clock(), strings.Title(team.Purple.Name))
 				server.SetRayquaza(team.Purple)
 				middle = time.Now()
+
+				early = true
 			}
 		}
 
