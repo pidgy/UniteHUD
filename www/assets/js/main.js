@@ -14,6 +14,7 @@ function clear(err = '') {
     $('.self').css('opacity', 0);
     $('.regis').css('opacity', 0);
     $('.regis-bottom').css('opacity', 0);
+    $('.rayquaza').css('opacity', 0);
     $('.error').css('opacity', '.9');
     $('.error').html(err);
 
@@ -157,6 +158,16 @@ function success(data) {
 
             $(`.regis-bottom-img-${i+1}`).attr('src', 'assets/img/objective.png');
         }
+    }
+
+    $('.rayquaza').css('opacity', 1);
+    $(`.rayquaza-1 .rayquaza-circle-purple`).css('opacity', 0);
+    $(`.rayquaza-1 .rayquaza-circle-orange`).css('opacity', 0);
+    $(`.rayquaza-1 .rayquaza-circle-none`).css('opacity', 1);
+
+    if (data.rayquaza) {
+        $(`.rayquaza-1 .rayquaza-circle-none`).css('opacity', 0);
+        $(`.rayquaza-1 .rayquaza-circle-${data.rayquaza}`).css('opacity', 1);
     }
 }
 

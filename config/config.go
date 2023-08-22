@@ -90,7 +90,7 @@ func (c *Config) ProfileAssets() string {
 }
 
 func (c *Config) Reload() {
-	defer validate()
+	validate()
 }
 
 func (c *Config) Report(crash string) {
@@ -277,12 +277,11 @@ func (c *Config) setObjectiveArea() {
 	case ProfileBroadcaster:
 		c.Objectives = image.Rect(350, 200, 1350, 315)
 	case ProfilePlayer:
-		c.Objectives = image.Rect(600, 200, 1350, 315)
+		c.Objectives = image.Rect(350, 200, 1000, 275)
 	}
 }
 
 func (c *Config) setProfileBroadcaster() {
-
 	c.Profile = ProfileBroadcaster
 
 	c.load = loadProfileAssetsBroadcaster
