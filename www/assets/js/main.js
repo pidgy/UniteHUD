@@ -105,6 +105,7 @@ function success(data) {
         $('.self').css('opacity', 1);
         $('.regis').css('opacity', 1);
         $('.regis-bottom').css('opacity', 1);
+        $('.rayquaza').css('opacity', 1);
 
         var p = '';
         var o = '';
@@ -160,12 +161,9 @@ function success(data) {
         }
     }
 
-    $('.rayquaza').css('opacity', 1);
-    $(`.rayquaza-1 .rayquaza-circle-purple`).css('opacity', 0);
-    $(`.rayquaza-1 .rayquaza-circle-orange`).css('opacity', 0);
-    $(`.rayquaza-1 .rayquaza-circle-none`).css('opacity', 1);
-
     if (data.rayquaza) {
+        $(`.rayquaza-1 .rayquaza-circle-purple`).css('opacity', 0);
+        $(`.rayquaza-1 .rayquaza-circle-orange`).css('opacity', 0);
         $(`.rayquaza-1 .rayquaza-circle-none`).css('opacity', 0);
         $(`.rayquaza-1 .rayquaza-circle-${data.rayquaza}`).css('opacity', 1);
     }
