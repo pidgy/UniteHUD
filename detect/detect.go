@@ -3,7 +3,6 @@ package detect
 import (
 	"fmt"
 	"image"
-	"os"
 	"strings"
 	"time"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/debug"
 	"github.com/pidgy/unitehud/duplicate"
+	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/history"
 	"github.com/pidgy/unitehud/match"
 	"github.com/pidgy/unitehud/notify"
@@ -25,14 +25,17 @@ import (
 )
 
 var (
-	Idle = true
+	idle = true
+
+	Pause  = func() { idle = true }
+	Resume = func() { idle = false }
 )
 
 func Clock() {
 	for {
 		time.Sleep(team.Delay(team.Time.Name))
 
-		if Idle || config.Current.DisableTime {
+		if idle || config.Current.DisableTime {
 			continue
 		}
 
@@ -57,12 +60,6 @@ func Clock() {
 	}
 }
 
-func Close() {
-	video.Close()
-
-	os.Exit(0)
-}
-
 func Defeated() {
 	area := image.Rectangle{}
 	modified := config.Current.Templates["killed"][team.Game.Name]
@@ -71,7 +68,7 @@ func Defeated() {
 	for {
 		time.Sleep(time.Second)
 
-		if Idle || config.Current.DisableDefeated {
+		if idle || config.Current.DisableDefeated {
 			modified = config.Current.Templates["killed"][team.Game.Name]
 			unmodified = config.Current.Templates["killed"][team.Game.Name]
 			continue
@@ -136,7 +133,7 @@ func Energy() {
 	for {
 		time.Sleep(team.Energy.Delay)
 
-		if Idle || config.Current.DisableEnergy {
+		if idle || config.Current.DisableEnergy {
 			assured = make(map[int]int)
 			confirmScore = -1
 			continue
@@ -207,7 +204,7 @@ func KOs() {
 	for {
 		time.Sleep(time.Millisecond * 1500)
 
-		if Idle || config.Current.DisableKOs {
+		if idle || config.Current.DisableKOs {
 			last = nil
 			continue
 		}
@@ -248,11 +245,15 @@ func KOs() {
 
 func Objectives() {
 	top, bottom, middle := time.Time{}, time.Time{}, time.Time{}
+	cooldown := time.Minute
+	if global.DebugMode {
+		cooldown = time.Second * 5
+	}
 
 	for {
 		time.Sleep(time.Second)
 
-		if Idle || config.Current.DisableObjectives {
+		if idle || config.Current.DisableObjectives {
 			top, bottom, middle = time.Time{}, time.Time{}, time.Time{}
 			continue
 		}
@@ -271,7 +272,7 @@ func Objectives() {
 
 		early := false
 
-		if time.Since(top) > time.Minute {
+		if time.Since(top) > cooldown {
 			switch e := state.EventType(e); e {
 			case state.RegielekiSecureOrange:
 				state.Add(e, server.Clock(), 0)
@@ -290,7 +291,7 @@ func Objectives() {
 			}
 		}
 
-		if !early && time.Since(bottom) > time.Minute {
+		if !early && time.Since(bottom) > cooldown {
 			switch e := state.EventType(e); e {
 			case state.RegiceSecureOrange:
 				state.Add(e, server.Clock(), 0)
@@ -337,7 +338,7 @@ func Objectives() {
 			}
 		}
 
-		if !early && time.Since(middle) > time.Minute {
+		if !early && time.Since(middle) > cooldown {
 			switch e := state.EventType(e); e {
 			case state.RayquazaSecureOrange:
 				state.Add(e, server.Clock(), 0)
@@ -364,7 +365,7 @@ func PressButtonToScore() {
 	for {
 		time.Sleep(time.Millisecond * 500)
 
-		if Idle {
+		if idle {
 			continue
 		}
 
@@ -395,33 +396,16 @@ func Preview() {
 	notify.Preview = splash.Projector()
 
 	tick := time.NewTicker(time.Second * 5)
-	poll := time.NewTicker(time.Second * 5)
+	poll := time.NewTicker(time.Second * 1)
 
 	window := ""
 	device := config.NoVideoCaptureDevice
 
-	for {
-		if config.Current.DisablePreviews {
-			time.Sleep(time.Second)
-			continue
-		}
-
-		if notify.Preview.Bounds().Max.X != 0 {
-			select {
-			case <-tick.C:
-			case <-poll.C:
-				if config.Current.Window == window && config.Current.VideoCaptureDevice == device {
-					continue
-				}
-			}
-		}
-
-		return
-
+	preview := func() {
 		img, err := video.Capture()
 		if err != nil {
 			notify.Error("Failed to capture preview (%v)", err)
-			continue
+			return
 		}
 		notify.Preview = img
 
@@ -432,13 +416,33 @@ func Preview() {
 		window = config.Current.Window
 		device = config.Current.VideoCaptureDevice
 	}
+
+	preview()
+
+	for {
+		if config.Current.DisablePreviews {
+			time.Sleep(time.Second)
+			continue
+		}
+
+		if notify.Preview.Bounds().Max.X != 0 {
+			select {
+			case <-tick.C:
+				preview()
+			case <-poll.C:
+				if config.Current.Window == window && config.Current.VideoCaptureDevice == device {
+					continue
+				}
+			}
+		}
+	}
 }
 
 func Scores(name string) {
 	for {
 		time.Sleep(team.Delay(name))
 
-		if Idle || config.Current.DisableScoring {
+		if idle || config.Current.DisableScoring {
 			continue
 		}
 
@@ -521,7 +525,7 @@ func States() {
 	for {
 		time.Sleep(time.Second * 2)
 
-		if Idle {
+		if idle {
 			continue
 		}
 
@@ -571,61 +575,72 @@ func States() {
 				notify.Feed(team.Game.NRGBA, "[%s] Match ended", strings.Title(team.Game.Name))
 
 				// Purple score and objective results.
-				regielekis, regices, regirocks, registeels := server.Objectives(team.Purple)
-				notify.Feed(team.Purple.NRGBA,
-					"[%s] [+%d KO%s] [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s]",
+				regielekis, regices, regirocks, registeels, rayquazas := server.Objectives(team.Purple)
+
+				purpleResult := fmt.Sprintf(
+					"[%s] [+%d KO%s] [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s] [%d Rayquaza]",
 					strings.Title(team.Purple.Name),
 					server.KOs(team.Purple), s(server.KOs(team.Purple)),
 					regielekis, s(regielekis),
 					regices, s(regices),
 					regirocks, s(regirocks),
 					registeels, s(registeels),
+					rayquazas,
 				)
 
+				notify.Feed(team.Purple.NRGBA, purpleResult)
+
 				// Orange score and objective results.
-				regielekis, regices, regirocks, registeels = server.Objectives(team.Orange)
-				notify.Feed(team.Orange.NRGBA,
-					"[%s] [+%d KO%s] [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s]",
+				regielekis, regices, regirocks, registeels, rayquazas = server.Objectives(team.Orange)
+
+				orangeResult := fmt.Sprintf(
+					"[%s] [+%d KO%s] [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s] [%d Rayquaza]",
 					strings.Title(team.Orange.Name),
 					server.KOs(team.Orange), s(server.KOs(team.Orange)),
 					regielekis, s(regielekis),
 					regices, s(regices),
 					regirocks, s(regirocks),
 					registeels, s(registeels),
+					rayquazas,
 				)
+
+				notify.Feed(team.Orange.NRGBA, orangeResult)
 			case config.ProfilePlayer:
 				o, p, self := server.Scores()
 				if o+p+self > 0 {
 					notify.Feed(team.Game.NRGBA, "[%s] Match ended", strings.Title(team.Game.Name))
 
 					// Purple score and objective results.
-					regielekis, regices, regirocks, registeels := server.Objectives(team.Purple)
-					notify.Feed(team.Purple.NRGBA,
-						"[%s] %d [+%d KO%s] [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s]",
+					regielekis, regices, regirocks, registeels, rayquazas := server.Objectives(team.Purple)
+
+					purpleResult := fmt.Sprintf(
+						"[%s] [+%d KO%s] [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s] [+%d Rayquaza]",
 						strings.Title(team.Purple.Name),
-						p,
 						server.KOs(team.Purple), s(server.KOs(team.Purple)),
 						regielekis, s(regielekis),
 						regices, s(regices),
 						regirocks, s(regirocks),
 						registeels, s(registeels),
+						rayquazas,
 					)
 
+					notify.Feed(team.Purple.NRGBA, purpleResult)
+
 					// Orange score and objective results.
-					regielekis, regices, regirocks, registeels = server.Objectives(team.Orange)
-					notify.Feed(team.Orange.NRGBA,
-						"[%s] %d [+%d KO%s] [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s]",
+					regielekis, regices, regirocks, registeels, rayquazas = server.Objectives(team.Orange)
+
+					orangeResult := fmt.Sprintf(
+						"[%s] [+%d KO%s] [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s] [+%d Rayquaza]",
 						strings.Title(team.Orange.Name),
-						o,
 						server.KOs(team.Orange), s(server.KOs(team.Orange)),
 						regielekis, s(regielekis),
 						regices, s(regices),
 						regirocks, s(regirocks),
 						registeels, s(registeels),
+						rayquazas,
 					)
 
-					// Self score and objective results.
-					notify.Feed(team.Self.NRGBA, "[%s] %d", strings.Title(team.Self.Name), self)
+					notify.Feed(team.Orange.NRGBA, orangeResult)
 
 					history.Add(p, o, self)
 				}

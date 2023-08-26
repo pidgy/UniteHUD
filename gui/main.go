@@ -19,7 +19,6 @@ import (
 
 	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/debug"
-	"github.com/pidgy/unitehud/fonts"
 	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/gui/is"
 	"github.com/pidgy/unitehud/gui/visual/button"
@@ -27,7 +26,6 @@ import (
 	"github.com/pidgy/unitehud/gui/visual/spinner"
 	"github.com/pidgy/unitehud/gui/visual/split"
 	"github.com/pidgy/unitehud/gui/visual/textblock"
-	"github.com/pidgy/unitehud/gui/visual/title"
 	"github.com/pidgy/unitehud/history"
 	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/nrgba"
@@ -69,6 +67,7 @@ func (g *GUI) main() {
 
 	stopButton := &button.Button{
 		Text:            "Stop",
+		Font:            g.Bar.Collection.Calibri(),
 		OnHoverHint:     func() { g.Bar.ToolTip("Stop capturing events") },
 		Disabled:        true,
 		Released:        nrgba.Disabled,
@@ -79,6 +78,7 @@ func (g *GUI) main() {
 
 	startButton := &button.Button{
 		Text:            "Start",
+		Font:            g.Bar.Collection.Calibri(),
 		OnHoverHint:     func() { g.Bar.ToolTip("Start capturing events") },
 		Released:        nrgba.PastelGreen.Alpha(150),
 		Pressed:         nrgba.Transparent30,
@@ -115,18 +115,18 @@ func (g *GUI) main() {
 		g.Preview = true
 	}
 
-	notifyFeedTextBlock, err := textblock.New(fonts.Cascadia())
+	notifyFeedTextBlock, err := textblock.New(g.Bar.Collection.Cascadia())
 	if err != nil {
 		notifyFeedTextBlock = &textblock.TextBlock{}
 		notify.Error("Failed to load font: (%v)", err)
 	}
 
-	defer g.Bar.Remove(g.Bar.Custom(&button.Button{
+	defer g.Bar.Remove(g.Bar.Add(&button.Button{
 		Text:        "⚙",
+		Font:        g.Bar.Collection.NishikiTeki(),
 		OnHoverHint: func() { g.Bar.ToolTip("Configure capture settings") },
 		Released:    nrgba.PurpleBlue,
 		TextSize:    unit.Sp(16),
-		Font:        fonts.NishikiTeki(),
 
 		Click: func(this *button.Button) {
 			defer this.Deactivate()
@@ -139,12 +139,12 @@ func (g *GUI) main() {
 		},
 	}))
 
-	defer g.Bar.Remove(g.Bar.Custom(&button.Button{
+	defer g.Bar.Remove(g.Bar.Add(&button.Button{
 		Text:        "¼",
+		Font:        g.Bar.Collection.NishikiTeki(),
 		OnHoverHint: func() { g.Bar.ToolTip("View capture statistics") },
 		Released:    nrgba.Pinkity,
 		TextSize:    unit.Sp(14),
-		Font:        fonts.NishikiTeki(),
 
 		Click: func(this *button.Button) {
 			defer this.Deactivate()
@@ -160,12 +160,12 @@ func (g *GUI) main() {
 		},
 	}))
 
-	defer g.Bar.Remove(g.Bar.Custom(&button.Button{
+	defer g.Bar.Remove(g.Bar.Add(&button.Button{
 		Text:        "🗠",
 		TextSize:    unit.Sp(16),
+		Font:        g.Bar.Collection.NishikiTeki(),
 		OnHoverHint: func() { g.Bar.ToolTip("View event history") },
 		Released:    nrgba.Seafoam,
-		Font:        fonts.NishikiTeki(),
 
 		Click: func(this *button.Button) {
 			defer this.Deactivate()
@@ -174,12 +174,12 @@ func (g *GUI) main() {
 		},
 	}))
 
-	defer g.Bar.Remove(g.Bar.Custom(&button.Button{
+	defer g.Bar.Remove(g.Bar.Add(&button.Button{
 		Text:        "obs",
+		Font:        g.Bar.Collection.NishikiTeki(),
 		OnHoverHint: func() { g.Bar.ToolTip("Open OBS client folder") },
 		Released:    nrgba.Purple,
 		TextSize:    unit.Sp(12),
-		Font:        fonts.NishikiTeki(),
 
 		Click: func(this *button.Button) {
 			defer this.Deactivate()
@@ -207,12 +207,12 @@ func (g *GUI) main() {
 		},
 	}))
 
-	defer g.Bar.Remove(g.Bar.Custom(&button.Button{
+	defer g.Bar.Remove(g.Bar.Add(&button.Button{
 		Text:        "🗘",
+		Font:        g.Bar.Collection.NishikiTeki(),
 		OnHoverHint: func() { g.Bar.ToolTip("Clear event history") },
 		Released:    nrgba.Orange,
 		TextSize:    unit.Sp(14),
-		Font:        fonts.NishikiTeki(),
 
 		Click: func(this *button.Button) {
 			defer this.Deactivate()
@@ -222,13 +222,13 @@ func (g *GUI) main() {
 		},
 	}))
 
-	defer g.Bar.Remove(g.Bar.Custom(&button.Button{
+	defer g.Bar.Remove(g.Bar.Add(&button.Button{
 		Text:        "⚶",
+		Font:        g.Bar.Collection.NishikiTeki(),
 		OnHoverHint: func() { g.Bar.ToolTip("Toggle resource saver") },
 		Released:    nrgba.ForestGreen,
 		Pressed:     nrgba.PaleRed.Alpha(50),
 		TextSize:    unit.Sp(16),
-		Font:        fonts.NishikiTeki(),
 
 		Click: func(this *button.Button) {
 			g.ecoMode = !g.ecoMode
@@ -246,12 +246,12 @@ func (g *GUI) main() {
 		},
 	}))
 
-	defer g.Bar.Remove(g.Bar.Custom(&button.Button{
+	defer g.Bar.Remove(g.Bar.Add(&button.Button{
 		Text:        "🗁",
+		Font:        g.Bar.Collection.NishikiTeki(),
 		OnHoverHint: func() { g.Bar.ToolTip("Open log directory") },
 		Released:    nrgba.PastelBabyBlue,
 		TextSize:    unit.Sp(16),
-		Font:        fonts.NishikiTeki(),
 
 		Click: func(this *button.Button) {
 			defer this.Deactivate()
@@ -265,13 +265,13 @@ func (g *GUI) main() {
 		},
 	}))
 
-	defer g.Bar.Remove(g.Bar.Custom(&button.Button{
+	defer g.Bar.Remove(g.Bar.Add(&button.Button{
 		Text:        "●",
+		Font:        g.Bar.Collection.NishikiTeki(),
 		OnHoverHint: func() { g.Bar.ToolTip("Record matched events") },
 		TextColor:   nrgba.PastelRed,
 		Released:    nrgba.Transparent,
 		TextSize:    unit.Sp(16),
-		Font:        fonts.NishikiTeki(),
 
 		Click: func(this *button.Button) {
 			defer this.Deactivate()
@@ -319,46 +319,46 @@ func (g *GUI) main() {
 		},
 	}
 
-	header := material.H6(g.normal, global.Version)
+	header := material.H6(g.Bar.Collection.Calibri().Theme, global.Version)
 	header.Color = nrgba.White.Alpha(25).Color()
 	header.Alignment = text.Middle
 
-	profileHeader := material.Caption(g.normal, "")
+	profileHeader := material.Caption(g.Bar.Collection.Calibri().Theme, "")
 	profileHeader.Color = nrgba.DreamyPurple.Color()
 	profileHeader.Alignment = text.Middle
 	profileHeader.Font.Weight = font.ExtraBold
 	profileHeader.TextSize = unit.Sp(14)
 
-	windowHeader := material.Caption(g.normal, "")
+	windowHeader := material.Caption(g.Bar.Collection.Calibri().Theme, "")
 	windowHeader.Color = nrgba.DarkSeafoam.Color()
 	windowHeader.Alignment = text.Middle
 	windowHeader.Font.Weight = font.ExtraBold
 	windowHeader.TextSize = unit.Sp(14)
 
-	cpuLabel := material.H5(g.normal, "")
+	cpuLabel := material.H5(g.Bar.Collection.Calibri().Theme, "")
 	cpuLabel.Color = nrgba.White.Color()
 	cpuLabel.Alignment = text.Middle
 	cpuLabel.TextSize = unit.Sp(14)
 
-	cpuGraph := material.H5(g.cascadia, "")
+	cpuGraph := material.H5(g.Bar.Collection.Cascadia().Theme, "")
 	cpuGraph.Color = nrgba.Gray.Color()
 	cpuGraph.TextSize = unit.Sp(9)
 
-	ramLabel := material.H5(g.normal, "")
+	ramLabel := material.H5(g.Bar.Collection.Calibri().Theme, "")
 	ramLabel.Color = nrgba.White.Color()
 	ramLabel.Alignment = text.Middle
 	ramLabel.TextSize = unit.Sp(14)
 
-	ramGraph := material.H5(g.cascadia, "")
+	ramGraph := material.H5(g.Bar.Collection.Cascadia().Theme, "")
 	ramGraph.Color = nrgba.Gray.Color()
 	ramGraph.TextSize = unit.Sp(9)
 
-	holdingLabel := material.H5(g.normal, "")
+	holdingLabel := material.H5(g.Bar.Collection.Calibri().Theme, "")
 	holdingLabel.Color = team.Self.NRGBA.Color()
 	holdingLabel.Alignment = text.Middle
 	holdingLabel.TextSize = unit.Sp(14)
 
-	connectedClientsLabel := material.H5(g.normal, "")
+	connectedClientsLabel := material.H5(g.Bar.Collection.Calibri().Theme, "")
 	connectedClientsLabel.Alignment = text.Middle
 	connectedClientsLabel.TextSize = unit.Sp(14)
 
@@ -386,54 +386,54 @@ func (g *GUI) main() {
 		Image:       notify.Time,
 	}
 
-	dbgLabel := material.H5(g.normal, "DBG")
+	dbgLabel := material.H5(g.Bar.Collection.Calibri().Theme, "DBG")
 	dbgLabel.Alignment = text.Middle
 	dbgLabel.TextSize = unit.Sp(14)
 	dbgLabel.Color = nrgba.SeaBlue.Color()
 
-	symbolLabel := material.H5(g.normal, "")
+	symbolLabel := material.H5(g.Bar.Collection.Calibri().Theme, "")
 	symbolLabel.Alignment = text.Middle
 	symbolLabel.TextSize = unit.Sp(16)
 	symbolLabel.Font.Weight = font.ExtraBold
 	symbolLabel.Color = nrgba.Slate.Color()
 
-	acronymLabel := material.H5(g.normal, "IDLE")
+	acronymLabel := material.H5(g.Bar.Collection.Calibri().Theme, "IDLE")
 	acronymLabel.Alignment = text.Middle
 	acronymLabel.TextSize = unit.Sp(14)
 	acronymLabel.Color = nrgba.Slate.Color()
 
-	fpsLabel := material.H5(g.normal, "0 FPS")
+	fpsLabel := material.H5(g.Bar.Collection.Calibri().Theme, "0 FPS")
 	fpsLabel.Alignment = text.Middle
 	fpsLabel.TextSize = unit.Sp(14)
 
-	purpleScoreLabel := material.H5(g.normal, "0")
+	purpleScoreLabel := material.H5(g.Bar.Collection.Calibri().Theme, "0")
 	purpleScoreLabel.Color = team.Purple.NRGBA.Color()
 	purpleScoreLabel.Alignment = text.Middle
 	purpleScoreLabel.TextSize = unit.Sp(14)
 
-	orangeScoreLabel := material.H5(g.normal, "0")
+	orangeScoreLabel := material.H5(g.Bar.Collection.Calibri().Theme, "0")
 	orangeScoreLabel.Color = team.Orange.NRGBA.Color()
 	orangeScoreLabel.Alignment = text.Middle
 	orangeScoreLabel.TextSize = unit.Sp(14)
 
-	selfScoreLabel := material.H5(g.normal, "0")
+	selfScoreLabel := material.H5(g.Bar.Collection.Calibri().Theme, "0")
 	selfScoreLabel.Color = team.Self.NRGBA.Color()
 	selfScoreLabel.Alignment = text.Middle
 	selfScoreLabel.TextSize = unit.Sp(14)
 
-	clockLabel := material.H5(g.normal, "00:00")
+	clockLabel := material.H5(g.Bar.Collection.Calibri().Theme, "00:00")
 	clockLabel.Color = nrgba.White.Color()
 	clockLabel.Alignment = text.Middle
 	clockLabel.TextSize = unit.Sp(14)
 
 	regielekiLabels, regielekiUnderlineLabels := []material.LabelStyle{
-		material.H5(g.normal, "E"),
-		material.H5(g.normal, "E"),
-		material.H5(g.normal, "E"),
+		material.H5(g.Bar.Collection.Calibri().Theme, "E"),
+		material.H5(g.Bar.Collection.Calibri().Theme, "E"),
+		material.H5(g.Bar.Collection.Calibri().Theme, "E"),
 	}, []material.LabelStyle{
-		material.H5(g.normal, "_"),
-		material.H5(g.normal, "_"),
-		material.H5(g.normal, "_"),
+		material.H5(g.Bar.Collection.Calibri().Theme, "_"),
+		material.H5(g.Bar.Collection.Calibri().Theme, "_"),
+		material.H5(g.Bar.Collection.Calibri().Theme, "_"),
 	}
 
 	for i := range regielekiLabels {
@@ -448,13 +448,13 @@ func (g *GUI) main() {
 	}
 
 	regiBottomLabels, regiBottomUnderlineLabels := []material.LabelStyle{
-		material.H5(g.normal, "R"),
-		material.H5(g.normal, "R"),
-		material.H5(g.normal, "R"),
+		material.H5(g.Bar.Collection.Calibri().Theme, "R"),
+		material.H5(g.Bar.Collection.Calibri().Theme, "R"),
+		material.H5(g.Bar.Collection.Calibri().Theme, "R"),
 	}, []material.LabelStyle{
-		material.H5(g.normal, "_"),
-		material.H5(g.normal, "_"),
-		material.H5(g.normal, "_"),
+		material.H5(g.Bar.Collection.Calibri().Theme, "_"),
+		material.H5(g.Bar.Collection.Calibri().Theme, "_"),
+		material.H5(g.Bar.Collection.Calibri().Theme, "_"),
 	}
 
 	for i := range regiBottomLabels {
@@ -468,13 +468,16 @@ func (g *GUI) main() {
 		regiBottomUnderlineLabels[i].Font.Weight = font.Bold
 	}
 
-	uptimeLabel := material.H5(g.normal, g.uptime)
+	uptimeLabel := material.H5(g.Bar.Collection.Calibri().Theme, g.uptime)
 	uptimeLabel.Color = nrgba.DreamyPurple.Color()
 	uptimeLabel.Alignment = text.Middle
 	uptimeLabel.TextSize = unit.Sp(14)
 
-	g.Window.Perform(system.ActionCenter)
 	g.Window.Perform(system.ActionRaise)
+	if !g.firstOpen {
+		g.firstOpen = true
+		g.Window.Perform(system.ActionCenter)
+	}
 
 	var ops op.Ops
 
@@ -485,8 +488,18 @@ func (g *GUI) main() {
 		}
 
 		if config.Current.Crashed != "" {
-			g.ToastCrash(fmt.Sprintf("%s recently crashed for the following reason", title.Default), config.Current.Crashed)
-			config.Current.Report("")
+			g.ToastCrash(
+				fmt.Sprintf("Previous Crash: %s", config.Current.Crashed),
+				func() {
+					config.Current.Report("")
+
+					err := config.Current.Save()
+					if err != nil {
+						notify.Error("Failed to save configuration (%v)", err)
+					}
+				},
+				func() { debug.OpenLogDirectory() },
+			)
 		}
 
 		if g.ecoMode && state.Since() > time.Minute*30 && !stopButton.Disabled {
@@ -744,7 +757,6 @@ func (g *GUI) main() {
 										},
 									)
 								}
-
 								return layout.Dimensions{Size: gtx.Constraints.Max}
 							},
 						)
@@ -782,7 +794,7 @@ func (g *GUI) main() {
 									}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 										projectorWindowButton.SetImage(notify.Preview)
 										return layout.UniformInset(unit.Dp(5)).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-											return projectorWindowButton.Layout(g.cascadia, gtx)
+											return projectorWindowButton.Layout(g.Bar.Collection.Cascadia().Theme, gtx)
 										})
 									})
 

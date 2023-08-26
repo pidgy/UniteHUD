@@ -11,6 +11,8 @@ import (
 	"github.com/pidgy/unitehud/notify"
 )
 
+type Collection map[string]*Style
+
 type Style struct {
 	Theme    *material.Theme
 	Face     font.Face
@@ -19,104 +21,100 @@ type Style struct {
 }
 
 var (
-	calibri          *Style
-	cascadia         *Style
-	cascadiaSemiBold *Style
-	combo            *Style
-	gio              *Style = &Style{Theme: material.NewTheme(gofont.Collection()), FontFace: gofont.Collection()}
-	hack             *Style
-	notoSans         *Style
-	nishikiTeki      *Style
-	roboto           *Style
+	cache = NewCollection()
 )
 
-func Calibri() *Style {
-	if calibri == nil {
-		calibri = load("CalibriRegular.ttf", "Calibri")
+func NewCollection() Collection {
+	return Collection(make(map[string]*Style))
+}
+
+func (c Collection) Cascadia() *Style {
+	return c.load("CascadiaCode-Regular.otf", "Cascadia")
+}
+
+func (c Collection) Calibri() *Style {
+	return c.load("CalibriRegular.ttf", "Calibri")
+}
+
+func (c Collection) NishikiTeki() *Style {
+	return c.load("NishikiTeki-MVxaJ.ttf", "NishikiTeki")
+}
+
+func (c Collection) CascadiaSemiBold() *Style {
+	return c.load("CascadiaCodePL-SemiBold.otf", "Cascadia")
+}
+
+func (c Collection) Combo() *Style {
+	return c.load("Combo-Regular.ttf", "Combo")
+}
+
+func (c Collection) Hack() *Style {
+	return c.load("Hack-Regular.ttf", "Hack")
+}
+
+func (c Collection) NotoSans() *Style {
+	return c.load("NotoSansJP-Regular.otf", "NotoSansJP")
+}
+
+func (c Collection) Roboto() *Style {
+	return c.load("Roboto-Regular.ttf", "Roboto")
+}
+
+func cached(name string) *Style {
+	if cache[name] != nil {
+		s := cache[name]
+
+		return &Style{
+			Theme:    material.NewTheme(s.FontFace),
+			FontFace: s.FontFace,
+			Face:     s.Face,
+			Typeface: font.Typeface(s.Typeface),
+		}
 	}
-	return calibri
+
+	return nil
 }
 
-func Cascadia() *Style {
-	if cascadia == nil {
-		cascadia = load("CascadiaCode-Regular.otf", "Cascadia")
+func (c Collection) load(path, typeface string) *Style {
+	if c[path] != nil {
+		return c[path]
 	}
-	return cascadia
-}
 
-func CascadiaSemiBold() *Style {
-	if cascadiaSemiBold == nil {
-		cascadiaSemiBold = load("CascadiaCodePL-SemiBold.otf", "Cascadia")
+	s := cached(path)
+	if s != nil {
+		notify.Debug("Cached font: %s (%s)", path, typeface)
+		c[path] = s
+		return c[path]
 	}
-	return cascadiaSemiBold
-}
 
-func Combo() *Style {
-	if combo == nil {
-		combo = load("Combo-Regular.ttf", "Combo")
-	}
-	return combo
-}
+	notify.Debug("Loading font: %s (%s)", path, typeface)
 
-func Default() *Style {
-	return Calibri()
-}
-
-func GIO() *Style {
-	return gio
-}
-
-func Hack() *Style {
-	if hack == nil {
-		hack = load("Hack-Regular.ttf", "Hack")
-	}
-	return hack
-}
-
-func NotoSans() *Style {
-	if notoSans == nil {
-		notoSans = load("NotoSansJP-Regular.otf", "NotoSansJP")
-	}
-	return notoSans
-}
-
-func NishikiTeki() *Style {
-	if nishikiTeki == nil {
-		nishikiTeki = load("NishikiTeki-MVxaJ.ttf", "NishikiTeki")
-	}
-	return nishikiTeki
-}
-
-func Roboto() *Style {
-	if roboto == nil {
-		roboto = load("Roboto-Regular.ttf", "Roboto")
-	}
-	return roboto
-}
-
-func load(path, typeface string) *Style {
 	bytes, err := os.ReadFile("assets/font/" + path)
 	if err != nil {
 		notify.Warn("%v", err)
-		return gio
+		return &Style{Theme: material.NewTheme(gofont.Collection()), FontFace: gofont.Collection()}
 	}
 
 	custom, err := opentype.ParseCollection(bytes)
 	if err != nil {
 		notify.Warn("%v", err)
-		return gio
+		return &Style{Theme: material.NewTheme(gofont.Collection()), FontFace: gofont.Collection()}
 	}
 
 	face, err := opentype.Parse(bytes)
 	if err != nil {
 		notify.Warn("%v", err)
-		return gio
+		return &Style{Theme: material.NewTheme(gofont.Collection()), FontFace: gofont.Collection()}
 	}
 
-	return &Style{
+	cache[path] = &Style{
 		Theme:    material.NewTheme(custom),
 		FontFace: custom,
 		Face:     face,
 		Typeface: font.Typeface(typeface),
 	}
+
+	c[path] = cache[path]
+
+	return c[path]
 }

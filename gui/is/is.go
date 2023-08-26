@@ -8,6 +8,7 @@ const (
 	MainMenu
 	Projecting
 	TabMenu
+	Display
 )
 
 func (i Is) String() string {
@@ -22,6 +23,8 @@ func (i Is) String() string {
 		return "Projecting"
 	case TabMenu:
 		return "TabMenu"
+	case Display:
+		return "Display"
 	}
 	return "Unknown"
 }

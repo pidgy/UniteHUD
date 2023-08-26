@@ -22,7 +22,6 @@ import (
 	"github.com/pidgy/unitehud/audio"
 	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/cursor"
-	"github.com/pidgy/unitehud/fonts"
 	"github.com/pidgy/unitehud/gui/is"
 	"github.com/pidgy/unitehud/gui/visual/area"
 	"github.com/pidgy/unitehud/gui/visual/button"
@@ -40,12 +39,11 @@ import (
 
 type projected struct {
 	img         image.Image
-	constraints layout.Constraints
+	constraints image.Rectangle
+	inset       image.Point
 
 	cursor bool
 	since  time.Time
-
-	theme *material.Theme
 
 	tag *bool
 
@@ -61,7 +59,6 @@ func (g *GUI) projector() {
 	projected := projected{
 		img:   splash.Invalid(),
 		tag:   new(bool),
-		theme: g.normal,
 		since: time.Now(),
 
 		listTextSize: float32(14),
@@ -77,100 +74,80 @@ func (g *GUI) projector() {
 
 	audios := g.audios(projected.listTextSize, session)
 
-	areas := g.areas()
+	areas := g.areas(g.Bar.Collection)
 
-	defer g.Bar.Remove(g.Bar.Custom(&button.Button{
-		Text:        "⌂",
-		Font:        fonts.NishikiTeki(),
-		TextSize:    unit.Sp(18),
-		Released:    nrgba.PurpleBlue,
-		OnHoverHint: func() { g.Bar.ToolTip("Return to main menu") },
-		Click: func(this *button.Button) {
-			defer this.Deactivate()
-
-			g.next(is.MainMenu)
-		},
-	}))
-
-	defer g.Bar.Remove(g.Bar.Custom(&button.Button{
-		Text:        "🔊",
-		Font:        fonts.NishikiTeki(),
-		TextSize:    unit.Sp(14),
-		Released:    nrgba.DarkRed,
-		OnHoverHint: func() { g.Bar.ToolTip("Hide audio sources") },
-		Click: func(this *button.Button) {
-			defer this.Deactivate()
-
-			projected.hideAudio = !projected.hideAudio
-			if projected.hideAudio {
-				this.OnHoverHint = func() { g.Bar.ToolTip("Show audio sources") }
-				this.Text = "🔈"
-			} else {
-				this.OnHoverHint = func() { g.Bar.ToolTip("Hide audio sources") }
-				this.Text = "🔊"
-			}
-		},
-	}))
-
-	defer g.Bar.Remove(g.Bar.Custom(&button.Button{
-		Text:        "⇵",
-		Font:        fonts.NishikiTeki(),
-		TextSize:    unit.Sp(14),
-		Released:    nrgba.PastelBabyBlue,
-		OnHoverHint: func() { g.Bar.ToolTip("Hide sources") },
+	defer g.Bar.Remove(g.Bar.Add(&button.Button{
+		Text:            "⇵",
+		Font:            g.Bar.Collection.NishikiTeki(),
+		TextSize:        unit.Sp(16),
+		TextInsetBottom: -1,
+		Released:        nrgba.Slate,
+		OnHoverHint:     func() { g.Bar.ToolTip("Hide sources") },
 		Click: func(this *button.Button) {
 			defer this.Deactivate()
 
 			projected.hideOptions = !projected.hideOptions
 			if projected.hideOptions {
+				this.Text = "⇈"
 				this.OnHoverHint = func() { g.Bar.ToolTip("Show sources") }
 			} else {
+				this.Text = "⇵"
 				this.OnHoverHint = func() { g.Bar.ToolTip("Hide sources") }
 			}
 		},
 	}))
 
 	captureButton := &button.Button{
-		Text:        "⛶",
-		Font:        fonts.NishikiTeki(),
-		TextSize:    unit.Sp(16),
-		Released:    nrgba.Orange,
-		OnHoverHint: func() { g.Bar.ToolTip("Test capture areas") },
+		Text:            "⛶",
+		Font:            g.Bar.Collection.NishikiTeki(),
+		TextSize:        unit.Sp(16),
+		TextInsetBottom: -1,
+		Released:        nrgba.DarkSeafoam,
+		OnHoverHint:     func() { g.Bar.ToolTip("Test capture areas") },
 		Click: func(this *button.Button) {
 			defer this.Deactivate()
 			projected.showCaptureAreas = !projected.showCaptureAreas
 			if projected.showCaptureAreas {
 				this.Text = "⛞"
-				this.TextSize = unit.Sp(14)
 			} else {
 				this.Text = "⛶"
-				this.TextSize = unit.Sp(16)
 			}
 		},
 	}
-	defer g.Bar.Remove(g.Bar.Custom(captureButton))
+	defer g.Bar.Remove(g.Bar.Add(captureButton))
 
-	defer g.Bar.Remove(g.Bar.Custom(&button.Button{
-		Text:        "🗗",
-		Font:        fonts.NishikiTeki(),
-		TextSize:    unit.Sp(16),
-		Released:    nrgba.Seafoam,
-		OnHoverHint: func() { g.Bar.ToolTip("Preview capture areas") },
+	defer g.Bar.Remove(g.Bar.Add(&button.Button{
+		Text:            "🗗",
+		Font:            g.Bar.Collection.NishikiTeki(),
+		TextSize:        unit.Sp(17),
+		TextInsetBottom: -1,
+		Released:        nrgba.BloodOrange,
+		OnHoverHint:     func() { g.Bar.ToolTip("Preview capture areas") },
 		Click: func(this *button.Button) {
 			defer this.Deactivate()
 
-			g.previewCaptures(g.areas())
+			if previewCapturesOpen {
+				this.Text = "🗗"
+				this.OnHoverHint = func() { g.Bar.ToolTip("Preview capture areas") }
+
+				previewCapturesOpen = false
+			} else {
+				this.Text = "🗖"
+				this.OnHoverHint = func() { g.Bar.ToolTip("Close capture area preview") }
+				go g.previewCaptures(areas)
+			}
 		},
 	}))
+	defer func() { previewCapturesOpen = false }()
 
 	saveButton := &button.Button{
-		Text:        "🖫",
-		Pressed:     nrgba.Transparent30,
-		Released:    nrgba.CoolBlue,
-		Font:        fonts.NishikiTeki(),
-		TextSize:    unit.Sp(14),
-		Disabled:    false,
-		OnHoverHint: func() { g.Bar.ToolTip("Save configuration") },
+		Text:            "🖫",
+		Font:            g.Bar.Collection.NishikiTeki(),
+		Released:        nrgba.OfficeBlue,
+		TextSize:        unit.Sp(16),
+		TextInsetBottom: -1,
+		Disabled:        false,
+		OnHoverHint:     func() { g.Bar.ToolTip("Save configuration") },
 		Click: func(this *button.Button) {
 			g.ToastYesNo("Save", "Save configuration changes?",
 				func() {
@@ -199,46 +176,47 @@ func (g *GUI) projector() {
 				},
 				func() {
 					defer this.Deactivate()
-
-					g.next(is.MainMenu)
-				})
+				},
+			)
 		},
 	}
 
-	defer g.Bar.Remove(g.Bar.Custom(saveButton))
+	defer g.Bar.Remove(g.Bar.Add(saveButton))
 
-	backOrSaveButton := &button.Button{
+	cached := config.Current
+
+	backButton := &button.Button{
 		Text:            "Back",
+		Font:            g.Bar.Collection.Calibri(),
 		OnHoverHint:     func() { g.Bar.ToolTip("Return to main menu") },
 		Pressed:         nrgba.Transparent30,
 		Released:        nrgba.DarkGray,
 		TextSize:        unit.Sp(projected.listTextSize),
 		TextInsetBottom: unit.Dp(-2),
-		Size:            image.Pt(100, 20),
+		Size:            image.Pt(115, 20),
 		BorderWidth:     unit.Sp(.1),
 		Click: func(this *button.Button) {
-			if this.Text == "Back" {
-				defer this.Deactivate()
+			defer this.Deactivate()
 
+			config.Current.Scores = areas.score.Rectangle()
+			config.Current.Time = areas.time.Rectangle()
+			config.Current.Energy = areas.energy.Rectangle()
+			config.Current.Objectives = areas.objective.Rectangle()
+			config.Current.KOs = areas.ko.Rectangle()
+
+			if cached.Eq(&config.Current) {
 				g.Actions <- Refresh
 				g.next(is.MainMenu)
-
 				return
 			}
 
-			g.ToastYesNo("Save", "Save configuration changes?",
+			g.ToastYesNo(
+				"Save",
+				"Save configuration changes?",
 				func() {
 					defer this.Deactivate()
 
 					server.Clear()
-
-					this.Disabled = true
-
-					config.Current.Scores = areas.score.Rectangle()
-					config.Current.Time = areas.time.Rectangle()
-					config.Current.Energy = areas.energy.Rectangle()
-					config.Current.Objectives = areas.objective.Rectangle()
-					config.Current.KOs = areas.ko.Rectangle()
 
 					err := config.Current.Save()
 					if err != nil {
@@ -253,25 +231,32 @@ func (g *GUI) projector() {
 				func() {
 					defer this.Deactivate()
 
+					server.Clear()
+					video.Close()
+
+					config.Current = cached
+
+					g.Actions <- Refresh
 					g.next(is.MainMenu)
-				})
+				},
+			)
 		},
 	}
 
 	videos := g.videos(projected.listTextSize)
 	videos.onevent = func() {
-		saveButton.Disabled = false
-		backOrSaveButton.Text = "Save"
+		// ...
 	}
 
 	resetButton := &button.Button{
 		Text:            "Reset",
+		Font:            g.Bar.Collection.Calibri(),
 		OnHoverHint:     func() { g.Bar.ToolTip("Reset configuration") },
 		Pressed:         nrgba.Transparent30,
 		Released:        nrgba.DarkGray,
 		TextSize:        unit.Sp(projected.listTextSize),
 		TextInsetBottom: unit.Dp(-2),
-		Size:            image.Pt(100, 20),
+		Size:            image.Pt(115, 20),
 		BorderWidth:     unit.Sp(.1),
 		Click: func(this *button.Button) {
 			g.ToastYesNo("Reset", fmt.Sprintf("Reset UniteHUD %s configuration?", config.Current.Profile), func() {
@@ -310,27 +295,33 @@ func (g *GUI) projector() {
 
 	closeHUDButton := &button.Button{
 		Text:        "Close HUD Overlay",
+		Font:        g.Bar.Collection.Calibri(),
 		OnHoverHint: func() { g.Bar.ToolTip("Close HUD overlay") },
 		Pressed:     nrgba.Transparent30,
 		Released:    nrgba.DarkGray,
 		TextSize:    unit.Sp(projected.listTextSize),
-		Size:        image.Pt(100, 20),
+		Size:        image.Pt(115, 20),
 		BorderWidth: unit.Sp(.1),
 		Click: func(this *button.Button) {
 			g.ToastYesNo("Close HUD Overlay", "Close HUD overlay?", func() {
 				defer this.Deactivate()
+
 				electron.Close()
+
+				config.Current.HUDOverlay = false
+
 			}, this.Deactivate)
 		},
 	}
 
 	openHUDButton := &button.Button{
 		Text:        "Open HUD Overlay",
+		Font:        g.Bar.Collection.Calibri(),
 		OnHoverHint: func() { g.Bar.ToolTip("Open HUD overlay") },
 		Pressed:     nrgba.Transparent30,
 		Released:    nrgba.DarkGray,
 		TextSize:    unit.Sp(projected.listTextSize),
-		Size:        image.Pt(100, 20),
+		Size:        image.Pt(115, 20),
 		BorderWidth: unit.Sp(.1),
 		Click: func(this *button.Button) {
 			g.ToastYesNo("Open HUD Overlay", "Open HUD overlay?", func() {
@@ -338,26 +329,32 @@ func (g *GUI) projector() {
 
 				electron.Close()
 
+				config.Current.HUDOverlay = true
+
 				err = electron.Open()
 				if err != nil {
 					g.ToastError(err)
 					g.next(is.MainMenu)
 					return
 				}
+
 			}, this.Deactivate)
 		},
 	}
 
 	openConfigFileButton := &button.Button{
 		Text:        "Open Configuration",
+		Font:        g.Bar.Collection.Calibri(),
 		OnHoverHint: func() { g.Bar.ToolTip("Open configuration file") },
 		Pressed:     nrgba.Transparent30,
 		Released:    nrgba.DarkGray,
 		TextSize:    unit.Sp(projected.listTextSize),
-		Size:        image.Pt(100, 20),
+		Size:        image.Pt(115, 20),
 		BorderWidth: unit.Sp(.1),
 		Click: func(b *button.Button) {
 			defer b.Deactivate()
+
+			config.Current.HUDOverlay = false
 
 			exe := "C:\\Windows\\system32\\notepad.exe"
 			err := exec.Command(exe, config.Current.File()).Run()
@@ -378,10 +375,53 @@ func (g *GUI) projector() {
 	}
 
 	g.Perform(system.ActionRaise)
-	g.Perform(system.ActionCenter)
 
 	populateTicksThreshold := 120
 	populateTicks := populateTicksThreshold
+
+	videos.window.populate(false)
+	videos.device.populate(false)
+	videos.monitor.populate(false)
+
+	audioInLabel := material.Label(g.Bar.Collection.Calibri().Theme, unit.Sp(12), "Audio In (Capture)")
+	audioInLabel.Color = nrgba.Highlight.Color()
+	audioInLabel.Font.Weight = 100
+
+	audioOutLabel := material.Label(g.Bar.Collection.Calibri().Theme, unit.Sp(12), "Audio Out (Playback)")
+	audioOutLabel.Color = nrgba.Highlight.Color()
+	audioOutLabel.Font.Weight = 100
+
+	videoCaptureLabel := material.Label(g.Bar.Collection.Calibri().Theme, unit.Sp(12), "Video Capture Device")
+	videoCaptureLabel.Color = nrgba.Highlight.Color()
+	videoCaptureLabel.Font.Weight = 100
+
+	monitorLabel := material.Label(g.Bar.Collection.Calibri().Theme, unit.Sp(12), "Monitor")
+	monitorLabel.Color = nrgba.Highlight.Color()
+	monitorLabel.Font.Weight = 100
+
+	stateLabel := material.Label(g.Bar.Collection.Calibri().Theme, unit.Sp(12), "")
+	stateLabel.Color = nrgba.Highlight.Color()
+	stateLabel.Alignment = text.Start
+
+	isLabel := material.Label(g.Bar.Collection.Calibri().Theme, unit.Sp(12), "")
+	isLabel.Color = nrgba.Highlight.Color()
+	isLabel.Alignment = text.Start
+
+	cpuLabel := material.Label(g.Bar.Collection.Calibri().Theme, unit.Sp(12), "")
+	cpuLabel.Color = nrgba.Highlight.Color()
+	cpuLabel.Alignment = text.Start
+
+	ramLabel := material.Label(g.Bar.Collection.Calibri().Theme, unit.Sp(12), "")
+	ramLabel.Color = nrgba.Highlight.Color()
+	ramLabel.Alignment = text.Start
+
+	fpsLabel := material.Label(g.Bar.Collection.Calibri().Theme, unit.Sp(12), "")
+	fpsLabel.Color = nrgba.Highlight.Color()
+	fpsLabel.Alignment = text.Start
+
+	tickLabel := material.Label(g.Bar.Collection.Calibri().Theme, unit.Sp(12), "")
+	tickLabel.Color = nrgba.Highlight.Color()
+	tickLabel.Alignment = text.Start
 
 	var ops op.Ops
 
@@ -401,6 +441,8 @@ func (g *GUI) projector() {
 			g.next(is.Closing)
 		case system.FrameEvent:
 			gtx := layout.NewContext(&ops, e)
+
+			g.size = e.Size
 
 			err = session.Error()
 			if err != nil && err != audio.SessionClosed {
@@ -425,7 +467,7 @@ func (g *GUI) projector() {
 							gtx,
 							layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
 								return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-									return projected.Layout(gtx, g.fullscreen())
+									return projected.Layout(gtx, g.fullscreen)
 								})
 							}),
 						)
@@ -450,13 +492,9 @@ func (g *GUI) projector() {
 
 								return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
 									layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-										label := material.Label(projected.theme, unit.Sp(12), "Audio In (Capture)")
-										label.Color = nrgba.Highlight.Color()
-										label.Font.Weight = 100
-
 										return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 											return layout.Inset{Top: unit.Dp(5)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-												return label.Layout(gtx)
+												return audioInLabel.Layout(gtx)
 											})
 										})
 									}),
@@ -464,7 +502,7 @@ func (g *GUI) projector() {
 									projected.spacer(0, 1),
 
 									layout.Flexed(.9, func(gtx layout.Context) layout.Dimensions {
-										return audios.in.list.Layout(gtx, projected.theme)
+										return audios.in.list.Layout(gtx, g.Bar.Collection.Calibri().Theme)
 									}),
 								)
 							}),
@@ -478,13 +516,9 @@ func (g *GUI) projector() {
 
 								return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
 									layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-										label := material.Label(projected.theme, unit.Sp(12), "Audio Out (Playback)")
-										label.Color = nrgba.Highlight.Color()
-										label.Font.Weight = 100
-
 										return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 											return layout.Inset{Top: unit.Dp(5)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-												return label.Layout(gtx)
+												return audioOutLabel.Layout(gtx)
 											})
 										})
 									}),
@@ -492,7 +526,7 @@ func (g *GUI) projector() {
 									projected.spacer(0, 1),
 
 									layout.Flexed(.9, func(gtx layout.Context) layout.Dimensions {
-										return audios.out.list.Layout(gtx, projected.theme)
+										return audios.out.list.Layout(gtx, g.Bar.Collection.Calibri().Theme)
 									}),
 								)
 							}),
@@ -502,13 +536,9 @@ func (g *GUI) projector() {
 							layout.Flexed(0.33, func(gtx layout.Context) layout.Dimensions {
 								return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
 									layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-										label := material.Label(projected.theme, unit.Sp(12), "Video Capture Device")
-										label.Color = nrgba.Highlight.Color()
-										label.Font.Weight = 100
-
 										return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 											return layout.Inset{Top: unit.Dp(5)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-												return label.Layout(gtx)
+												return videoCaptureLabel.Layout(gtx)
 											})
 										})
 									}),
@@ -516,7 +546,7 @@ func (g *GUI) projector() {
 									projected.spacer(0, 1),
 
 									layout.Flexed(.9, func(gtx layout.Context) layout.Dimensions {
-										return videos.device.list.Layout(gtx, projected.theme)
+										return videos.device.list.Layout(gtx, g.Bar.Collection.Calibri().Theme)
 									}),
 								)
 							}),
@@ -528,7 +558,7 @@ func (g *GUI) projector() {
 										gtx,
 
 										layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-											label := material.Label(projected.theme, unit.Sp(12), "Window")
+											label := material.Label(g.Bar.Collection.Calibri().Theme, unit.Sp(12), "Window")
 											label.Color = nrgba.Highlight.Color()
 											label.Font.Weight = 100
 
@@ -542,7 +572,7 @@ func (g *GUI) projector() {
 										projected.spacer(0, 1),
 
 										layout.Flexed(.9, func(gtx layout.Context) layout.Dimensions {
-											return videos.window.list.Layout(gtx, projected.theme)
+											return videos.window.list.Layout(gtx, g.Bar.Collection.Calibri().Theme)
 										}),
 									)
 								}),
@@ -552,13 +582,9 @@ func (g *GUI) projector() {
 							layout.Flexed(0.33, func(gtx layout.Context) layout.Dimensions {
 								return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
 									layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-										label := material.Label(projected.theme, unit.Sp(12), "Monitor")
-										label.Color = nrgba.Highlight.Color()
-										label.Font.Weight = 100
-
 										return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 											return layout.Inset{Top: unit.Dp(5)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-												return label.Layout(gtx)
+												return monitorLabel.Layout(gtx)
 											})
 										})
 									}),
@@ -566,7 +592,7 @@ func (g *GUI) projector() {
 									projected.spacer(0, 1),
 
 									layout.Flexed(.9, func(gtx layout.Context) layout.Dimensions {
-										return videos.monitor.list.Layout(gtx, projected.theme)
+										return videos.monitor.list.Layout(gtx, g.Bar.Collection.Calibri().Theme)
 									}),
 								)
 							}),
@@ -598,7 +624,7 @@ func (g *GUI) projector() {
 										}),
 
 										layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-											return layout.Inset{Left: 5, Right: 5, Top: 2.5, Bottom: 2.5}.Layout(gtx, backOrSaveButton.Layout)
+											return layout.Inset{Left: 5, Right: 5, Top: 2.5, Bottom: 2.5}.Layout(gtx, backButton.Layout)
 										}),
 									)
 								})
@@ -619,19 +645,15 @@ func (g *GUI) projector() {
 									projected.empty(2, 0),
 
 									layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-										state := material.Label(projected.theme, unit.Sp(12), fmt.Sprintf("%s %s", areas.state.Text, areas.state.Subtext))
-										state.Color = nrgba.Highlight.Color()
-										state.Alignment = text.Start
-										return state.Layout(gtx)
+										stateLabel.Text = fmt.Sprintf("%s %s", areas.state.Text, areas.state.Subtext)
+										return stateLabel.Layout(gtx)
 									}),
 
 									projected.empty(5, 0),
 
 									layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-										next := material.Label(projected.theme, unit.Sp(12), fmt.Sprintf("HUD %s", g.is.String()))
-										next.Color = nrgba.Highlight.Color()
-										next.Alignment = text.Start
-										return next.Layout(gtx)
+										isLabel.Text = fmt.Sprintf("HUD %s", g.is.String())
+										return isLabel.Layout(gtx)
 									}),
 
 									projected.empty(2, 0),
@@ -645,41 +667,29 @@ func (g *GUI) projector() {
 									projected.empty(2, 0),
 
 									layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-										label := material.Label(projected.theme, unit.Sp(12), g.cpu)
-										label.Color = nrgba.Highlight.Color()
-										label.Alignment = text.Start
-
-										return label.Layout(gtx)
+										cpuLabel.Text = g.cpu
+										return cpuLabel.Layout(gtx)
 									}),
 
 									projected.empty(5, 0),
 
 									layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-										label := material.Label(projected.theme, unit.Sp(12), g.ram)
-										label.Color = nrgba.Highlight.Color()
-										label.Alignment = text.Start
-
-										return label.Layout(gtx)
+										ramLabel.Text = g.ram
+										return ramLabel.Layout(gtx)
 									}),
 
 									projected.empty(5, 0),
 
 									layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-										label := material.Label(projected.theme, unit.Sp(12), fmt.Sprintf("%d FPS", g.fps.frames))
-										label.Color = nrgba.Highlight.Color()
-										label.Alignment = text.Start
-
-										return label.Layout(gtx)
+										fpsLabel.Text = fmt.Sprintf("%d FPS", g.fps.frames)
+										return fpsLabel.Layout(gtx)
 									}),
 
 									projected.empty(5, 0),
 
 									layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-										label := material.Label(projected.theme, unit.Sp(12), fmt.Sprintf("Tick %02d", g.fps.ticks))
-										label.Color = nrgba.Highlight.Color()
-										label.Alignment = text.Start
-
-										return label.Layout(gtx)
+										tickLabel.Text = fmt.Sprintf("Tick %02d", g.fps.ticks)
+										return tickLabel.Layout(gtx)
 									}),
 
 									projected.empty(2, 0),
@@ -693,12 +703,18 @@ func (g *GUI) projector() {
 			})
 
 			if projected.showCaptureAreas && projected.img != nil {
-				for _, area := range []*area.Area{areas.time, areas.energy, areas.score, areas.ko, areas.objective, areas.state} {
-					err := area.Layout(gtx, projected.constraints, projected.img)
+				for _, area := range []*area.Area{
+					areas.time,
+					areas.energy,
+					areas.score,
+					areas.ko,
+					areas.objective,
+					areas.state,
+				} {
+					err := area.Layout(gtx, g.Bar.Collection, projected.constraints, projected.img, projected.inset)
 					if err != nil {
-						g.ToastErrorf("%s: %v. Capture area has been removed.", area.Text, err)
-						notify.Error("%v", err)
-						captureButton.Click(captureButton)
+						g.ToastErrorf("%s %v", area.Capture.Option, err)
+						area.Reset()
 					}
 					if area.Focus {
 						cursor.Is(pointer.CursorPointer)
@@ -774,17 +790,36 @@ func (p *projected) Layout(gtx layout.Context, fullscreen bool) layout.Dimension
 	}.Add(gtx.Ops)
 	push.Pop()
 
-	scale := float32(gtx.Constraints.Max.Y) / float32(p.img.Bounds().Dy())
+	scaleX := float32(gtx.Constraints.Max.X) / float32(p.img.Bounds().Dx())
+	scaleY := float32(gtx.Constraints.Max.Y) / float32(p.img.Bounds().Dy())
+	scale := (scaleX + scaleY) / 2
 
-	p.constraints = gtx.Constraints
+	dims := widget.Image{
+		Fit:      widget.Contain,
+		Src:      paint.NewImageOp(p.img),
+		Scale:    scale,
+		Position: layout.Center,
+	}.Layout(gtx)
 
-	return layout.Center.Layout(gtx,
-		widget.Image{
-			Fit:   widget.Contain,
-			Src:   paint.NewImageOp(p.img),
-			Scale: scale,
-		}.Layout,
+	// Set the boundaries to be the exact dimensions of the image within projector window.
+	diffX := (gtx.Constraints.Max.X - dims.Size.X)
+	diffY := (gtx.Constraints.Max.Y - dims.Size.Y)
+	if !p.hideOptions {
+		diffX /= 2
+		diffY /= 2
+	}
+
+	p.constraints = image.Rectangle{
+		Min: image.Pt(diffX, diffY),
+		Max: image.Pt(gtx.Constraints.Max.X-diffX, gtx.Constraints.Max.Y-diffY),
+	}
+
+	p.inset = image.Pt(
+		gtx.Constraints.Max.X-int(float32(p.img.Bounds().Dx())*scale),
+		gtx.Constraints.Max.Y-int(float32(p.img.Bounds().Dy())*scale),
 	)
+
+	return dims
 }
 
 func (p *projected) empty(x, y float32) layout.FlexChild {

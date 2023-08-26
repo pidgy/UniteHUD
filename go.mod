@@ -12,6 +12,7 @@ require (
 	github.com/gen2brain/shm v0.0.0-20221026125803-c33c9e32b1c8 // indirect
 	github.com/gobwas/ws v1.1.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
+	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/guptarohit/asciigraph v0.5.5
 	github.com/hajimehoshi/go-mp3 v0.3.4

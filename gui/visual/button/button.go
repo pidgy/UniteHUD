@@ -204,10 +204,6 @@ func (b *Button) draw(gtx layout.Context) layout.Dimensions {
 		}.Layout(gtx, b.uniform)
 	}
 
-	if b.Font == nil {
-		b.Font = fonts.Default()
-	}
-
 	if !b.set {
 		b.label = material.Label(b.Font.Theme, b.TextSize, b.Text)
 	}

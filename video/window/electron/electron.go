@@ -2,11 +2,11 @@ package electron
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/asticode/go-astikit"
 	"github.com/asticode/go-astilectron"
 	"github.com/pidgy/unitehud/config"
+	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/video/monitor"
 )
@@ -35,7 +35,7 @@ func Close() {
 	}
 
 	if app != nil {
-		notify.System("Closing %s Controller", Title)
+		notify.Debug("Closing Astilectron")
 
 		err := app.Quit()
 		if err != nil {
@@ -53,6 +53,10 @@ func Open() error {
 		return nil
 	}
 
+	if !config.Current.HUDOverlay {
+		return nil
+	}
+
 	notify.System("Opening %s", Title)
 
 	err := openApp()
@@ -60,12 +64,7 @@ func Open() error {
 		return err
 	}
 
-	err = openWindow()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return openWindow()
 }
 
 func openApp() error {
@@ -94,17 +93,18 @@ func openWindow() error {
 	errq := make(chan error)
 
 	go func() {
-		url := `./www/UniteHUD Client.html`
+		url := `www/UniteHUD Client.html`
 		if config.Current.Profile == config.ProfileBroadcaster {
-			url = "./www/UniteHUD Broadcaster.html"
+			url = "www/UniteHUD Broadcaster.html"
 		}
 
 		area := monitor.MainResolution()
-		w, h := area.Max.X, area.Max.X
+		w, h := area.Max.X, area.Max.Y
 
 		var err error
 
 		window, err = app.NewWindow(url, &astilectron.WindowOptions{
+			Title:     astikit.StrPtr(Title),
 			Width:     astikit.IntPtr(w),
 			Height:    astikit.IntPtr(h),
 			MaxWidth:  astikit.IntPtr(w),
@@ -114,7 +114,7 @@ func openWindow() error {
 
 			Fullscreen:  astikit.BoolPtr(true),
 			Minimizable: astikit.BoolPtr(false),
-			Resizable:   astikit.BoolPtr(true),
+			Resizable:   astikit.BoolPtr(false),
 			Center:      astikit.BoolPtr(true),
 			Closable:    astikit.BoolPtr(true),
 
@@ -122,24 +122,27 @@ func openWindow() error {
 			AlwaysOnTop: astikit.BoolPtr(true),
 
 			EnableLargerThanScreen: astikit.BoolPtr(false),
-			Focusable:              astikit.BoolPtr(false),
+			Focusable:              astikit.BoolPtr(true),
 			Frame:                  astikit.BoolPtr(false),
-			HasShadow:              astikit.BoolPtr(false),
+			HasShadow:              astikit.BoolPtr(true),
 			Icon:                   astikit.StrPtr("./assets/icon/icon_browser.png"),
 
 			Show: astikit.BoolPtr(true),
 
-			WebPreferences: &astilectron.WebPreferences{},
+			WebPreferences: &astilectron.WebPreferences{
+				DevTools:   astikit.BoolPtr(global.DebugMode),
+				Images:     astikit.BoolPtr(true),
+				Javascript: astikit.BoolPtr(true),
+			},
 		})
 		if err != nil {
-			errq <- fmt.Errorf("Failed to create %s (%v)", Title, err)
+			notify.Error("Failed to open %s (%v)", Title, err)
+			errq <- err
 			return
 		}
 
 		waitq := make(chan bool)
 		app.On(astilectron.EventNameAppEventReady, func(e astilectron.Event) (deleteListener bool) {
-			println("waiting")
-			time.Sleep(time.Second * 3)
 			return <-waitq
 		})
 
@@ -149,9 +152,10 @@ func openWindow() error {
 			return
 		}
 
-		close(errq)
+		// window.OpenDevTools()
 
-		waitq <- true
+		close(errq)
+		close(waitq)
 
 		app.Wait()
 	}()

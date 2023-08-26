@@ -9,7 +9,6 @@ import (
 	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/gui/visual/area"
 	"github.com/pidgy/unitehud/match"
-	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/nrgba"
 	"github.com/pidgy/unitehud/server"
 	"github.com/pidgy/unitehud/state"
@@ -18,7 +17,6 @@ import (
 )
 
 func (g *GUI) matchEnergy(a *area.Area) (bool, error) {
-	notify.Debug("matching energy: %t", g.Preview)
 	if !g.Preview {
 		a.NRGBA = area.Locked
 		return false, nil
@@ -41,16 +39,15 @@ func (g *GUI) matchEnergy(a *area.Area) (bool, error) {
 	switch result {
 	case match.Found, match.Duplicate:
 		a.NRGBA = area.Match
-		a.Text = fmt.Sprintf("Aeos: %d", score)
+		a.Subtext = fmt.Sprintf("%d", score)
+
 	case match.NotFound:
 		a.NRGBA = area.Miss
-		a.Text = "Aeos"
 	case match.Missed:
 		a.NRGBA = nrgba.DarkerYellow.Alpha(0x99)
-		a.Text = fmt.Sprintf("Aeos: %d?", score)
+		a.Subtext = fmt.Sprintf("%d?", score)
 	case match.Invalid:
 		a.NRGBA = area.Miss
-		a.Text = "Aeos"
 	}
 
 	m, r := match.SelfScore(matrix, img)
@@ -58,17 +55,17 @@ func (g *GUI) matchEnergy(a *area.Area) (bool, error) {
 	case match.Found:
 		if state.EventType(m.Template.Value) == state.PreScore {
 			a.NRGBA = area.Match
-			a.Text = "Scoring"
+			a.Subtext = "Scoring"
 		} else {
 			a.NRGBA = area.Match
-			a.Text = "Scored"
+			a.Subtext = "Scored"
 		}
 	case match.Invalid:
 		a.NRGBA = area.Miss
-		a.Text = "Invalid Aeos"
+		a.Subtext = "Invalid Aeos"
 	}
 
-	return r == match.Found, nil
+	return r == match.Found || result == match.Found, nil
 }
 
 func (g *GUI) matchKOs(a *area.Area) (bool, error) {
@@ -91,11 +88,11 @@ func (g *GUI) matchKOs(a *area.Area) (bool, error) {
 	_, r, e := match.Matches(matrix, img, config.Current.Templates["ko"][team.Game.Name])
 	if r != match.Found {
 		a.NRGBA = area.Miss
-		a.Text = fmt.Sprintf("KO: %s", strings.Title(r.String()))
+		a.Subtext = strings.Title(r.String())
 		return false, nil
 	}
 	a.NRGBA = area.Match
-	a.Text = fmt.Sprintf("KO: %s", state.EventType(e))
+	a.Subtext = state.EventType(e).String()
 
 	return r == match.Found, nil
 }
@@ -120,11 +117,11 @@ func (g *GUI) matchObjectives(a *area.Area) (bool, error) {
 	_, r, e := match.Matches(matrix, img, config.Current.Templates["secure"][team.Game.Name])
 	if r != match.Found {
 		a.NRGBA = area.Miss
-		a.Text = fmt.Sprintf("Objective: %s", strings.Title(r.String()))
+		a.Subtext = strings.Title(r.String())
 		return false, nil
 	}
 	a.NRGBA = area.Match
-	a.Text = fmt.Sprintf("Objective: %s (%s)", strings.Title(r.String()), state.EventType(e))
+	a.Subtext = state.EventType(e).String()
 
 	return r == match.Found, nil
 }
@@ -151,18 +148,18 @@ func (g *GUI) matchScore(a *area.Area) (bool, error) {
 		switch r {
 		case match.Found, match.Duplicate:
 			a.NRGBA = area.Match
-			a.Text = fmt.Sprintf("Score: %d", score)
+			a.Subtext = fmt.Sprintf("%d", score)
 
 			return true, nil
 		case match.NotFound:
 			a.NRGBA = area.Miss
-			a.Text = fmt.Sprintf("Score: %s", strings.Title(r.String()))
+			a.Subtext = fmt.Sprintf("%s", strings.Title(r.String()))
 		case match.Missed:
 			a.NRGBA = nrgba.DarkerYellow.Alpha(0x99)
-			a.Text = fmt.Sprintf("Score: %d?", score)
+			a.Subtext = fmt.Sprintf("%d?", score)
 		case match.Invalid:
 			a.NRGBA = area.Miss
-			a.Text = fmt.Sprintf("Score: %s", strings.Title(r.String()))
+			a.Subtext = fmt.Sprintf("%s", strings.Title(r.String()))
 		}
 	}
 
@@ -232,12 +229,12 @@ func (g *GUI) matchTime(a *area.Area) (bool, error) {
 	s, k := match.Time(matrix, img)
 	if s != 0 {
 		a.NRGBA = area.Match
-		a.Text = fmt.Sprintf("Time: %s", k)
+		a.Subtext = k
 		return true, nil
 	}
 
 	a.NRGBA = area.Miss
-	a.Text = "Time: Not Found"
+	a.Subtext = "Not Found"
 
 	return false, nil
 }

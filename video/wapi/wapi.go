@@ -1,33 +1,119 @@
-package proc
+package wapi
 
 import (
 	"syscall"
 )
 
 type (
-	HANDLE  uintptr
-	HWND    HANDLE
-	HGDIOBJ HANDLE
-	HDC     HANDLE
-	HBITMAP HANDLE
+	Handle  uintptr
+	HWND    Handle
+	HGDIOBJ Handle
+	HDC     Handle
+	HBITMAP Handle
 )
 
-const (
-	HorzRes          = 8
-	VertRes          = 10
-	InvalidParameter = 2
-	BIRGBCompression = 0
-	DIBRGBColors     = 0
-	SrcCopy          = 0x00CC0020
-	CaptureBLT       = 0x40000000
-	SrcPaint         = 0x00EE0086
-	PatCopy          = 0x00F00021
-	PatPaint         = 0x00FB0A09
-	MergePaint       = 0x00BB0226
-	SrcInvert        = 0x00660046
-	CreateNoWindow   = 0x08000000
+// http://msdn.microsoft.com/en-us/library/windows/desktop/dd183375.aspx
+type BitmapInfo struct {
+	BmiHeader BitmapInfoHeader
+	BmiColors *RGBQuad
+}
 
-	SWPNoSize = 0x0001
+// http://msdn.microsoft.com/en-us/library/windows/desktop/dd183376.aspx
+type BitmapInfoHeader struct {
+	BiSize          uint32
+	BiWidth         int32
+	BiHeight        int32
+	BiPlanes        uint16
+	BiBitCount      uint16
+	BiCompression   uint32
+	BiSizeImage     uint32
+	BiXPelsPerMeter int32
+	BiYPelsPerMeter int32
+	BiClrUsed       uint32
+	BiClrImportant  uint32
+}
+
+// https://learn.microsoft.com/en-us/previous-versions/dd162805(v=vs.85)
+type Point struct {
+	X, Y int32
+}
+
+// Windows RECT structure
+type Rect struct {
+	Left, Top, Right, Bottom int32
+}
+
+// http://msdn.microsoft.com/en-us/library/windows/desktop/dd162938.aspx
+type RGBQuad struct {
+	RgbBlue     byte
+	RgbGreen    byte
+	RgbRed      byte
+	RgbReserved byte
+}
+
+// https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-windowplacement
+type WindowPlacement struct {
+	Len    uint
+	Flags  uint
+	Cmd    uint
+	Min    Point
+	Max    Point
+	Normal Rect
+	Device Rect
+}
+
+var (
+	GetDeviceCapsIndex = struct {
+		HorzRes,
+		VertRes uintptr
+	}{
+		8,
+		10,
+	}
+	BitmapInfoHeaderCompression = struct {
+		RGB uint32
+	}{
+		RGB: 0,
+	}
+	CreateDIBSectionError = struct {
+		InvalidParameter HBITMAP
+	}{
+		InvalidParameter: 2,
+	}
+	CreateDIBSectionUsage = struct {
+		RGBColors uint
+	}{
+		RGBColors: 0,
+	}
+	BitBltRasterOperations = struct {
+		SrcCopy,
+		CaptureBLT,
+		SrcPaint,
+		PatCopy,
+		PatPaint,
+		MergePaint,
+		SrcInvert uintptr
+	}{
+		SrcCopy:    0x00CC0020,
+		CaptureBLT: 0x40000000,
+		SrcPaint:   0x00EE0086,
+		PatCopy:    0x00F00021,
+		PatPaint:   0x00FB0A09,
+		MergePaint: 0x00BB0226,
+		SrcInvert:  0x00660046,
+	}
+	SetWindowPosFlags = struct {
+		None, NoSize, ShowWindow uintptr
+	}{
+		None:       0x0000,
+		NoSize:     0x0001,
+		ShowWindow: 0x0040,
+	}
+	CreateProcessFlags = struct {
+		NoWindow uint32
+	}{
+		NoWindow: 0x08000000,
+	}
 )
 
 var (
@@ -53,6 +139,7 @@ var (
 	SetForegroundWindow          = user32.MustFindProc("SetForegroundWindow")
 	SetWindowPlacement           = user32.MustFindProc("SetWindowPlacement")
 	GetWindowPlacement           = user32.MustFindProc("GetWindowPlacement")
+	GetWindowRect                = user32.MustFindProc("GetWindowRect")
 	SetWindowPos                 = user32.MustFindProc("SetWindowPos")
 	ShowWindow                   = user32.MustFindProc("ShowWindow")
 	GetSystemMetrics             = user32.MustFindProc("GetSystemMetrics")
@@ -75,53 +162,3 @@ var (
 	modKernel32  = syscall.NewLazyDLL("kernel32.dll")
 	GetLastError = modKernel32.NewProc("GetLastError")
 )
-
-// Windows RECT structure
-type WindowsRect struct {
-	Left, Top, Right, Bottom int32
-}
-
-// http://msdn.microsoft.com/en-us/library/windows/desktop/dd183375.aspx
-type WindowsBitmapInfo struct {
-	BmiHeader WindowsBitmapInfoHeader
-	BmiColors *WindowsRGBQuad
-}
-
-// http://msdn.microsoft.com/en-us/library/windows/desktop/dd183376.aspx
-type WindowsBitmapInfoHeader struct {
-	BiSize          uint32
-	BiWidth         int32
-	BiHeight        int32
-	BiPlanes        uint16
-	BiBitCount      uint16
-	BiCompression   uint32
-	BiSizeImage     uint32
-	BiXPelsPerMeter int32
-	BiYPelsPerMeter int32
-	BiClrUsed       uint32
-	BiClrImportant  uint32
-}
-
-// http://msdn.microsoft.com/en-us/library/windows/desktop/dd162938.aspx
-type WindowsRGBQuad struct {
-	RgbBlue     byte
-	RgbGreen    byte
-	RgbRed      byte
-	RgbReserved byte
-}
-
-// https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-windowplacement
-type WindowsPlacement struct {
-	Len    uint
-	Flags  uint
-	Cmd    uint
-	Min    WindowsPoint
-	Max    WindowsPoint
-	Normal WindowsRect
-	Device WindowsRect
-}
-
-// https://learn.microsoft.com/en-us/previous-versions/dd162805(v=vs.85)
-type WindowsPoint struct {
-	X, Y int32
-}

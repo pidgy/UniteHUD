@@ -222,8 +222,16 @@ func Match() bool {
 	return current.game.Match
 }
 
-func Objectives(t *team.Team) (regielekis, regices, regirocks, registeels int) {
-	return RegielekisSecured(t), RegicesSecured(t), RegirocksSecured(t), RegisteelsSecured(t)
+func Objectives(t *team.Team) (regielekis, regices, regirocks, registeels, rayquazas int) {
+	q := 0
+	if current.game.Rayquaza == t.Name {
+		q++
+	}
+	return RegielekisSecured(t), RegicesSecured(t), RegirocksSecured(t), RegisteelsSecured(t), q
+}
+
+func Rayquaza() string {
+	return current.game.Rayquaza
 }
 
 func RegielekiAdv() *team.Team {
@@ -528,6 +536,7 @@ func reset() *game {
 		Seconds:   0,
 		Energy:    0,
 		Regilekis: []string{team.None.Name, team.None.Name, team.None.Name},
+		Rayquaza:  "",
 		Bottom:    []objective{},
 		Version:   global.Version,
 		Defeated:  []int{},

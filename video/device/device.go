@@ -23,6 +23,8 @@ var (
 
 	running = false
 	stopped = true
+
+	lastRequest = time.Now()
 )
 
 func init() {
@@ -47,13 +49,13 @@ func init() {
 }
 
 func ActiveName() string {
-	if config.Current.VideoCaptureDevice == config.NoVideoCaptureDevice {
+	if active == config.NoVideoCaptureDevice {
 		return "Disabled"
 	}
-	if len(names) > config.Current.VideoCaptureDevice {
-		return names[config.Current.VideoCaptureDevice]
+	if len(names) > active {
+		return names[active]
 	}
-	return fmt.Sprintf("Video Capture Device: %d", config.Current.VideoCaptureDevice)
+	return fmt.Sprintf("Video Capture Device: %d", active)
 }
 
 func Capture() (*image.RGBA, error) {
@@ -61,12 +63,14 @@ func Capture() (*image.RGBA, error) {
 }
 
 func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
+	lastRequest = time.Now()
+
 	if mat.Empty() {
 		return nil, nil
 	}
 
 	if !rect.In(monitor.MainResolution()) {
-		return nil, fmt.Errorf("Requested capture area is outside of the legal boundary %s intersects %s", rect, monitor.MainResolution())
+		return nil, fmt.Errorf("capture is outside of the legal boundary (%s intersects %s)", rect, monitor.MainResolution())
 	}
 
 	i, err := img.RGBA(mat.Region(rect))
@@ -78,24 +82,26 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 }
 
 func Close() {
-	if !isActivated() {
+	if !running {
+		notify.Debug("Ignorning call to close %s video capture device", ActiveName())
 		return
 	}
 
 	running = false
 	for !stopped {
-		time.Sleep(time.Nanosecond)
+		time.Sleep(time.Microsecond)
 	}
 
 	config.Current.VideoCaptureDevice = config.NoVideoCaptureDevice
 }
 
 func IsActive() bool {
-	return config.Current.VideoCaptureDevice != config.NoVideoCaptureDevice
+	return config.Current.VideoCaptureDevice == active && active != config.NoVideoCaptureDevice
 }
 
 func Open() error {
-	if isActivated() {
+	if running || config.Current.VideoCaptureDevice == config.NoVideoCaptureDevice {
+		notify.Debug("Ignorning call to open video capture device (%s)", ActiveName())
 		return nil
 	}
 
@@ -112,14 +118,10 @@ func Open() error {
 }
 
 func Name(d int) string {
-	if len(names) > d {
+	if d != config.NoVideoCaptureDevice && len(names) > d {
 		return names[d]
 	}
 	return fmt.Sprintf("Video Capture Device: %d", d)
-}
-
-func isActivated() bool {
-	return active == config.Current.VideoCaptureDevice
 }
 
 func reset() {
@@ -162,7 +164,8 @@ func startCaptureDevice() error {
 
 		name := Name(config.Current.VideoCaptureDevice)
 
-		notify.System("Capturing from %s", name)
+		notify.System("Starting video capture (%s)", name)
+		defer notify.System("Closing video capture (%s)", name)
 
 		device, err := gocv.OpenVideoCaptureWithAPI(config.Current.VideoCaptureDevice, gocv.VideoCaptureAny)
 		if err != nil {
@@ -184,6 +187,16 @@ func startCaptureDevice() error {
 		close(errq)
 
 		for running && active == config.Current.VideoCaptureDevice {
+			time.Sleep(time.Millisecond)
+
+			if config.Current.VideoCaptureDevice == config.NoVideoCaptureDevice {
+				go Close()
+			}
+
+			if time.Since(lastRequest) > time.Millisecond {
+				continue
+			}
+
 			if !device.Read(&mat) || mat.Empty() {
 				notify.Warn("Failed to read from %s", name)
 				continue

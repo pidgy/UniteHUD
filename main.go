@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/debug"
@@ -22,6 +21,7 @@ import (
 	"github.com/pidgy/unitehud/team"
 	"github.com/pidgy/unitehud/update"
 	"github.com/pidgy/unitehud/video"
+	"github.com/pidgy/unitehud/video/window/electron"
 )
 
 // windows
@@ -31,40 +31,56 @@ var sigq = make(chan os.Signal, 1)
 
 func init() {
 	notify.System("Initializing...")
+
+	go signals()
 }
 
 func kill(errs ...error) {
+	defer close(sigq)
+
 	if len(errs) > 0 {
 		config.Current.Report(errs[0].Error())
+
+		err := config.Current.Save()
+		if err != nil {
+			notify.Error("Failed to save crash log (%v)", err)
+		}
 	}
 
 	for _, err := range errs {
-		println(err)
+		notify.Error("Force Shutdown: %v", err)
 	}
 
-	time.Sleep(time.Second)
+	report := make(chan bool)
 
-	sig := os.Kill
-	if len(errs) == 0 {
-		sig = os.Interrupt
-	}
-	sigq <- sig
+	gui.Window.ToastCrash(
+		"UniteHUD has encountered an unrecoverable error",
+		func() {
+			close(report)
+		},
+		func() {
+			debug.Log()
+
+			err := debug.OpenLogDirectory()
+			if err != nil {
+				println(err.Error())
+			}
+		},
+	)
+	<-report
 }
 
 func signals() {
 	signal.Notify(sigq, syscall.SIGINT, syscall.SIGTERM)
 	<-sigq
 
-	detect.Close()
+	video.Close()
+	electron.Close()
 
-	println("signal")
-
-	os.Exit(1)
+	os.Exit(0)
 }
 
 func main() {
-	go signals()
-
 	gui.New()
 	defer gui.Window.Open()
 
@@ -80,12 +96,17 @@ func main() {
 
 	err = video.Open()
 	if err != nil {
-		notify.Error("Failed to load video input (%v)", err)
+		notify.Error("Failed to open Video Capture Device (%v)", err)
 	}
 
 	err = server.Listen()
 	if err != nil {
 		notify.Error("Failed to start UniteHUD server (%v)", err)
+	}
+
+	err = electron.Open()
+	if err != nil {
+		notify.Error("Failed to start UniteHUD overlay (%v)", err)
 	}
 
 	notify.System("Debug mode: %t", global.DebugMode)
@@ -95,19 +116,19 @@ func main() {
 	notify.System("Assets: %s", config.Current.Assets())
 	notify.System("Default match threshold: %.0f%%", config.Current.Acceptance*100)
 
+	go detect.Preview()
+	// go detect.Window()
+
 	go detect.Clock()
 	go detect.Energy()
+	go detect.PressButtonToScore()
 	go detect.Defeated()
 	go detect.KOs()
 	go detect.Objectives()
-	go detect.PressButtonToScore()
-	go detect.Preview()
 	go detect.States()
-	go detect.Window()
 	go detect.Scores(team.Purple.Name)
 	go detect.Scores(team.Orange.Name)
 	go detect.Scores(team.First.Name)
-
 	go update.Check()
 
 	go func() {
@@ -116,13 +137,12 @@ func main() {
 		for action := range gui.Window.Actions {
 			switch action {
 			case gui.Closing:
-				detect.Close()
-				return
+				close(sigq)
 			case gui.Config:
 				server.SetConfig(true)
 				fallthrough
 			case gui.Start:
-				detect.Idle = false
+				detect.Resume()
 
 				notify.Announce("Starting %s...", title.Default)
 
@@ -137,7 +157,7 @@ func main() {
 				server.SetStarted()
 				state.Add(state.ServerStarted, server.Clock(), -1)
 			case gui.Stop:
-				detect.Idle = true
+				detect.Pause()
 
 				notify.Denounce("Stopping %s...", title.Default)
 
@@ -167,8 +187,7 @@ func main() {
 
 				notify.System("%s template match results in %s", str, debug.Dir)
 
-				switch config.Current.Record {
-				case true:
+				if config.Current.Record {
 					notify.System("Using \"%s\" directory for recording data", debug.Dir)
 
 					err = config.Current.Save()
@@ -180,7 +199,7 @@ func main() {
 					if err != nil {
 						notify.Error("Failed to open \"%s\" (%v)", debug.Dir, err)
 					}
-				case false:
+				} else {
 					notify.System("Closing open files in %s", debug.Dir)
 				}
 			case gui.Log:
@@ -198,25 +217,16 @@ func main() {
 					notify.Error("Failed to open \"%s\" (%v)", debug.Dir, err)
 				}
 			case gui.Refresh:
+				notify.Debug("GUI sent \"Refresh\"")
+
 				err := video.Open()
 				if err != nil {
-					notify.Error("Failed to load windows (%v)", err)
+					notify.Error("Failed to open Video Capture Device (%v)", err)
 				}
 
 				if lastWindow != config.Current.Window {
 					notify.System("Capture window set to \"%s\"", lastWindow)
 				}
-			case gui.Debug:
-				was := detect.Idle
-				detect.Idle = true
-
-				err := config.Load(config.Current.Profile)
-				if err != nil {
-					notify.Error("Failed to reload config (%v)", err)
-					continue
-				}
-
-				detect.Idle = was
 			}
 		}
 	}()

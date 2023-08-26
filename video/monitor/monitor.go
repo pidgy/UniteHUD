@@ -11,7 +11,7 @@ import (
 
 	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/notify"
-	"github.com/pidgy/unitehud/video/proc"
+	"github.com/pidgy/unitehud/video/wapi"
 )
 
 var (
@@ -108,30 +108,32 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 	if dst == 0 {
 		return nil, fmt.Errorf("Could not Create Compatible DC (%d)", getLastError())
 	}
-	defer proc.DeleteDC.Call(uintptr(dst))
+	defer wapi.DeleteDC.Call(uintptr(dst))
 
 	x, y := rect.Dx(), rect.Dy()
 
-	bt := proc.WindowsBitmapInfo{}
-	bt.BmiHeader.BiSize = uint32(reflect.TypeOf(bt.BmiHeader).Size())
-	bt.BmiHeader.BiWidth = int32(x)
-	bt.BmiHeader.BiHeight = int32(-y)
-	bt.BmiHeader.BiPlanes = 1
-	bt.BmiHeader.BiBitCount = 32
-	bt.BmiHeader.BiCompression = proc.BIRGBCompression
+	bt := wapi.BitmapInfo{}
+	bt.BmiHeader = wapi.BitmapInfoHeader{
+		BiSize:        uint32(reflect.TypeOf(bt.BmiHeader).Size()),
+		BiWidth:       int32(x),
+		BiHeight:      int32(-y),
+		BiPlanes:      1,
+		BiBitCount:    32,
+		BiCompression: wapi.BitmapInfoHeaderCompression.RGB,
+	}
 
 	ptr := unsafe.Pointer(uintptr(0))
 
-	mhBmp := createDIBSection(dst, &bt, proc.DIBRGBColors, &ptr, 0, 0)
+	mhBmp := createDIBSection(dst, &bt, wapi.CreateDIBSectionUsage.RGBColors, &ptr, 0, 0)
 	if mhBmp == 0 {
 		return nil, fmt.Errorf("Could not Create DIB Section err:%d.\n", getLastError())
 	}
-	if mhBmp == proc.InvalidParameter {
+	if mhBmp == wapi.CreateDIBSectionError.InvalidParameter {
 		return nil, fmt.Errorf("One or more of the input parameters is invalid while calling CreateDIBSection.\n")
 	}
-	defer deleteObject(proc.HGDIOBJ(mhBmp))
+	defer deleteObject(wapi.HGDIOBJ(mhBmp))
 
-	obj := selectObject(dst, proc.HGDIOBJ(mhBmp))
+	obj := selectObject(dst, wapi.HGDIOBJ(mhBmp))
 	if obj == 0 {
 		return nil, fmt.Errorf("error occurred and the selected object is not a region err:%d.\n", getLastError())
 	}
@@ -150,7 +152,7 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 	var ret uintptr
 	switch config.Current.Scale {
 	case 1:
-		ret, _, _ = proc.BitBlt.Call(
+		ret, _, _ = wapi.BitBlt.Call(
 			uintptr(dst),
 			0,
 			0,
@@ -159,13 +161,13 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 			uintptr(src),
 			uintptr(rect.Min.X),
 			uintptr(rect.Min.Y),
-			uintptr(proc.CaptureBLT|proc.SrcCopy),
+			wapi.BitBltRasterOperations.CaptureBLT|wapi.BitBltRasterOperations.SrcCopy,
 		)
 	default: // Scaled.
 		scaledW := int(float64(width) * config.Current.Scale)
 		scaledH := int(float64(height) * config.Current.Scale)
 
-		ret, _, _ = proc.StretchBlt.Call(
+		ret, _, _ = wapi.StretchBlt.Call(
 			uintptr(dst),
 			0,
 			0,
@@ -176,7 +178,7 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 			uintptr(rect.Min.Y),
 			uintptr(width),
 			uintptr(height),
-			uintptr(proc.CaptureBLT|proc.SrcCopy),
+			wapi.BitBltRasterOperations.CaptureBLT|wapi.BitBltRasterOperations.SrcCopy,
 		)
 	}
 	if ret == 0 {
@@ -215,30 +217,20 @@ func MainResolution() image.Rectangle {
 	if mainResolution.Max.Eq(image.Pt(0, 0)) {
 		cx := uintptr(0)
 		cy := uintptr(1)
-		x, _, _ := proc.GetSystemMetrics.Call(cx)
-		y, _, _ := proc.GetSystemMetrics.Call(cy)
+		x, _, _ := wapi.GetSystemMetrics.Call(cx)
+		y, _, _ := wapi.GetSystemMetrics.Call(cy)
 		mainResolution = image.Rectangle{Max: image.Pt(int(x), int(y))}
 	}
 
 	return mainResolution
 }
 
-func bitBlt(dst proc.HDC, dstx, dsty, dstw, dsth int, src proc.HDC, srcx, srcy int) bool {
-	/*ret, _, _ := proc.BitBlt.Call(
-	uintptr(hdcDest),
-	uintptr(nXDest),
-	uintptr(nYDest),
-	uintptr(nWidth),
-	uintptr(nHeight),
-	uintptr(hdcSrc),
-	uintptr(nXSrc),
-	uintptr(nYSrc),
-	uintptr(dwRop))
-	*/
+func bitBlt(dst wapi.HDC, dstx, dsty, dstw, dsth int, src wapi.HDC, srcx, srcy int) bool {
+
 	var ret uintptr
 	switch config.Current.Scale {
 	case 1:
-		ret, _, _ = proc.BitBlt.Call(
+		ret, _, _ = wapi.BitBlt.Call(
 			uintptr(dst),
 			0,
 			0,
@@ -247,13 +239,13 @@ func bitBlt(dst proc.HDC, dstx, dsty, dstw, dsth int, src proc.HDC, srcx, srcy i
 			uintptr(src),
 			uintptr(dstx),
 			uintptr(dsty),
-			uintptr(proc.CaptureBLT|proc.SrcCopy),
+			wapi.BitBltRasterOperations.CaptureBLT|wapi.BitBltRasterOperations.SrcCopy,
 		)
 	default: // Scaled.
 		scaledW := int(float64(dstw) * config.Current.Scale)
 		scaledH := int(float64(dsth) * config.Current.Scale)
 
-		ret, _, _ = proc.StretchBlt.Call(
+		ret, _, _ = wapi.StretchBlt.Call(
 			uintptr(dst),
 			0,
 			0,
@@ -264,25 +256,25 @@ func bitBlt(dst proc.HDC, dstx, dsty, dstw, dsth int, src proc.HDC, srcx, srcy i
 			uintptr(dsty),
 			uintptr(srcx),
 			uintptr(srcy),
-			uintptr(proc.CaptureBLT|proc.SrcCopy),
+			wapi.BitBltRasterOperations.CaptureBLT|wapi.BitBltRasterOperations.SrcCopy,
 		)
 	}
 	return ret != 0
 }
 
-func createCompatibleDC(hdc proc.HDC) proc.HDC {
-	ret, _, _ := proc.CreateCompatibleDC.Call(
+func createCompatibleDC(hdc wapi.HDC) wapi.HDC {
+	ret, _, _ := wapi.CreateCompatibleDC.Call(
 		uintptr(hdc))
 
 	if ret == 0 {
 		panic("Create compatible DC failed")
 	}
 
-	return proc.HDC(ret)
+	return wapi.HDC(ret)
 }
 
-func createDIBSection(hdc proc.HDC, pbmi *proc.WindowsBitmapInfo, iUsage uint, ppvBits *unsafe.Pointer, hSection proc.HANDLE, dwOffset uint) proc.HBITMAP {
-	ret, _, _ := proc.CreateDIBSection.Call(
+func createDIBSection(hdc wapi.HDC, pbmi *wapi.BitmapInfo, iUsage uint, ppvBits *unsafe.Pointer, hSection wapi.Handle, dwOffset uint) wapi.HBITMAP {
+	ret, _, _ := wapi.CreateDIBSection.Call(
 		uintptr(hdc),
 		uintptr(unsafe.Pointer(pbmi)),
 		uintptr(iUsage),
@@ -290,16 +282,16 @@ func createDIBSection(hdc proc.HDC, pbmi *proc.WindowsBitmapInfo, iUsage uint, p
 		uintptr(hSection),
 		uintptr(dwOffset))
 
-	return proc.HBITMAP(ret)
+	return wapi.HBITMAP(ret)
 }
 
-func deleteDC(hdc proc.HDC) bool {
-	ret, _, _ := proc.DeleteDC.Call(uintptr(hdc))
+func deleteDC(hdc wapi.HDC) bool {
+	ret, _, _ := wapi.DeleteDC.Call(uintptr(hdc))
 	return ret != 0
 }
 
-func deleteObject(hObject proc.HGDIOBJ) bool {
-	ret, _, _ := proc.DeleteObject.Call(uintptr(hObject))
+func deleteObject(hObject wapi.HGDIOBJ) bool {
+	ret, _, _ := wapi.DeleteObject.Call(uintptr(hObject))
 	return ret != 0
 }
 
@@ -318,26 +310,18 @@ func display(name string, count int) string {
 	return fmt.Sprintf("%s %d", name, count)
 }
 
-func getDC(hwnd proc.HWND) proc.HDC {
-	ret, _, _ := proc.GetDC.Call(uintptr(hwnd))
-	return proc.HDC(ret)
-}
-
-func getDeviceCaps(hdc proc.HDC, index int) int {
-	ret, _, _ := proc.GetDeviceCaps.Call(
-		uintptr(hdc),
-		uintptr(index))
-
-	return int(ret)
+func getDC(hwnd wapi.HWND) wapi.HDC {
+	ret, _, _ := wapi.GetDC.Call(uintptr(hwnd))
+	return wapi.HDC(ret)
 }
 
 func getLastError() uint32 {
-	ret, _, _ := proc.GetLastError.Call()
+	ret, _, _ := wapi.GetLastError.Call()
 	return uint32(ret)
 }
 
-func releaseDC(hwnd proc.HWND, hdc proc.HDC) bool {
-	ret, _, _ := proc.ReleaseDC.Call(uintptr(hwnd), uintptr(hdc))
+func releaseDC(hwnd wapi.HWND, hdc wapi.HDC) bool {
+	ret, _, _ := wapi.ReleaseDC.Call(uintptr(hwnd), uintptr(hdc))
 	return ret != 0
 }
 
@@ -348,25 +332,14 @@ func mainDisplayRect() (image.Rectangle, error) {
 	}
 	defer releaseDC(0, hdc)
 
-	x0, y0 := 0, 0
-	x1, y1 := getDeviceCaps(hdc, proc.HorzRes), getDeviceCaps(hdc, proc.VertRes)
+	x, _, _ := wapi.GetDeviceCaps.Call(uintptr(hdc), uintptr(wapi.GetDeviceCapsIndex.HorzRes))
+	y, _, _ := wapi.GetDeviceCaps.Call(uintptr(hdc), uintptr(wapi.GetDeviceCapsIndex.VertRes))
 
-	/*
-		switch config.Current.Window {
-		case config.LeftDisplay:
-			x0, y0 = -100, -100
-			x1, y1 = x1-100, y1-100
-		case config.RightDisplay:
-			x0, y0 = x1, y1
-			x1, y1 = x1*2, y1*2
-		}
-	*/
-
-	return image.Rect(x0, y0, x1, y1), nil
+	return image.Rect(0, 0, int(x), int(y)), nil
 }
 
-func selectObject(hdc proc.HDC, hgdiobj proc.HGDIOBJ) proc.HGDIOBJ {
-	ret, _, _ := proc.SelectObject.Call(
+func selectObject(hdc wapi.HDC, hgdiobj wapi.HGDIOBJ) wapi.HGDIOBJ {
+	ret, _, _ := wapi.SelectObject.Call(
 		uintptr(hdc),
 		uintptr(hgdiobj))
 
@@ -374,7 +347,7 @@ func selectObject(hdc proc.HDC, hgdiobj proc.HGDIOBJ) proc.HGDIOBJ {
 		panic("SelectObject failed")
 	}
 
-	return proc.HGDIOBJ(ret)
+	return wapi.HGDIOBJ(ret)
 }
 
 func set(s []string, d map[string]int, b map[string]image.Rectangle) {

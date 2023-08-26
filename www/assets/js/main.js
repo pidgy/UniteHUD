@@ -18,6 +18,10 @@ function clear(err = '') {
     $('.error').css('opacity', '.9');
     $('.error').html(err);
 
+    $(`.rayquaza-1 .rayquaza-circle-purple`).css('opacity', 0);
+    $(`.rayquaza-1 .rayquaza-circle-orange`).css('opacity', 0);
+    $(`.rayquaza-1 .rayquaza-circle-none`).css('opacity', 1);
+
     for (var i = 1; i <= 3; i++) {
         $(`.regis-bottom-${i} .regis-bottom-circle-purple`).css('opacity', 0);
         $(`.regis-bottom-${i} .regis-bottom-circle-orange`).css('opacity', 0);
@@ -161,9 +165,11 @@ function success(data) {
         }
     }
 
+    $(`.rayquaza-1 .rayquaza-circle-purple`).css('opacity', 0);
+    $(`.rayquaza-1 .rayquaza-circle-orange`).css('opacity', 0);
+    $(`.rayquaza-1 .rayquaza-circle-none`).css('opacity', 1);
+
     if (data.rayquaza) {
-        $(`.rayquaza-1 .rayquaza-circle-purple`).css('opacity', 0);
-        $(`.rayquaza-1 .rayquaza-circle-orange`).css('opacity', 0);
         $(`.rayquaza-1 .rayquaza-circle-none`).css('opacity', 0);
         $(`.rayquaza-1 .rayquaza-circle-${data.rayquaza}`).css('opacity', 1);
     }

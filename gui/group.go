@@ -9,6 +9,7 @@ import (
 	"gioui.org/widget"
 	"github.com/pidgy/unitehud/audio"
 	"github.com/pidgy/unitehud/config"
+	"github.com/pidgy/unitehud/fonts"
 	"github.com/pidgy/unitehud/gui/visual/area"
 	"github.com/pidgy/unitehud/gui/visual/dropdown"
 	"github.com/pidgy/unitehud/match"
@@ -26,7 +27,6 @@ type areas struct {
 	score     *area.Area
 	state     *area.Area
 	time      *area.Area
-	screen    *area.Capture
 
 	onevent func()
 }
@@ -178,16 +178,15 @@ func (g *GUI) audios(text float32, session *audio.Session) *audios {
 	return a
 }
 
-func (g *GUI) areas() *areas {
+func (g *GUI) areas(collection fonts.Collection) *areas {
 	a := &areas{
-		screen:  &area.Capture{Option: "Screen", File: "screen_area.png", Base: image.Rectangle{Max: g.max}},
 		onevent: func() { /*No-op.*/ },
 	}
 
 	a.ko = &area.Area{
 		Text:     "KO",
 		TextSize: unit.Sp(13),
-		Theme:    g.normal,
+		Theme:    collection.Calibri().Theme,
 		Min:      config.Current.KOs.Min,
 		Max:      config.Current.KOs.Max,
 		NRGBA:    area.Locked,
@@ -195,16 +194,17 @@ func (g *GUI) areas() *areas {
 		Cooldown: time.Millisecond * 1500,
 
 		Capture: &area.Capture{
-			Option: "KO",
-			File:   "ko_area.png",
-			Base:   config.Current.KOs,
+			Option:      "KO",
+			File:        "ko_area.png",
+			Base:        config.Current.KOs,
+			DefaultBase: config.Current.KOs,
 		},
 	}
 
 	a.objective = &area.Area{
 		Text:     "Objectives",
 		TextSize: unit.Sp(13),
-		Theme:    g.normal,
+		Theme:    collection.Calibri().Theme,
 		Min:      config.Current.Objectives.Min,
 		Max:      config.Current.Objectives.Max,
 		NRGBA:    area.Locked,
@@ -212,16 +212,17 @@ func (g *GUI) areas() *areas {
 		Cooldown: time.Second,
 
 		Capture: &area.Capture{
-			Option: "Objective",
-			File:   "objective_area.png",
-			Base:   config.Current.Objectives,
+			Option:      "Objective",
+			File:        "objective_area.png",
+			Base:        config.Current.Objectives,
+			DefaultBase: config.Current.Objectives,
 		},
 	}
 
 	a.energy = &area.Area{
 		Text:     "Aeos",
 		TextSize: unit.Sp(13),
-		Theme:    g.normal,
+		Theme:    collection.Calibri().Theme,
 		Min:      config.Current.Energy.Min,
 		Max:      config.Current.Energy.Max,
 		NRGBA:    area.Locked,
@@ -229,16 +230,17 @@ func (g *GUI) areas() *areas {
 		Cooldown: team.Energy.Delay,
 
 		Capture: &area.Capture{
-			Option: "Aeos",
-			File:   "aeos_area.png",
-			Base:   config.Current.Energy,
+			Option:      "Aeos",
+			File:        "aeos_area.png",
+			Base:        config.Current.Energy,
+			DefaultBase: config.Current.Energy,
 		},
 	}
 
 	a.time = &area.Area{
 		Text:     "Time",
 		TextSize: unit.Sp(12),
-		Theme:    g.normal,
+		Theme:    collection.Calibri().Theme,
 		Min:      config.Current.Time.Min,
 		Max:      config.Current.Time.Max,
 		NRGBA:    area.Locked,
@@ -246,16 +248,17 @@ func (g *GUI) areas() *areas {
 		Cooldown: team.Time.Delay,
 
 		Capture: &area.Capture{
-			Option: "Time",
-			File:   "time_area.png",
-			Base:   config.Current.Time,
+			Option:      "Time",
+			File:        "time_area.png",
+			Base:        config.Current.Time,
+			DefaultBase: config.Current.Time,
 		},
 	}
 
 	a.score = &area.Area{
 		Text:          "Score",
 		TextAlignLeft: true,
-		Theme:         g.normal,
+		Theme:         collection.Calibri().Theme,
 		Min:           config.Current.Scores.Min,
 		Max:           config.Current.Scores.Max,
 		NRGBA:         area.Locked,
@@ -263,9 +266,10 @@ func (g *GUI) areas() *areas {
 		Cooldown:      team.Purple.Delay,
 
 		Capture: &area.Capture{
-			Option: "Score",
-			File:   "score_area.png",
-			Base:   config.Current.Scores,
+			Option:      "Score",
+			File:        "score_area.png",
+			Base:        config.Current.Scores,
+			DefaultBase: config.Current.Scores,
 		},
 	}
 
@@ -274,16 +278,17 @@ func (g *GUI) areas() *areas {
 
 		Text:    "State",
 		Subtext: strings.Title(match.NotFound.String()),
-		Theme:   g.normal,
+		Theme:   collection.Calibri().Theme,
 		NRGBA:   area.Locked.Alpha(0),
 		Match:   g.matchState,
 		Min:     image.Pt(0, 0),
 		Max:     image.Pt(150, 25),
 
 		Capture: &area.Capture{
-			Option: "State",
-			File:   "state_area.png",
-			Base:   video.StateArea(),
+			Option:      "State",
+			File:        "state_area.png",
+			Base:        video.StateArea(),
+			DefaultBase: video.StateArea(),
 		},
 	}
 

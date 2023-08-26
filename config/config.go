@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"gocv.io/x/gocv"
 
 	"github.com/pidgy/unitehud/filter"
@@ -51,6 +53,7 @@ type Config struct {
 	Profile                  string
 	DisableBrowserFormatting bool
 	Platform                 string
+	HUDOverlay               bool
 
 	DisableScoring, DisableTime, DisableObjectives, DisableEnergy, DisableDefeated, DisableKOs, DisablePreviews bool
 
@@ -75,6 +78,16 @@ func (c *Config) Assets() string {
 	return fmt.Sprintf(`%s\assets`, filepath.Dir(e))
 }
 
+func (c *Config) Eq(c2 *Config) bool {
+	return cmp.Equal(c, c2,
+		cmpopts.IgnoreTypes(
+			func() {},
+			map[string]map[string][]filter.Filter{},
+			map[string]map[string][]*template.Template{},
+		),
+	)
+}
+
 func (c *Config) File() string {
 	return fmt.Sprintf("%s-config.unitehud.%s", strings.ReplaceAll(global.Version, ".", "-"), c.Profile)
 }
@@ -95,11 +108,6 @@ func (c *Config) Reload() {
 
 func (c *Config) Report(crash string) {
 	c.Crashed = crash
-
-	err := c.Save()
-	if err != nil {
-		notify.Error("Failed to save crash log (%v)", err)
-	}
 }
 
 func (c *Config) Reset() error {
@@ -275,9 +283,9 @@ func (c *Config) setKOArea() {
 func (c *Config) setObjectiveArea() {
 	switch c.Profile {
 	case ProfileBroadcaster:
-		c.Objectives = image.Rect(350, 200, 1350, 315)
+		c.Objectives = image.Rect(350, 210, 1200, 310)
 	case ProfilePlayer:
-		c.Objectives = image.Rect(350, 200, 1000, 275)
+		c.Objectives = image.Rect(350, 210, 1200, 310)
 	}
 }
 
@@ -302,10 +310,11 @@ func Load(profile string) error {
 	defer validate()
 
 	if profile == "" {
+		profile = ProfilePlayer
 		Current.SetProfile(profile)
 	}
 
-	notify.System("Loading %s configuration from %s", profile, Current.File())
+	notify.System("Loading \"%s\" configuration from \"%s\"", profile, Current.File())
 
 	ok := open()
 	if !ok {

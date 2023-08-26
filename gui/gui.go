@@ -4,17 +4,16 @@ import (
 	"fmt"
 	"image"
 	"math"
-	"os"
 	"runtime"
 	"syscall"
 	"time"
+	"unsafe"
 
 	"gioui.org/app"
 	"gioui.org/io/system"
 	"gioui.org/layout"
 	"gioui.org/op"
 	"gioui.org/unit"
-	"gioui.org/widget/material"
 
 	"github.com/pidgy/unitehud/fonts"
 	"github.com/pidgy/unitehud/gui/is"
@@ -22,7 +21,7 @@ import (
 	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/stats"
 	"github.com/pidgy/unitehud/video/monitor"
-	"github.com/pidgy/unitehud/video/proc"
+	"github.com/pidgy/unitehud/video/wapi"
 )
 
 type Action string
@@ -35,19 +34,17 @@ type GUI struct {
 	*app.Window
 	*title.Bar
 
-	min, max  image.Point
-	size, pos image.Point
-	shift     image.Point
+	min, max, inset image.Point
+	size            image.Point
+	shift           image.Point
 
 	HWND uintptr
 
 	Preview bool
 	open    bool
 
-	resizing bool
-
-	resizex bool
-	resized bool
+	fullscreen bool
+	resizing   bool
 
 	Actions chan Action
 
@@ -56,8 +53,6 @@ type GUI struct {
 	cpu, ram, uptime string
 	time             time.Time
 
-	cascadia, normal, toast *material.Theme
-
 	toastActive    bool
 	lastToastError error
 	lastToastTime  time.Time
@@ -65,6 +60,7 @@ type GUI struct {
 	ecoMode bool
 
 	resizeToMax bool
+	firstOpen   bool
 
 	fps struct {
 		frames int
@@ -106,19 +102,13 @@ func New() {
 		max: max,
 
 		size: min,
-		pos:  max.Sub(min).Div(2),
 
 		Preview: true,
 		Actions: make(chan Action, 1024),
 
 		resizing: false,
-		resizex:  true,
 
 		ecoMode: true,
-
-		normal:   fonts.Default().Theme,
-		cascadia: fonts.Cascadia().Theme,
-		toast:    fonts.Default().Theme,
 
 		fps: struct {
 			frames int
@@ -133,6 +123,7 @@ func New() {
 
 	Window.Bar = title.New(
 		title.Default,
+		fonts.NewCollection(),
 		func() {
 			Window.Perform(system.ActionMinimize)
 		},
@@ -152,10 +143,7 @@ func New() {
 }
 
 func (g *GUI) Open() {
-	defer os.Exit(0)
-
 	g.next(is.MainMenu)
-	//g.next(is.TabMenu)
 
 	go func() {
 		g.open = true
@@ -167,15 +155,11 @@ func (g *GUI) Open() {
 
 		for g.is != is.Closing {
 			switch g.is {
-			case is.TabMenu:
-				g.tabs()
 			case is.Loading:
-				notify.Debug("still loading")
+				notify.Debug("Loading...")
 			case is.MainMenu:
-				g.resizex = false
 				g.main()
 			case is.Projecting:
-				g.resizex = true
 				g.projector()
 			default:
 				g.ToastError(fmt.Errorf("Unexpected configuration... shutting down"))
@@ -192,7 +176,7 @@ func (g *GUI) Open() {
 }
 
 func (g *GUI) SetWindowPos(shift image.Point) {
-	if g.fullscreen() || g.HWND == 0 || g.resizing {
+	if g.fullscreen || g.HWND == 0 || g.resizing {
 		return
 	}
 	g.resizing = true
@@ -204,15 +188,14 @@ func (g *GUI) SetWindowPos(shift image.Point) {
 			return
 		}
 
-		pos := g.pos.Add(shift)
+		pos := g.position().Add(shift)
 		if !pos.In(image.Rectangle{Min: image.Pt(0, 0).Sub(g.size), Max: g.max.Add(g.size)}) {
 			return
 		}
 
-		g.pos = pos
 		g.shift = shift
 
-		proc.SetWindowPos.Call(g.HWND, uintptr(0), uintptr(g.pos.X), uintptr(g.pos.Y), 0, 0, uintptr(proc.SWPNoSize))
+		wapi.SetWindowPosNoSize(g.HWND, pos)
 	}()
 }
 
@@ -244,10 +227,6 @@ func (g *GUI) draw() {
 	}
 }
 
-func (g *GUI) fullscreen() bool {
-	return g.size == g.max
-}
-
 func (g *GUI) frame(gtx layout.Context, e system.FrameEvent) {
 	op.InvalidateOp{}.Add(gtx.Ops)
 
@@ -261,24 +240,29 @@ func (g *GUI) frame(gtx layout.Context, e system.FrameEvent) {
 }
 
 func (g *GUI) maximize() {
-	if !g.fullscreen() {
-		//max := monitor.MainResolution().Max
-		//g.Option(app.MaxSize(unit.Dp(max.X), unit.Dp(max.Y)), app.Fullscreen.Option())
+	defer func() { g.fullscreen = !g.fullscreen }()
 
+	if g.fullscreen {
+		g.Perform(system.ActionUnmaximize)
+		g.size = g.min
+		g.Option(app.Size(unit.Dp(g.min.X), unit.Dp(g.min.Y)))
+	} else {
 		g.Perform(system.ActionMaximize)
 		g.size = g.max
-		go proc.SetWindowPos.Call(g.HWND, uintptr(0), uintptr(0), uintptr(0), 0, 0, uintptr(proc.SWPNoSize))
-		return
-	}
 
-	g.Perform(system.ActionUnmaximize)
-	g.size = g.min
-	g.Option(app.Size(unit.Dp(g.min.X), unit.Dp(g.min.Y)))
+		wapi.SetWindowPosShow(g.HWND, g.inset, g.max.Sub(g.inset))
+	}
 }
 
 func (g *GUI) next(i is.Is) {
 	notify.Debug("Next state set to \"%s\"", i)
 	g.is = i
+}
+
+func (g *GUI) position() image.Point {
+	r := &wapi.Rect{}
+	wapi.GetWindowRect.Call(g.HWND, uintptr(unsafe.Pointer(r)))
+	return image.Pt(int(r.Left), int(r.Top))
 }
 
 func (g *GUI) proc() {
@@ -352,15 +336,45 @@ func (g *GUI) proc() {
 	}
 }
 
-// func (g *GUI) setFPS(fps int) {
-// 	if g.fps.max == fps {
-// 		return
-// 	}
+func (g *GUI) setInset(inset image.Point) {
+	g.inset = g.inset.Add(inset)
 
-// 	g.fps.max = fps
+	if g.fullscreen {
+		wapi.SetWindowPosShow(g.HWND, g.inset.Sub(image.Pt(0, g.inset.Y)), image.Pt(g.size.X-g.inset.X, g.max.Y))
+	} else {
+		pos := g.position()
 
-// 	go g.draw(fps)
-// }
+		// Move the main window over when space is not available for the inset.
+		if pos.X < inset.X {
+			pos.X += inset.X - pos.X
+		}
+		if pos.Y < inset.Y {
+			pos.Y += inset.Y - pos.Y
+		}
+		// Shrink the main window when it exceeds max boundaries.
+		if g.size.X+g.inset.X > g.max.X {
+			g.size.X = g.max.X - g.inset.X
+		}
+		if g.size.Y+g.inset.Y > g.max.Y {
+			g.size.Y = g.max.Y - g.inset.Y
+		}
+
+		wapi.SetWindowPosShow(g.HWND, pos, g.size)
+	}
+}
+
+func (g *GUI) unsetInset(inset image.Point) {
+	g.inset = g.inset.Sub(inset)
+
+	min := g.position()
+	max := g.size
+	if g.fullscreen {
+		min = image.Pt(0, 0)
+		max = g.max
+	}
+
+	wapi.SetWindowPosShow(g.HWND, min, max)
+}
 
 func (g *GUI) toMain(next *string) {
 	if *next == "" {

@@ -15,7 +15,6 @@ import (
 	"gioui.org/widget/material"
 
 	"github.com/pidgy/unitehud/cursor"
-	"github.com/pidgy/unitehud/fonts"
 	"github.com/pidgy/unitehud/gui/is"
 	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/nrgba"
@@ -51,7 +50,7 @@ func (g *GUI) loading() {
 	dims := layout.Dimensions{}
 	inset := layout.Inset{}
 
-	messageLabel := material.Label(fonts.Calibri().Theme, unit.Sp(18.5), l.message)
+	messageLabel := material.Label(g.Bar.Collection.Calibri().Theme, unit.Sp(18.5), l.message)
 	messageLabel.Alignment = text.Middle
 	messageLabel.Color = nrgba.White.Color()
 	messageLabel.Font.Weight = 50

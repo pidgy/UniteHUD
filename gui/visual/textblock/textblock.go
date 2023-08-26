@@ -3,7 +3,6 @@ package textblock
 import (
 	"image"
 
-	"gioui.org/font"
 	"gioui.org/layout"
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
@@ -18,21 +17,16 @@ import (
 )
 
 type TextBlock struct {
-	Text string
-	list *widget.List
-
-	collection []text.FontFace
-	theme      *material.Theme
+	Text       string
+	list       *widget.List
+	font       *fonts.Style
 	style      material.ListStyle
-}
-
-func (t *TextBlock) Collection() []text.FontFace {
-	return t.collection
+	labelStyle material.LabelStyle
 }
 
 func New(s *fonts.Style) (*TextBlock, error) {
 	return &TextBlock{
-		collection: []text.FontFace{{Font: font.Font{Typeface: s.Typeface}, Face: s.Face}},
+		font: s,
 	}, nil
 }
 
@@ -47,15 +41,13 @@ func (t *TextBlock) Layout(gtx layout.Context, posts []notify.Post) layout.Dimen
 			},
 		}
 
-		t.theme = material.NewTheme(t.collection)
-		if len(t.collection) == 0 {
-			t.collection = fonts.Default().FontFace
-		}
-		t.theme.TextSize = unit.Sp(9)
+		t.font.Theme.TextSize = unit.Sp(9)
 
-		t.style = material.List(t.theme, t.list)
+		t.style = material.List(t.font.Theme, t.list)
 		t.style.Track.Color = nrgba.Slate.Color()
 		t.style.Track.Color.A = 0x0F
+
+		t.labelStyle = material.H5(t.font.Theme, "")
 	}
 
 	fill(gtx,
@@ -75,10 +67,10 @@ func (t *TextBlock) Layout(gtx layout.Context, posts []notify.Post) layout.Dimen
 				gtx,
 				len(posts),
 				func(gtx layout.Context, index int) layout.Dimensions {
-					block := material.H5(t.theme, posts[index].String())
-					block.Color = posts[index].Color()
-					block.Alignment = text.Alignment(text.Start)
-					dim := block.Layout(gtx)
+					t.labelStyle.Text = posts[index].String()
+					t.labelStyle.Color = posts[index].Color()
+					t.labelStyle.Alignment = text.Alignment(text.Start)
+					dim := t.labelStyle.Layout(gtx)
 					dim.Size.X = gtx.Constraints.Max.X
 					return dim
 				},

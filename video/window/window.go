@@ -17,7 +17,7 @@ import (
 	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/video/monitor"
-	"github.com/pidgy/unitehud/video/proc"
+	"github.com/pidgy/unitehud/video/wapi"
 )
 
 var (
@@ -27,7 +27,7 @@ var (
 	lock    = &sync.Mutex{}
 
 	callback = syscall.NewCallback(func(h syscall.Handle, p uintptr) uintptr {
-		found, _, _ := syscall.Syscall(proc.IsWindowVisible.Addr(), 1, uintptr(h), uintptr(0), uintptr(0))
+		found, _, _ := syscall.Syscall(wapi.IsWindowVisible.Addr(), 1, uintptr(h), uintptr(0), uintptr(0))
 		if found == 0 {
 			return 1
 		}
@@ -53,7 +53,7 @@ func init() {
 	// We need to call SetProcessDpiAwareness so that Windows API calls will
 	// tell us the scale factor for our screen so that our screenshot works
 	// on hi-res displays.
-	proc.SetProcessDpiAwareness.Call(uintptr(2)) // PROCESS_PER_MONITOR_DPI_AWARE
+	wapi.SetProcessDpiAwareness.Call(uintptr(2)) // PROCESS_PER_MONITOR_DPI_AWARE
 
 	go func() {
 		for {
@@ -117,36 +117,36 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 	}
 
 	// Get the device context for screenshotting.
-	src, _, err := proc.GetDC.Call(uintptr(handle))
+	src, _, err := wapi.GetDC.Call(uintptr(handle))
 	if src == 0 {
 		return nil, fmt.Errorf("failed to prepare screen capture: %s", err)
 	}
-	defer proc.ReleaseDC.Call(0, src)
+	defer wapi.ReleaseDC.Call(0, src)
 
 	// Grab a compatible DC for drawing.
-	dst, _, err := proc.CreateCompatibleDC.Call(src)
+	dst, _, err := wapi.CreateCompatibleDC.Call(src)
 	if dst == 0 {
 		return nil, fmt.Errorf("failed to create DC for drawing: %s", err)
 	}
-	defer proc.DeleteDC.Call(dst)
+	defer wapi.DeleteDC.Call(dst)
 
 	// Determine the width/height of our capture.
 	width := rect.Dx()
 	height := rect.Dy()
 
 	// Get the bitmap we're going to draw onto.
-	var bitmapInfo proc.WindowsBitmapInfo
-	bitmapInfo.BmiHeader = proc.WindowsBitmapInfoHeader{
+	var bitmapInfo wapi.BitmapInfo
+	bitmapInfo.BmiHeader = wapi.BitmapInfoHeader{
 		BiSize:        uint32(reflect.TypeOf(bitmapInfo.BmiHeader).Size()),
 		BiWidth:       int32(width),
 		BiHeight:      -int32(height), // Negative value will flip image vertically.
 		BiPlanes:      1,
 		BiBitCount:    32,
-		BiCompression: proc.BIRGBCompression,
+		BiCompression: wapi.BitmapInfoHeaderCompression.RGB,
 	}
 
 	bitmapData := unsafe.Pointer(uintptr(0))
-	bitmap, _, err := proc.CreateDIBSection.Call(
+	bitmap, _, err := wapi.CreateDIBSection.Call(
 		dst,
 		uintptr(unsafe.Pointer(&bitmapInfo)),
 		0,
@@ -157,15 +157,15 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 		return nil, fmt.Errorf("Failed to create bitmap for \"%s\" window", config.Current.Window)
 	}
 
-	defer proc.DeleteObject.Call(bitmap)
+	defer wapi.DeleteObject.Call(bitmap)
 
 	// Select the object and paint it.
-	proc.SelectObject.Call(dst, bitmap)
+	wapi.SelectObject.Call(dst, bitmap)
 
 	var ret uintptr
 	switch config.Current.Scale {
 	case 1:
-		ret, _, _ = proc.BitBlt.Call(
+		ret, _, _ = wapi.BitBlt.Call(
 			dst,
 			0,
 			0,
@@ -174,10 +174,10 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 			src,
 			uintptr(rect.Min.X),
 			uintptr(rect.Min.Y),
-			uintptr(proc.CaptureBLT|proc.SrcCopy),
+			wapi.BitBltRasterOperations.CaptureBLT|wapi.BitBltRasterOperations.SrcCopy,
 		)
 	default: // Scaled.
-		ret, _, _ = proc.StretchBlt.Call(
+		ret, _, _ = wapi.StretchBlt.Call(
 			dst,
 			0,
 			0,
@@ -188,7 +188,7 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 			uintptr(rect.Min.Y),
 			uintptr(width),
 			uintptr(height),
-			uintptr(proc.CaptureBLT|proc.SrcCopy),
+			wapi.BitBltRasterOperations.CaptureBLT|wapi.BitBltRasterOperations.SrcCopy,
 		)
 	}
 	if ret == 0 {
@@ -230,7 +230,7 @@ func This(title string) (syscall.Handle, error) {
 	var handle syscall.Handle
 
 	// First look for the normal window
-	ret, _, _ := proc.FindWindow.Call(0, uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(title))))
+	ret, _, _ := wapi.FindWindow.Call(0, uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(title))))
 	if ret == 0 {
 		return handle, fmt.Errorf("Failed to find \"%s\" window", title)
 	}
@@ -311,7 +311,7 @@ func Reattach() error {
 }
 
 func enumWindows(enumFunc uintptr, lparam uintptr) (err error) {
-	r1, _, e1 := syscall.Syscall(proc.EnumWindows.Addr(), 2, uintptr(enumFunc), uintptr(lparam), 0)
+	r1, _, e1 := syscall.Syscall(wapi.EnumWindows.Addr(), 2, uintptr(enumFunc), uintptr(lparam), 0)
 	if r1 == 0 {
 		if e1 != 0 {
 			err = error(e1)
@@ -341,13 +341,12 @@ func find(name string) (syscall.Handle, error) {
 	var handle syscall.Handle
 
 	// First look for the normal window
-	// ret, _, _ := proc.FindWindow.Call(0, uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr("AppName"))))
 	argv, err := syscall.UTF16PtrFromString(name)
 	if err != nil {
 		return handle, err
 	}
 
-	ret, _, _ := proc.FindWindow.Call(0, uintptr(unsafe.Pointer(argv)))
+	ret, _, _ := wapi.FindWindow.Call(0, uintptr(unsafe.Pointer(argv)))
 	if ret == 0 {
 		config.Current.LostWindow = config.Current.Window
 		config.Current.Window = config.MainDisplay
@@ -364,7 +363,7 @@ func getWindowText(hwnd syscall.Handle) (name string, err error) {
 	maxCount := uint32(200)
 	str = &b[0]
 
-	r0, _, e1 := syscall.Syscall(proc.GetWindowTextW.Addr(), 3, uintptr(hwnd), uintptr(unsafe.Pointer(str)), uintptr(maxCount))
+	r0, _, e1 := syscall.Syscall(wapi.GetWindowTextW.Addr(), 3, uintptr(hwnd), uintptr(unsafe.Pointer(str)), uintptr(maxCount))
 	len := int32(r0)
 	if len == 0 {
 		if e1 != 0 {
@@ -385,8 +384,8 @@ func scaled(img *image.RGBA, scale float64) *image.RGBA {
 
 // windowRect gets the dimensions for a Window handle.
 func windowRect(hwnd syscall.Handle) (image.Rectangle, error) {
-	var rect proc.WindowsRect
-	ret, _, err := proc.GetClientRect.Call(uintptr(hwnd), uintptr(unsafe.Pointer(&rect)))
+	var rect wapi.Rect
+	ret, _, err := wapi.GetClientRect.Call(uintptr(hwnd), uintptr(unsafe.Pointer(&rect)))
 	if ret == 0 {
 		return image.Rectangle{}, fmt.Errorf("Error getting window dimensions: %s", err)
 	}

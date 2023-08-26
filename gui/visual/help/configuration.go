@@ -47,6 +47,8 @@ var images = []string{
 }
 
 func (c *configuration) Layout(gtx layout.Context) layout.Dimensions {
+	collection := fonts.NewCollection()
+
 	fill(gtx,
 		nrgba.DarkBlue,
 		func(gtx layout.Context) layout.Dimensions {
@@ -54,7 +56,7 @@ func (c *configuration) Layout(gtx layout.Context) layout.Dimensions {
 		},
 	)
 
-	txt := material.H5(fonts.Default().Theme, dialog[c.Page])
+	txt := material.H5(collection.Calibri().Theme, dialog[c.Page])
 	txt.Color = nrgba.White.Color()
 	txt.Alignment = text.Middle
 	txt.TextSize = unit.Sp(14)

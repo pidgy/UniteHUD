@@ -3,6 +3,7 @@ package area
 import (
 	"fmt"
 	"image"
+	"image/color"
 	"os"
 	"syscall"
 	"time"
@@ -16,15 +17,15 @@ import (
 	"gioui.org/widget/material"
 	"gocv.io/x/gocv"
 
-	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/fonts"
 	"github.com/pidgy/unitehud/gui/visual/button"
 	"github.com/pidgy/unitehud/gui/visual/title"
+	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/nrgba"
 	"github.com/pidgy/unitehud/video"
 	"github.com/pidgy/unitehud/video/device"
 	"github.com/pidgy/unitehud/video/monitor"
-	"github.com/pidgy/unitehud/video/proc"
+	"github.com/pidgy/unitehud/video/wapi"
 	"github.com/pidgy/unitehud/video/window"
 )
 
@@ -32,8 +33,8 @@ const alpha = 150
 
 var (
 	Locked = nrgba.Black
-	Match  = nrgba.Green
-	Miss   = nrgba.Red
+	Match  = nrgba.PastelGreen
+	Miss   = nrgba.PastelRed
 )
 
 type Area struct {
@@ -62,6 +63,10 @@ type Area struct {
 	lastDimsSize image.Point
 	lastRelease  time.Time
 	lastScale    float64
+	baseMinY     int
+
+	titleLabel    material.LabelStyle
+	subtitleLabel material.LabelStyle
 
 	matched struct {
 		err error
@@ -70,29 +75,43 @@ type Area struct {
 }
 
 type Capture struct {
-	Option string
-	File   string
-	Base   image.Rectangle
+	Option      string
+	File        string
+	Base        image.Rectangle
+	DefaultBase image.Rectangle
 
-	Matched *Area
+	MatchedColor color.NRGBA
+	MatchedText  string
 }
 
-func (a *Area) Layout(gtx layout.Context, dims layout.Constraints, img image.Image) (err error) {
-	if img == nil || dims.Max.X == 0 || a.Base.Max.X == 0 {
+func (a *Area) Layout(gtx layout.Context, collection fonts.Collection, capture image.Rectangle, img image.Image, blank image.Point) (err error) {
+	if img == nil || capture.Max.X == 0 || a.Base.Max.X == 0 {
 		return nil
 	}
 	defer func() { err = a.match() }()
 
 	if a.Button == nil {
-		a.Button = &button.Button{}
+		a.Button = &button.Button{
+			Font: collection.Calibri(),
+		}
 	}
 
 	if a.Theme == nil {
-		a.Theme = fonts.Default().Theme
+		a.Theme = collection.Calibri().Theme
 	}
 
-	// Scale
-	a.TextSize = unit.Sp(24) * unit.Sp(float32(dims.Max.X)/float32(img.Bounds().Max.X))
+	if a.titleLabel.TextSize == 0 {
+		a.titleLabel = material.Body1(a.Theme, "")
+		a.titleLabel.Font.Weight = 500
+		a.titleLabel.Color = nrgba.White.Color()
+
+		a.subtitleLabel = material.Body2(a.Theme, "")
+		a.subtitleLabel.Font.Weight = 1000
+		a.subtitleLabel.Color = nrgba.White.Alpha(175).Color()
+	}
+
+	// Scale up or down based on area and image size.
+	a.TextSize = unit.Sp(24) * unit.Sp(float32(capture.Max.X)/float32(img.Bounds().Max.X))
 
 	rect := clip.Rect{
 		Min: a.Min.Add(image.Pt(0, title.Height)),
@@ -103,29 +122,38 @@ func (a *Area) Layout(gtx layout.Context, dims layout.Constraints, img image.Ima
 		return nil
 	}
 
-	if !a.lastDimsSize.Eq(dims.Max) {
-		minXScale := float32(a.Base.Min.X) / float32(img.Bounds().Max.X)
-		maxXScale := float32(a.Base.Max.X) / float32(img.Bounds().Max.X)
-		minYScale := float32(a.Base.Min.Y) / float32(img.Bounds().Max.Y)
-		maxYScale := float32(a.Base.Max.Y) / float32(img.Bounds().Max.Y)
+	if a.baseMinY == 0 {
+		a.baseMinY = capture.Min.Y
+	}
 
-		a.Min.X = int(float32(dims.Max.X) * minXScale)
-		a.Max.X = int(float32(dims.Max.X) * maxXScale)
-		a.Min.Y = int(float32(dims.Max.Y) * minYScale)
-		a.Max.Y = int(float32(dims.Max.Y) * maxYScale)
+	if !a.lastDimsSize.Eq(capture.Max) {
+		a.lastDimsSize = capture.Max
 
-		a.lastDimsSize = dims.Max
+		scale := float32(0)
+		if blank.X > blank.Y {
+			scale = float32(capture.Dy()) / float32(img.Bounds().Max.Y)
+		} else {
+			scale = float32(capture.Dx()) / float32(img.Bounds().Max.X)
+		}
+
+		a.Min.X = int(float32(a.Base.Min.X) * scale)
+		a.Max.X = int(float32(a.Base.Max.X) * scale)
+		a.Min.Y = int(float32(a.Base.Min.Y) * scale)
+		a.Max.Y = int(float32(a.Base.Max.Y) * scale)
+
+		if blank.X > 0 {
+			a.Min.X += blank.X
+			a.Max.X += blank.X
+		}
+
+		if blank.Y > 0 {
+			a.Min.Y += blank.Y
+			a.Max.Y += blank.Y
+		}
 
 		if a.lastScale == 0 {
 			a.baseMin, a.baseMax = a.Min, a.Max
 		}
-	}
-
-	if config.Current.Scale != a.lastScale {
-		a.lastScale = config.Current.Scale
-
-		a.Min = image.Pt(int((float64(a.baseMin.X) * config.Current.Scale)), int((float64(a.baseMin.Y) * config.Current.Scale)))
-		a.Max = image.Pt(int((float64(a.baseMax.X) * config.Current.Scale)), int((float64(a.baseMax.Y) * config.Current.Scale)))
 	}
 
 	for _, ev := range gtx.Events(a) {
@@ -153,10 +181,15 @@ func (a *Area) Layout(gtx layout.Context, dims layout.Constraints, img image.Ima
 				baseMinYScale := float32(a.Min.Y) * float32(img.Bounds().Max.Y)
 				baseMaxYScale := float32(a.Max.Y) * float32(img.Bounds().Max.Y)
 
-				a.Base.Min.X = int(baseMinXScale / float32(dims.Max.X))
-				a.Base.Max.X = int(baseMaxXScale / float32(dims.Max.X))
-				a.Base.Min.Y = int(baseMinYScale / float32(dims.Max.Y))
-				a.Base.Max.Y = int(baseMaxYScale / float32(dims.Max.Y))
+				a.Base.Min.X = int(baseMinXScale/float32(capture.Max.X)) - capture.Min.X
+				a.Base.Max.X = int(baseMaxXScale/float32(capture.Max.X)) - capture.Min.X
+				a.Base.Min.Y = int(baseMinYScale/float32(capture.Max.Y)) - capture.Min.Y
+				a.Base.Max.Y = int(baseMaxYScale/float32(capture.Max.Y)) - capture.Min.Y
+
+				if blank.Y > 0 {
+					a.Base.Min.Y += blank.Y
+					a.Base.Max.Y += blank.Y
+				}
 			} else {
 				s := time.Since(a.lastRelease)
 				if s > time.Millisecond*100 && s < time.Millisecond*500 {
@@ -174,6 +207,8 @@ func (a *Area) Layout(gtx layout.Context, dims layout.Constraints, img image.Ima
 			fallthrough
 		case pointer.Drag:
 			a.Drag = true
+
+			e.Position.Y -= float32(title.Height)
 
 			half := a.Max.Sub(a.Min).Div(2)
 			a.Min = image.Pt(int(e.Position.X)-half.X, int(e.Position.Y)-half.Y)
@@ -227,26 +262,19 @@ func (a *Area) Layout(gtx layout.Context, dims layout.Constraints, img image.Ima
 	}.Layout(
 		gtx,
 		func(gtx layout.Context) layout.Dimensions {
-			title := material.Body1(a.Theme, a.Text)
-			title.TextSize = a.TextSize
-			title.Font.Weight = 500
-			title.Color = nrgba.White.Color()
+			a.titleLabel.TextSize = a.TextSize * unit.Sp(.75)
+			a.titleLabel.Text = a.Text
 			layout.Inset{
 				Left: unit.Dp(2),
 				Top:  unit.Dp(1),
-			}.Layout(gtx, title.Layout)
+			}.Layout(gtx, a.titleLabel.Layout)
 
-			sub := material.Body2(a.Theme, a.Subtext)
-
-			// Scale.
-			sub.TextSize = a.TextSize * unit.Sp(.75)
-			sub.Font.Weight = 1000
-			sub.Color = nrgba.White.Alpha(175).Color()
-
+			a.subtitleLabel.TextSize = a.TextSize
+			a.subtitleLabel.Text = a.Subtext
 			layout.Inset{
 				Left: unit.Dp(2),
 				Top:  unit.Dp(unit.Sp(rect.Max.Sub(rect.Min).Y) - a.TextSize),
-			}.Layout(gtx, sub.Layout)
+			}.Layout(gtx, a.subtitleLabel.Layout)
 
 			return layout.Dimensions{Size: rect.Max.Sub(rect.Min)}
 		},
@@ -255,12 +283,9 @@ func (a *Area) Layout(gtx layout.Context, dims layout.Constraints, img image.Ima
 	return
 }
 
-func (c *Capture) Rectangle() image.Rectangle {
-	return c.Base
-}
-
 func (a *Area) Reset() {
 	a.lastDimsSize = image.Pt(0, 0)
+	a.Capture.reset()
 }
 
 func (a *Area) match() error {
@@ -282,18 +307,26 @@ func (a *Area) match() error {
 		go func() {
 			a.matched.ok, a.matched.err = a.Match(a)
 
-			a.Capture.Matched = nil
+			a.Capture.MatchedColor = Miss.Color()
+			a.Capture.MatchedText = a.Capture.Option
 			if a.matched.ok {
-				a.Capture.Matched = a
+				a.Capture.MatchedColor = Match.Color()
+				a.Capture.MatchedText = fmt.Sprintf("%s (%s)", a.Text, a.Subtext)
 			}
 
 			time.Sleep(a.Cooldown)
+
 			a.readyq <- true
 		}()
 	default:
 	}
 
 	return a.matched.err
+}
+
+func (c *Capture) reset() {
+	notify.Debug("Resetting %s capture area %s", c.Option, c.DefaultBase)
+	c.Base = c.DefaultBase
 }
 
 func (c *Capture) Open() error {
@@ -325,10 +358,14 @@ func (c *Capture) Open() error {
 	var sI syscall.StartupInfo
 	var pI syscall.ProcessInformation
 
-	err = syscall.CreateProcess(nil, argv, nil, nil, true, proc.CreateNoWindow, nil, nil, &sI, &pI)
+	err = syscall.CreateProcess(nil, argv, nil, nil, true, wapi.CreateProcessFlags.NoWindow, nil, nil, &sI, &pI)
 	if err != nil {
 		return fmt.Errorf("Failed to open %s (%v)", c.File, err)
 	}
 
 	return nil
+}
+
+func (c *Capture) Rectangle() image.Rectangle {
+	return c.Base
 }

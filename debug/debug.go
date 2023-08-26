@@ -21,7 +21,7 @@ import (
 )
 
 var (
-	Dir = fmt.Sprintf("tmp/%d_%02d_%02d_%02d_%02d/", now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute())
+	Dir = fmt.Sprintf("%d_%02d_%02d_%02d_%02d", now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute())
 
 	now = time.Now()
 
@@ -38,7 +38,7 @@ func Capture(img image.Image, mat gocv.Mat, t *team.Team, p image.Point, value i
 		return ""
 	}
 
-	subdir := fmt.Sprintf("%s/capture/%s", Dir, t.Name)
+	subdir := fmt.Sprintf("tmp/%s/capture/%s", Dir, t.Name)
 	err := createDirIfNotExist(subdir)
 	if err != nil {
 		notify.Error("[DEBUG] failed to create directory \"%s\" (%v)", subdir, err)
@@ -66,9 +66,9 @@ func Log() {
 		return
 	}
 
-	f, err := os.OpenFile(fmt.Sprintf("%s/log/unitehud_%s", Dir, logs), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(fmt.Sprintf("tmp/%s/log/unitehud_%s", Dir, logs), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		notify.Error("Failed to open log file (%v)", Dir, err)
+		notify.Error("Failed to open log file in %s (%v)", Dir, err)
 		return
 	}
 	defer f.Close()
@@ -76,14 +76,14 @@ func Log() {
 	for _, p := range notify.Feeds() {
 		_, err := f.WriteString(fmt.Sprintf("%s\n", p.String()))
 		if err != nil {
-			notify.Error("Failed to write event logs (%v)", Dir, err)
+			notify.Error("Failed to write event logs in %s (%v)", Dir, err)
 		}
 	}
 
 	for _, line := range stats.Lines() {
 		_, err := f.WriteString(fmt.Sprintf("%s\n", line))
 		if err != nil {
-			notify.Error("Failed to append statistic logs (%v)", Dir, err)
+			notify.Error("Failed to append statistic logs in %s (%v)", Dir, err)
 		}
 	}
 }
@@ -96,6 +96,15 @@ func Open() error {
 	}
 
 	return open.Run(d)
+}
+
+func OpenLogDirectory() error {
+	d, err := createAllIfNotExist()
+	if err != nil {
+		notify.Error("Failed to create %s directory (%v)", Dir, err)
+		return err
+	}
+	return open.Run(fmt.Sprintf("%s/%s/log", d, Dir))
 }
 
 func ProfileStart() {
@@ -145,7 +154,7 @@ func createAllIfNotExist() (string, error) {
 		"/log",
 		"/capture",
 	} {
-		err := createDirIfNotExist(Dir + subdir)
+		err := createDirIfNotExist(fmt.Sprintf("tmp/%s/%s", Dir, subdir))
 		if err != nil {
 			return "", err
 		}
@@ -155,7 +164,7 @@ func createAllIfNotExist() (string, error) {
 }
 
 func createDirIfNotExist(subdir string) error {
-	_, err := os.Stat(Dir)
+	_, err := os.Stat(fmt.Sprintf("tmp/%s", Dir))
 	if err != nil {
 		if !os.IsNotExist(err) {
 			return err
@@ -167,7 +176,7 @@ func createDirIfNotExist(subdir string) error {
 		return err
 	}
 
-	err = os.Mkdir(dir+"/"+subdir, 0755)
+	err = os.Mkdir(fmt.Sprintf("%s/%s", dir, subdir), 0755)
 	if err != nil {
 		if os.IsExist(err) {
 			return nil

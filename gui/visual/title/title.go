@@ -35,10 +35,13 @@ var (
 )
 
 type Bar struct {
-	Title string
-	tip   string
-	NoTip bool
-	Hide  bool
+	Title      string
+	Collection fonts.Collection
+
+	tip         string
+	NoTip       bool
+	Hide        bool
+	HideButtons bool
 
 	grabbed *bool
 
@@ -67,30 +70,30 @@ type decorations struct {
 	}
 }
 
-func New(title string, minimize, resize, close func()) *Bar {
+func New(title string, collection fonts.Collection, minimize, resize, close func()) *Bar {
 	b := &Bar{
-		Title: title,
+		Title:      title,
+		Collection: collection,
 
 		grabbed: new(bool),
 
 		decorations: &decorations{
-			title: material.Label(fonts.Calibri().Theme, titleTextSize, title),
-			tip:   material.Label(fonts.Calibri().Theme, tipTextSize, ""),
+			title: material.Label(collection.Calibri().Theme, titleTextSize, title),
+			tip:   material.Label(collection.Calibri().Theme, tipTextSize, ""),
 			icon: widget.Image{
 				Src:   paint.NewImageOp(img.Icon("icon48x48")),
 				Fit:   widget.ScaleDown,
 				Scale: .27,
 			},
-
 			minimize: &button.Button{
+				Text:         "-",
+				TextSize:     buttonTextSize,
+				Font:         collection.Cascadia(),
 				Size:         buttonSize,
 				Pressed:      nrgba.BackgroundAlt.Alpha(255),
 				Released:     nrgba.PastelBlue,
 				NoBorder:     true,
 				SharpCorners: true,
-				Text:         "-",
-				TextSize:     buttonTextSize,
-				Font:         fonts.Cascadia(),
 				Disabled:     minimize == nil,
 				Click: func(this *button.Button) {
 					defer this.Deactivate()
@@ -100,14 +103,14 @@ func New(title string, minimize, resize, close func()) *Bar {
 				},
 			},
 			resize: &button.Button{
+				Text:         "□",
+				TextSize:     buttonTextSize,
+				Font:         collection.Cascadia(),
 				Size:         buttonSize,
 				Pressed:      nrgba.BackgroundAlt.Alpha(255),
 				Released:     nrgba.PastelGreen,
 				NoBorder:     true,
 				SharpCorners: true,
-				Text:         "□",
-				TextSize:     buttonTextSize,
-				Font:         fonts.Cascadia(),
 				Disabled:     resize == nil,
 				Click: func(this *button.Button) {
 					defer this.Deactivate()
@@ -118,14 +121,15 @@ func New(title string, minimize, resize, close func()) *Bar {
 				},
 			},
 			close: &button.Button{
-				Size:            buttonSize,
-				Pressed:         nrgba.BackgroundAlt.Alpha(255),
-				Released:        nrgba.PastelRed,
-				NoBorder:        true,
-				SharpCorners:    true,
-				Text:            "×",
-				TextSize:        buttonTextSize,
-				Font:            fonts.Cascadia(),
+				Text:         "×",
+				TextSize:     buttonTextSize,
+				Font:         collection.Cascadia(),
+				Size:         buttonSize,
+				Pressed:      nrgba.BackgroundAlt.Alpha(255),
+				Released:     nrgba.PastelRed,
+				NoBorder:     true,
+				SharpCorners: true,
+
 				TextInsetBottom: .5,
 				Disabled:        close == nil,
 				Click: func(this *button.Button) {
@@ -147,7 +151,7 @@ func New(title string, minimize, resize, close func()) *Bar {
 			Text:            "≡",
 			TextSize:        unit.Sp(25),
 			Size:            buttonSize,
-			Font:            fonts.NishikiTeki(),
+			Font:            collection.NishikiTeki(),
 			Released:        nrgba.Background,
 			Pressed:         nrgba.BackgroundAlt.Alpha(255),
 			NoBorder:        true,
@@ -173,7 +177,7 @@ func New(title string, minimize, resize, close func()) *Bar {
 	return b
 }
 
-func (b *Bar) Custom(btn *button.Button) *button.Button {
+func (b *Bar) Add(btn *button.Button) *button.Button {
 	if btn.Size.Eq(image.Pt(0, 0)) {
 		btn.Size = buttonSize
 	}
@@ -187,7 +191,7 @@ func (b *Bar) Custom(btn *button.Button) *button.Button {
 
 	btn.NoBorder = true
 	btn.SharpCorners = true
-	btn.TextInsetBottom = 1
+	btn.TextInsetBottom++
 
 	b.customs = append(b.customs, btn)
 
@@ -259,7 +263,7 @@ func (b *Bar) Layout(gtx layout.Context, content layout.Widget) layout.Dimension
 
 	bar := image.Rect(0, 0, gtx.Constraints.Max.X, Height)
 
-	colorBox(gtx, gtx.Constraints.Max, nrgba.Splash)
+	colorBox(gtx, gtx.Constraints.Max, nrgba.Background)
 
 	dims := layout.Flex{
 		Spacing:   layout.SpaceAround,
@@ -337,17 +341,19 @@ func (b *Bar) Layout(gtx layout.Context, content layout.Widget) layout.Dimension
 				}))
 			}
 
-			children = append(children,
-				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					return b.decorations.minimize.Layout(gtx)
-				}),
-				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					return b.decorations.resize.Layout(gtx)
-				}),
-				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					return b.decorations.close.Layout(gtx)
-				}),
-			)
+			if !b.HideButtons {
+				children = append(children,
+					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+						return b.decorations.minimize.Layout(gtx)
+					}),
+					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+						return b.decorations.resize.Layout(gtx)
+					}),
+					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+						return b.decorations.close.Layout(gtx)
+					}),
+				)
+			}
 
 			b.decorations.title.Text = b.Title
 
@@ -361,6 +367,10 @@ func (b *Bar) Layout(gtx layout.Context, content layout.Widget) layout.Dimension
 		}),
 
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			if b.Hide {
+				return layout.Dimensions{Size: image.Pt(gtx.Constraints.Max.X, Height/3)}
+			}
+
 			size := image.Rect(0, 0, gtx.Constraints.Max.X, 1).Max
 			barColor(gtx, size, nrgba.Gray)
 			return layout.Dimensions{Size: size}
