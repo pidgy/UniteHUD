@@ -16,7 +16,7 @@ Pokémon UNITE scoreboard HUD and extra tools running over captured game feeds.
 ![alt text](https://github.com/pidgy/unitehud/blob/master/data/v2-registeel.gif "Registeel")
 ![alt text](https://github.com/pidgy/unitehud/blob/master/data/v2-regieleki.gif "Regieleki")
 ### Overlay HUD
-![alt text](https://github.com/pidgy/unitehud/blob/master/data/v2-hud-ko.gif "HUD")
+![alt text](https://github.com/pidgy/unitehud/blob/master/data/v2-hud.gif "HUD")
 
 ### Architecture
 
