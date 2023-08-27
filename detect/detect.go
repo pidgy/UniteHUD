@@ -11,7 +11,6 @@ import (
 	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/debug"
 	"github.com/pidgy/unitehud/duplicate"
-	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/history"
 	"github.com/pidgy/unitehud/match"
 	"github.com/pidgy/unitehud/notify"
@@ -245,10 +244,6 @@ func KOs() {
 
 func Objectives() {
 	top, bottom, middle := time.Time{}, time.Time{}, time.Time{}
-	cooldown := time.Minute
-	if global.DebugMode {
-		cooldown = time.Second * 5
-	}
 
 	for {
 		time.Sleep(time.Second)
@@ -272,7 +267,7 @@ func Objectives() {
 
 		early := false
 
-		if time.Since(top) > cooldown {
+		if time.Since(top) > time.Minute {
 			switch e := state.EventType(e); e {
 			case state.RegielekiSecureOrange:
 				state.Add(e, server.Clock(), 0)
@@ -291,7 +286,7 @@ func Objectives() {
 			}
 		}
 
-		if !early && time.Since(bottom) > cooldown {
+		if !early && time.Since(bottom) > time.Minute {
 			switch e := state.EventType(e); e {
 			case state.RegiceSecureOrange:
 				state.Add(e, server.Clock(), 0)
@@ -338,7 +333,7 @@ func Objectives() {
 			}
 		}
 
-		if !early && time.Since(middle) > cooldown {
+		if !early && time.Since(middle) > time.Minute {
 			switch e := state.EventType(e); e {
 			case state.RayquazaSecureOrange:
 				state.Add(e, server.Clock(), 0)
@@ -576,9 +571,8 @@ func States() {
 
 				// Purple score and objective results.
 				regielekis, regices, regirocks, registeels, rayquazas := server.Objectives(team.Purple)
-
-				purpleResult := fmt.Sprintf(
-					"[%s] [+%d KO%s] [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s] [%d Rayquaza]",
+				notify.Feed(team.Purple.NRGBA,
+					"[%s] [+%d KO%s] [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s] [+%d Rayquazas]",
 					strings.Title(team.Purple.Name),
 					server.KOs(team.Purple), s(server.KOs(team.Purple)),
 					regielekis, s(regielekis),
@@ -588,13 +582,10 @@ func States() {
 					rayquazas,
 				)
 
-				notify.Feed(team.Purple.NRGBA, purpleResult)
-
 				// Orange score and objective results.
 				regielekis, regices, regirocks, registeels, rayquazas = server.Objectives(team.Orange)
-
 				orangeResult := fmt.Sprintf(
-					"[%s] [+%d KO%s] [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s] [%d Rayquaza]",
+					"[%s] [+%d KO%s] [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s] [+%d Rayquazas]",
 					strings.Title(team.Orange.Name),
 					server.KOs(team.Orange), s(server.KOs(team.Orange)),
 					regielekis, s(regielekis),
@@ -612,10 +603,10 @@ func States() {
 
 					// Purple score and objective results.
 					regielekis, regices, regirocks, registeels, rayquazas := server.Objectives(team.Purple)
-
-					purpleResult := fmt.Sprintf(
-						"[%s] [+%d KO%s] [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s] [+%d Rayquaza]",
+					notify.Feed(team.Purple.NRGBA,
+						"[%s] %d [+%d KO%s] [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s] [+%d Rayquazas]",
 						strings.Title(team.Purple.Name),
+						p,
 						server.KOs(team.Purple), s(server.KOs(team.Purple)),
 						regielekis, s(regielekis),
 						regices, s(regices),
@@ -624,14 +615,12 @@ func States() {
 						rayquazas,
 					)
 
-					notify.Feed(team.Purple.NRGBA, purpleResult)
-
 					// Orange score and objective results.
 					regielekis, regices, regirocks, registeels, rayquazas = server.Objectives(team.Orange)
-
-					orangeResult := fmt.Sprintf(
-						"[%s] [+%d KO%s] [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s] [+%d Rayquaza]",
+					notify.Feed(team.Orange.NRGBA,
+						"[%s] %d [+%d KO%s] [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s] [+%d Rayquazas]",
 						strings.Title(team.Orange.Name),
+						o,
 						server.KOs(team.Orange), s(server.KOs(team.Orange)),
 						regielekis, s(regielekis),
 						regices, s(regices),
@@ -640,7 +629,8 @@ func States() {
 						rayquazas,
 					)
 
-					notify.Feed(team.Orange.NRGBA, orangeResult)
+					// Self score and objective results.
+					notify.Feed(team.Self.NRGBA, "[%s] %d", strings.Title(team.Self.Name), self)
 
 					history.Add(p, o, self)
 				}

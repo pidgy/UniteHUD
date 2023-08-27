@@ -8,11 +8,15 @@ Pokémon UNITE scoreboard HUD and extra tools running over captured game feeds.
 
 ----
 
-### Client (OBS)
-![alt text](https://github.com/pidgy/unite/blob/master/data/client2.gif "Client")
-
-### Server
-![alt text](https://i.imgur.com/X9T7vpH.png "server")
+### Client UI
+![alt text](https://github.com/pidgy/unitehud/blob/master/data/v2-ui.gif "UI")
+### Customizable Configuration
+![alt text](https://github.com/pidgy/unitehud/blob/master/data/v2-projector.gif "Projector")
+### Objective Tracking
+![alt text](https://github.com/pidgy/unitehud/blob/master/data/v2-registeel.gif "Registeel")
+![alt text](https://github.com/pidgy/unitehud/blob/master/data/v2-regieleki.gif "Regieleki")
+### Overlay HUD
+![alt text](https://github.com/pidgy/unitehud/blob/master/data/v2-hud-ko.gif "HUD")
 
 ### Architecture
 
