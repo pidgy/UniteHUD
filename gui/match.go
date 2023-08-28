@@ -85,7 +85,7 @@ func (g *GUI) matchKOs(a *area.Area) (bool, error) {
 	}
 	defer matrix.Close()
 
-	_, r, e := match.Matches(matrix, img, config.Current.Templates["ko"][team.Game.Name])
+	_, r, e := match.Matches(matrix, img, config.Current.TemplatesKO(team.Game.Name))
 	if r != match.Found {
 		a.NRGBA = area.Miss
 		a.Subtext = strings.Title(r.String())
@@ -114,7 +114,7 @@ func (g *GUI) matchObjectives(a *area.Area) (bool, error) {
 	}
 	defer matrix.Close()
 
-	_, r, e := match.Matches(matrix, img, config.Current.Templates["secure"][team.Game.Name])
+	_, r, e := match.Matches(matrix, img, config.Current.TemplatesSecure(team.Game.Name))
 	if r != match.Found {
 		a.NRGBA = area.Miss
 		a.Subtext = strings.Title(r.String())
@@ -143,7 +143,7 @@ func (g *GUI) matchScore(a *area.Area) (bool, error) {
 	}
 	defer matrix.Close()
 
-	for _, t := range config.Current.Templates["scored"] {
+	for _, t := range config.Current.TemplatesScoredAll() {
 		_, r, score := match.Matches(matrix, img, t)
 		switch r {
 		case match.Found, match.Duplicate:
@@ -183,7 +183,7 @@ func (g *GUI) matchState(a *area.Area) (bool, error) {
 	}
 	defer matrix.Close()
 
-	_, r, e := match.Matches(matrix, img, config.Current.Templates["game"][team.Game.Name])
+	_, r, e := match.Matches(matrix, img, config.Current.TemplatesGame(team.Game.Name))
 	if r == match.Found {
 		a.Subtext = state.EventType(e).String()
 		a.NRGBA = area.Match

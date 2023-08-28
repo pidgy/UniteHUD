@@ -78,7 +78,7 @@ func objectives(matrix gocv.Mat, img *image.RGBA) (Objectives, bool) {
 }
 
 func goals(matrix gocv.Mat, img *image.RGBA) (Goals, bool) {
-	templates := config.Current.Templates["goals"][team.Game.Name]
+	templates := config.Current.TemplatesGoals(team.Game.Name)
 
 	purple := []Tier{}
 	orange := []Tier{}

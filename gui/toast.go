@@ -63,8 +63,8 @@ func (g *GUI) ToastCrash(reason string, closed, logs func()) {
 		Size:            image.Pt(96, 32),
 		TextInsetBottom: -2,
 
-		Click: func(b *button.Button) {
-			defer b.Deactivate()
+		Click: func(this *button.Button) {
+			defer this.Deactivate()
 
 			if logs != nil {
 				logs()
@@ -350,8 +350,8 @@ func (g *GUI) ToastOK(header, msg string, callbacks ...func()) {
 		Size:            image.Pt(96, 32),
 		TextInsetBottom: -2,
 
-		Click: func(b *button.Button) {
-			defer b.Deactivate()
+		Click: func(this *button.Button) {
+			defer this.Deactivate()
 
 			for _, cb := range callbacks {
 				cb()
@@ -433,7 +433,7 @@ func (g *GUI) ToastYesNo(header, msg string, y, n func()) {
 		Size:            image.Pt(96, 32),
 		NoBorder:        true,
 		TextInsetBottom: -2,
-		Click: func(b *button.Button) {
+		Click: func(this *button.Button) {
 			if y != nil {
 				y()
 			}
@@ -451,7 +451,7 @@ func (g *GUI) ToastYesNo(header, msg string, y, n func()) {
 		NoBorder:        true,
 		Size:            image.Pt(96, 32),
 		TextInsetBottom: -2,
-		Click: func(b *button.Button) {
+		Click: func(this *button.Button) {
 			if n != nil {
 				n()
 			}

@@ -64,6 +64,22 @@ func (g *GUI) projector() {
 		listTextSize: float32(14),
 	}
 
+	settings := &settings{
+		parent:  g,
+		visible: false,
+		width:   350,
+		height:  700,
+	}
+	defer settings.close()
+
+	preview := &preview{
+		parent:  g,
+		visible: false,
+		width:   350,
+		height:  700,
+	}
+	defer preview.close()
+
 	session, err := audio.New(audio.Disabled, audio.Default)
 	if err != nil {
 		g.ToastErrorf(fmt.Sprintf("Failed to route audio input to output (%v)", err))
@@ -77,11 +93,35 @@ func (g *GUI) projector() {
 	areas := g.areas(g.Bar.Collection)
 
 	defer g.Bar.Remove(g.Bar.Add(&button.Button{
+		Text:            "⚙",
+		TextSize:        unit.Sp(18),
+		TextInsetBottom: -2,
+		Font:            g.Bar.Collection.NishikiTeki(),
+		OnHoverHint:     func() { g.Bar.ToolTip("View additional settings") },
+		Pressed:         nrgba.Transparent30,
+		Released:        nrgba.Slate,
+		BorderWidth:     unit.Sp(.1),
+		Click: func(this *button.Button) {
+			defer this.Deactivate()
+
+			if settings.close() {
+				this.Text = "⚙"
+				this.OnHoverHint = func() { g.Bar.ToolTip("View additional settings") }
+				return
+			}
+
+			this.Text = "🔧"
+			this.OnHoverHint = func() { g.Bar.ToolTip("Close additional settings") }
+			go settings.open()
+		},
+	}))
+
+	defer g.Bar.Remove(g.Bar.Add(&button.Button{
 		Text:            "⇵",
 		Font:            g.Bar.Collection.NishikiTeki(),
 		TextSize:        unit.Sp(16),
 		TextInsetBottom: -1,
-		Released:        nrgba.Slate,
+		Released:        nrgba.Gray,
 		OnHoverHint:     func() { g.Bar.ToolTip("Hide sources") },
 		Click: func(this *button.Button) {
 			defer this.Deactivate()
@@ -126,19 +166,16 @@ func (g *GUI) projector() {
 		Click: func(this *button.Button) {
 			defer this.Deactivate()
 
-			if previewCapturesOpen {
+			if preview.close() {
 				this.Text = "🗗"
 				this.OnHoverHint = func() { g.Bar.ToolTip("Preview capture areas") }
-
-				previewCapturesOpen = false
 			} else {
 				this.Text = "🗖"
 				this.OnHoverHint = func() { g.Bar.ToolTip("Close capture area preview") }
-				go g.previewCaptures(areas)
+				go preview.open(areas)
 			}
 		},
 	}))
-	defer func() { previewCapturesOpen = false }()
 
 	saveButton := &button.Button{
 		Text:            "🖫",
@@ -342,17 +379,16 @@ func (g *GUI) projector() {
 		},
 	}
 
-	openConfigFileButton := &button.Button{
-		Text:        "Open Configuration",
-		Font:        g.Bar.Collection.Calibri(),
-		OnHoverHint: func() { g.Bar.ToolTip("Open configuration file") },
-		Pressed:     nrgba.Transparent30,
-		Released:    nrgba.DarkGray,
-		TextSize:    unit.Sp(projected.listTextSize),
-		Size:        image.Pt(115, 20),
-		BorderWidth: unit.Sp(.1),
-		Click: func(b *button.Button) {
-			defer b.Deactivate()
+	defer g.Bar.Remove(g.Bar.Add(&button.Button{
+		Text:            "🖉",
+		Font:            g.Bar.Collection.NishikiTeki(),
+		Released:        nrgba.CoolBlue,
+		TextSize:        unit.Sp(16),
+		TextInsetBottom: -1,
+		Disabled:        false,
+		OnHoverHint:     func() { g.Bar.ToolTip("Open configuration file") },
+		Click: func(this *button.Button) {
+			defer this.Deactivate()
 
 			config.Current.HUDOverlay = false
 
@@ -372,7 +408,8 @@ func (g *GUI) projector() {
 
 			areas.onevent()
 		},
-	}
+	}),
+	)
 
 	g.Perform(system.ActionRaise)
 
@@ -607,9 +644,14 @@ func (g *GUI) projector() {
 								}
 
 								return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-									return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
+									return layout.Flex{
+										Axis: layout.Vertical,
+									}.Layout(gtx,
 										layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-											return layout.Inset{Left: 5, Right: 5, Top: 2.5, Bottom: 2.5}.Layout(gtx, openConfigFileButton.Layout)
+											return layout.Inset{Left: 5, Right: 5, Top: 2.5, Bottom: 2.5}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+												// Empty button.
+												return layout.Spacer{Width: unit.Dp(openHUDButton.Size.X), Height: unit.Dp(openHUDButton.Size.Y)}.Layout(gtx)
+											})
 										}),
 
 										layout.Rigid(func(gtx layout.Context) layout.Dimensions {
@@ -751,7 +793,7 @@ func (g *GUI) projector() {
 			case "F11":
 				fallthrough
 			case key.NameEscape:
-				g.maximize()
+				g.resize()
 			}
 		case pointer.Event:
 		case system.StageEvent:

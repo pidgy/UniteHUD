@@ -480,10 +480,12 @@ func SetScore(t *team.Team, value int) {
 
 func SetStarted() {
 	current.game.Started = true
+	state.Add(state.ServerStarted, Clock(), -1)
 }
 
 func SetStopped() {
 	current.game.Started = false
+	state.Add(state.ServerStopped, Clock(), -1)
 }
 
 func SetTime(minutes, seconds int) {

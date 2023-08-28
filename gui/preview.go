@@ -1,6 +1,7 @@
 package gui
 
 import (
+	"fmt"
 	"image"
 	"sort"
 	"time"
@@ -20,27 +21,36 @@ import (
 	"github.com/pidgy/unitehud/gui/visual/title"
 	"github.com/pidgy/unitehud/nrgba"
 	"github.com/pidgy/unitehud/video"
-	"github.com/pidgy/unitehud/video/wapi"
 )
 
-var previewCapturesOpen = false
+type preview struct {
+	parent  *GUI
+	visible bool
 
-func (g *GUI) previewCaptures(a *areas) {
-	if previewCapturesOpen {
+	width,
+	height int
+}
+
+func (p *preview) close() bool {
+	was := p.visible
+	p.visible = false
+	return was
+}
+
+func (p *preview) open(a *areas) {
+	if p.visible {
 		return
 	}
-	previewCapturesOpen = true
-	defer func() { previewCapturesOpen = false }()
+	p.visible = true
+	defer func() { p.visible = false }()
 
-	width := g.max.X / 5
-	height := g.min.Y
-	// g.offsetX = width
+	hwnd := uintptr(0)
 
 	w := app.NewWindow(
-		app.Title("Capture Preview"),
-		app.Size(unit.Dp(width), unit.Dp(height)),
-		app.MinSize(unit.Dp(width), unit.Dp(height)),
-		app.MaxSize(unit.Dp(width), unit.Dp(g.max.Y)),
+		app.Title("UniteHUD Capture Preview"),
+		app.Size(unit.Dp(p.width), unit.Dp(p.height)),
+		app.MinSize(unit.Dp(p.width), unit.Dp(p.height)),
+		app.MaxSize(unit.Dp(p.width), unit.Dp(p.parent.max.Y)),
 		app.Decorated(false),
 	)
 
@@ -73,19 +83,19 @@ func (g *GUI) previewCaptures(a *areas) {
 	for _, cap := range captures {
 		img, err := video.CaptureRect(cap.Base)
 		if err != nil {
-			g.ToastError(err)
+			p.parent.ToastError(err)
 			return
 		}
 
-		images = append(images, g.makePreviewCaptureButton(cap, img))
+		images = append(images, p.makePreviewCaptureButton(cap, img))
 	}
 
 	go func() {
-		for ; previewCapturesOpen; time.Sleep(time.Second) {
+		for ; p.visible; time.Sleep(time.Second) {
 			for i, cap := range captures {
 				img, err := video.CaptureRect(cap.Base)
 				if err != nil {
-					g.ToastError(err)
+					p.parent.ToastError(err)
 					return
 				}
 
@@ -120,11 +130,8 @@ func (g *GUI) previewCaptures(a *areas) {
 
 	w.Perform(system.ActionRaise)
 
-	inset := image.Pt(width, 0)
-	g.setInset(inset)
-	defer g.unsetInset(inset)
-
-	hwnd := uintptr(0)
+	p.parent.setInsetLeft(p.width)
+	defer p.parent.unsetInsetLeft(p.width)
 
 	for event := range w.Events() {
 		switch e := event.(type) {
@@ -133,26 +140,13 @@ func (g *GUI) previewCaptures(a *areas) {
 		case app.ViewEvent:
 			hwnd = e.HWND
 		case system.FrameEvent:
-			if !previewCapturesOpen {
+			if !p.visible {
 				go w.Perform(system.ActionClose)
 			}
 
-			if hwnd != 0 {
-				pos := g.position()
-
-				x := pos.X - width
-				if x < 0 {
-					x = 0
-				}
-				y := pos.Y
-				if y < 0 {
-					y += title.Height
-				}
-
-				wapi.SetWindowPosNone(hwnd, image.Pt(x, y), image.Pt(e.Size.X, g.size.Y))
-			}
-
 			gtx := layout.NewContext(&ops, e)
+
+			p.parent.attachWindowLeft(hwnd, p.width)
 
 			bar.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				colorBox(gtx, gtx.Constraints.Max, nrgba.Background)
@@ -276,7 +270,7 @@ func (g *GUI) previewCaptures(a *areas) {
 	}
 }
 
-func (g *GUI) makePreviewCaptureButton(cap *area.Capture, img image.Image) *button.Image {
+func (p *preview) makePreviewCaptureButton(cap *area.Capture, img image.Image) *button.Image {
 	return &button.Image{
 		Screen: &screen.Screen{
 			Image:       img,
@@ -287,7 +281,7 @@ func (g *GUI) makePreviewCaptureButton(cap *area.Capture, img image.Image) *butt
 		Click: func(i *button.Image) {
 			err := cap.Open()
 			if err != nil {
-				g.ToastError(err)
+				p.parent.ToastError(fmt.Errorf("Failed to open capture preview (%v)", err))
 			}
 		},
 	}

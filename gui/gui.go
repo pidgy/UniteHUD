@@ -13,7 +13,6 @@ import (
 	"gioui.org/io/system"
 	"gioui.org/layout"
 	"gioui.org/op"
-	"gioui.org/unit"
 
 	"github.com/pidgy/unitehud/fonts"
 	"github.com/pidgy/unitehud/gui/is"
@@ -34,9 +33,12 @@ type GUI struct {
 	*app.Window
 	*title.Bar
 
-	min, max, inset image.Point
-	size            image.Point
-	shift           image.Point
+	min, max,
+	size,
+	shift image.Point
+
+	insetLeft,
+	insetRight int
 
 	HWND uintptr
 
@@ -128,7 +130,7 @@ func New() {
 			Window.Perform(system.ActionMinimize)
 		},
 		func() {
-			Window.maximize()
+			Window.resize()
 		},
 		func() {
 			Window.Perform(system.ActionClose)
@@ -199,6 +201,41 @@ func (g *GUI) SetWindowPos(shift image.Point) {
 	}()
 }
 
+func (g *GUI) attachWindowLeft(hwnd uintptr, width int) {
+	if hwnd == 0 {
+		return
+	}
+
+	pos := g.position()
+
+	x := pos.X - width
+	if x < 0 {
+		x = 0
+	}
+	y := pos.Y
+	if y < 0 {
+		y += title.Height
+	}
+
+	wapi.SetWindowPosNone(hwnd, image.Pt(x, y), image.Pt(width, g.size.Y))
+}
+
+func (g *GUI) attachWindowRight(hwnd uintptr, width int) {
+	if hwnd == 0 {
+		return
+	}
+
+	pos := g.position()
+
+	x := pos.X + g.size.X
+	y := pos.Y
+	if y < 0 {
+		y += title.Height
+	}
+
+	wapi.SetWindowPosNone(hwnd, image.Pt(x, y), image.Pt(width, g.size.Y))
+}
+
 func (g *GUI) draw() {
 	for {
 		tps := time.Second / time.Duration(g.fps.max+1)
@@ -240,18 +277,15 @@ func (g *GUI) frame(gtx layout.Context, e system.FrameEvent) {
 }
 
 func (g *GUI) maximize() {
-	defer func() { g.fullscreen = !g.fullscreen }()
+	g.size = g.max.Sub(image.Pt(g.insetRight, 0)).Sub(image.Pt(g.insetLeft, 0))
 
-	if g.fullscreen {
-		g.Perform(system.ActionUnmaximize)
-		g.size = g.min
-		g.Option(app.Size(unit.Dp(g.min.X), unit.Dp(g.min.Y)))
-	} else {
-		g.Perform(system.ActionMaximize)
-		g.size = g.max
+	pt := image.Pt(0, 0).Add(image.Pt(g.insetLeft, 0))
 
-		wapi.SetWindowPosShow(g.HWND, g.inset, g.max.Sub(g.inset))
-	}
+	wapi.SetWindowPosShow(g.HWND, pt, g.size)
+
+	g.Perform(system.ActionMaximize)
+
+	g.fullscreen = true
 }
 
 func (g *GUI) next(i is.Is) {
@@ -336,50 +370,88 @@ func (g *GUI) proc() {
 	}
 }
 
-func (g *GUI) setInset(inset image.Point) {
-	g.inset = g.inset.Add(inset)
-
+func (g *GUI) resize() {
 	if g.fullscreen {
-		wapi.SetWindowPosShow(g.HWND, g.inset.Sub(image.Pt(0, g.inset.Y)), image.Pt(g.size.X-g.inset.X, g.max.Y))
-	} else {
-		pos := g.position()
-
-		// Move the main window over when space is not available for the inset.
-		if pos.X < inset.X {
-			pos.X += inset.X - pos.X
-		}
-		if pos.Y < inset.Y {
-			pos.Y += inset.Y - pos.Y
-		}
-		// Shrink the main window when it exceeds max boundaries.
-		if g.size.X+g.inset.X > g.max.X {
-			g.size.X = g.max.X - g.inset.X
-		}
-		if g.size.Y+g.inset.Y > g.max.Y {
-			g.size.Y = g.max.Y - g.inset.Y
-		}
-
-		wapi.SetWindowPosShow(g.HWND, pos, g.size)
+		g.unmaximize()
+		return
 	}
+
+	g.maximize()
 }
 
-func (g *GUI) unsetInset(inset image.Point) {
-	g.inset = g.inset.Sub(inset)
+func (g *GUI) setInsetLeft(left int) {
+	g.insetLeft += left
 
-	min := g.position()
-	max := g.size
 	if g.fullscreen {
-		min = image.Pt(0, 0)
-		max = g.max
+		g.maximize()
+		return
 	}
 
-	wapi.SetWindowPosShow(g.HWND, min, max)
+	// Move right when space is not available for the inset.
+	pos := g.position()
+
+	if pos.X < g.insetLeft {
+		pos.X += g.insetLeft - pos.X
+	}
+
+	wapi.SetWindowPosShow(g.HWND, pos, g.size)
+}
+
+func (g *GUI) setInsetRight(right int) {
+	g.insetRight += right
+
+	if g.fullscreen {
+		g.maximize()
+		return
+	}
+
+	// Move left when new size exceeds max boundaries.
+	pos := g.position()
+	size := pos.X + g.size.X + g.insetRight
+
+	if size > g.max.X {
+		pos.X -= size - g.max.X
+	}
+
+	wapi.SetWindowPosShow(g.HWND, pos, g.size)
+}
+
+func (g *GUI) unsetInsetLeft(left int) {
+	g.insetLeft -= left
+
+	if g.fullscreen {
+		g.maximize()
+		return
+	}
+
+	wapi.SetWindowPosShow(g.HWND, g.position(), g.size)
+}
+
+func (g *GUI) unsetInsetRight(right int) {
+	g.insetRight -= right
+
+	if g.fullscreen {
+		g.maximize()
+		return
+	}
+
+	wapi.SetWindowPosShow(g.HWND, g.position(), g.size)
 }
 
 func (g *GUI) toMain(next *string) {
 	if *next == "" {
 		*next = "main"
 	}
+}
+
+func (g *GUI) unmaximize() {
+	g.Perform(system.ActionUnmaximize)
+
+	g.size = g.min
+	//g.Option(app.Size(unit.Dp(g.min.X), unit.Dp(g.min.Y)))
+	wapi.SetWindowPosShow(g.HWND, g.position(), g.size)
+
+	g.fullscreen = false
 }
 
 func max(i, j int) int {

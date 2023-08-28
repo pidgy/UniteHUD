@@ -155,7 +155,6 @@ func main() {
 				notify.Announce("Started %s", title.Default)
 
 				server.SetStarted()
-				state.Add(state.ServerStarted, server.Clock(), -1)
 			case gui.Stop:
 				detect.Pause()
 
@@ -170,7 +169,6 @@ func main() {
 				team.Clear()
 
 				server.SetStopped()
-				state.Add(state.ServerStopped, server.Clock(), -1)
 
 				if !config.Current.Record {
 					continue

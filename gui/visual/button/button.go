@@ -52,7 +52,7 @@ type Button struct {
 	set   bool
 }
 
-var Max = image.Pt(100, 35)
+var Default = image.Pt(100, 35)
 
 func (b *Button) Activate() {
 	b.active = true
@@ -76,7 +76,7 @@ func (b *Button) Layout(gtx layout.Context) layout.Dimensions {
 	defer b.HoverHint()
 
 	if b.Size.Eq(image.Pt(0, 0)) {
-		b.Size = Max
+		b.Size = Default
 	}
 
 	if b.alpha == 0 {

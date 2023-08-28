@@ -44,7 +44,7 @@ func (m *Match) first(matrix gocv.Mat) (Result, int) {
 	maxs := []float32{0, 0, 0}
 	lefts := []int{math.MaxInt32, math.MaxInt32, math.MaxInt32}
 
-	templatesWithZero := config.Current.Templates["points"][m.Team.Name]
+	templatesWithZero := config.Current.TemplatesPoints(m.Team.Name)
 	templatesWithoutZero := []*template.Template{}
 	for _, t := range templatesWithZero {
 		if t.Value == 0 {
@@ -150,7 +150,7 @@ func (m *Match) regular(matrix gocv.Mat) (Result, int) {
 		points = []int{-1, -1, -1}
 	}
 
-	templates2ndRound := config.Current.Templates["points"][m.Team.Name]
+	templates2ndRound := config.Current.TemplatesPoints(m.Team.Name)
 	templates1stRound := config.TemplatesFirstRound(templates2ndRound)
 
 	for round := 0; round < len(mins); round++ {

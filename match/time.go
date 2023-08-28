@@ -52,7 +52,7 @@ func Time(matrix gocv.Mat, img *image.RGBA) (seconds int, kitchen string) {
 	clock := [4]int{-1, -1, -1, -1}
 	locs := []int{math.MaxInt32, math.MaxInt32, math.MaxInt32, math.MaxInt32}
 	cols := []int{0, 0, 0, 0}
-	templates := config.Current.Templates["time"][team.Time.Name]
+	templates := config.Current.TemplatesTime(team.Time.Name)
 
 	inset := 0
 

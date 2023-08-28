@@ -45,8 +45,8 @@ type Config struct {
 	Time                     image.Rectangle
 	Objectives               image.Rectangle
 	KOs                      image.Rectangle
-	Filenames                map[string]map[string][]filter.Filter      `json:"-"`
-	Templates                map[string]map[string][]*template.Template `json:"-"`
+	filenames                map[string]map[string][]filter.Filter      `json:"-"`
+	templates                map[string]map[string][]*template.Template `json:"-"`
 	Scale                    float64
 	Shift                    Shift
 	Acceptance               float32
@@ -177,6 +177,46 @@ func (c *Config) SetProfile(p string) {
 	}
 }
 
+func (c *Config) TemplatesGame(n string) []*template.Template {
+	return c.templates["game"][n]
+}
+
+func (c *Config) TemplatesGoals(n string) []*template.Template {
+	return c.templates["goals"][n]
+}
+
+func (c *Config) TemplatesKilled(n string) []*template.Template {
+	return c.templates["killed"][n]
+}
+
+func (c *Config) TemplatesKO(n string) []*template.Template {
+	return c.templates["ko"][n]
+}
+
+func (c *Config) TemplatesPoints(n string) []*template.Template {
+	return c.templates["points"][n]
+}
+
+func (c *Config) TemplatesSecure(n string) []*template.Template {
+	return c.templates["secure"][n]
+}
+
+func (c *Config) TemplatesScored(n string) []*template.Template {
+	return c.templates["scored"][n]
+}
+
+func (c *Config) TemplatesScoredAll() map[string][]*template.Template {
+	return c.templates["scored"]
+}
+
+func (c *Config) TemplatesScoring(n string) []*template.Template {
+	return c.templates["scoring"][n]
+}
+
+func (c *Config) TemplatesTime(n string) []*template.Template {
+	return c.templates["time"][n]
+}
+
 func (c *Config) pointFiles(t *team.Team) []filter.Filter {
 	var files []string
 
@@ -218,7 +258,7 @@ func (c *Config) pointFiles(t *team.Team) []filter.Filter {
 
 		value, err := strconv.Atoi(v)
 		if err != nil {
-			notify.SystemWarn("Failed to invalid \"point\" file \"%s\" (%v)", root, file, err)
+			notify.SystemWarn("Failed to invalidate \"%s\" file \"%s\" (%v)", root, file, err)
 			continue
 		}
 
@@ -356,7 +396,7 @@ func TemplatesFirstRound(t1 []*template.Template) []*template.Template {
 }
 
 func loadProfileAssetsBroadcaster() {
-	Current.Filenames = map[string]map[string][]filter.Filter{
+	Current.filenames = map[string]map[string][]filter.Filter{
 		"goals": {
 			team.Game.Name: {
 				filter.New(team.Game, Current.ProfileAssets()+"/game/purple_base_open.png", state.PurpleBaseOpen.Int(), false),
@@ -414,7 +454,7 @@ func loadProfileAssetsBroadcaster() {
 }
 
 func loadProfileAssetsPlayer() {
-	Current.Filenames = map[string]map[string][]filter.Filter{
+	Current.filenames = map[string]map[string][]filter.Filter{
 		"goals": {
 			team.Game.Name: {
 				filter.New(team.Game, Current.ProfileAssets()+"/game/purple_base_open.png", state.PurpleBaseOpen.Int(), false),
@@ -525,7 +565,7 @@ func open() bool {
 }
 
 func validate() {
-	Current.Templates = map[string]map[string][]*template.Template{
+	Current.templates = map[string]map[string][]*template.Template{
 		"goals": {
 			team.Game.Name: {},
 		},
@@ -565,8 +605,8 @@ func validate() {
 		},
 	}
 
-	for category := range Current.Filenames {
-		for subcategory, filters := range Current.Filenames[category] {
+	for category := range Current.filenames {
+		for subcategory, filters := range Current.filenames[category] {
 			for _, filter := range filters {
 				mat := gocv.IMRead(filter.File, gocv.IMReadColor)
 
@@ -590,16 +630,16 @@ func validate() {
 					template = template.AsTransparent()
 				}
 
-				Current.Templates[category][filter.Team.Name] = append(
-					Current.Templates[category][filter.Team.Name],
+				Current.templates[category][filter.Team.Name] = append(
+					Current.templates[category][filter.Team.Name],
 					template,
 				)
 			}
 		}
 	}
 
-	for category := range Current.Templates {
-		for subcategory, templates := range Current.Templates[category] {
+	for category := range Current.templates {
+		for subcategory, templates := range Current.templates[category] {
 			for _, t := range templates {
 				if t.Empty() {
 					notify.Error("Failed to read %s/%s template from file \"%s\"", category, subcategory, t.File)

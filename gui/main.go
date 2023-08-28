@@ -122,7 +122,7 @@ func (g *GUI) main() {
 	}
 
 	defer g.Bar.Remove(g.Bar.Add(&button.Button{
-		Text:        "⚙",
+		Text:        "📺",
 		Font:        g.Bar.Collection.NishikiTeki(),
 		OnHoverHint: func() { g.Bar.ToolTip("Configure capture settings") },
 		Released:    nrgba.PurpleBlue,
@@ -310,7 +310,7 @@ func (g *GUI) main() {
 			Border:      true,
 			BorderColor: nrgba.Transparent,
 		},
-		Click: func(b *button.Image) {
+		Click: func(this *button.Image) {
 			if !stopButton.Disabled {
 				stopButton.Click(stopButton)
 			}
@@ -354,7 +354,7 @@ func (g *GUI) main() {
 	ramGraph.TextSize = unit.Sp(9)
 
 	holdingLabel := material.H5(g.Bar.Collection.Calibri().Theme, "")
-	holdingLabel.Color = team.Self.NRGBA.Color()
+	holdingLabel.Color = nrgba.Gold.Color()
 	holdingLabel.Alignment = text.Middle
 	holdingLabel.TextSize = unit.Sp(14)
 

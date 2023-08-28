@@ -61,15 +61,15 @@ func Clock() {
 
 func Defeated() {
 	area := image.Rectangle{}
-	modified := config.Current.Templates["killed"][team.Game.Name]
-	unmodified := config.Current.Templates["killed"][team.Game.Name]
+	modified := config.Current.TemplatesKilled(team.Game.Name)
+	unmodified := config.Current.TemplatesKilled(team.Game.Name)
 
 	for {
 		time.Sleep(time.Second)
 
 		if idle || config.Current.DisableDefeated {
-			modified = config.Current.Templates["killed"][team.Game.Name]
-			unmodified = config.Current.Templates["killed"][team.Game.Name]
+			modified = config.Current.TemplatesKilled(team.Game.Name)
+			unmodified = config.Current.TemplatesKilled(team.Game.Name)
 			continue
 		}
 
@@ -214,7 +214,7 @@ func KOs() {
 			continue
 		}
 
-		_, r, e := match.Matches(matrix, img, config.Current.Templates["ko"][team.Game.Name])
+		_, r, e := match.Matches(matrix, img, config.Current.TemplatesKO(team.Game.Name))
 		if r != match.Found {
 			matrix.Close()
 			continue
@@ -259,7 +259,7 @@ func Objectives() {
 			continue
 		}
 
-		_, r, e := match.Matches(matrix, img, config.Current.Templates["secure"][team.Game.Name])
+		_, r, e := match.Matches(matrix, img, config.Current.TemplatesSecure(team.Game.Name))
 		if r != match.Found {
 			matrix.Close()
 			continue
@@ -451,7 +451,7 @@ func Scores(name string) {
 			continue
 		}
 
-		m, r, p := match.Matches(matrix, img, config.Current.Templates["scored"][name])
+		m, r, p := match.Matches(matrix, img, config.Current.TemplatesScored(name))
 		if r == match.NotFound {
 			matrix.Close()
 			continue
@@ -535,7 +535,7 @@ func States() {
 			continue
 		}
 
-		m, r, e := match.Matches(matrix, img, config.Current.Templates["game"][team.Game.Name])
+		m, r, e := match.Matches(matrix, img, config.Current.TemplatesGame(team.Game.Name))
 		if r != match.Found {
 			matrix.Close()
 			continue

@@ -50,7 +50,7 @@ func (c *CircleButton) Error() {
 
 func (c *CircleButton) Layout(gtx layout.Context) layout.Dimensions {
 	if c.Size.Eq(image.Pt(0, 0)) {
-		c.Size = Max
+		c.Size = Default
 	}
 
 	if c.alpha == 0 {
