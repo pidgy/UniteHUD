@@ -15,6 +15,7 @@ import (
 	"github.com/pidgy/unitehud/fonts"
 	"github.com/pidgy/unitehud/gui/visual"
 	"github.com/pidgy/unitehud/gui/visual/button"
+	"github.com/pidgy/unitehud/gui/visual/decor"
 	"github.com/pidgy/unitehud/gui/visual/slider"
 	"github.com/pidgy/unitehud/gui/visual/title"
 	"github.com/pidgy/unitehud/notify"
@@ -141,7 +142,7 @@ func (s *settings) open(onclose func()) {
 			gtx := layout.NewContext(&ops, e)
 
 			bar.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-				colorBox(gtx, gtx.Constraints.Max, nrgba.Background)
+				decor.ColorBox(gtx, gtx.Constraints.Max, nrgba.Background)
 
 				return layout.Flex{
 					Axis: layout.Vertical,
@@ -172,7 +173,7 @@ func (s *section) section(gtx layout.Context) layout.FlexChild {
 	}
 
 	return layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-		colorBox(gtx, s.dimensions.Size, nrgba.DarkGray)
+		decor.ColorBox(gtx, s.dimensions.Size, nrgba.DarkGray)
 
 		s.dimensions = layout.Flex{
 			Axis: layout.Vertical,
@@ -222,7 +223,7 @@ func (s *section) spacer() layout.FlexChild {
 
 func (s *settings) spacer() layout.FlexChild {
 	return layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-		colorBox(gtx, image.Pt(gtx.Constraints.Max.X, 2), nrgba.White)
+		decor.ColorBox(gtx, image.Pt(gtx.Constraints.Max.X, 2), nrgba.White)
 
 		return layout.Spacer{Width: unit.Dp(gtx.Constraints.Max.X), Height: 2}.Layout(gtx)
 	})

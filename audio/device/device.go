@@ -25,7 +25,7 @@ type Device interface {
 	IsDefault() bool
 	IsDisabled() bool
 	Name() string
-	Start(mctx malgo.Context, w io.ReadWriter, errq chan error, waitq chan bool)
+	Start(malgo.Context, io.ReadWriter, chan error)
 	Type() Type
 }
 
@@ -48,9 +48,5 @@ func Free(ctx *malgo.AllocatedContext) error {
 }
 
 func String(d Device) string {
-	if !d.Active() {
-		return "Inactive"
-	}
-
 	return d.Name()
 }

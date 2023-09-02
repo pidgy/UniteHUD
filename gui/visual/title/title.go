@@ -17,6 +17,7 @@ import (
 	"github.com/pidgy/unitehud/cursor"
 	"github.com/pidgy/unitehud/fonts"
 	"github.com/pidgy/unitehud/gui/visual/button"
+	"github.com/pidgy/unitehud/gui/visual/decor"
 	"github.com/pidgy/unitehud/img"
 	"github.com/pidgy/unitehud/nrgba"
 )
@@ -263,7 +264,7 @@ func (b *Bar) Layout(gtx layout.Context, content layout.Widget) layout.Dimension
 
 	bar := image.Rect(0, 0, gtx.Constraints.Max.X, Height)
 
-	colorBox(gtx, gtx.Constraints.Max, nrgba.Background)
+	decor.ColorBox(gtx, gtx.Constraints.Max, nrgba.Background)
 
 	dims := layout.Flex{
 		Spacing:   layout.SpaceAround,
@@ -275,7 +276,7 @@ func (b *Bar) Layout(gtx layout.Context, content layout.Widget) layout.Dimension
 				return layout.Dimensions{Size: image.Pt(gtx.Constraints.Max.X, Height/3)}
 			}
 
-			barColor(gtx, image.Pt(gtx.Constraints.Max.X, Height), nrgba.Background)
+			decor.ColorBox(gtx, image.Pt(gtx.Constraints.Max.X, Height), nrgba.Background)
 
 			children := []layout.FlexChild{
 				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
@@ -372,7 +373,7 @@ func (b *Bar) Layout(gtx layout.Context, content layout.Widget) layout.Dimension
 			}
 
 			size := image.Rect(0, 0, gtx.Constraints.Max.X, 1).Max
-			barColor(gtx, size, nrgba.Gray)
+			decor.ColorBox(gtx, size, nrgba.Gray)
 			return layout.Dimensions{Size: size}
 		}),
 
@@ -411,18 +412,4 @@ func (b *Bar) ToolTip(t string) {
 		return
 	}
 	b.tip = t
-}
-
-func barColor(gtx layout.Context, size image.Point, n nrgba.NRGBA) layout.Dimensions {
-	defer clip.Rect{Max: size}.Push(gtx.Ops).Pop()
-	paint.ColorOp{Color: n.Color()}.Add(gtx.Ops)
-	paint.PaintOp{}.Add(gtx.Ops)
-	return layout.Dimensions{Size: size}
-}
-
-func colorBox(gtx layout.Context, size image.Point, n nrgba.NRGBA) layout.Dimensions {
-	defer clip.Rect{Max: size}.Push(gtx.Ops).Pop()
-	paint.ColorOp{Color: n.Color()}.Add(gtx.Ops)
-	paint.PaintOp{}.Add(gtx.Ops)
-	return layout.Dimensions{Size: size}
 }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/gen2brain/malgo"
 
@@ -34,17 +35,29 @@ type Session struct {
 }
 
 func New(i, o string) (*Session, error) {
-	in, err := input.New(i)
+	ctx, err := malgo.InitContext(
+		[]malgo.Backend{
+			malgo.BackendDsound,
+		},
+		malgo.ContextConfig{
+			CoreAudio: malgo.CoreAudioConfig{
+				SessionCategory: malgo.IOSSessionCategoryAmbient,
+			},
+		},
+		func(message string) {
+			notify.Debug("Audio Session: %s", strings.Split(message, "\n")[0])
+		},
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	out, err := output.New(o)
+	in, err := input.New(ctx, i)
 	if err != nil {
 		return nil, err
 	}
 
-	mctx, err := malgo.InitContext(nil, malgo.ContextConfig{}, func(string) {})
+	out, err := output.New(ctx, o)
 	if err != nil {
 		return nil, err
 	}
@@ -53,29 +66,24 @@ func New(i, o string) (*Session, error) {
 		In:  in,
 		Out: out,
 
+		buffer: bytes.NewBuffer(make([]byte, 0)),
+
+		errorq: make(chan error),
+		waitq:  make(chan bool),
+
 		closed:  true,
-		context: mctx,
+		context: ctx,
 	}
 
 	return s, nil
 }
 
-func Devices() (in, out []string) {
-	for _, d := range input.Devices() {
-		in = append(in, d.Name())
-	}
-	for _, d := range output.Devices() {
-		out = append(out, d.Name())
-	}
-	return
+func (s *Session) Inputs() []*input.Device {
+	return input.Devices(s.context)
 }
 
-func Inputs() []*input.Device {
-	return input.Devices()
-}
-
-func Outputs() []*output.Device {
-	return output.Devices()
+func (s *Session) Outputs() []*output.Device {
+	return output.Devices(s.context)
 }
 
 func (s *Session) Close() error {
@@ -84,10 +92,16 @@ func (s *Session) Close() error {
 	}
 	s.closed = true
 
+	defer notify.System("%s (Closed)", s.String())
+
+	for err := s.Error(); err != nil && err != SessionClosed; err = s.Error() {
+		notify.Error("Audio session close error (%v)", err)
+	}
+
 	s.In.Close()
 	s.Out.Close()
 
-	return device.Free(s.context)
+	return nil
 }
 
 func (s *Session) Error() error {
@@ -103,67 +117,42 @@ func (s *Session) Error() error {
 }
 
 func (s *Session) Input(name string) error {
-	err := s.Close()
-	if err != nil {
-		return err
-	}
+	s.In.Close()
+	s.Out.Close()
 
-	in, err := input.New(name)
+	in, err := input.New(s.context, name)
 	if err != nil {
 		return err
 	}
 	s.In = in
 
-	out, err := output.New(s.Out.Name())
-	if err != nil {
-		return err
-	}
-	s.Out = out
-
-	return s.Start()
+	return nil
 }
 
 func (s *Session) Output(name string) error {
-	err := s.Close()
-	if err != nil {
-		return err
-	}
+	s.In.Close()
+	s.Out.Close()
 
-	p, err := output.New(name)
+	p, err := output.New(s.context, name)
 	if err != nil {
 		return err
 	}
 	s.Out = p
 
-	in, err := input.New(s.In.Name())
-	if err != nil {
-		return err
-	}
-	s.In = in
-
-	return s.Start()
+	return nil
 }
 
 func (s *Session) Start() error {
-	defer notify.System("%s", s)
-
 	if s.In.IsDisabled() || s.Out.IsDisabled() {
 		return nil
 	}
 
-	mctx, err := malgo.InitContext(nil, malgo.ContextConfig{}, func(string) {})
-	if err != nil {
-		return err
-	}
+	defer notify.System("%s (Started)", s.String())
 
-	s.waitq = make(chan bool)
+	s.In.Start(s.context.Context, s.buffer, s.errorq)
+	s.Out.Start(s.context.Context, s.buffer, s.errorq)
 
-	s.context = mctx
 	s.closed = false
-	s.buffer = bytes.NewBuffer(make([]byte, 0))
-
-	go s.In.Start(s.context.Context, s.buffer, s.errorq, s.waitq)
-	go s.Out.Start(s.context.Context, s.buffer, s.errorq, s.waitq)
 
 	return nil
 }

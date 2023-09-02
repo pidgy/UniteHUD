@@ -65,7 +65,7 @@ func Debug(format string, a ...interface{}) {
 		return
 	}
 
-	feed.log(nrgba.SeaBlue.Alpha(50), true, true, false, format, a...)
+	feed.log(nrgba.PastelBlue.Alpha(50), true, true, false, format, a...)
 }
 
 func Dedup(r nrgba.NRGBA, format string, a ...interface{}) {

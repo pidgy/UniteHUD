@@ -25,6 +25,7 @@ import (
 	"github.com/pidgy/unitehud/gui/is"
 	"github.com/pidgy/unitehud/gui/visual/area"
 	"github.com/pidgy/unitehud/gui/visual/button"
+	"github.com/pidgy/unitehud/gui/visual/decor"
 	"github.com/pidgy/unitehud/gui/visual/title"
 	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/nrgba"
@@ -37,6 +38,15 @@ import (
 	"github.com/pidgy/unitehud/video/window/electron"
 )
 
+type footer struct {
+	state,
+	is,
+	cpu,
+	ram,
+	fps,
+	tick material.LabelStyle
+}
+
 type projected struct {
 	img         image.Image
 	constraints image.Rectangle
@@ -47,8 +57,8 @@ type projected struct {
 
 	tag *bool
 
-	showCaptureAreas       bool
-	hideOptions, hideAudio bool
+	showCaptureAreas bool
+	hideOptions      bool
 
 	listTextSize float32
 }
@@ -82,7 +92,7 @@ func (g *GUI) projector() {
 
 	session, err := audio.New(audio.Disabled, audio.Default)
 	if err != nil {
-		g.ToastErrorf(fmt.Sprintf("Failed to route audio input to output (%v)", err))
+		g.ToastErrorf(fmt.Sprintf("Failed to route audio i/o (%v)", err))
 		g.next(is.MainMenu)
 		return
 	}
@@ -432,29 +442,32 @@ func (g *GUI) projector() {
 	monitorLabel.Color = nrgba.Highlight.Color()
 	monitorLabel.Font.Weight = 100
 
-	stateLabel := material.Label(g.Bar.Collection.Calibri().Theme, unit.Sp(12), "")
-	stateLabel.Color = nrgba.Highlight.Color()
-	stateLabel.Alignment = text.Start
+	footer := &footer{
+		state: material.Label(g.Bar.Collection.Calibri().Theme, unit.Sp(12), ""),
+		is:    material.Label(g.Bar.Collection.Calibri().Theme, unit.Sp(12), ""),
+		cpu:   material.Label(g.Bar.Collection.Calibri().Theme, unit.Sp(12), ""),
+		ram:   material.Label(g.Bar.Collection.Calibri().Theme, unit.Sp(12), ""),
+		fps:   material.Label(g.Bar.Collection.Calibri().Theme, unit.Sp(12), ""),
+		tick:  material.Label(g.Bar.Collection.Calibri().Theme, unit.Sp(12), ""),
+	}
 
-	isLabel := material.Label(g.Bar.Collection.Calibri().Theme, unit.Sp(12), "")
-	isLabel.Color = nrgba.Highlight.Color()
-	isLabel.Alignment = text.Start
+	footer.state.Color = nrgba.Highlight.Color()
+	footer.state.Alignment = text.Start
 
-	cpuLabel := material.Label(g.Bar.Collection.Calibri().Theme, unit.Sp(12), "")
-	cpuLabel.Color = nrgba.Highlight.Color()
-	cpuLabel.Alignment = text.Start
+	footer.is.Color = nrgba.Highlight.Color()
+	footer.is.Alignment = text.Start
 
-	ramLabel := material.Label(g.Bar.Collection.Calibri().Theme, unit.Sp(12), "")
-	ramLabel.Color = nrgba.Highlight.Color()
-	ramLabel.Alignment = text.Start
+	footer.cpu.Color = nrgba.Highlight.Color()
+	footer.cpu.Alignment = text.Start
 
-	fpsLabel := material.Label(g.Bar.Collection.Calibri().Theme, unit.Sp(12), "")
-	fpsLabel.Color = nrgba.Highlight.Color()
-	fpsLabel.Alignment = text.Start
+	footer.ram.Color = nrgba.Highlight.Color()
+	footer.ram.Alignment = text.Start
 
-	tickLabel := material.Label(g.Bar.Collection.Calibri().Theme, unit.Sp(12), "")
-	tickLabel.Color = nrgba.Highlight.Color()
-	tickLabel.Alignment = text.Start
+	footer.fps.Color = nrgba.Highlight.Color()
+	footer.fps.Alignment = text.Start
+
+	footer.tick.Color = nrgba.Highlight.Color()
+	footer.tick.Alignment = text.Start
 
 	populateTicksThreshold := 120
 	populateTicks := populateTicksThreshold
@@ -521,12 +534,39 @@ func (g *GUI) projector() {
 			if err != nil && err != audio.SessionClosed {
 				g.ToastError(err)
 				g.next(is.MainMenu)
-				return
+				continue
 			}
+
+			footer.is.Text = fmt.Sprintf("HUD %s", g.is.String())
+			footer.state.Text = fmt.Sprintf("%s %s", areas.state.Text, areas.state.Subtext)
+			footer.cpu.Text = g.cpu
+			footer.ram.Text = g.ram
+			footer.fps.Text = fmt.Sprintf("%d FPS", g.fps.frames)
+			footer.tick.Text = fmt.Sprintf("Tick %02d", g.fps.ticks)
 
 			g.Bar.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				if projected.hideOptions {
-					return projected.Layout(gtx, true)
+					return layout.Flex{
+						Alignment: layout.Baseline,
+						Axis:      layout.Vertical,
+					}.Layout(gtx,
+						layout.Flexed(0.99, func(gtx layout.Context) layout.Dimensions {
+							return layout.Flex{
+								Axis: layout.Horizontal,
+							}.Layout(
+								gtx,
+								layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+									return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+										return projected.Layout(gtx, g.fullscreen)
+									})
+								}),
+							)
+						}),
+
+						projected.spacer(0, 1),
+
+						projected.footer(gtx, footer),
+					)
 				}
 
 				return layout.Flex{
@@ -549,7 +589,7 @@ func (g *GUI) projector() {
 					projected.spacer(0, 1),
 
 					layout.Flexed(0.2, func(gtx layout.Context) layout.Dimensions {
-						colorBox(gtx, gtx.Constraints.Max, nrgba.Background)
+						decor.ColorBox(gtx, gtx.Constraints.Max, nrgba.Background)
 
 						return layout.Flex{
 							Axis: layout.Horizontal,
@@ -559,10 +599,6 @@ func (g *GUI) projector() {
 							projected.spacer(2, 0),
 
 							layout.Flexed(0.33, func(gtx layout.Context) layout.Dimensions {
-								if projected.hideAudio {
-									return layout.Dimensions{}
-								}
-
 								return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
 									layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 										return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
@@ -583,10 +619,6 @@ func (g *GUI) projector() {
 							projected.spacer(2, 0),
 
 							layout.Flexed(0.33, func(gtx layout.Context) layout.Dimensions {
-								if projected.hideAudio {
-									return layout.Dimensions{}
-								}
-
 								return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
 									layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 										return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
@@ -673,7 +705,7 @@ func (g *GUI) projector() {
 							projected.spacer(2, 0),
 
 							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-								colorBox(gtx, gtx.Constraints.Max, nrgba.Background)
+								decor.ColorBox(gtx, gtx.Constraints.Max, nrgba.Background)
 
 								return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 									return layout.Flex{
@@ -710,67 +742,7 @@ func (g *GUI) projector() {
 
 					projected.spacer(0, 1),
 
-					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-						colorBox(gtx, gtx.Constraints.Max, nrgba.Background)
-
-						layout.W.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-							return layout.Inset{Top: unit.Dp(5)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-								return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Middle}.Layout(gtx,
-									projected.empty(2, 0),
-
-									layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-										stateLabel.Text = fmt.Sprintf("%s %s", areas.state.Text, areas.state.Subtext)
-										return stateLabel.Layout(gtx)
-									}),
-
-									projected.empty(5, 0),
-
-									layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-										isLabel.Text = fmt.Sprintf("HUD %s", g.is.String())
-										return isLabel.Layout(gtx)
-									}),
-
-									projected.empty(2, 0),
-								)
-							})
-						})
-
-						return layout.E.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-							return layout.Inset{Top: unit.Dp(5)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-								return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Middle}.Layout(gtx,
-									projected.empty(2, 0),
-
-									layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-										cpuLabel.Text = g.cpu
-										return cpuLabel.Layout(gtx)
-									}),
-
-									projected.empty(5, 0),
-
-									layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-										ramLabel.Text = g.ram
-										return ramLabel.Layout(gtx)
-									}),
-
-									projected.empty(5, 0),
-
-									layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-										fpsLabel.Text = fmt.Sprintf("%d FPS", g.fps.frames)
-										return fpsLabel.Layout(gtx)
-									}),
-
-									projected.empty(5, 0),
-
-									layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-										tickLabel.Text = fmt.Sprintf("Tick %02d", g.fps.ticks)
-										return tickLabel.Layout(gtx)
-									}),
-
-									projected.empty(2, 0),
-								)
-							})
-						})
-					}),
+					projected.footer(gtx, footer),
 
 					projected.empty(2, 0),
 				)
@@ -828,6 +800,66 @@ func (g *GUI) projector() {
 			notify.Debug("Event missed: %T (Loading Window)", e)
 		}
 	}
+}
+
+func (p *projected) footer(gtx layout.Context, f *footer) layout.FlexChild {
+	return layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+		gtx.Constraints.Max.Y = gtx.Dp(25)
+
+		decor.ColorBox(gtx, gtx.Constraints.Max, nrgba.Black)
+
+		layout.W.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+			return layout.Inset{Top: unit.Dp(5)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+				return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Middle}.Layout(gtx,
+					p.empty(2, 0),
+
+					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+						return f.state.Layout(gtx)
+					}),
+
+					p.empty(5, 0),
+
+					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+						return f.is.Layout(gtx)
+					}),
+
+					p.empty(2, 0),
+				)
+			})
+		})
+
+		return layout.E.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+			return layout.Inset{Top: unit.Dp(5)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+				return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Middle}.Layout(gtx,
+					p.empty(2, 0),
+
+					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+						return f.cpu.Layout(gtx)
+					}),
+
+					p.empty(5, 0),
+
+					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+						return f.ram.Layout(gtx)
+					}),
+
+					p.empty(5, 0),
+
+					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+						return f.fps.Layout(gtx)
+					}),
+
+					p.empty(5, 0),
+
+					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+						return f.tick.Layout(gtx)
+					}),
+
+					p.empty(2, 0),
+				)
+			})
+		})
+	})
 }
 
 func (p *projected) Layout(gtx layout.Context, fullscreen bool) layout.Dimensions {
@@ -905,7 +937,8 @@ func (p *projected) spacer(x, y float32) layout.FlexChild {
 		if y != 0 {
 			gtx.Constraints.Max.Y = int(y)
 		}
-		colorBox(gtx, gtx.Constraints.Max, nrgba.White.Alpha(5))
+
+		decor.ColorBox(gtx, gtx.Constraints.Max, nrgba.White.Alpha(5))
 
 		return layout.Spacer{Width: unit.Dp(x), Height: unit.Dp(y)}.Layout(gtx)
 	})

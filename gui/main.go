@@ -22,6 +22,7 @@ import (
 	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/gui/is"
 	"github.com/pidgy/unitehud/gui/visual/button"
+	"github.com/pidgy/unitehud/gui/visual/decor"
 	"github.com/pidgy/unitehud/gui/visual/screen"
 	"github.com/pidgy/unitehud/gui/visual/spinner"
 	"github.com/pidgy/unitehud/gui/visual/split"
@@ -517,12 +518,12 @@ func (g *GUI) main() {
 
 			g.size = e.Size
 
-			colorBox(gtx, gtx.Constraints.Max, nrgba.Transparent30)
+			decor.ColorBox(gtx, gtx.Constraints.Max, nrgba.Transparent30)
 
 			g.Bar.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				return split.Layout(gtx,
 					func(gtx layout.Context) layout.Dimensions {
-						return fill(
+						return decor.Fill(
 							gtx,
 							nrgba.Background,
 							func(gtx layout.Context) layout.Dimensions {
@@ -769,7 +770,7 @@ func (g *GUI) main() {
 						)
 					},
 					func(gtx layout.Context) layout.Dimensions {
-						return fill(
+						return decor.Fill(
 							gtx,
 							nrgba.Background,
 							func(gtx layout.Context) layout.Dimensions {

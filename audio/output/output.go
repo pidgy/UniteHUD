@@ -5,6 +5,7 @@ import (
 	"io"
 
 	"github.com/gen2brain/malgo"
+	"github.com/pkg/errors"
 
 	"github.com/pidgy/unitehud/audio/device"
 	"github.com/pidgy/unitehud/notify"
@@ -19,8 +20,8 @@ type Device struct {
 
 	config malgo.DeviceConfig
 
-	closed          bool
-	closeq, closedq chan bool
+	active            bool
+	closingq, closedq chan bool
 
 	reconnects int
 }
@@ -30,12 +31,12 @@ func (d *Device) IsDefault() bool     { return d.isDefault }
 func (d *Device) IsDisabled() bool    { return d.name == device.Disabled }
 func (d *Device) Name() string        { return d.name }
 
-func New(name string) (*Device, error) {
+func New(ctx *malgo.AllocatedContext, name string) (*Device, error) {
 	if name == device.Disabled {
 		return &Device{name: device.Disabled}, nil
 	}
 
-	for _, d := range Devices() {
+	for _, d := range Devices(ctx) {
 		if !device.Is(d, name) {
 			continue
 		}
@@ -50,19 +51,22 @@ func New(name string) (*Device, error) {
 
 		return d, nil
 	}
+
 	return nil, fmt.Errorf("failed to find playback device with term: %s", name)
 }
 
 func (d *Device) Active() bool {
-	return !d.closed
+	return d.active
 }
 
 func (d *Device) Close() {
+	defer notify.Debug("Closed %s", d.name)
+
 	if !d.Active() {
 		return
 	}
 
-	close(d.closeq)
+	close(d.closingq)
 	<-d.closedq
 }
 
@@ -71,53 +75,64 @@ func (d *Device) Close() {
 // provide stream configuration.
 // Playback will commence playing the samples provided from the reader until either the
 // reader returns an error, or the context signals done.
-func (d *Device) Start(mctx malgo.Context, r io.ReadWriter, errq chan error, waitq chan bool) {
-	<-waitq
+func (d *Device) Start(mctx malgo.Context, r io.ReadWriter, errq chan error) {
+	if d.Active() {
+		errq <- errors.Wrap(fmt.Errorf("already active"), d.name)
+		return
+	}
 
-	d.closeq = make(chan bool)
-	d.closedq = make(chan bool)
-	d.closed = false
+	go func() {
+		d.closingq = make(chan bool)
+		d.closedq = make(chan bool)
+		d.active = true
 
-	defer func() { d.closed = true }()
-	defer close(d.closedq)
+		defer func() { d.active = false }()
+		defer close(d.closedq)
 
-	callbacks := malgo.DeviceCallbacks{
-		Data: func(outputSamples, inputSamples []byte, frameCount uint32) {
-			if d.closed {
-				return
-			}
-
-			if frameCount == 0 {
-				return
-			}
-
-			_, err := io.ReadFull(r, outputSamples)
-			if err != nil {
-				if err == io.EOF {
-					d.reconnects++
+		callbacks := malgo.DeviceCallbacks{
+			Data: func(outputSamples, inputSamples []byte, frameCount uint32) {
+				if !d.Active() {
 					return
 				}
 
-				errq <- err
+				if frameCount == 0 {
+					return
+				}
+
+				_, err := io.ReadFull(r, outputSamples)
+				if err != nil {
+					if err == io.EOF || err == io.ErrUnexpectedEOF {
+						d.reconnects++
+						return
+					}
+
+					errq <- errors.Wrap(err, d.name)
+				}
+			},
+		}
+
+		device, err := malgo.InitDevice(mctx, d.config, callbacks)
+		if err != nil {
+			errq <- errors.Wrap(err, d.name)
+			return
+		}
+		defer device.Uninit()
+
+		err = device.Start()
+		if err != nil {
+			errq <- errors.Wrap(err, d.name)
+			return
+		}
+		defer func() {
+			err = device.Stop()
+			if err != nil {
+				errq <- errors.Wrap(err, d.name)
+				return
 			}
-		},
-	}
+		}()
 
-	device, err := malgo.InitDevice(mctx, d.config, callbacks)
-	if err != nil {
-		errq <- err
-		return
-	}
-	defer device.Uninit()
-
-	err = device.Start()
-	if err != nil {
-		errq <- err
-		return
-	}
-	defer device.Stop()
-
-	<-d.closeq
+		<-d.closingq
+	}()
 }
 
 func (d *Device) String() string {
@@ -128,22 +143,15 @@ func (d *Device) Type() device.Type {
 	return device.Output
 }
 
-func Devices() (playbacks []*Device) {
-	context, err := malgo.InitContext(nil, malgo.ContextConfig{}, nil)
-	if err != nil {
-		notify.Error("Failed to initialize audio devices (%v)", err)
-		return nil
-	}
-	defer device.Free(context)
-
-	d, err := context.Devices(malgo.Playback)
+func Devices(ctx *malgo.AllocatedContext) (playbacks []*Device) {
+	d, err := ctx.Devices(malgo.Playback)
 	if err != nil {
 		notify.Error("Failed to discover audio playback devices (%v)", err)
 		return nil
 	}
 
 	for _, info := range d {
-		full, err := context.DeviceInfo(malgo.Playback, info.ID, malgo.Shared)
+		full, err := ctx.DeviceInfo(malgo.Playback, info.ID, malgo.Shared)
 		if err != nil {
 			notify.Warn("Failed to poll audio playback device \"%s\" info (%v)", info.ID, err)
 		}

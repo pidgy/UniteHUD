@@ -134,7 +134,7 @@ func (g *GUI) audios(text float32, session *audio.Session) *audios {
 		},
 	}
 
-	for _, d := range audio.Inputs() {
+	for _, d := range session.Inputs() {
 		if d.Is(device.ActiveName()) {
 			err := session.Input(d.Name())
 			if err != nil {
@@ -155,11 +155,17 @@ func (g *GUI) audios(text float32, session *audio.Session) *audios {
 				}
 
 				i.Checked.Value = true
+
+				err = session.Start()
+				if err != nil {
+					g.ToastError(err)
+					return
+				}
 			},
 		})
 	}
 
-	for _, d := range audio.Outputs() {
+	for _, d := range session.Outputs() {
 		a.out.list.Items = append(a.out.list.Items, &dropdown.Item{
 			Text:    d.Name(),
 			Checked: widget.Bool{Value: d.Is(device.ActiveName())},
@@ -171,6 +177,12 @@ func (g *GUI) audios(text float32, session *audio.Session) *audios {
 				}
 
 				i.Checked.Value = true
+
+				err = session.Start()
+				if err != nil {
+					g.ToastError(err)
+					return
+				}
 			},
 		})
 	}
