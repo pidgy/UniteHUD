@@ -106,10 +106,6 @@ func Capture() (*image.RGBA, error) {
 }
 
 func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
-	/*if config.Current.Scale > 1.0 {
-		return captureRectScaled(rect)
-	}*/
-
 	handle, err := find(config.Current.Window)
 	if err != nil {
 		notify.Error("%v", err)
@@ -378,7 +374,6 @@ func getWindowText(hwnd syscall.Handle) (name string, err error) {
 
 func scaled(img *image.RGBA, scale float64) *image.RGBA {
 	x := float64(img.Rect.Max.X) * scale
-
 	return resize.Resize(uint(x), 0, img, resize.Lanczos3).(*image.RGBA)
 }
 

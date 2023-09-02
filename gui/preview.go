@@ -19,35 +19,39 @@ import (
 	"github.com/pidgy/unitehud/gui/visual/button"
 	"github.com/pidgy/unitehud/gui/visual/screen"
 	"github.com/pidgy/unitehud/gui/visual/title"
+	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/nrgba"
 	"github.com/pidgy/unitehud/video"
 )
 
 type preview struct {
-	parent  *GUI
-	visible bool
+	parent *GUI
+	window *app.Window
+	hwnd   uintptr
+
+	closed bool
+	resize bool
 
 	width,
 	height int
 }
 
 func (p *preview) close() bool {
-	was := p.visible
-	p.visible = false
-	return was
+	was := p.closed
+	p.closed = true
+	return !was
 }
 
-func (p *preview) open(a *areas) {
-	if p.visible {
+func (p *preview) open(a *areas, onclose func()) {
+	if !p.closed {
 		return
 	}
-	p.visible = true
-	defer func() { p.visible = false }()
+	p.closed = false
 
-	hwnd := uintptr(0)
+	defer onclose()
 
-	w := app.NewWindow(
-		app.Title("UniteHUD Capture Preview"),
+	p.window = app.NewWindow(
+		app.Title("Preview"),
 		app.Size(unit.Dp(p.width), unit.Dp(p.height)),
 		app.MinSize(unit.Dp(p.width), unit.Dp(p.height)),
 		app.MaxSize(unit.Dp(p.width), unit.Dp(p.parent.max.Y)),
@@ -57,14 +61,13 @@ func (p *preview) open(a *areas) {
 	images := []*button.Image{}
 
 	bar := title.New(
-		"Capture Preview",
+		"Preview",
 		fonts.NewCollection(),
 		nil,
 		nil,
-		nil,
+		func() { p.window.Perform(system.ActionClose) },
 	)
 	bar.NoTip = true
-	bar.HideButtons = true
 
 	captures := []*area.Capture{
 		a.energy.Capture,
@@ -91,7 +94,7 @@ func (p *preview) open(a *areas) {
 	}
 
 	go func() {
-		for ; p.visible; time.Sleep(time.Second) {
+		for ; p.closed; time.Sleep(time.Second) {
 			for i, cap := range captures {
 				img, err := video.CaptureRect(cap.Base)
 				if err != nil {
@@ -128,25 +131,29 @@ func (p *preview) open(a *areas) {
 	matchLabel.Color = nrgba.Highlight.Color()
 	matchLabel.Font.Weight = 200
 
-	w.Perform(system.ActionRaise)
+	p.window.Perform(system.ActionRaise)
 
 	p.parent.setInsetLeft(p.width)
 	defer p.parent.unsetInsetLeft(p.width)
 
-	for event := range w.Events() {
+	for event := range p.window.Events() {
 		switch e := event.(type) {
 		case system.DestroyEvent:
 			return
 		case app.ViewEvent:
-			hwnd = e.HWND
+			p.hwnd = e.HWND
+			p.parent.attachWindowLeft(p.hwnd, p.width)
 		case system.FrameEvent:
-			if !p.visible {
-				go w.Perform(system.ActionClose)
+			if p.closed {
+				go p.window.Perform(system.ActionClose)
+			}
+
+			if p.resize {
+				p.resize = false
+				p.parent.attachWindowLeft(p.hwnd, p.width)
 			}
 
 			gtx := layout.NewContext(&ops, e)
-
-			p.parent.attachWindowLeft(hwnd, p.width)
 
 			bar.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				colorBox(gtx, gtx.Constraints.Max, nrgba.Background)
@@ -264,8 +271,10 @@ func (p *preview) open(a *areas) {
 				)
 			})
 
-			w.Invalidate()
+			p.window.Invalidate()
 			e.Frame(gtx.Ops)
+		default:
+			notify.Debug("Event missed: %T (Preview Window)", e)
 		}
 	}
 }

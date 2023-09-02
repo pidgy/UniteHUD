@@ -9,6 +9,7 @@ import (
 	"gioui.org/text"
 	"gioui.org/unit"
 	"gioui.org/widget/material"
+	"github.com/pidgy/unitehud/cursor"
 	"github.com/pidgy/unitehud/gui/visual/screen"
 	"github.com/pidgy/unitehud/nrgba"
 	"github.com/pidgy/unitehud/splash"
@@ -57,14 +58,22 @@ func (i *Image) Layout(th *material.Theme, gtx layout.Context) layout.Dimensions
 				i.hover = true
 				i.Screen.BorderColor = nrgba.White
 				i.Screen.Border = true
+
+				cursor.Is(pointer.CursorPointer)
+			case pointer.Move:
+				cursor.Is(pointer.CursorPointer)
 			case pointer.Leave:
 				i.hover = false
 				i.Screen.BorderColor = nrgba.Gray
+
+				cursor.Is(pointer.CursorDefault)
 			case pointer.Press:
+				cursor.Is(pointer.CursorPointer)
 			case pointer.Release:
+				cursor.Is(pointer.CursorDefault)
+
 				if i.hover && i.Click != nil {
 					i.Click(i)
-
 					i.Screen.BorderColor = nrgba.Gray
 				}
 			}
@@ -79,7 +88,7 @@ func (i *Image) Layout(th *material.Theme, gtx layout.Context) layout.Dimensions
 	area := clip.Rect(image.Rect(0, 0, dims.Size.X, dims.Size.Y)).Push(gtx.Ops)
 	pointer.InputOp{
 		Tag:   i,
-		Types: pointer.Press | pointer.Release | pointer.Enter | pointer.Leave,
+		Types: pointer.Press | pointer.Release | pointer.Enter | pointer.Leave | pointer.Move,
 	}.Add(gtx.Ops)
 	area.Pop()
 

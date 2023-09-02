@@ -186,28 +186,9 @@ function websocket() {
 $(document).ready(() => {
     clear();
 
-    // Test.
-    if (false) {
-        return setInterval(() => {
-            success({
-                "profile": "player",
-                // "profile": "broadcaster",
-                "version": version,
-                "started": true,
-                "seconds": 360,
-                "purple": { "value": 195, "kos": 1 },
-                "orange": { "value": 102, "kos": 1 },
-                "self": { "value": 132, "kos": 1 },
-                "stacks": 6,
-                "regis": ["purple", "orange", "purple"],
-                "bottom": [
-                    { "name": "registeel", "team": "purple" },
-                    { "name": "regirock", "team": "orange" },
-                    { "name": "registeel", "team": "purple" },
-                    { "name": "regice", "team": "orange" },
-                ],
-            });
-        }, 1000);
+    const testing = false;
+    if (testing) {
+        return sendtestdata();
     }
 
     const query = window.location.search;
@@ -223,3 +204,26 @@ $(document).ready(() => {
 
     setInterval(websocket, 1000);
 });
+
+function sendtestdata() {
+    return setInterval(() => {
+        success({
+            "profile": "player",
+            // "profile": "broadcaster",
+            "version": version,
+            "started": true,
+            "seconds": 360,
+            "purple": { "value": 195, "kos": 1 },
+            "orange": { "value": 102, "kos": 1 },
+            "self": { "value": 132, "kos": 1 },
+            "stacks": 6,
+            "regis": ["purple", "orange", "purple"],
+            "bottom": [
+                { "name": "registeel", "team": "purple" },
+                { "name": "regirock", "team": "orange" },
+                { "name": "registeel", "team": "purple" },
+                { "name": "regice", "team": "orange" },
+            ],
+        });
+    }, 1000);
+}

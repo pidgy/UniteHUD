@@ -228,7 +228,7 @@ func (b *Bar) Layout(gtx layout.Context, content layout.Widget) layout.Dimension
 			continue
 		}
 
-		cursor.Is(pointer.CursorDefault)
+		//cursor.Is(pointer.CursorDefault)
 		if b.drag.dragging {
 			cursor.Is(pointer.CursorPointer)
 		}

@@ -38,6 +38,7 @@ func (g *GUI) loading() {
 	height := 440
 
 	g.Window.Option(
+		app.Title("UniteHUD"),
 		app.Size(unit.Dp(width), unit.Dp(height)),
 		app.MaxSize(unit.Dp(width), unit.Dp(height)),
 		app.MinSize(unit.Dp(width), unit.Dp(height)),
@@ -102,6 +103,8 @@ func (g *GUI) loading() {
 			g.frame(gtx, e)
 
 			g.Window.Invalidate()
+		default:
+			notify.Debug("Event missed: %T (Loading Window)", e)
 		}
 	}
 }

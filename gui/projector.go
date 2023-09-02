@@ -65,18 +65,18 @@ func (g *GUI) projector() {
 	}
 
 	settings := &settings{
-		parent:  g,
-		visible: false,
-		width:   350,
-		height:  700,
+		parent: g,
+		closed: true,
+		width:  350,
+		height: 700,
 	}
 	defer settings.close()
 
 	preview := &preview{
-		parent:  g,
-		visible: false,
-		width:   350,
-		height:  700,
+		parent: g,
+		closed: true,
+		width:  350,
+		height: 700,
 	}
 	defer preview.close()
 
@@ -97,7 +97,7 @@ func (g *GUI) projector() {
 		TextSize:        unit.Sp(18),
 		TextInsetBottom: -2,
 		Font:            g.Bar.Collection.NishikiTeki(),
-		OnHoverHint:     func() { g.Bar.ToolTip("View additional settings") },
+		OnHoverHint:     func() { g.Bar.ToolTip("Open advanced settings") },
 		Pressed:         nrgba.Transparent30,
 		Released:        nrgba.Slate,
 		BorderWidth:     unit.Sp(.1),
@@ -106,13 +106,57 @@ func (g *GUI) projector() {
 
 			if settings.close() {
 				this.Text = "⚙"
-				this.OnHoverHint = func() { g.Bar.ToolTip("View additional settings") }
-				return
-			}
+				this.OnHoverHint = func() { g.Bar.ToolTip("View advanced settings") }
+			} else {
+				this.Text = "🔧"
+				this.OnHoverHint = func() { g.Bar.ToolTip("Close advanced settings") }
 
-			this.Text = "🔧"
-			this.OnHoverHint = func() { g.Bar.ToolTip("Close additional settings") }
-			go settings.open()
+				go settings.open(func() {
+					defer settings.close()
+
+					this.Text = "⚙"
+					this.OnHoverHint = func() { g.Bar.ToolTip("View advanced settings") }
+				})
+			}
+		},
+	}))
+
+	defer g.Bar.Remove(g.Bar.Add(&button.Button{
+		Text:            "🖫",
+		Font:            g.Bar.Collection.NishikiTeki(),
+		Released:        nrgba.OfficeBlue,
+		TextSize:        unit.Sp(16),
+		TextInsetBottom: -1,
+		Disabled:        false,
+		OnHoverHint:     func() { g.Bar.ToolTip("Save configuration") },
+		Click: func(this *button.Button) {
+			g.ToastYesNo("Save", "Save configuration changes?",
+				func() {
+					defer this.Deactivate()
+
+					server.Clear()
+
+					config.Current.Scores = areas.score.Rectangle()
+					config.Current.Time = areas.time.Rectangle()
+					config.Current.Energy = areas.energy.Rectangle()
+					config.Current.Objectives = areas.objective.Rectangle()
+					config.Current.KOs = areas.ko.Rectangle()
+
+					err := config.Current.Save()
+					if err != nil {
+						notify.Error("Failed to save UniteHUD configuration (%v)", err)
+					}
+
+					notify.System("Configuration saved to " + config.Current.File())
+
+					g.Actions <- Refresh
+
+					g.next(is.MainMenu)
+				},
+				func() {
+					defer this.Deactivate()
+				},
+			)
 		},
 	}))
 
@@ -137,7 +181,7 @@ func (g *GUI) projector() {
 		},
 	}))
 
-	captureButton := &button.Button{
+	defer g.Bar.Remove(g.Bar.Add(&button.Button{
 		Text:            "⛶",
 		Font:            g.Bar.Collection.NishikiTeki(),
 		TextSize:        unit.Sp(16),
@@ -153,8 +197,7 @@ func (g *GUI) projector() {
 				this.Text = "⛶"
 			}
 		},
-	}
-	defer g.Bar.Remove(g.Bar.Add(captureButton))
+	}))
 
 	defer g.Bar.Remove(g.Bar.Add(&button.Button{
 		Text:            "🗗",
@@ -172,53 +215,47 @@ func (g *GUI) projector() {
 			} else {
 				this.Text = "🗖"
 				this.OnHoverHint = func() { g.Bar.ToolTip("Close capture area preview") }
-				go preview.open(areas)
+
+				go preview.open(areas, func() {
+					defer preview.close()
+
+					this.Text = "🗗"
+					this.OnHoverHint = func() { g.Bar.ToolTip("Preview capture areas") }
+				})
 			}
 		},
 	}))
 
-	saveButton := &button.Button{
-		Text:            "🖫",
+	defer g.Bar.Remove(g.Bar.Add(&button.Button{
+		Text:            "🗚",
 		Font:            g.Bar.Collection.NishikiTeki(),
-		Released:        nrgba.OfficeBlue,
+		Released:        nrgba.CoolBlue,
 		TextSize:        unit.Sp(16),
 		TextInsetBottom: -1,
 		Disabled:        false,
-		OnHoverHint:     func() { g.Bar.ToolTip("Save configuration") },
+		OnHoverHint:     func() { g.Bar.ToolTip("Open configuration file") },
 		Click: func(this *button.Button) {
-			g.ToastYesNo("Save", "Save configuration changes?",
-				func() {
-					defer this.Deactivate()
+			defer this.Deactivate()
 
-					server.Clear()
+			config.Current.HUDOverlay = false
 
-					this.Disabled = true
+			exe := "C:\\Windows\\system32\\notepad.exe"
+			err := exec.Command(exe, config.Current.File()).Run()
+			if err != nil {
+				notify.Error("Failed to open \"%s\" (%v)", config.Current.File(), err)
+				return
+			}
 
-					config.Current.Scores = areas.score.Rectangle()
-					config.Current.Time = areas.time.Rectangle()
-					config.Current.Energy = areas.energy.Rectangle()
-					config.Current.Objectives = areas.objective.Rectangle()
-					config.Current.KOs = areas.ko.Rectangle()
+			// Called once window is closed.
+			err = config.Load(config.Current.Profile)
+			if err != nil {
+				notify.Error("Failed to reload \"%s\" (%v)", config.Current.File(), err)
+				return
+			}
 
-					err := config.Current.Save()
-					if err != nil {
-						notify.Error("Failed to save UniteHUD configuration (%v)", err)
-					}
-
-					notify.System("Configuration saved to " + config.Current.File())
-
-					g.Actions <- Refresh
-
-					g.next(is.MainMenu)
-				},
-				func() {
-					defer this.Deactivate()
-				},
-			)
+			areas.onevent()
 		},
-	}
-
-	defer g.Bar.Remove(g.Bar.Add(saveButton))
+	}))
 
 	cached := config.Current
 
@@ -379,47 +416,6 @@ func (g *GUI) projector() {
 		},
 	}
 
-	defer g.Bar.Remove(g.Bar.Add(&button.Button{
-		Text:            "🖉",
-		Font:            g.Bar.Collection.NishikiTeki(),
-		Released:        nrgba.CoolBlue,
-		TextSize:        unit.Sp(16),
-		TextInsetBottom: -1,
-		Disabled:        false,
-		OnHoverHint:     func() { g.Bar.ToolTip("Open configuration file") },
-		Click: func(this *button.Button) {
-			defer this.Deactivate()
-
-			config.Current.HUDOverlay = false
-
-			exe := "C:\\Windows\\system32\\notepad.exe"
-			err := exec.Command(exe, config.Current.File()).Run()
-			if err != nil {
-				notify.Error("Failed to open \"%s\" (%v)", config.Current.File(), err)
-				return
-			}
-
-			// Called once window is closed.
-			err = config.Load(config.Current.Profile)
-			if err != nil {
-				notify.Error("Failed to reload \"%s\" (%v)", config.Current.File(), err)
-				return
-			}
-
-			areas.onevent()
-		},
-	}),
-	)
-
-	g.Perform(system.ActionRaise)
-
-	populateTicksThreshold := 120
-	populateTicks := populateTicksThreshold
-
-	videos.window.populate(false)
-	videos.device.populate(false)
-	videos.monitor.populate(false)
-
 	audioInLabel := material.Label(g.Bar.Collection.Calibri().Theme, unit.Sp(12), "Audio In (Capture)")
 	audioInLabel.Color = nrgba.Highlight.Color()
 	audioInLabel.Font.Weight = 100
@@ -460,6 +456,17 @@ func (g *GUI) projector() {
 	tickLabel.Color = nrgba.Highlight.Color()
 	tickLabel.Alignment = text.Start
 
+	populateTicksThreshold := 120
+	populateTicks := populateTicksThreshold
+
+	videos.window.populate(false)
+	videos.device.populate(false)
+	videos.monitor.populate(false)
+
+	g.Perform(system.ActionRaise)
+
+	var lastpos image.Point
+
 	var ops op.Ops
 
 	for g.is == is.Projecting {
@@ -467,19 +474,48 @@ func (g *GUI) projector() {
 			videos.window.populate(false)
 			videos.device.populate(false)
 			videos.monitor.populate(false)
+
+			// go func() {
+			//	nameq := make(chan string)
+
+			// 	wapi.TopWindow(nameq)
+
+			// 	t := time.NewTimer(time.Second)
+			// 	select {
+			// 	case <-t.C:
+			// 		println("AHASDAHDSASHDASH")
+			// 		g.minimized = true
+			// 	case title := <-nameq:
+			// 		if !t.Stop() {
+			// 			<-t.C
+			// 		}
+			// 		g.minimized = title != g.Bar.Title
+			// 		println("here", g.minimized)
+			// 	}
+			// }()
+
 			populateTicks = 0
 		}
 
-		e := <-g.Events()
-		switch e := e.(type) {
-		case app.ViewEvent:
-			g.HWND = e.HWND
+		switch e := (<-g.Events()).(type) {
+		case system.StageEvent:
+		case app.ConfigEvent:
 		case system.DestroyEvent:
 			g.next(is.Closing)
 		case system.FrameEvent:
 			gtx := layout.NewContext(&ops, e)
+			if !g.size.Eq(e.Size) || !g.position().Eq(lastpos) {
+				g.size = e.Size
+				lastpos = g.position()
 
-			g.size = e.Size
+				if settings.window != nil {
+					settings.resize = true
+				}
+
+				if preview.window != nil {
+					preview.resize = true
+				}
+			}
 
 			err = session.Error()
 			if err != nil && err != audio.SessionClosed {
@@ -639,10 +675,6 @@ func (g *GUI) projector() {
 							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 								colorBox(gtx, gtx.Constraints.Max, nrgba.Background)
 
-								if projected.showCaptureAreas {
-									saveButton.Disabled = false
-								}
-
 								return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 									return layout.Flex{
 										Axis: layout.Vertical,
@@ -783,20 +815,17 @@ func (g *GUI) projector() {
 			}
 
 			g.frame(gtx, e)
-		case app.ConfigEvent:
 		case key.Event:
 			if e.State != key.Release {
 				continue
 			}
 
 			switch e.Name {
-			case "F11":
-				fallthrough
 			case key.NameEscape:
-				g.resize()
+				g.next(is.Closing)
 			}
-		case pointer.Event:
-		case system.StageEvent:
+		default:
+			notify.Debug("Event missed: %T (Loading Window)", e)
 		}
 	}
 }
@@ -821,7 +850,7 @@ func (p *projected) Layout(gtx layout.Context, fullscreen bool) layout.Dimension
 		gtx.Constraints.Min = rect.Min
 
 		if time.Since(p.since) > time.Second {
-			cursor.Is(pointer.CursorNone)
+			//cursor.Is(pointer.CursorNone)
 		}
 	}
 

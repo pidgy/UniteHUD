@@ -263,8 +263,7 @@ func bitBlt(dst wapi.HDC, dstx, dsty, dstw, dsth int, src wapi.HDC, srcx, srcy i
 }
 
 func createCompatibleDC(hdc wapi.HDC) wapi.HDC {
-	ret, _, _ := wapi.CreateCompatibleDC.Call(
-		uintptr(hdc))
+	ret, _, _ := wapi.CreateCompatibleDC.Call(uintptr(hdc))
 
 	if ret == 0 {
 		panic("Create compatible DC failed")

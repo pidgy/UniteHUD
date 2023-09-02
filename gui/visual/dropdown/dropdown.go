@@ -180,7 +180,7 @@ func (l *List) Layout(gtx layout.Context, th *material.Theme) layout.Dimensions 
 }
 
 func selectedItem(gtx layout.Context, index int) {
-	cursor.Is(pointer.CursorDefault)
+	// cursor.Is(pointer.CursorDefault)
 
 	widget.Border{
 		Color:        nrgba.White.Alpha(5).Color(),

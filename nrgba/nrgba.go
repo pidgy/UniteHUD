@@ -44,7 +44,9 @@ var (
 	PastelBabyBlue = NRGBA(rgba.PastelBabyBlue)
 	PastelBlue     = NRGBA(rgba.PastelBlue)
 	PastelGreen    = NRGBA(rgba.PastelGreen)
+	PastelOrange   = NRGBA(rgba.PastelOrange)
 	PastelRed      = NRGBA(rgba.PastelRed)
+	PastelYellow   = NRGBA(rgba.PastelYellow)
 	Pinkity        = NRGBA(rgba.Pinkity)
 	Red            = NRGBA(rgba.Red)
 	Regice         = SeaBlue

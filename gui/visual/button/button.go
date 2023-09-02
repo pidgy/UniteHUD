@@ -91,18 +91,24 @@ func (b *Button) Layout(gtx layout.Context) layout.Dimensions {
 		if e, ok := e.(pointer.Event); ok {
 			switch e.Type {
 			case pointer.Cancel:
+				cursor.Is(pointer.CursorDefault)
+
 				b.hover = false
 				b.Deactivate()
 			case pointer.Enter:
 				b.hover = true
 
 				if b.Disabled {
+					cursor.Is(pointer.CursorNotAllowed)
 					continue
 				}
+				cursor.Is(pointer.CursorPointer)
 			case pointer.Release:
 				if b.Disabled {
+					cursor.Is(pointer.CursorNotAllowed)
 					continue
 				}
+				cursor.Is(pointer.CursorPointer)
 
 				if b.hover && b.Click != nil {
 					b.Click(b)
@@ -115,6 +121,8 @@ func (b *Button) Layout(gtx layout.Context) layout.Dimensions {
 			case pointer.Leave:
 				b.hover = false
 
+				cursor.Is(pointer.CursorDefault)
+
 				if b.Disabled {
 					continue
 				}
@@ -124,21 +132,22 @@ func (b *Button) Layout(gtx layout.Context) layout.Dimensions {
 				b.hover = true
 
 				if b.Disabled {
+					cursor.Is(pointer.CursorNotAllowed)
 					continue
 				}
 
 				b.Activate()
 			case pointer.Move:
 				b.hover = true
+
+				if b.Disabled {
+					cursor.Is(pointer.CursorNotAllowed)
+					continue
+				}
+
+				cursor.Is(pointer.CursorPointer)
 			}
 		}
-	}
-
-	switch {
-	case b.hover && !b.Disabled:
-		cursor.Is(pointer.CursorPointer)
-	case b.hover && b.Disabled:
-		cursor.Is(pointer.CursorNotAllowed)
 	}
 
 	// Confine the area for pointer events.

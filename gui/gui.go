@@ -126,12 +126,8 @@ func New() {
 	Window.Bar = title.New(
 		title.Default,
 		fonts.NewCollection(),
-		func() {
-			Window.Perform(system.ActionMinimize)
-		},
-		func() {
-			Window.resize()
-		},
+		Window.minimize,
+		Window.resize,
 		func() {
 			Window.Perform(system.ActionClose)
 		},
@@ -142,6 +138,10 @@ func New() {
 	go Window.loading()
 
 	go Window.draw()
+}
+
+func (g *GUI) Close() {
+	g.next(is.Closing)
 }
 
 func (g *GUI) Open() {
@@ -220,9 +220,9 @@ func (g *GUI) attachWindowLeft(hwnd uintptr, width int) {
 	wapi.SetWindowPosNone(hwnd, image.Pt(x, y), image.Pt(width, g.size.Y))
 }
 
-func (g *GUI) attachWindowRight(hwnd uintptr, width int) {
+func (g *GUI) attachWindowRight(hwnd uintptr, width int) bool {
 	if hwnd == 0 {
-		return
+		return false
 	}
 
 	pos := g.position()
@@ -234,6 +234,8 @@ func (g *GUI) attachWindowRight(hwnd uintptr, width int) {
 	}
 
 	wapi.SetWindowPosNone(hwnd, image.Pt(x, y), image.Pt(width, g.size.Y))
+
+	return true
 }
 
 func (g *GUI) draw() {
@@ -277,15 +279,21 @@ func (g *GUI) frame(gtx layout.Context, e system.FrameEvent) {
 }
 
 func (g *GUI) maximize() {
-	g.size = g.max.Sub(image.Pt(g.insetRight, 0)).Sub(image.Pt(g.insetLeft, 0))
+	size := g.max.Sub(image.Pt(g.insetRight, 0)).Sub(image.Pt(g.insetLeft, 0))
 
 	pt := image.Pt(0, 0).Add(image.Pt(g.insetLeft, 0))
 
-	wapi.SetWindowPosShow(g.HWND, pt, g.size)
+	wapi.SetWindowPosShow(g.HWND, pt, size)
 
 	g.Perform(system.ActionMaximize)
 
+	//	g.Perform(system.ActionMaximize)
+
 	g.fullscreen = true
+}
+
+func (g *GUI) minimize() {
+	Window.Perform(system.ActionMinimize)
 }
 
 func (g *GUI) next(i is.Is) {
@@ -438,18 +446,10 @@ func (g *GUI) unsetInsetRight(right int) {
 	wapi.SetWindowPosShow(g.HWND, g.position(), g.size)
 }
 
-func (g *GUI) toMain(next *string) {
-	if *next == "" {
-		*next = "main"
-	}
-}
-
 func (g *GUI) unmaximize() {
 	g.Perform(system.ActionUnmaximize)
 
-	g.size = g.min
-	//g.Option(app.Size(unit.Dp(g.min.X), unit.Dp(g.min.Y)))
-	wapi.SetWindowPosShow(g.HWND, g.position(), g.size)
+	// wapi.SetWindowPosShow(g.HWND, g.position(), g.min)
 
 	g.fullscreen = false
 }

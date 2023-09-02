@@ -55,6 +55,10 @@ type Config struct {
 	Platform                 string
 	HUDOverlay               bool
 
+	Advanced struct {
+		IncreasedCaptureRate int64
+	}
+
 	DisableScoring, DisableTime, DisableObjectives, DisableEnergy, DisableDefeated, DisableKOs, DisablePreviews bool
 
 	Crashed string

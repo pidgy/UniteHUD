@@ -32,7 +32,7 @@ var (
 
 func Clock() {
 	for {
-		time.Sleep(team.Delay(team.Time.Name))
+		sleep(team.Delay(team.Time.Name))
 
 		if idle || config.Current.DisableTime {
 			continue
@@ -47,7 +47,7 @@ func Clock() {
 		rs, kitchen := match.Time(matrix, img)
 		if rs == 0 {
 			// Let's back off and not waste processing power.
-			time.Sleep(time.Second * 5)
+			sleep(time.Second * 5)
 			continue
 		}
 
@@ -65,7 +65,7 @@ func Defeated() {
 	unmodified := config.Current.TemplatesKilled(team.Game.Name)
 
 	for {
-		time.Sleep(time.Second)
+		sleep(time.Second)
 
 		if idle || config.Current.DisableDefeated {
 			modified = config.Current.TemplatesKilled(team.Game.Name)
@@ -130,7 +130,7 @@ func Energy() {
 	confirmScore := -1
 
 	for {
-		time.Sleep(team.Energy.Delay)
+		sleep(team.Energy.Delay)
 
 		if idle || config.Current.DisableEnergy {
 			assured = make(map[int]int)
@@ -201,7 +201,7 @@ func KOs() {
 	var last *duplicate.Duplicate
 
 	for {
-		time.Sleep(time.Millisecond * 1500)
+		sleep(time.Millisecond * 1500)
 
 		if idle || config.Current.DisableKOs {
 			last = nil
@@ -246,7 +246,7 @@ func Objectives() {
 	top, bottom, middle := time.Time{}, time.Time{}, time.Time{}
 
 	for {
-		time.Sleep(time.Second)
+		sleep(time.Second)
 
 		if idle || config.Current.DisableObjectives {
 			top, bottom, middle = time.Time{}, time.Time{}, time.Time{}
@@ -358,7 +358,7 @@ func Objectives() {
 
 func PressButtonToScore() {
 	for {
-		time.Sleep(time.Millisecond * 500)
+		sleep(time.Millisecond * 500)
 
 		if idle {
 			continue
@@ -435,7 +435,7 @@ func Preview() {
 
 func Scores(name string) {
 	for {
-		time.Sleep(team.Delay(name))
+		sleep(team.Delay(name))
 
 		if idle || config.Current.DisableScoring {
 			continue
@@ -518,7 +518,7 @@ func States() {
 	area := image.Rectangle{}
 
 	for {
-		time.Sleep(time.Second * 2)
+		sleep(time.Second * 2)
 
 		if idle {
 			continue
@@ -742,4 +742,9 @@ func s(size int) string {
 		return ""
 	}
 	return "s"
+}
+
+func sleep(d time.Duration) {
+	delta := time.Duration(float64(d) * (float64(config.Current.Advanced.IncreasedCaptureRate) / 100))
+	time.Sleep(d - delta)
 }

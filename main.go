@@ -5,7 +5,6 @@ package main
 import (
 	"os"
 	"os/signal"
-	"syscall"
 
 	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/debug"
@@ -31,8 +30,6 @@ var sigq = make(chan os.Signal, 1)
 
 func init() {
 	notify.System("Initializing...")
-
-	go signals()
 }
 
 func kill(errs ...error) {
@@ -71,9 +68,10 @@ func kill(errs ...error) {
 }
 
 func signals() {
-	signal.Notify(sigq, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(sigq, os.Interrupt)
 	<-sigq
 
+	gui.Window.Close()
 	video.Close()
 	electron.Close()
 
@@ -228,6 +226,8 @@ func main() {
 			}
 		}
 	}()
+
+	go signals()
 
 	notify.System("Initialized")
 }

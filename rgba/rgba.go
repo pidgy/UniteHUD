@@ -41,7 +41,9 @@ var (
 	PastelBabyBlue = RGBA{R: 112, G: 170, B: 204, A: 255}
 	PastelBlue     = RGBA{R: 130, G: 130, B: 223, A: 255}
 	PastelGreen    = RGBA{R: 117, G: 199, B: 135, A: 255}
+	PastelOrange   = RGBA{R: 231, G: 137, B: 99, A: 255}
 	PastelRed      = RGBA{R: 245, G: 95, B: 95, A: 255}
+	PastelYellow   = RGBA{R: 242, G: 212, B: 143, A: 255}
 	Purple         = RGBA{R: 161, G: 76, B: 252, A: 255}
 	PurpleBlue     = RGBA{R: 83, G: 94, B: 255, A: 255}
 	PaleRed        = RGBA{R: 168, G: 49, B: 49, A: 255}

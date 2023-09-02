@@ -319,9 +319,9 @@ func (g *GUI) main() {
 		},
 	}
 
-	header := material.H6(g.Bar.Collection.Calibri().Theme, global.Version)
-	header.Color = nrgba.White.Alpha(25).Color()
-	header.Alignment = text.Middle
+	warningLabel := material.Label(g.Bar.Collection.NotoSans().Theme, unit.Sp(11), "⚠ CPU")
+	warningLabel.Color = nrgba.Yellow.Alpha(200).Color()
+	warningLabel.Font.Weight = 0
 
 	profileHeader := material.Caption(g.Bar.Collection.Calibri().Theme, "")
 	profileHeader.Color = nrgba.DreamyPurple.Color()
@@ -509,9 +509,6 @@ func (g *GUI) main() {
 
 		switch e := (<-g.Events()).(type) {
 		case app.ConfigEvent:
-		case system.StageEvent:
-		case app.ViewEvent:
-			g.HWND = e.HWND
 		case system.DestroyEvent:
 			g.next(is.Closing)
 			return
@@ -530,10 +527,20 @@ func (g *GUI) main() {
 							nrgba.Background,
 							func(gtx layout.Context) layout.Dimensions {
 								{
-									// layout.Inset{
-									// 	Top:  unit.Dp(2),
-									// 	Left: unit.Dp(4),
-									// }.Layout(gtx, header.Layout)
+									warnings := []string{}
+
+									if config.Current.Advanced.IncreasedCaptureRate > 0 {
+										warnings = append(warnings, fmt.Sprintf("Match Frequency: %d%%", 100+config.Current.Advanced.IncreasedCaptureRate))
+									}
+
+									if len(warnings) > 0 {
+										warningLabel.Text = fmt.Sprintf("⚠ CPU (%s)", strings.Join(warnings, ","))
+
+										layout.Inset{
+											Left: unit.Dp(4),
+											Top:  unit.Dp(1),
+										}.Layout(gtx, warningLabel.Layout)
+									}
 
 									profileHeader.Text = fmt.Sprintf("%s // %s", strings.Title(config.Current.Profile), strings.Title(config.Current.Platform))
 									layout.Inset{
@@ -843,6 +850,8 @@ func (g *GUI) main() {
 			})
 
 			g.frame(gtx, e)
+		default:
+			notify.Debug("Event missed: %T (Main Window)", e)
 		}
 	}
 }

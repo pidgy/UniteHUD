@@ -15,5 +15,5 @@ func Is(c pointer.Cursor) {
 
 func Draw(gtx layout.Context) {
 	pointer.Cursor(is).Add(gtx.Ops)
-	is = pointer.CursorDefault
+	// is = pointer.CursorDefault
 }

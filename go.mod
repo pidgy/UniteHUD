@@ -6,6 +6,8 @@ go 1.16
 
 require (
 	gioui.org v0.0.0-20230512135434-8571b25ff7cb
+	github.com/AllenDang/w32 v0.0.0-20180428130237-ad0a36d80adc // indirect
+	github.com/TheTitanrain/w32 v0.0.0-20200114052255-2654d97dbd3d // indirect
 	github.com/asticode/go-astikit v0.38.0
 	github.com/asticode/go-astilectron v0.29.0
 	github.com/gen2brain/malgo v0.11.10
@@ -26,6 +28,7 @@ require (
 	github.com/youpy/go-wav v0.3.2
 	github.com/zaf/g711 v0.0.0-20220109202201-cf0017bf0359 // indirect
 	gocv.io/x/gocv v0.28.0
+	golang.org/x/exp v0.0.0-20221012211006-4de253d81b95 // indirect
 	golang.org/x/image v0.7.0
 	golang.org/x/sys v0.7.0
 	gopkg.in/yaml.v2 v2.4.0 // indirect
