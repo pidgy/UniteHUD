@@ -74,7 +74,6 @@ func (t *TextBlock) Layout(gtx layout.Context, posts []notify.Post) layout.Dimen
 			)
 		},
 	)
-	//
 
 	return layout.Dimensions{Size: gtx.Constraints.Max}
 }
