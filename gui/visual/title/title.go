@@ -14,10 +14,11 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 
+	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/cursor"
 	"github.com/pidgy/unitehud/fonts"
 	"github.com/pidgy/unitehud/gui/visual/button"
-	"github.com/pidgy/unitehud/gui/visual/decor"
+	"github.com/pidgy/unitehud/gui/visual/decorate"
 	"github.com/pidgy/unitehud/img"
 	"github.com/pidgy/unitehud/nrgba"
 )
@@ -29,13 +30,12 @@ const (
 var (
 	Height = 26
 
-	buttonSize     = image.Pt(Height+5, Height)
 	buttonTextSize = unit.Sp(18)
 	titleTextSize  = unit.Sp(16)
 	tipTextSize    = unit.Sp(14)
 )
 
-type Bar struct {
+type Widget struct {
 	Title      string
 	Collection fonts.Collection
 
@@ -59,8 +59,8 @@ type decorations struct {
 	iconSet   bool
 	iconInset layout.Inset
 
-	minimize, resize, close *button.Button
-	customs                 []*button.Button
+	minimize, resize, close *button.Widget
+	customs                 []*button.Widget
 	customButtonsOpen       bool
 
 	clicked time.Time
@@ -71,8 +71,8 @@ type decorations struct {
 	}
 }
 
-func New(title string, collection fonts.Collection, minimize, resize, close func()) *Bar {
-	b := &Bar{
+func New(title string, collection fonts.Collection, minimize, resize, close func()) *Widget {
+	b := &Widget{
 		Title:      title,
 		Collection: collection,
 
@@ -86,34 +86,34 @@ func New(title string, collection fonts.Collection, minimize, resize, close func
 				Fit:   widget.ScaleDown,
 				Scale: .27,
 			},
-			minimize: &button.Button{
+			minimize: &button.Widget{
 				Text:         "-",
 				TextSize:     buttonTextSize,
 				Font:         collection.Cascadia(),
-				Size:         buttonSize,
-				Pressed:      nrgba.BackgroundAlt.Alpha(255),
+				Size:         button.IconSize,
+				Pressed:      nrgba.NRGBA(config.Current.Theme.BackgroundAlt).Alpha(255),
 				Released:     nrgba.PastelBlue,
 				NoBorder:     true,
 				SharpCorners: true,
 				Disabled:     minimize == nil,
-				Click: func(this *button.Button) {
+				Click: func(this *button.Widget) {
 					defer this.Deactivate()
 					if minimize != nil {
 						minimize()
 					}
 				},
 			},
-			resize: &button.Button{
+			resize: &button.Widget{
 				Text:         "□",
 				TextSize:     buttonTextSize,
 				Font:         collection.Cascadia(),
-				Size:         buttonSize,
-				Pressed:      nrgba.BackgroundAlt.Alpha(255),
+				Size:         button.IconSize,
+				Pressed:      nrgba.NRGBA(config.Current.Theme.BackgroundAlt).Alpha(255),
 				Released:     nrgba.PastelGreen,
 				NoBorder:     true,
 				SharpCorners: true,
 				Disabled:     resize == nil,
-				Click: func(this *button.Button) {
+				Click: func(this *button.Widget) {
 					defer this.Deactivate()
 
 					if resize != nil {
@@ -121,19 +121,19 @@ func New(title string, collection fonts.Collection, minimize, resize, close func
 					}
 				},
 			},
-			close: &button.Button{
+			close: &button.Widget{
 				Text:         "×",
 				TextSize:     buttonTextSize,
 				Font:         collection.Cascadia(),
-				Size:         buttonSize,
-				Pressed:      nrgba.BackgroundAlt.Alpha(255),
+				Size:         button.IconSize,
+				Pressed:      nrgba.NRGBA(config.Current.Theme.BackgroundAlt).Alpha(255),
 				Released:     nrgba.PastelRed,
 				NoBorder:     true,
 				SharpCorners: true,
 
 				TextInsetBottom: .5,
 				Disabled:        close == nil,
-				Click: func(this *button.Button) {
+				Click: func(this *button.Widget) {
 					defer this.Deactivate()
 					if close != nil {
 						close()
@@ -148,18 +148,18 @@ func New(title string, collection fonts.Collection, minimize, resize, close func
 	b.decorations.close.OnHoverHint = func() { b.ToolTip("Close") }
 
 	b.customs = append(b.customs,
-		&button.Button{
+		&button.Widget{
 			Text:            "≡",
 			TextSize:        unit.Sp(25),
-			Size:            buttonSize,
+			Size:            button.IconSize,
 			Font:            collection.NishikiTeki(),
-			Released:        nrgba.Background,
-			Pressed:         nrgba.BackgroundAlt.Alpha(255),
+			Released:        nrgba.NRGBA(config.Current.Theme.Background),
+			Pressed:         nrgba.NRGBA(config.Current.Theme.BackgroundAlt).Alpha(255),
 			NoBorder:        true,
 			SharpCorners:    true,
 			OnHoverHint:     func() { b.ToolTip("Additional options") },
 			TextInsetBottom: 1,
-			Click: func(this *button.Button) {
+			Click: func(this *button.Widget) {
 				defer this.Deactivate()
 
 				b.customButtonsOpen = !b.customButtonsOpen
@@ -178,16 +178,16 @@ func New(title string, collection fonts.Collection, minimize, resize, close func
 	return b
 }
 
-func (b *Bar) Add(btn *button.Button) *button.Button {
+func (b *Widget) Add(btn *button.Widget) *button.Widget {
 	if btn.Size.Eq(image.Pt(0, 0)) {
-		btn.Size = buttonSize
+		btn.Size = button.IconSize
 	}
 	if btn.TextSize == 0 {
 		btn.TextSize = buttonTextSize
 	}
 
 	if btn.Pressed == nrgba.Transparent {
-		btn.Pressed = nrgba.BackgroundAlt.Alpha(255)
+		btn.Pressed = nrgba.NRGBA(config.Current.Theme.BackgroundAlt).Alpha(255)
 	}
 
 	btn.NoBorder = true
@@ -199,8 +199,8 @@ func (b *Bar) Add(btn *button.Button) *button.Button {
 	return btn
 }
 
-func (b *Bar) Remove(btn *button.Button) {
-	c := []*button.Button{}
+func (b *Widget) Remove(btn *button.Widget) {
+	c := []*button.Widget{}
 	for _, b := range b.customs {
 		if b.Text != btn.Text {
 			c = append(c, b)
@@ -213,14 +213,14 @@ func (b *Bar) Remove(btn *button.Button) {
 	}
 }
 
-func (b *Bar) Dragging() (image.Point, bool) {
+func (b *Widget) Dragging() (image.Point, bool) {
 	if !b.drag.dragging {
 		return image.Pt(0, 0), false
 	}
 	return b.drag.diff.Round(), true
 }
 
-func (b *Bar) Layout(gtx layout.Context, content layout.Widget) layout.Dimensions {
+func (b *Widget) Layout(gtx layout.Context, content layout.Widget) layout.Dimensions {
 	cursor.Draw(gtx)
 
 	for _, ev := range gtx.Events(b.grabbed) {
@@ -264,8 +264,6 @@ func (b *Bar) Layout(gtx layout.Context, content layout.Widget) layout.Dimension
 
 	bar := image.Rect(0, 0, gtx.Constraints.Max.X, Height)
 
-	decor.ColorBox(gtx, gtx.Constraints.Max, nrgba.Background)
-
 	dims := layout.Flex{
 		Spacing:   layout.SpaceAround,
 		Alignment: layout.Baseline,
@@ -276,7 +274,7 @@ func (b *Bar) Layout(gtx layout.Context, content layout.Widget) layout.Dimension
 				return layout.Dimensions{Size: image.Pt(gtx.Constraints.Max.X, Height/3)}
 			}
 
-			decor.ColorBox(gtx, image.Pt(gtx.Constraints.Max.X, Height), nrgba.Background)
+			decorate.ColorBox(gtx, image.Pt(gtx.Constraints.Max.X, Height), nrgba.NRGBA(config.Current.Theme.TitleBarBackground))
 
 			children := []layout.FlexChild{
 				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
@@ -291,14 +289,16 @@ func (b *Bar) Layout(gtx layout.Context, content layout.Widget) layout.Dimension
 
 					idims := b.iconInset.Layout(gtx, b.icon.Layout)
 
+					decorate.LabelColor(&b.decorations.title, config.Current.Theme.TitleBarForeground)
+					decorate.LabelColor(&b.decorations.tip, config.Current.Theme.ToolTipForeground)
+
 					if !b.decorations.titleSet {
 						b.decorations.titleSet = true
 
 						titleDims := b.decorations.title.Layout(gtx)
 
-						b.decorations.title.Text = b.Title
-						b.decorations.title.Color = nrgba.White.Color()
 						b.decorations.title.Font.Weight = font.SemiBold
+
 						y := unit.Dp((float64(bar.Max.Y) - float64(titleDims.Size.Y)))
 						b.decorations.titleInset = layout.Inset{Left: 5 + unit.Dp(idims.Size.X), Top: y, Bottom: y}
 
@@ -306,7 +306,6 @@ func (b *Bar) Layout(gtx layout.Context, content layout.Widget) layout.Dimension
 						y = unit.Dp((float64(bar.Max.Y) - float64(tipDims.Size.Y)))
 						b.decorations.tipInset = layout.Inset{Left: 5 + unit.Dp(idims.Size.X), Top: y - 1, Bottom: y + 1}
 						b.tipInset.Left += unit.Dp(5 + titleDims.Size.X)
-						b.decorations.tip.Color = nrgba.White.Alpha(100).Color()
 						b.decorations.tip.Font.Weight = font.ExtraLight
 						b.decorations.tip.Font.Style = font.Italic
 
@@ -373,7 +372,7 @@ func (b *Bar) Layout(gtx layout.Context, content layout.Widget) layout.Dimension
 			}
 
 			size := image.Rect(0, 0, gtx.Constraints.Max.X, 1).Max
-			decor.ColorBox(gtx, size, nrgba.Gray)
+			decorate.ColorBox(gtx, size, nrgba.Gray)
 			return layout.Dimensions{Size: size}
 		}),
 
@@ -407,7 +406,7 @@ func (b *Bar) Layout(gtx layout.Context, content layout.Widget) layout.Dimension
 	return dims
 }
 
-func (b *Bar) ToolTip(t string) {
+func (b *Widget) ToolTip(t string) {
 	if t == "" {
 		return
 	}

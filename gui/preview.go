@@ -14,10 +14,11 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 
+	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/fonts"
 	"github.com/pidgy/unitehud/gui/visual/area"
 	"github.com/pidgy/unitehud/gui/visual/button"
-	"github.com/pidgy/unitehud/gui/visual/decor"
+	"github.com/pidgy/unitehud/gui/visual/decorate"
 	"github.com/pidgy/unitehud/gui/visual/screen"
 	"github.com/pidgy/unitehud/gui/visual/title"
 	"github.com/pidgy/unitehud/notify"
@@ -59,7 +60,7 @@ func (p *preview) open(a *areas, onclose func()) {
 		app.Decorated(false),
 	)
 
-	images := []*button.Image{}
+	images := []*button.ImageWidget{}
 
 	bar := title.New(
 		"Preview",
@@ -116,7 +117,7 @@ func (p *preview) open(a *areas, onclose func()) {
 		},
 	}
 	style := material.List(bar.Collection.Calibri().Theme, list)
-	style.Track.Color = nrgba.Gray.Color()
+	style.Track.Color = config.Current.Theme.Scrollbar
 
 	var ops op.Ops
 
@@ -157,7 +158,7 @@ func (p *preview) open(a *areas, onclose func()) {
 			gtx := layout.NewContext(&ops, e)
 
 			bar.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-				decor.ColorBox(gtx, gtx.Constraints.Max, nrgba.Background)
+				decorate.ColorBox(gtx, gtx.Constraints.Max, nrgba.NRGBA(config.Current.Theme.Background))
 
 				return layout.Flex{
 					Axis: layout.Vertical,
@@ -188,7 +189,7 @@ func (p *preview) open(a *areas, onclose func()) {
 					}),
 
 					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-						decor.ColorBox(gtx, image.Pt(gtx.Constraints.Max.X, 1), nrgba.White.Alpha(5))
+						decorate.ColorBox(gtx, image.Pt(gtx.Constraints.Max.X, 1), nrgba.White.Alpha(5))
 						return layout.Spacer{Width: unit.Dp(1), Height: unit.Dp(5)}.Layout(gtx)
 					}),
 
@@ -224,14 +225,15 @@ func (p *preview) open(a *areas, onclose func()) {
 												layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 													return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 														return layout.Inset{Top: unit.Dp(5)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-															captureLabel.Color = nrgba.White.Color()
-															if cap.MatchedColor != nrgba.Nothing.Color() {
-																captureLabel.Color = cap.MatchedColor
-															}
-
 															captureLabel.Text = cap.Option
 															if cap.MatchedText != "" {
 																captureLabel.Text = cap.MatchedText
+															}
+
+															if cap.MatchedColor != nrgba.Nothing.Color() {
+																captureLabel.Color = cap.MatchedColor
+															} else {
+																decorate.Label(&captureLabel, captureLabel.Text)
 															}
 
 															return captureLabel.Layout(gtx)
@@ -259,7 +261,7 @@ func (p *preview) open(a *areas, onclose func()) {
 								}),
 
 								layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-									decor.ColorBox(gtx, image.Pt(gtx.Constraints.Max.X, 1), nrgba.White.Alpha(5))
+									decorate.ColorBox(gtx, image.Pt(gtx.Constraints.Max.X, 1), nrgba.White.Alpha(5))
 									return layout.Spacer{Width: unit.Dp(1), Height: unit.Dp(5)}.Layout(gtx)
 								}),
 
@@ -280,15 +282,15 @@ func (p *preview) open(a *areas, onclose func()) {
 	}
 }
 
-func (p *preview) makePreviewCaptureButton(cap *area.Capture, img image.Image) *button.Image {
-	return &button.Image{
-		Screen: &screen.Screen{
+func (p *preview) makePreviewCaptureButton(cap *area.Capture, img image.Image) *button.ImageWidget {
+	return &button.ImageWidget{
+		Widget: &screen.Widget{
 			Image:       img,
 			Border:      true,
 			BorderColor: nrgba.Transparent,
 			AutoScale:   true,
 		},
-		Click: func(i *button.Image) {
+		Click: func(i *button.ImageWidget) {
 			err := cap.Open()
 			if err != nil {
 				p.parent.ToastError(fmt.Errorf("Failed to open capture preview (%v)", err))

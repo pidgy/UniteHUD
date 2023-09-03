@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"image"
+	"image/color"
 	"os"
 	"path"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -17,6 +19,7 @@ import (
 	"github.com/pidgy/unitehud/filter"
 	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/notify"
+	"github.com/pidgy/unitehud/nrgba"
 	"github.com/pidgy/unitehud/state"
 	"github.com/pidgy/unitehud/team"
 	"github.com/pidgy/unitehud/template"
@@ -55,6 +58,8 @@ type Config struct {
 	Platform                 string
 	HUDOverlay               bool
 
+	Theme Theme
+
 	Advanced struct {
 		IncreasedCaptureRate int64
 	}
@@ -68,6 +73,18 @@ type Config struct {
 
 type Shift struct {
 	N, E, S, W int
+}
+
+type Theme struct {
+	Background,
+	BackgroundAlt,
+	Foreground,
+	Splash,
+	TitleBarBackground,
+	TitleBarForeground,
+	ToolTipForeground,
+	Borders,
+	Scrollbar color.NRGBA
 }
 
 var Current Config
@@ -172,6 +189,20 @@ func (c *Config) SetDefaultAreas() {
 	c.setObjectiveArea()
 }
 
+func (c *Config) SetDefaultTheme() {
+	c.Theme = Theme{
+		Background:         nrgba.Background.Color(),
+		BackgroundAlt:      nrgba.BackgroundAlt.Color(),
+		Foreground:         nrgba.White.Color(),
+		Splash:             nrgba.Splash.Color(),
+		TitleBarBackground: nrgba.Background.Color(),
+		TitleBarForeground: nrgba.White.Color(),
+		ToolTipForeground:  nrgba.White.Alpha(100).Color(),
+		Borders:            nrgba.Gray.Color(),
+		Scrollbar:          nrgba.Slate.Alpha(0x05).Color(),
+	}
+}
+
 func (c *Config) SetProfile(p string) {
 	switch p {
 	case ProfileBroadcaster:
@@ -219,6 +250,45 @@ func (c *Config) TemplatesScoring(n string) []*template.Template {
 
 func (c *Config) TemplatesTime(n string) []*template.Template {
 	return c.templates["time"][n]
+}
+
+func (c *Config) UnsetHiddenThemes() {
+	current := reflect.ValueOf(c.Theme)
+
+	failed := []string{}
+	applied := []string{}
+
+	for i := 0; i < current.NumField(); i++ {
+		name := reflect.Indirect(current).Type().Field(i).Name
+
+		v, ok := current.Field(i).Interface().(color.NRGBA)
+		if !ok {
+			failed = append(failed, name)
+			continue
+		}
+
+		if v != nrgba.Nothing.Color() {
+			continue
+		}
+
+		want := Config{}
+		want.SetDefaultTheme()
+
+		e := reflect.ValueOf(&c.Theme).Field(i).Elem()
+		if e.CanSet() {
+			e.Set(reflect.ValueOf(&want.Theme).Field(i).Elem())
+		}
+
+		applied = append(applied, name)
+	}
+
+	if len(failed) > 0 {
+		notify.Error("Failed to apply default themes to %s", strings.Join(failed, ", "))
+	}
+
+	if len(applied) > 0 {
+		notify.System("Default themes applied to %s", strings.Join(applied, ", "))
+	}
 }
 
 func (c *Config) pointFiles(t *team.Team) []filter.Filter {
@@ -350,13 +420,32 @@ func (c *Config) setProfilePlayer() {
 
 }
 
+func recovered(r interface{}) {
+	s := ""
+	switch e := r.(type) {
+	case error:
+		s = e.Error()
+	case string:
+		s = e
+	}
+	notify.Debug("Recovered from %s", s)
+}
+
 func Load(profile string) error {
-	defer validate()
+	defer func() {
+		r := recover()
+		if r != nil {
+			notify.SystemWarn("Configuration file %s is corrupted, remove or reset", Current.File())
+			recovered(r)
+		}
+	}()
 
 	if profile == "" {
 		profile = ProfilePlayer
 		Current.SetProfile(profile)
 	}
+
+	defer validate()
 
 	notify.System("Loading \"%s\" configuration from \"%s\"", profile, Current.File())
 
@@ -373,8 +462,11 @@ func Load(profile string) error {
 		}
 		Current.SetProfile(profile)
 		Current.SetDefaultAreas()
+		Current.SetDefaultTheme()
 		Current.load()
 	}
+
+	Current.UnsetHiddenThemes()
 
 	if Current.Window == "" {
 		Current.Window = MainDisplay

@@ -12,12 +12,18 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 
+	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/cursor"
 	"github.com/pidgy/unitehud/fonts"
 	"github.com/pidgy/unitehud/nrgba"
 )
 
-type Button struct {
+var (
+	DefaultSize = image.Pt(100, 35)
+	IconSize    = image.Pt(31, 26)
+)
+
+type Widget struct {
 	Text            string
 	TextSize        unit.Sp
 	TextInsetBottom unit.Dp
@@ -42,7 +48,7 @@ type Button struct {
 	LastPressed       time.Time
 	Pressed, Released nrgba.NRGBA
 
-	Click       func(b *Button)
+	Click       func(this *Widget)
 	SingleClick bool // Toggle the Active field on Click events.
 
 	hover bool
@@ -52,17 +58,15 @@ type Button struct {
 	set   bool
 }
 
-var Default = image.Pt(100, 35)
-
-func (b *Button) Activate() {
+func (b *Widget) Activate() {
 	b.active = true
 }
 
-func (b *Button) Deactivate() {
+func (b *Widget) Deactivate() {
 	b.active = false
 }
 
-func (b *Button) Error() {
+func (b *Widget) Error() {
 	tmp := b.Pressed
 	b.Pressed = nrgba.Red
 	b.Disabled = true
@@ -72,19 +76,19 @@ func (b *Button) Error() {
 	})
 }
 
-func (b *Button) Layout(gtx layout.Context) layout.Dimensions {
+func (b *Widget) Layout(gtx layout.Context) layout.Dimensions {
 	defer b.HoverHint()
 
 	if b.Size.Eq(image.Pt(0, 0)) {
-		b.Size = Default
+		b.Size = DefaultSize
+	} else if b.Size.Eq(IconSize) {
+		b.TextColor = nrgba.White
+	} else {
+		b.TextColor = nrgba.NRGBA(config.Current.Theme.Foreground)
 	}
 
 	if b.alpha == 0 {
 		b.alpha = b.Released.A
-	}
-
-	if b.TextColor == nrgba.Transparent {
-		b.TextColor = nrgba.White
 	}
 
 	for _, e := range gtx.Events(b) {
@@ -162,13 +166,13 @@ func (b *Button) Layout(gtx layout.Context) layout.Dimensions {
 	return b.draw(gtx)
 }
 
-func (b *Button) HoverHint() {
+func (b *Widget) HoverHint() {
 	if b.hover && b.OnHoverHint != nil {
 		b.OnHoverHint()
 	}
 }
 
-func (b *Button) uniform(gtx layout.Context) layout.Dimensions {
+func (b *Widget) uniform(gtx layout.Context) layout.Dimensions {
 	rect := clip.RRect{SE: 3, SW: 3, NE: 3, NW: 3, Rect: image.Rectangle{Max: image.Pt((b.Size.X), b.Size.Y)}}
 	if b.SharpCorners {
 		rect = clip.RRect{SE: 0, SW: 0, NE: 0, NW: 0, Rect: image.Rectangle{Max: image.Pt((b.Size.X), b.Size.Y)}}
@@ -190,7 +194,7 @@ func (b *Button) uniform(gtx layout.Context) layout.Dimensions {
 	return layout.Dimensions{Size: b.Size}
 }
 
-func (b *Button) draw(gtx layout.Context) layout.Dimensions {
+func (b *Widget) draw(gtx layout.Context) layout.Dimensions {
 	if b.TextSize == 0 {
 		b.TextSize = unit.Sp(16)
 	}
@@ -250,7 +254,9 @@ func (b *Button) draw(gtx layout.Context) layout.Dimensions {
 		//return dims
 	}
 
-	b.inset.Layout(gtx, b.label.Layout)
+	b.inset.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+		return layout.Center.Layout(gtx, b.label.Layout)
+	})
 
 	// if b.hover {
 	// 	gtx.Constraints.Min.Y -= 100

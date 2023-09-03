@@ -19,6 +19,7 @@ import (
 
 	"github.com/pidgy/unitehud/fonts"
 	"github.com/pidgy/unitehud/gui/visual/button"
+	"github.com/pidgy/unitehud/gui/visual/decorate"
 	"github.com/pidgy/unitehud/gui/visual/title"
 	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/nrgba"
@@ -37,7 +38,7 @@ var (
 	Miss   = nrgba.PastelRed
 )
 
-type Area struct {
+type Widget struct {
 	Text          string
 	TextSize      unit.Sp
 	TextAlignLeft bool
@@ -47,11 +48,11 @@ type Area struct {
 
 	*Capture
 
-	Match    func(*Area) (bool, error)
+	Match    func(*Widget) (bool, error)
 	Cooldown time.Duration
 	readyq   chan bool
 
-	*button.Button
+	*button.Widget
 
 	Min, Max         image.Point
 	baseMin, baseMax image.Point
@@ -84,14 +85,14 @@ type Capture struct {
 	MatchedText  string
 }
 
-func (a *Area) Layout(gtx layout.Context, collection fonts.Collection, capture image.Rectangle, img image.Image, blank image.Point) (err error) {
+func (a *Widget) Layout(gtx layout.Context, collection fonts.Collection, capture image.Rectangle, img image.Image, blank image.Point) (err error) {
 	if img == nil || capture.Max.X == 0 || a.Base.Max.X == 0 {
 		return nil
 	}
 	defer func() { err = a.match() }()
 
-	if a.Button == nil {
-		a.Button = &button.Button{
+	if a.Widget == nil {
+		a.Widget = &button.Widget{
 			Font: collection.Calibri(),
 		}
 	}
@@ -103,11 +104,11 @@ func (a *Area) Layout(gtx layout.Context, collection fonts.Collection, capture i
 	if a.titleLabel.TextSize == 0 {
 		a.titleLabel = material.Body1(a.Theme, "")
 		a.titleLabel.Font.Weight = 500
-		a.titleLabel.Color = nrgba.White.Color()
+		decorate.Label(&a.titleLabel, a.titleLabel.Text)
 
 		a.subtitleLabel = material.Body2(a.Theme, "")
 		a.subtitleLabel.Font.Weight = 1000
-		a.subtitleLabel.Color = nrgba.White.Alpha(175).Color()
+		decorate.LabelColor(&a.titleLabel, nrgba.White.Alpha(175).Color())
 	}
 
 	// Scale up or down based on area and image size.
@@ -283,12 +284,12 @@ func (a *Area) Layout(gtx layout.Context, collection fonts.Collection, capture i
 	return
 }
 
-func (a *Area) Reset() {
+func (a *Widget) Reset() {
 	a.lastDimsSize = image.Pt(0, 0)
 	a.Capture.reset()
 }
 
-func (a *Area) match() error {
+func (a *Widget) match() error {
 	if a.Drag || a.Focus {
 		return nil
 	}

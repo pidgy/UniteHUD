@@ -12,7 +12,9 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 
+	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/cursor"
+	"github.com/pidgy/unitehud/gui/visual/decorate"
 	"github.com/pidgy/unitehud/nrgba"
 )
 
@@ -21,9 +23,9 @@ var (
 	Enabled  = nrgba.DarkSeafoam.Color()
 )
 
-type List struct {
+type Widget struct {
 	Items         []*Item
-	Callback      func(*Item, *List)
+	Callback      func(*Item, *Widget)
 	WidthModifier int
 	Radio         bool
 	TextSize      float32
@@ -42,7 +44,7 @@ type Item struct {
 	Callback func(*Item)
 }
 
-func (l *List) Checked() *Item {
+func (l *Widget) Checked() *Item {
 	for _, item := range l.Items {
 		if item.Checked.Value {
 			return item
@@ -51,14 +53,14 @@ func (l *List) Checked() *Item {
 	return nil
 }
 
-func (l *List) Default() *Item {
+func (l *Widget) Default() *Item {
 	if len(l.Items) == 0 {
 		return &Item{}
 	}
 	return l.Items[0]
 }
 
-func (l *List) Disable() {
+func (l *Widget) Disable() {
 	for _, item := range l.Items {
 		item.Checked.Value = false
 		if item.Text == "Disabled" {
@@ -67,7 +69,7 @@ func (l *List) Disable() {
 	}
 }
 
-func (l *List) Disabled() {
+func (l *Widget) Disabled() {
 	for _, item := range l.Items {
 		if item.Text == "Disabled" {
 			item.Checked.Value = true
@@ -76,7 +78,7 @@ func (l *List) Disabled() {
 	}
 }
 
-func (l *List) Enabled() {
+func (l *Widget) Enabled() {
 	for _, item := range l.Items {
 		if item.Text == "Disabled" {
 			item.Checked.Value = false
@@ -86,7 +88,7 @@ func (l *List) Enabled() {
 }
 
 // Layout handles drawing the letters view.
-func (l *List) Layout(gtx layout.Context, th *material.Theme) layout.Dimensions {
+func (l *Widget) Layout(gtx layout.Context, th *material.Theme) layout.Dimensions {
 	if l.list == nil {
 		l.list = &widget.List{
 			Scrollbar: widget.Scrollbar{},
@@ -98,22 +100,21 @@ func (l *List) Layout(gtx layout.Context, th *material.Theme) layout.Dimensions 
 	}
 
 	style := material.List(th, l.list)
-	style.Track.Color = nrgba.Gray.Color()
-	style.Track.Color.A = 0xFF
+	style.Track.Color = config.Current.Theme.Scrollbar
 
 	return style.Layout(gtx, len(l.Items), func(gtx layout.Context, index int) layout.Dimensions {
 		item := l.Items[index]
 
 		check := material.CheckBox(th, &item.Checked, item.Text)
 		check.Font.Weight = font.Weight(item.Weight)
-		check.Color = nrgba.White.Color()
 		check.Size = unit.Dp(l.TextSize)
 		check.TextSize = unit.Sp(l.TextSize)
 		if l.TextSize == 0 {
 			check.Size = unit.Dp(14)
 			check.TextSize = unit.Sp(14)
 		}
-		check.IconColor = nrgba.White.Alpha(50).Color()
+
+		decorate.CheckBox(&check)
 
 		if item.Checked.Changed() {
 			if item.Disabled {
@@ -170,7 +171,7 @@ func (l *List) Layout(gtx layout.Context, th *material.Theme) layout.Dimensions 
 				check.TextSize*unit.Sp(.9),
 				item.Hint,
 			)
-			l.Color = nrgba.Transparent30.Color()
+			l.Color = nrgba.Transparent80.Color()
 
 			dims = l.Layout(gtx)
 		}

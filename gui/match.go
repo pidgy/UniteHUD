@@ -16,7 +16,7 @@ import (
 	"github.com/pidgy/unitehud/video"
 )
 
-func (g *GUI) matchEnergy(a *area.Area) (bool, error) {
+func (g *GUI) matchEnergy(a *area.Widget) (bool, error) {
 	if !g.Preview {
 		a.NRGBA = area.Locked
 		return false, nil
@@ -68,7 +68,7 @@ func (g *GUI) matchEnergy(a *area.Area) (bool, error) {
 	return r == match.Found || result == match.Found, nil
 }
 
-func (g *GUI) matchKOs(a *area.Area) (bool, error) {
+func (g *GUI) matchKOs(a *area.Widget) (bool, error) {
 	if !g.Preview {
 		a.NRGBA = area.Locked
 		return false, nil
@@ -97,7 +97,7 @@ func (g *GUI) matchKOs(a *area.Area) (bool, error) {
 	return r == match.Found, nil
 }
 
-func (g *GUI) matchObjectives(a *area.Area) (bool, error) {
+func (g *GUI) matchObjectives(a *area.Widget) (bool, error) {
 	if !g.Preview {
 		a.NRGBA = area.Locked
 		return false, nil
@@ -126,7 +126,7 @@ func (g *GUI) matchObjectives(a *area.Area) (bool, error) {
 	return r == match.Found, nil
 }
 
-func (g *GUI) matchScore(a *area.Area) (bool, error) {
+func (g *GUI) matchScore(a *area.Widget) (bool, error) {
 	if !g.Preview {
 		a.NRGBA = area.Locked
 		return false, nil
@@ -166,7 +166,7 @@ func (g *GUI) matchScore(a *area.Area) (bool, error) {
 	return false, nil
 }
 
-func (g *GUI) matchState(a *area.Area) (bool, error) {
+func (g *GUI) matchState(a *area.Widget) (bool, error) {
 	if !g.Preview {
 		a.NRGBA = area.Locked
 		return false, nil
@@ -209,7 +209,7 @@ func (g *GUI) matchState(a *area.Area) (bool, error) {
 	return false, nil
 }
 
-func (g *GUI) matchTime(a *area.Area) (bool, error) {
+func (g *GUI) matchTime(a *area.Widget) (bool, error) {
 	if !g.Preview {
 		a.NRGBA = area.Locked
 		return false, nil

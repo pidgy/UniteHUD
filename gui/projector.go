@@ -25,7 +25,7 @@ import (
 	"github.com/pidgy/unitehud/gui/is"
 	"github.com/pidgy/unitehud/gui/visual/area"
 	"github.com/pidgy/unitehud/gui/visual/button"
-	"github.com/pidgy/unitehud/gui/visual/decor"
+	"github.com/pidgy/unitehud/gui/visual/decorate"
 	"github.com/pidgy/unitehud/gui/visual/title"
 	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/nrgba"
@@ -102,16 +102,16 @@ func (g *GUI) projector() {
 
 	areas := g.areas(g.Bar.Collection)
 
-	defer g.Bar.Remove(g.Bar.Add(&button.Button{
+	defer g.Bar.Remove(g.Bar.Add(&button.Widget{
 		Text:            "⚙",
 		TextSize:        unit.Sp(18),
 		TextInsetBottom: -2,
 		Font:            g.Bar.Collection.NishikiTeki(),
 		OnHoverHint:     func() { g.Bar.ToolTip("Open advanced settings") },
-		Pressed:         nrgba.Transparent30,
+		Pressed:         nrgba.Transparent80,
 		Released:        nrgba.Slate,
 		BorderWidth:     unit.Sp(.1),
-		Click: func(this *button.Button) {
+		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
 			if settings.close() {
@@ -131,7 +131,7 @@ func (g *GUI) projector() {
 		},
 	}))
 
-	defer g.Bar.Remove(g.Bar.Add(&button.Button{
+	defer g.Bar.Remove(g.Bar.Add(&button.Widget{
 		Text:            "🖫",
 		Font:            g.Bar.Collection.NishikiTeki(),
 		Released:        nrgba.OfficeBlue,
@@ -139,7 +139,7 @@ func (g *GUI) projector() {
 		TextInsetBottom: -1,
 		Disabled:        false,
 		OnHoverHint:     func() { g.Bar.ToolTip("Save configuration") },
-		Click: func(this *button.Button) {
+		Click: func(this *button.Widget) {
 			g.ToastYesNo("Save", "Save configuration changes?",
 				func() {
 					defer this.Deactivate()
@@ -170,14 +170,14 @@ func (g *GUI) projector() {
 		},
 	}))
 
-	defer g.Bar.Remove(g.Bar.Add(&button.Button{
+	defer g.Bar.Remove(g.Bar.Add(&button.Widget{
 		Text:            "⇵",
 		Font:            g.Bar.Collection.NishikiTeki(),
 		TextSize:        unit.Sp(16),
 		TextInsetBottom: -1,
 		Released:        nrgba.Gray,
 		OnHoverHint:     func() { g.Bar.ToolTip("Hide sources") },
-		Click: func(this *button.Button) {
+		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
 			projected.hideOptions = !projected.hideOptions
@@ -191,14 +191,14 @@ func (g *GUI) projector() {
 		},
 	}))
 
-	defer g.Bar.Remove(g.Bar.Add(&button.Button{
+	defer g.Bar.Remove(g.Bar.Add(&button.Widget{
 		Text:            "⛶",
 		Font:            g.Bar.Collection.NishikiTeki(),
 		TextSize:        unit.Sp(16),
 		TextInsetBottom: -1,
 		Released:        nrgba.DarkSeafoam,
 		OnHoverHint:     func() { g.Bar.ToolTip("Test capture areas") },
-		Click: func(this *button.Button) {
+		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 			projected.showCaptureAreas = !projected.showCaptureAreas
 			if projected.showCaptureAreas {
@@ -209,14 +209,14 @@ func (g *GUI) projector() {
 		},
 	}))
 
-	defer g.Bar.Remove(g.Bar.Add(&button.Button{
+	defer g.Bar.Remove(g.Bar.Add(&button.Widget{
 		Text:            "🗗",
 		Font:            g.Bar.Collection.NishikiTeki(),
 		TextSize:        unit.Sp(17),
 		TextInsetBottom: -1,
 		Released:        nrgba.BloodOrange,
 		OnHoverHint:     func() { g.Bar.ToolTip("Preview capture areas") },
-		Click: func(this *button.Button) {
+		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
 			if preview.close() {
@@ -236,7 +236,7 @@ func (g *GUI) projector() {
 		},
 	}))
 
-	defer g.Bar.Remove(g.Bar.Add(&button.Button{
+	defer g.Bar.Remove(g.Bar.Add(&button.Widget{
 		Text:            "🗚",
 		Font:            g.Bar.Collection.NishikiTeki(),
 		Released:        nrgba.CoolBlue,
@@ -244,7 +244,7 @@ func (g *GUI) projector() {
 		TextInsetBottom: -1,
 		Disabled:        false,
 		OnHoverHint:     func() { g.Bar.ToolTip("Open configuration file") },
-		Click: func(this *button.Button) {
+		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
 			config.Current.HUDOverlay = false
@@ -269,17 +269,17 @@ func (g *GUI) projector() {
 
 	cached := config.Current
 
-	backButton := &button.Button{
+	backButton := &button.Widget{
 		Text:            "Back",
 		Font:            g.Bar.Collection.Calibri(),
 		OnHoverHint:     func() { g.Bar.ToolTip("Return to main menu") },
-		Pressed:         nrgba.Transparent30,
+		Pressed:         nrgba.Transparent80,
 		Released:        nrgba.DarkGray,
 		TextSize:        unit.Sp(projected.listTextSize),
 		TextInsetBottom: unit.Dp(-2),
 		Size:            image.Pt(115, 20),
 		BorderWidth:     unit.Sp(.1),
-		Click: func(this *button.Button) {
+		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
 			config.Current.Scores = areas.score.Rectangle()
@@ -332,17 +332,17 @@ func (g *GUI) projector() {
 		// ...
 	}
 
-	resetButton := &button.Button{
+	resetButton := &button.Widget{
 		Text:            "Reset",
 		Font:            g.Bar.Collection.Calibri(),
 		OnHoverHint:     func() { g.Bar.ToolTip("Reset configuration") },
-		Pressed:         nrgba.Transparent30,
+		Pressed:         nrgba.Transparent80,
 		Released:        nrgba.DarkGray,
 		TextSize:        unit.Sp(projected.listTextSize),
 		TextInsetBottom: unit.Dp(-2),
 		Size:            image.Pt(115, 20),
 		BorderWidth:     unit.Sp(.1),
-		Click: func(this *button.Button) {
+		Click: func(this *button.Widget) {
 			g.ToastYesNo("Reset", fmt.Sprintf("Reset UniteHUD %s configuration?", config.Current.Profile), func() {
 				defer this.Deactivate()
 				defer server.Clear()
@@ -377,16 +377,16 @@ func (g *GUI) projector() {
 		},
 	}
 
-	closeHUDButton := &button.Button{
+	closeHUDButton := &button.Widget{
 		Text:        "Close HUD Overlay",
 		Font:        g.Bar.Collection.Calibri(),
 		OnHoverHint: func() { g.Bar.ToolTip("Close HUD overlay") },
-		Pressed:     nrgba.Transparent30,
+		Pressed:     nrgba.Transparent80,
 		Released:    nrgba.DarkGray,
 		TextSize:    unit.Sp(projected.listTextSize),
 		Size:        image.Pt(115, 20),
 		BorderWidth: unit.Sp(.1),
-		Click: func(this *button.Button) {
+		Click: func(this *button.Widget) {
 			g.ToastYesNo("Close HUD Overlay", "Close HUD overlay?", func() {
 				defer this.Deactivate()
 
@@ -398,16 +398,16 @@ func (g *GUI) projector() {
 		},
 	}
 
-	openHUDButton := &button.Button{
+	openHUDButton := &button.Widget{
 		Text:        "Open HUD Overlay",
 		Font:        g.Bar.Collection.Calibri(),
 		OnHoverHint: func() { g.Bar.ToolTip("Open HUD overlay") },
-		Pressed:     nrgba.Transparent30,
+		Pressed:     nrgba.Transparent80,
 		Released:    nrgba.DarkGray,
 		TextSize:    unit.Sp(projected.listTextSize),
 		Size:        image.Pt(115, 20),
 		BorderWidth: unit.Sp(.1),
-		Click: func(this *button.Button) {
+		Click: func(this *button.Widget) {
 			g.ToastYesNo("Open HUD Overlay", "Open HUD overlay?", func() {
 				defer this.Deactivate()
 
@@ -517,6 +517,7 @@ func (g *GUI) projector() {
 			g.next(is.Closing)
 		case system.FrameEvent:
 			gtx := layout.NewContext(&ops, e)
+
 			if !g.size.Eq(e.Size) || !g.position().Eq(lastpos) {
 				g.size = e.Size
 				lastpos = g.position()
@@ -537,12 +538,13 @@ func (g *GUI) projector() {
 				continue
 			}
 
-			footer.is.Text = fmt.Sprintf("HUD %s", g.is.String())
-			footer.state.Text = fmt.Sprintf("%s %s", areas.state.Text, areas.state.Subtext)
-			footer.cpu.Text = g.cpu
-			footer.ram.Text = g.ram
-			footer.fps.Text = fmt.Sprintf("%d FPS", g.fps.frames)
-			footer.tick.Text = fmt.Sprintf("Tick %02d", g.fps.ticks)
+			decorate.ColorBox(gtx, gtx.Constraints.Max, nrgba.NRGBA(config.Current.Theme.Background))
+			decorate.Label(&footer.is, "HUD %s", g.is.String())
+			decorate.Label(&footer.state, "%s %s", areas.state.Text, areas.state.Subtext)
+			decorate.Label(&footer.cpu, g.cpu)
+			decorate.Label(&footer.ram, g.ram)
+			decorate.Label(&footer.fps, "%d FPS", g.fps.frames)
+			decorate.Label(&footer.tick, "Tick %02d", g.fps.ticks)
 
 			g.Bar.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				if projected.hideOptions {
@@ -589,7 +591,7 @@ func (g *GUI) projector() {
 					projected.spacer(0, 1),
 
 					layout.Flexed(0.2, func(gtx layout.Context) layout.Dimensions {
-						decor.ColorBox(gtx, gtx.Constraints.Max, nrgba.Background)
+						decorate.ColorBox(gtx, gtx.Constraints.Max, nrgba.NRGBA(config.Current.Theme.BackgroundAlt))
 
 						return layout.Flex{
 							Axis: layout.Horizontal,
@@ -705,8 +707,6 @@ func (g *GUI) projector() {
 							projected.spacer(2, 0),
 
 							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-								decor.ColorBox(gtx, gtx.Constraints.Max, nrgba.Background)
-
 								return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 									return layout.Flex{
 										Axis: layout.Vertical,
@@ -749,7 +749,7 @@ func (g *GUI) projector() {
 			})
 
 			if projected.showCaptureAreas && projected.img != nil {
-				for _, area := range []*area.Area{
+				for _, area := range []*area.Widget{
 					areas.time,
 					areas.energy,
 					areas.score,
@@ -806,7 +806,7 @@ func (p *projected) footer(gtx layout.Context, f *footer) layout.FlexChild {
 	return layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 		gtx.Constraints.Max.Y = gtx.Dp(25)
 
-		decor.ColorBox(gtx, gtx.Constraints.Max, nrgba.Black)
+		decorate.ColorBox(gtx, gtx.Constraints.Max, nrgba.NRGBA(config.Current.Theme.Background))
 
 		layout.W.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 			return layout.Inset{Top: unit.Dp(5)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
@@ -938,7 +938,7 @@ func (p *projected) spacer(x, y float32) layout.FlexChild {
 			gtx.Constraints.Max.Y = int(y)
 		}
 
-		decor.ColorBox(gtx, gtx.Constraints.Max, nrgba.White.Alpha(5))
+		decorate.ColorBox(gtx, gtx.Constraints.Max, nrgba.White.Alpha(5))
 
 		return layout.Spacer{Width: unit.Dp(x), Height: unit.Dp(y)}.Layout(gtx)
 	})

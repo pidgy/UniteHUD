@@ -7,13 +7,14 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 
+	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/fonts"
-	"github.com/pidgy/unitehud/gui/visual/decor"
+	"github.com/pidgy/unitehud/gui/visual/decorate"
 	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/nrgba"
 )
 
-type TextBlock struct {
+type Widget struct {
 	Text       string
 	list       *widget.List
 	font       *fonts.Style
@@ -21,13 +22,13 @@ type TextBlock struct {
 	labelStyle material.LabelStyle
 }
 
-func New(s *fonts.Style) (*TextBlock, error) {
-	return &TextBlock{
+func New(s *fonts.Style) (*Widget, error) {
+	return &Widget{
 		font: s,
 	}, nil
 }
 
-func (t *TextBlock) Layout(gtx layout.Context, posts []notify.Post) layout.Dimensions {
+func (t *Widget) Layout(gtx layout.Context, posts []notify.Post) layout.Dimensions {
 	if t.list == nil {
 		t.list = &widget.List{
 			Scrollbar: widget.Scrollbar{},
@@ -41,14 +42,13 @@ func (t *TextBlock) Layout(gtx layout.Context, posts []notify.Post) layout.Dimen
 		t.font.Theme.TextSize = unit.Sp(9)
 
 		t.style = material.List(t.font.Theme, t.list)
-		t.style.Track.Color = nrgba.Slate.Color()
-		t.style.Track.Color.A = 0x0F
+		t.style.Track.Color = config.Current.Theme.Scrollbar
 
 		t.labelStyle = material.H5(t.font.Theme, "")
 	}
 
-	decor.Fill(gtx,
-		nrgba.Background,
+	decorate.Fill(gtx,
+		nrgba.NRGBA(config.Current.Theme.Background),
 		func(gtx layout.Context) layout.Dimensions {
 			return layout.Dimensions{Size: gtx.Constraints.Max}
 		},
@@ -74,6 +74,6 @@ func (t *TextBlock) Layout(gtx layout.Context, posts []notify.Post) layout.Dimen
 			)
 		},
 	)
-	//
+
 	return layout.Dimensions{Size: gtx.Constraints.Max}
 }

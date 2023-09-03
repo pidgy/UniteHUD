@@ -6,6 +6,7 @@ import (
 	"gioui.org/font"
 	"gioui.org/font/gofont"
 	"gioui.org/font/opentype"
+	"gioui.org/text"
 	"gioui.org/widget/material"
 
 	"github.com/pidgy/unitehud/notify"
@@ -64,12 +65,13 @@ func cached(name string) *Style {
 	if cache[name] != nil {
 		s := cache[name]
 
-		return &Style{
-			Theme:    material.NewTheme(s.FontFace),
+		style := &Style{
+			Theme:    material.NewTheme(),
 			FontFace: s.FontFace,
 			Face:     s.Face,
 			Typeface: font.Typeface(s.Typeface),
 		}
+		style.Theme.Shaper = text.NewShaper(text.WithCollection(s.FontFace))
 	}
 
 	return nil
@@ -92,29 +94,36 @@ func (c Collection) load(path, typeface string) *Style {
 	bytes, err := os.ReadFile("assets/font/" + path)
 	if err != nil {
 		notify.Warn("%v", err)
-		return &Style{Theme: material.NewTheme(gofont.Collection()), FontFace: gofont.Collection()}
+		return noStyle()
 	}
 
 	custom, err := opentype.ParseCollection(bytes)
 	if err != nil {
 		notify.Warn("%v", err)
-		return &Style{Theme: material.NewTheme(gofont.Collection()), FontFace: gofont.Collection()}
+		return noStyle()
 	}
 
 	face, err := opentype.Parse(bytes)
 	if err != nil {
 		notify.Warn("%v", err)
-		return &Style{Theme: material.NewTheme(gofont.Collection()), FontFace: gofont.Collection()}
+		return noStyle()
 	}
 
 	cache[path] = &Style{
-		Theme:    material.NewTheme(custom),
+		Theme:    material.NewTheme(),
 		FontFace: custom,
 		Face:     face,
 		Typeface: font.Typeface(typeface),
 	}
+	cache[path].Theme.Shaper = text.NewShaper(text.WithCollection(custom))
 
 	c[path] = cache[path]
 
 	return c[path]
+}
+
+func noStyle() *Style {
+	style := &Style{Theme: material.NewTheme(), FontFace: gofont.Collection()}
+	style.Theme.Shaper = text.NewShaper(text.WithCollection(gofont.Collection()))
+	return style
 }

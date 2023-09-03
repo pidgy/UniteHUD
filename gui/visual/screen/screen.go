@@ -13,7 +13,7 @@ import (
 	"gioui.org/op/paint"
 )
 
-type Screen struct {
+type Widget struct {
 	image.Image
 	Border      bool
 	BorderColor nrgba.NRGBA
@@ -25,7 +25,7 @@ type Screen struct {
 	Dims layout.Dimensions
 }
 
-func (s *Screen) Layout(gtx layout.Context) layout.Dimensions {
+func (s *Widget) Layout(gtx layout.Context) layout.Dimensions {
 	defer func() {
 		r := recover()
 		if r != nil {
@@ -40,7 +40,7 @@ func (s *Screen) Layout(gtx layout.Context) layout.Dimensions {
 	return s.layout(gtx)
 }
 
-func (s *Screen) Scale(gtx layout.Context) float32 {
+func (s *Widget) Scale(gtx layout.Context) float32 {
 	if s.AutoScale {
 		return 1
 	}
@@ -52,7 +52,7 @@ func (s *Screen) Scale(gtx layout.Context) float32 {
 	return float32(gtx.Constraints.Max.X) / float32(s.Image.Bounds().Dx())
 }
 
-func (s *Screen) layout(gtx layout.Context) layout.Dimensions {
+func (s *Widget) layout(gtx layout.Context) layout.Dimensions {
 	if s.Splash {
 		defer clip.Rect{Max: gtx.Constraints.Max}.Push(gtx.Ops).Pop()
 		paint.ColorOp{Color: nrgba.Splash.Color()}.Add(gtx.Ops)

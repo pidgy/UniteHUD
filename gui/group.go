@@ -21,12 +21,12 @@ import (
 )
 
 type areas struct {
-	energy    *area.Area
-	ko        *area.Area
-	objective *area.Area
-	score     *area.Area
-	state     *area.Area
-	time      *area.Area
+	energy    *area.Widget
+	ko        *area.Widget
+	objective *area.Widget
+	score     *area.Widget
+	state     *area.Widget
+	time      *area.Widget
 
 	onevent func()
 }
@@ -37,7 +37,7 @@ type audios struct {
 }
 
 type capture struct {
-	list     *dropdown.List
+	list     *dropdown.Widget
 	populate func(bool)
 	len      int
 }
@@ -55,7 +55,7 @@ type videos struct {
 func (g *GUI) audios(text float32, session *audio.Session) *audios {
 	a := &audios{
 		in: capture{
-			list: &dropdown.List{
+			list: &dropdown.Widget{
 				WidthModifier: 1,
 				TextSize:      text,
 				Items: []*dropdown.Item{
@@ -83,7 +83,7 @@ func (g *GUI) audios(text float32, session *audio.Session) *audios {
 						},
 					},
 				},
-				Callback: func(i *dropdown.Item, d *dropdown.List) {
+				Callback: func(i *dropdown.Item, d *dropdown.Widget) {
 					for _, item := range d.Items {
 						item.Checked.Value = false
 						if item == i {
@@ -94,7 +94,7 @@ func (g *GUI) audios(text float32, session *audio.Session) *audios {
 			},
 		},
 		out: capture{
-			list: &dropdown.List{
+			list: &dropdown.Widget{
 				WidthModifier: 1,
 				TextSize:      text,
 				Items: []*dropdown.Item{
@@ -122,7 +122,7 @@ func (g *GUI) audios(text float32, session *audio.Session) *audios {
 						},
 					},
 				},
-				Callback: func(i *dropdown.Item, d *dropdown.List) {
+				Callback: func(i *dropdown.Item, d *dropdown.Widget) {
 					for _, item := range d.Items {
 						item.Checked.Value = false
 						if item == i {
@@ -195,7 +195,7 @@ func (g *GUI) areas(collection fonts.Collection) *areas {
 		onevent: func() { /*No-op.*/ },
 	}
 
-	a.ko = &area.Area{
+	a.ko = &area.Widget{
 		Text:     "KO",
 		TextSize: unit.Sp(13),
 		Theme:    collection.Calibri().Theme,
@@ -213,7 +213,7 @@ func (g *GUI) areas(collection fonts.Collection) *areas {
 		},
 	}
 
-	a.objective = &area.Area{
+	a.objective = &area.Widget{
 		Text:     "Objectives",
 		TextSize: unit.Sp(13),
 		Theme:    collection.Calibri().Theme,
@@ -231,7 +231,7 @@ func (g *GUI) areas(collection fonts.Collection) *areas {
 		},
 	}
 
-	a.energy = &area.Area{
+	a.energy = &area.Widget{
 		Text:     "Aeos",
 		TextSize: unit.Sp(13),
 		Theme:    collection.Calibri().Theme,
@@ -249,7 +249,7 @@ func (g *GUI) areas(collection fonts.Collection) *areas {
 		},
 	}
 
-	a.time = &area.Area{
+	a.time = &area.Widget{
 		Text:     "Time",
 		TextSize: unit.Sp(12),
 		Theme:    collection.Calibri().Theme,
@@ -267,7 +267,7 @@ func (g *GUI) areas(collection fonts.Collection) *areas {
 		},
 	}
 
-	a.score = &area.Area{
+	a.score = &area.Widget{
 		Text:          "Score",
 		TextAlignLeft: true,
 		Theme:         collection.Calibri().Theme,
@@ -285,7 +285,7 @@ func (g *GUI) areas(collection fonts.Collection) *areas {
 		},
 	}
 
-	a.state = &area.Area{
+	a.state = &area.Widget{
 		Hidden: true,
 
 		Text:    "State",
@@ -313,10 +313,10 @@ func (g *GUI) videos(text float32) *videos {
 	}
 
 	v.monitor = capture{
-		list: &dropdown.List{
+		list: &dropdown.Widget{
 			TextSize: text,
 			Items:    []*dropdown.Item{},
-			Callback: func(i *dropdown.Item, _ *dropdown.List) {
+			Callback: func(i *dropdown.Item, _ *dropdown.Widget) {
 				defer v.onevent()
 
 				device.Close()
@@ -369,10 +369,10 @@ func (g *GUI) videos(text float32) *videos {
 	}
 
 	v.window = capture{
-		list: &dropdown.List{
+		list: &dropdown.Widget{
 			TextSize: text,
 			Items:    []*dropdown.Item{},
-			Callback: func(i *dropdown.Item, _ *dropdown.List) {
+			Callback: func(i *dropdown.Item, _ *dropdown.Widget) {
 				defer v.onevent()
 
 				device.Close()
@@ -436,7 +436,7 @@ func (g *GUI) videos(text float32) *videos {
 	}
 
 	v.device = capture{
-		list: &dropdown.List{
+		list: &dropdown.Widget{
 			TextSize: text,
 			Items: []*dropdown.Item{
 				{
@@ -447,7 +447,7 @@ func (g *GUI) videos(text float32) *videos {
 					},
 				},
 			},
-			Callback: func(i *dropdown.Item, _ *dropdown.List) {
+			Callback: func(i *dropdown.Item, _ *dropdown.Widget) {
 				defer v.onevent()
 
 				electron.Close()
@@ -528,7 +528,7 @@ func (g *GUI) videos(text float32) *videos {
 	}
 
 	v.platform = capture{
-		list: &dropdown.List{
+		list: &dropdown.Widget{
 			Items: []*dropdown.Item{
 				{
 					Text:    strings.Title(config.PlatformSwitch),
@@ -543,7 +543,7 @@ func (g *GUI) videos(text float32) *videos {
 					Checked: widget.Bool{Value: config.Current.Platform == config.PlatformBluestacks},
 				},
 			},
-			Callback: func(i *dropdown.Item, l *dropdown.List) {
+			Callback: func(i *dropdown.Item, l *dropdown.Widget) {
 				defer v.onevent()
 
 				for _, item := range l.Items {
@@ -580,7 +580,7 @@ func (g *GUI) videos(text float32) *videos {
 	}
 
 	v.profile = capture{
-		list: &dropdown.List{
+		list: &dropdown.Widget{
 			Radio: true,
 			Items: []*dropdown.Item{
 				{
@@ -596,7 +596,7 @@ func (g *GUI) videos(text float32) *videos {
 					},
 				},
 			},
-			Callback: func(i *dropdown.Item, _ *dropdown.List) {
+			Callback: func(i *dropdown.Item, _ *dropdown.Widget) {
 				defer v.onevent()
 
 				if config.Current.Profile == strings.ToLower(i.Text) {

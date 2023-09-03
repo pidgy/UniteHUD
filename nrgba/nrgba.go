@@ -59,7 +59,7 @@ var (
 	Slate          = NRGBA(rgba.Slate)
 	Splash         = NRGBA(rgba.Splash)
 	System         = NRGBA(rgba.System)
-	Transparent30  = NRGBA(rgba.Transparent30)
+	Transparent80  = NRGBA(rgba.Transparent80)
 	Transparent    = NRGBA(rgba.Transparent)
 	User           = NRGBA(rgba.User)
 	White          = NRGBA(rgba.White)
@@ -81,6 +81,11 @@ func Bool(b bool) NRGBA {
 
 func (n NRGBA) Color() color.NRGBA {
 	return color.NRGBA(n)
+}
+
+func (n NRGBA) Ref() *color.NRGBA {
+	c := color.NRGBA(n)
+	return &c
 }
 
 func Objective(name string) NRGBA {

@@ -31,7 +31,7 @@ type GUI struct {
 	is is.Is
 
 	*app.Window
-	*title.Bar
+	Bar *title.Widget
 
 	min, max,
 	size,
@@ -331,7 +331,7 @@ func (g *GUI) proc() {
 	peakCPU := 0.0
 	peakRAM := 0.0
 
-	for {
+	for g.is != is.Closing {
 		time.Sleep(time.Second)
 
 		err := syscall.GetProcessTimes(handle, &ctime, &etime, &ktime, &utime)

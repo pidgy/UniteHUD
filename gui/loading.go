@@ -16,6 +16,7 @@ import (
 
 	"github.com/pidgy/unitehud/cursor"
 	"github.com/pidgy/unitehud/gui/is"
+	"github.com/pidgy/unitehud/gui/visual/decorate"
 	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/nrgba"
 	"github.com/pidgy/unitehud/splash"
@@ -53,7 +54,6 @@ func (g *GUI) loading() {
 
 	messageLabel := material.Label(g.Bar.Collection.Calibri().Theme, unit.Sp(18.5), l.message)
 	messageLabel.Alignment = text.Middle
-	messageLabel.Color = nrgba.White.Color()
 	messageLabel.Font.Weight = 50
 
 	g.Window.Perform(system.ActionCenter)
@@ -85,6 +85,7 @@ func (g *GUI) loading() {
 
 			if dims.Size.X == 0 {
 				dims = messageLabel.Layout(gtx)
+				decorate.LabelColor(&messageLabel, nrgba.White.Color())
 				x := unit.Dp((float64(gtx.Constraints.Max.X) - float64(dims.Size.X)) / 2)
 				y := unit.Dp((float64(gtx.Constraints.Max.Y) - float64(dims.Size.Y)))
 				inset = layout.Inset{Left: x, Right: x, Top: y, Bottom: x}

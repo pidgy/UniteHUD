@@ -14,8 +14,8 @@ import (
 	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/fonts"
 	"github.com/pidgy/unitehud/gui/visual"
-	"github.com/pidgy/unitehud/gui/visual/button"
-	"github.com/pidgy/unitehud/gui/visual/decor"
+	"github.com/pidgy/unitehud/gui/visual/colorpicker"
+	"github.com/pidgy/unitehud/gui/visual/decorate"
 	"github.com/pidgy/unitehud/gui/visual/slider"
 	"github.com/pidgy/unitehud/gui/visual/title"
 	"github.com/pidgy/unitehud/notify"
@@ -23,9 +23,9 @@ import (
 )
 
 type section struct {
-	title, description, warning material.LabelStyle
-	widget                      visual.Widgeter
-	dimensions                  layout.Dimensions
+	title, description material.LabelStyle
+	warning, widget    visual.Widgeter
+	dims               layout.Dimensions
 }
 
 type settings struct {
@@ -70,38 +70,10 @@ func (s *settings) open(onclose func()) {
 	)
 	bar.NoTip = true
 
-	defer bar.Remove(bar.Add(&button.Button{
-		Text:            "🖫",
-		Font:            bar.Collection.NishikiTeki(),
-		Released:        nrgba.OfficeBlue,
-		TextSize:        unit.Sp(16),
-		TextInsetBottom: -1,
-		Disabled:        false,
-		OnHoverHint:     func() { bar.ToolTip("Save configuration") },
-		Click: func(this *button.Button) {
-			s.parent.ToastYesNo("Save", "Save configuration changes?",
-				func() {
-					defer this.Deactivate()
-
-					err := config.Current.Save()
-					if err != nil {
-						notify.Error("Failed to save UniteHUD configuration (%v)", err)
-					}
-
-					notify.System("Configuration saved to " + config.Current.File())
-				},
-				func() {
-					defer this.Deactivate()
-				},
-			)
-		},
-	}))
-
 	frequency := &section{
 		title:       material.Label(bar.Collection.Calibri().Theme, unit.Sp(15), "Match Interval"),
 		description: material.Caption(bar.Collection.Calibri().Theme, "Increase the amount of match attempts per second"),
-		warning:     material.Label(bar.Collection.NotoSans().Theme, unit.Sp(11), "⚠ Increased CPU Usage"),
-		widget: &slider.Slider{
+		widget: &slider.Widget{
 			Slider:     material.Slider(bar.Collection.Calibri().Theme, &widget.Float{Value: float32(config.Current.Advanced.IncreasedCaptureRate)}, 0, 99),
 			Label:      material.Label(bar.Collection.Calibri().Theme, unit.Sp(15), ""),
 			TextColors: []nrgba.NRGBA{nrgba.White, nrgba.PastelYellow, nrgba.PastelOrange, nrgba.PastelRed},
@@ -110,10 +82,55 @@ func (s *settings) open(onclose func()) {
 			},
 		},
 	}
-	frequency.title.Color = nrgba.White.Color()
-	frequency.description.Color = nrgba.White.Color()
-	frequency.warning.Color = nrgba.PastelRed.Alpha(127).Color()
-	frequency.warning.Font.Weight = 0
+	frequencyWarningLabel := material.Label(bar.Collection.NotoSans().Theme, unit.Sp(11), "⚠ Increases CPU Usage")
+	frequencyWarningLabel.Color = nrgba.PastelRed.Alpha(127).Color()
+	frequencyWarningLabel.Font.Weight = 0
+	frequency.warning = frequencyWarningLabel
+
+	theme := &section{
+		title:       material.Label(bar.Collection.Calibri().Theme, unit.Sp(15), "Theme"),
+		description: material.Caption(bar.Collection.Calibri().Theme, "Change the color theme of UniteHUD"),
+		widget: colorpicker.New(bar.Collection.Calibri(), []colorpicker.Option{
+			{
+				Label: "Background",
+				Value: &config.Current.Theme.Background,
+			},
+			{
+				Label: "Background Alt.",
+				Value: &config.Current.Theme.BackgroundAlt,
+			},
+			{
+				Label: "Foreground",
+				Value: &config.Current.Theme.Foreground,
+			},
+			{
+				Label: "Title Bar Foreground",
+				Value: &config.Current.Theme.TitleBarForeground,
+			},
+			{
+				Label: "Title Bar Background",
+				Value: &config.Current.Theme.TitleBarBackground,
+			},
+			{
+				Label: "Splash",
+				Value: &config.Current.Theme.Splash,
+			},
+			{
+				Label: "Tool Tip Foreground",
+				Value: &config.Current.Theme.ToolTipForeground,
+			},
+			{
+				Label: "Borders",
+				Value: &config.Current.Theme.Borders,
+			},
+			{
+				Label: "Scrollbar",
+				Value: &config.Current.Theme.Scrollbar,
+			},
+		}...),
+	}
+
+	theme.warning = theme.widget.(*colorpicker.Widget).DefaultButton
 
 	var ops op.Ops
 
@@ -121,6 +138,21 @@ func (s *settings) open(onclose func()) {
 
 	s.parent.setInsetRight(s.width)
 	defer s.parent.unsetInsetRight(s.width)
+
+	list := material.List(bar.Collection.Calibri().Theme, &widget.List{
+		Scrollbar: widget.Scrollbar{},
+		List: layout.List{
+			Axis:      layout.Vertical,
+			Alignment: layout.Start,
+		},
+	})
+
+	widgets := []layout.Widget{
+		frequency.section,
+		s.spacer,
+		theme.section,
+		s.spacer,
+	}
 
 	for event := range s.window.Events() {
 		switch e := event.(type) {
@@ -142,19 +174,11 @@ func (s *settings) open(onclose func()) {
 			gtx := layout.NewContext(&ops, e)
 
 			bar.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-				decor.ColorBox(gtx, gtx.Constraints.Max, nrgba.Background)
+				decorate.ColorBox(gtx, gtx.Constraints.Max, nrgba.NRGBA(config.Current.Theme.BackgroundAlt))
 
-				return layout.Flex{
-					Axis: layout.Vertical,
-				}.Layout(gtx,
-					frequency.section(gtx),
-
-					s.spacer(),
-
-					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-						return layout.Dimensions{Size: gtx.Constraints.Max}
-					}),
-				)
+				return list.Layout(gtx, len(widgets), func(gtx layout.Context, index int) layout.Dimensions {
+					return widgets[index](gtx)
+				})
 			})
 
 			s.window.Invalidate()
@@ -165,18 +189,26 @@ func (s *settings) open(onclose func()) {
 	}
 }
 
-func (s *section) section(gtx layout.Context) layout.FlexChild {
-	inset := layout.Inset{
-		Left:   unit.Dp(10),
-		Right:  unit.Dp(10),
-		Bottom: unit.Dp(1),
-	}
-
+func (s *settings) fill() layout.FlexChild {
 	return layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-		decor.ColorBox(gtx, s.dimensions.Size, nrgba.DarkGray)
+		return layout.Dimensions{Size: gtx.Constraints.Max}
+	})
+}
 
-		s.dimensions = layout.Flex{
-			Axis: layout.Vertical,
+func (s *section) section(gtx layout.Context) layout.Dimensions {
+	inset := layout.UniformInset(2)
+
+	decorate.ColorBox(gtx, s.dims.Size, nrgba.NRGBA(config.Current.Theme.BackgroundAlt))
+
+	decorate.Label(&s.title, s.title.Text)
+	decorate.Label(&s.description, s.title.Text)
+
+	s.dims = layout.Inset{
+		Top: unit.Dp(5),
+	}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+		return layout.Flex{
+			Axis:      layout.Vertical,
+			Alignment: layout.Baseline,
 		}.Layout(gtx,
 			s.spacer(),
 
@@ -195,36 +227,33 @@ func (s *section) section(gtx layout.Context) layout.FlexChild {
 
 			s.spacer(),
 
+			s.spacer(),
+
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+				inset.Top += 5
 				return inset.Layout(gtx, s.description.Layout)
 			}),
 
 			s.spacer(),
 
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-				if s.warning.Color == nrgba.Nothing.Color() {
-					return layout.Dimensions{Size: gtx.Constraints.Max}
-				}
+				inset.Top -= 5
 				return inset.Layout(gtx, s.warning.Layout)
 			}),
 
 			s.spacer(),
 		)
-
-		return s.dimensions
 	})
+
+	return s.dims
+}
+
+func (s *settings) spacer(gtx layout.Context) layout.Dimensions {
+	return decorate.ColorBox(gtx, image.Pt(gtx.Constraints.Max.X, 5), nrgba.White.Alpha(80))
 }
 
 func (s *section) spacer() layout.FlexChild {
 	return layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-		return layout.Spacer{Width: unit.Dp(gtx.Constraints.Max.X), Height: 2}.Layout(gtx)
-	})
-}
-
-func (s *settings) spacer() layout.FlexChild {
-	return layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-		decor.ColorBox(gtx, image.Pt(gtx.Constraints.Max.X, 2), nrgba.White)
-
-		return layout.Spacer{Width: unit.Dp(gtx.Constraints.Max.X), Height: 2}.Layout(gtx)
+		return layout.Spacer{Width: unit.Dp(gtx.Constraints.Max.X), Height: 1}.Layout(gtx)
 	})
 }

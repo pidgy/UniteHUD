@@ -10,14 +10,15 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget/material"
 	"github.com/pidgy/unitehud/cursor"
+	"github.com/pidgy/unitehud/gui/visual/decorate"
 	"github.com/pidgy/unitehud/gui/visual/screen"
 	"github.com/pidgy/unitehud/nrgba"
 	"github.com/pidgy/unitehud/splash"
 )
 
-type Image struct {
-	*screen.Screen
-	Click     func(i *Image)
+type ImageWidget struct {
+	*screen.Widget
+	Click     func(i *ImageWidget)
 	Hint      string
 	HintEvent func()
 	Hide      bool
@@ -25,22 +26,23 @@ type Image struct {
 	hover bool
 }
 
-func (i *Image) Layout(th *material.Theme, gtx layout.Context) layout.Dimensions {
+func (i *ImageWidget) Layout(th *material.Theme, gtx layout.Context) layout.Dimensions {
 	defer i.HoverHint()
 
-	tmp := i.Screen.Image
+	tmp := i.Widget.Image
 
-	if i.Screen.Image == nil {
-		i.Screen.Image = splash.Default()
+	if i.Widget.Image == nil {
+		i.Widget.Image = splash.Default()
 	}
 
 	if i.Hide {
-		i.Screen.Image = image.NewRGBA(i.Screen.Bounds())
+		i.Widget.Image = image.NewRGBA(i.Widget.Bounds())
 
 		hidden := material.H5(th, "Hidden")
-		hidden.Color = nrgba.White.Color()
 		hidden.Alignment = text.Middle
 		hidden.TextSize = unit.Sp(12)
+
+		decorate.Label(&hidden, hidden.Text)
 
 		layout.Inset{
 			Top:  unit.Dp(18),
@@ -48,23 +50,23 @@ func (i *Image) Layout(th *material.Theme, gtx layout.Context) layout.Dimensions
 		}.Layout(gtx, hidden.Layout)
 	}
 
-	dims := i.Screen.Layout(gtx)
-	i.Screen.Image = tmp
+	dims := i.Widget.Layout(gtx)
+	i.Widget.Image = tmp
 
 	for _, e := range gtx.Events(i) {
 		if e, ok := e.(pointer.Event); ok {
 			switch e.Type {
 			case pointer.Enter:
 				i.hover = true
-				i.Screen.BorderColor = nrgba.White
-				i.Screen.Border = true
+				i.Widget.BorderColor = nrgba.White
+				i.Widget.Border = true
 
 				cursor.Is(pointer.CursorPointer)
 			case pointer.Move:
 				cursor.Is(pointer.CursorPointer)
 			case pointer.Leave:
 				i.hover = false
-				i.Screen.BorderColor = nrgba.Gray
+				i.Widget.BorderColor = nrgba.Gray
 
 				cursor.Is(pointer.CursorDefault)
 			case pointer.Press:
@@ -74,15 +76,15 @@ func (i *Image) Layout(th *material.Theme, gtx layout.Context) layout.Dimensions
 
 				if i.hover && i.Click != nil {
 					i.Click(i)
-					i.Screen.BorderColor = nrgba.Gray
+					i.Widget.BorderColor = nrgba.Gray
 				}
 			}
 		}
 	}
 
-	i.Screen.BorderColor = nrgba.Gray.Alpha(15)
+	i.Widget.BorderColor = nrgba.Gray.Alpha(15)
 	if i.hover {
-		i.Screen.BorderColor = nrgba.White
+		i.Widget.BorderColor = nrgba.White
 	}
 
 	area := clip.Rect(image.Rect(0, 0, dims.Size.X, dims.Size.Y)).Push(gtx.Ops)
@@ -95,13 +97,13 @@ func (i *Image) Layout(th *material.Theme, gtx layout.Context) layout.Dimensions
 	return dims
 }
 
-func (i *Image) HoverHint() {
+func (i *ImageWidget) HoverHint() {
 	if i.hover && i.HintEvent != nil {
 		i.HintEvent()
 	}
 }
 
-func (i *Image) SetImage(img image.Image) {
+func (i *ImageWidget) SetImage(img image.Image) {
 	if i.Hide {
 		return
 	}

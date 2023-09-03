@@ -2,36 +2,36 @@ package spinner
 
 import "time"
 
-type Spinner struct {
+type Widget struct {
 	pos    int
 	bytes  []string
 	ticker *time.Ticker
 	ready  bool
 }
 
-func Running() *Spinner {
+func Running() *Widget {
 	return defaultWithBytes([]string{"» ", " »", "  ", " «", "« ", "  "})
 }
 
-func Recording() *Spinner {
+func Recording() *Widget {
 	return withDelayAndBytes(time.Millisecond*500, []string{"•", " "})
 }
 
-func (s *Spinner) Stop() {
+func (s *Widget) Stop() {
 	s.ticker.Stop()
 }
 
-func (s *Spinner) Next() string {
+func (s *Widget) Next() string {
 	s.ready = true
 	return s.bytes[s.pos]
 }
 
-func Stopped() *Spinner {
+func Stopped() *Widget {
 	return defaultWithBytes([]string{"×", "+"})
 }
 
-func withDelayAndBytes(d time.Duration, b []string) *Spinner {
-	s := &Spinner{
+func withDelayAndBytes(d time.Duration, b []string) *Widget {
+	s := &Widget{
 		bytes:  b,
 		ticker: time.NewTicker(d),
 	}
@@ -41,11 +41,11 @@ func withDelayAndBytes(d time.Duration, b []string) *Spinner {
 	return s
 }
 
-func defaultWithBytes(b []string) *Spinner {
+func defaultWithBytes(b []string) *Widget {
 	return withDelayAndBytes(time.Millisecond*500, b)
 }
 
-func (s *Spinner) spin() {
+func (s *Widget) spin() {
 	for range s.ticker.C {
 		if s.ready {
 			s.pos = (s.pos + 1) % len(s.bytes)

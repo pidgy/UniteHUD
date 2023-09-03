@@ -19,9 +19,10 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 
+	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/fonts"
 	"github.com/pidgy/unitehud/gui/visual/button"
-	"github.com/pidgy/unitehud/gui/visual/decor"
+	"github.com/pidgy/unitehud/gui/visual/decorate"
 	"github.com/pidgy/unitehud/gui/visual/title"
 	"github.com/pidgy/unitehud/nrgba"
 )
@@ -44,7 +45,7 @@ func (g *GUI) ToastCrash(reason string, closed, logs func()) {
 		app.Decorated(false),
 	)
 
-	bar := title.New(fmt.Sprintf("%s Crash", title.Default), fonts.NewCollection(), nil, nil, func() {
+	bar := title.New("Crashed", fonts.NewCollection(), nil, nil, func() {
 		w.Perform(system.ActionClose)
 	})
 	bar.NoTip = true
@@ -53,18 +54,18 @@ func (g *GUI) ToastCrash(reason string, closed, logs func()) {
 	c.Color = nrgba.PastelRed.Color()
 	c.Alignment = text.Middle
 
-	btn := &button.Button{
+	btn := &button.Widget{
 		Text:            "View Logs",
 		TextSize:        unit.Sp(16),
 		Font:            bar.Collection.Calibri(),
-		Pressed:         nrgba.Transparent30,
+		Pressed:         nrgba.Transparent80,
 		Released:        nrgba.DarkGray,
 		BorderWidth:     unit.Sp(0),
 		NoBorder:        true,
 		Size:            image.Pt(96, 32),
 		TextInsetBottom: -2,
 
-		Click: func(this *button.Button) {
+		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
 			if logs != nil {
@@ -88,7 +89,7 @@ func (g *GUI) ToastCrash(reason string, closed, logs func()) {
 			gtx := layout.NewContext(&ops, e)
 
 			bar.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-				decor.ColorBox(gtx, gtx.Constraints.Max, nrgba.BackgroundAlt)
+				decorate.ColorBox(gtx, gtx.Constraints.Max, nrgba.NRGBA(config.Current.Theme.BackgroundAlt))
 
 				return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
 					layout.Flexed(.1, layout.Spacer{Height: 5}.Layout),
@@ -173,9 +174,7 @@ func (g *GUI) ToastInput(q, hint, option string, callback func(text string, opti
 	checked := widget.Bool{}
 	check := material.CheckBox(bar.Collection.Calibri().Theme, &checked, option)
 	check.Font.Weight = font.Weight(500)
-	check.Color = nrgba.White.Color()
 	check.Size = unit.Dp(20)
-	check.IconColor = nrgba.White.Color()
 	check.TextSize = unit.Sp(16)
 
 	input := &widget.Editor{
@@ -191,13 +190,13 @@ func (g *GUI) ToastInput(q, hint, option string, callback func(text string, opti
 	editor.HintColor = nrgba.Gray.Alpha(200).Color()
 	editor.TextSize = unit.Sp(16)
 
-	okButton := &button.Button{
+	okButton := &button.Widget{
 		Text:        "OK",
 		Font:        bar.Collection.Calibri(),
 		Released:    nrgba.Gray,
-		Pressed:     nrgba.Transparent30,
+		Pressed:     nrgba.Transparent80,
 		BorderWidth: unit.Sp(1.5),
-		Click: func(this *button.Button) {
+		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
 			if callback != nil {
@@ -212,13 +211,13 @@ func (g *GUI) ToastInput(q, hint, option string, callback func(text string, opti
 		},
 	}
 
-	cancelButton := &button.Button{
+	cancelButton := &button.Widget{
 		Text:        "Cancel",
 		Font:        bar.Collection.Calibri(),
 		Released:    nrgba.Gray,
-		Pressed:     nrgba.Transparent30,
+		Pressed:     nrgba.Transparent80,
 		BorderWidth: unit.Sp(1.5),
-		Click: func(this *button.Button) {
+		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
 			w.Perform(system.ActionClose)
@@ -235,7 +234,7 @@ func (g *GUI) ToastInput(q, hint, option string, callback func(text string, opti
 			gtx := layout.NewContext(&ops, e)
 
 			bar.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-				decor.ColorBox(gtx, gtx.Constraints.Max, nrgba.DarkGray)
+				decorate.ColorBox(gtx, gtx.Constraints.Max, nrgba.DarkGray)
 
 				return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
 					layout.Rigid(layout.Spacer{Height: 5}.Layout),
@@ -270,6 +269,7 @@ func (g *GUI) ToastInput(q, hint, option string, callback func(text string, opti
 						}.Layout(gtx,
 							func(gtx layout.Context) layout.Dimensions {
 								return layout.W.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+									decorate.CheckBox(&check)
 									dim := check.Layout(gtx)
 									return dim
 								})
@@ -338,21 +338,20 @@ func (g *GUI) ToastOK(header, msg string, callbacks ...func()) {
 
 		// Scale.
 		m := material.Label(bar.Collection.Calibri().Theme, toastTextSize, msg)
-		m.Color = nrgba.White.Color()
 		m.Alignment = text.Middle
 
-		okButton := &button.Button{
+		okButton := &button.Widget{
 			Text:            "OK",
 			TextSize:        unit.Sp(16),
 			Font:            bar.Collection.Calibri(),
-			Pressed:         nrgba.Transparent30,
+			Pressed:         nrgba.Transparent80,
 			Released:        nrgba.DarkGray,
 			BorderWidth:     unit.Sp(0),
 			NoBorder:        true,
 			Size:            image.Pt(96, 32),
 			TextInsetBottom: -2,
 
-			Click: func(this *button.Button) {
+			Click: func(this *button.Widget) {
 				defer this.Deactivate()
 
 				for _, cb := range callbacks {
@@ -370,12 +369,13 @@ func (g *GUI) ToastOK(header, msg string, callbacks ...func()) {
 				gtx := layout.NewContext(&ops, e)
 
 				bar.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-					decor.ColorBox(gtx, gtx.Constraints.Max, nrgba.BackgroundAlt)
+					decorate.ColorBox(gtx, gtx.Constraints.Max, nrgba.NRGBA(config.Current.Theme.BackgroundAlt))
 
 					return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
 						layout.Rigid(layout.Spacer{Height: 10}.Layout),
 
 						layout.Flexed(.5, func(gtx layout.Context) layout.Dimensions {
+							decorate.Label(&m, m.Text)
 							return m.Layout(gtx)
 						}),
 
@@ -417,27 +417,26 @@ func (g *GUI) ToastYesNo(header, msg string, y, n func()) {
 			app.Decorated(false),
 		)
 
-		bar := title.New(fmt.Sprintf("%s %s", title.Default, header), fonts.NewCollection(), nil, nil, func() {
+		bar := title.New(header, fonts.NewCollection(), nil, nil, func() {
 			w.Perform(system.ActionClose)
 		})
 		bar.NoTip = true
 
 		// Scale 16.
 		m := material.Label(bar.Collection.Calibri().Theme, toastTextSize, msg)
-		m.Color = nrgba.White.Color()
 		m.Alignment = text.Middle
 
-		yButton := &button.Button{
+		yButton := &button.Widget{
 			Text:            "Yes",
 			TextSize:        unit.Sp(16),
 			Font:            bar.Collection.Calibri(),
-			Pressed:         nrgba.Transparent30,
+			Pressed:         nrgba.Transparent80,
 			Released:        nrgba.DarkGray,
 			BorderWidth:     unit.Sp(0),
 			Size:            image.Pt(96, 32),
 			NoBorder:        true,
 			TextInsetBottom: -2,
-			Click: func(this *button.Button) {
+			Click: func(this *button.Widget) {
 				if y != nil {
 					y()
 				}
@@ -445,17 +444,17 @@ func (g *GUI) ToastYesNo(header, msg string, y, n func()) {
 			},
 		}
 
-		nButton := &button.Button{
+		nButton := &button.Widget{
 			Text:            "No",
 			TextSize:        unit.Sp(16),
 			Font:            bar.Collection.Calibri(),
-			Pressed:         nrgba.Transparent30,
+			Pressed:         nrgba.Transparent80,
 			Released:        nrgba.DarkGray,
 			BorderWidth:     unit.Sp(0),
 			NoBorder:        true,
 			Size:            image.Pt(96, 32),
 			TextInsetBottom: -2,
-			Click: func(this *button.Button) {
+			Click: func(this *button.Widget) {
 				if n != nil {
 					n()
 				}
@@ -472,12 +471,13 @@ func (g *GUI) ToastYesNo(header, msg string, y, n func()) {
 				gtx := layout.NewContext(&ops, e)
 
 				bar.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-					decor.ColorBox(gtx, gtx.Constraints.Max, nrgba.BackgroundAlt)
+					decorate.ColorBox(gtx, gtx.Constraints.Max, nrgba.NRGBA(config.Current.Theme.BackgroundAlt))
 
 					return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
 						layout.Rigid(layout.Spacer{Height: 10}.Layout),
 
 						layout.Flexed(.5, func(gtx layout.Context) layout.Dimensions {
+							decorate.Label(&m, m.Text)
 							return m.Layout(gtx)
 						}),
 

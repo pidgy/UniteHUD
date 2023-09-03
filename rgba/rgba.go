@@ -59,7 +59,7 @@ var (
 	Slate          = RGBA{R: 255, G: 255, B: 255, A: 63}
 	Splash         = RGBA{R: 10, G: 8, B: 20, A: 255}
 	System         = RGBA{R: 95, G: 95, B: 95, A: 255}
-	Transparent30  = RGBA{R: 0, G: 0, B: 0, A: 79}
+	Transparent80  = RGBA{R: 0, G: 0, B: 0, A: 80}
 	Transparent    = RGBA{R: 0, G: 0, B: 0, A: 0}
 	User           = RGBA{R: 166, G: 139, B: 224, A: 255}
 	White          = RGBA{R: 255, G: 255, B: 255, A: 255}

@@ -15,7 +15,7 @@ import (
 	"github.com/pidgy/unitehud/nrgba"
 )
 
-type Split interface {
+type Widget interface {
 	Layout(gtx layout.Context, left, right layout.Widget) layout.Dimensions
 }
 

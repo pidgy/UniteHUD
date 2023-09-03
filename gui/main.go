@@ -22,7 +22,7 @@ import (
 	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/gui/is"
 	"github.com/pidgy/unitehud/gui/visual/button"
-	"github.com/pidgy/unitehud/gui/visual/decor"
+	"github.com/pidgy/unitehud/gui/visual/decorate"
 	"github.com/pidgy/unitehud/gui/visual/screen"
 	"github.com/pidgy/unitehud/gui/visual/spinner"
 	"github.com/pidgy/unitehud/gui/visual/split"
@@ -66,7 +66,7 @@ func (g *GUI) main() {
 	spinStop := spinner.Stopped()
 	defer spinStop.Stop()
 
-	stopButton := &button.Button{
+	stopButton := &button.Widget{
 		Text:            "Stop",
 		Font:            g.Bar.Collection.Calibri(),
 		OnHoverHint:     func() { g.Bar.ToolTip("Stop capturing events") },
@@ -77,16 +77,16 @@ func (g *GUI) main() {
 		TextInsetBottom: -2,
 	}
 
-	startButton := &button.Button{
+	startButton := &button.Widget{
 		Text:            "Start",
 		Font:            g.Bar.Collection.Calibri(),
 		OnHoverHint:     func() { g.Bar.ToolTip("Start capturing events") },
 		Released:        nrgba.PastelGreen.Alpha(150),
-		Pressed:         nrgba.Transparent30,
+		Pressed:         nrgba.Transparent80,
 		BorderWidth:     unit.Sp(1.5),
 		Size:            stopButton.Size,
 		TextInsetBottom: stopButton.TextInsetBottom,
-		Click: func(this *button.Button) {
+		Click: func(this *button.Widget) {
 			g.Preview = false
 
 			stopButton.Deactivate()
@@ -102,7 +102,7 @@ func (g *GUI) main() {
 		},
 	}
 
-	stopButton.Click = func(this *button.Button) {
+	stopButton.Click = func(this *button.Widget) {
 		this.Deactivate()
 		this.Disabled = true
 		this.Released = nrgba.Disabled
@@ -118,18 +118,18 @@ func (g *GUI) main() {
 
 	notifyFeedTextBlock, err := textblock.New(g.Bar.Collection.Cascadia())
 	if err != nil {
-		notifyFeedTextBlock = &textblock.TextBlock{}
+		notifyFeedTextBlock = &textblock.Widget{}
 		notify.Error("Failed to load font: (%v)", err)
 	}
 
-	defer g.Bar.Remove(g.Bar.Add(&button.Button{
+	defer g.Bar.Remove(g.Bar.Add(&button.Widget{
 		Text:        "📺",
 		Font:        g.Bar.Collection.NishikiTeki(),
 		OnHoverHint: func() { g.Bar.ToolTip("Configure capture settings") },
 		Released:    nrgba.PurpleBlue,
 		TextSize:    unit.Sp(16),
 
-		Click: func(this *button.Button) {
+		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
 			if !stopButton.Disabled {
@@ -140,14 +140,14 @@ func (g *GUI) main() {
 		},
 	}))
 
-	defer g.Bar.Remove(g.Bar.Add(&button.Button{
+	defer g.Bar.Remove(g.Bar.Add(&button.Widget{
 		Text:        "¼",
 		Font:        g.Bar.Collection.NishikiTeki(),
 		OnHoverHint: func() { g.Bar.ToolTip("View capture statistics") },
 		Released:    nrgba.Pinkity,
 		TextSize:    unit.Sp(14),
 
-		Click: func(this *button.Button) {
+		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
 			stats.Data()
@@ -161,28 +161,28 @@ func (g *GUI) main() {
 		},
 	}))
 
-	defer g.Bar.Remove(g.Bar.Add(&button.Button{
+	defer g.Bar.Remove(g.Bar.Add(&button.Widget{
 		Text:        "🗠",
 		TextSize:    unit.Sp(16),
 		Font:        g.Bar.Collection.NishikiTeki(),
 		OnHoverHint: func() { g.Bar.ToolTip("View event history") },
 		Released:    nrgba.Seafoam,
 
-		Click: func(this *button.Button) {
+		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
 			history.Dump()
 		},
 	}))
 
-	defer g.Bar.Remove(g.Bar.Add(&button.Button{
+	defer g.Bar.Remove(g.Bar.Add(&button.Widget{
 		Text:        "obs",
 		Font:        g.Bar.Collection.NishikiTeki(),
 		OnHoverHint: func() { g.Bar.ToolTip("Open OBS client folder") },
 		Released:    nrgba.Purple,
 		TextSize:    unit.Sp(12),
 
-		Click: func(this *button.Button) {
+		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
 			drag := "Drag \"UniteHUD Client\" into any OBS scene."
@@ -208,14 +208,14 @@ func (g *GUI) main() {
 		},
 	}))
 
-	defer g.Bar.Remove(g.Bar.Add(&button.Button{
+	defer g.Bar.Remove(g.Bar.Add(&button.Widget{
 		Text:        "🗘",
 		Font:        g.Bar.Collection.NishikiTeki(),
 		OnHoverHint: func() { g.Bar.ToolTip("Clear event history") },
 		Released:    nrgba.Orange,
 		TextSize:    unit.Sp(14),
 
-		Click: func(this *button.Button) {
+		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
 			notify.CLS()
@@ -223,7 +223,7 @@ func (g *GUI) main() {
 		},
 	}))
 
-	defer g.Bar.Remove(g.Bar.Add(&button.Button{
+	defer g.Bar.Remove(g.Bar.Add(&button.Widget{
 		Text:        "⚶",
 		Font:        g.Bar.Collection.NishikiTeki(),
 		OnHoverHint: func() { g.Bar.ToolTip("Toggle resource saver") },
@@ -231,7 +231,7 @@ func (g *GUI) main() {
 		Pressed:     nrgba.PaleRed.Alpha(50),
 		TextSize:    unit.Sp(16),
 
-		Click: func(this *button.Button) {
+		Click: func(this *button.Widget) {
 			g.ecoMode = !g.ecoMode
 
 			this.Activate()
@@ -247,14 +247,14 @@ func (g *GUI) main() {
 		},
 	}))
 
-	defer g.Bar.Remove(g.Bar.Add(&button.Button{
+	defer g.Bar.Remove(g.Bar.Add(&button.Widget{
 		Text:        "🗁",
 		Font:        g.Bar.Collection.NishikiTeki(),
 		OnHoverHint: func() { g.Bar.ToolTip("Open log directory") },
 		Released:    nrgba.PastelBabyBlue,
 		TextSize:    unit.Sp(16),
 
-		Click: func(this *button.Button) {
+		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
 			debug.Log()
@@ -266,7 +266,7 @@ func (g *GUI) main() {
 		},
 	}))
 
-	defer g.Bar.Remove(g.Bar.Add(&button.Button{
+	defer g.Bar.Remove(g.Bar.Add(&button.Widget{
 		Text:        "●",
 		Font:        g.Bar.Collection.NishikiTeki(),
 		OnHoverHint: func() { g.Bar.ToolTip("Record matched events") },
@@ -274,7 +274,7 @@ func (g *GUI) main() {
 		Released:    nrgba.Transparent,
 		TextSize:    unit.Sp(16),
 
-		Click: func(this *button.Button) {
+		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
 			config.Current.Record = !config.Current.Record
@@ -304,14 +304,14 @@ func (g *GUI) main() {
 		},
 	}))
 
-	projectorWindowButton := &button.Image{
+	projectorWindowButton := &button.ImageWidget{
 		HintEvent: func() { g.Bar.ToolTip("Open projector window") },
 
-		Screen: &screen.Screen{
+		Widget: &screen.Widget{
 			Border:      true,
 			BorderColor: nrgba.Transparent,
 		},
-		Click: func(this *button.Image) {
+		Click: func(this *button.ImageWidget) {
 			if !stopButton.Disabled {
 				stopButton.Click(stopButton)
 			}
@@ -337,7 +337,6 @@ func (g *GUI) main() {
 	windowHeader.TextSize = unit.Sp(14)
 
 	cpuLabel := material.H5(g.Bar.Collection.Calibri().Theme, "")
-	cpuLabel.Color = nrgba.White.Color()
 	cpuLabel.Alignment = text.Middle
 	cpuLabel.TextSize = unit.Sp(14)
 
@@ -346,7 +345,6 @@ func (g *GUI) main() {
 	cpuGraph.TextSize = unit.Sp(9)
 
 	ramLabel := material.H5(g.Bar.Collection.Calibri().Theme, "")
-	ramLabel.Color = nrgba.White.Color()
 	ramLabel.Alignment = text.Middle
 	ramLabel.TextSize = unit.Sp(14)
 
@@ -363,25 +361,25 @@ func (g *GUI) main() {
 	connectedClientsLabel.Alignment = text.Middle
 	connectedClientsLabel.TextSize = unit.Sp(14)
 
-	purpleScoreScreen := &screen.Screen{
+	purpleScoreScreen := &screen.Widget{
 		Border:      true,
 		BorderColor: team.Purple.NRGBA,
 		Image:       notify.PurpleScore,
 	}
 
-	orangeScoreScreen := &screen.Screen{
+	orangeScoreScreen := &screen.Widget{
 		Border:      true,
 		BorderColor: team.Orange.NRGBA,
 		Image:       notify.OrangeScore,
 	}
 
-	energyScoreScreen := &screen.Screen{
+	energyScoreScreen := &screen.Widget{
 		Border:      true,
 		BorderColor: team.Energy.NRGBA,
 		Image:       notify.Energy,
 	}
 
-	timeScreen := &screen.Screen{
+	timeScreen := &screen.Widget{
 		Border:      true,
 		BorderColor: team.Time.NRGBA,
 		Image:       notify.Time,
@@ -423,7 +421,6 @@ func (g *GUI) main() {
 	selfScoreLabel.TextSize = unit.Sp(14)
 
 	clockLabel := material.H5(g.Bar.Collection.Calibri().Theme, "00:00")
-	clockLabel.Color = nrgba.White.Color()
 	clockLabel.Alignment = text.Middle
 	clockLabel.TextSize = unit.Sp(14)
 
@@ -518,20 +515,20 @@ func (g *GUI) main() {
 
 			g.size = e.Size
 
-			decor.ColorBox(gtx, gtx.Constraints.Max, nrgba.Transparent30)
+			decorate.ColorBox(gtx, gtx.Constraints.Max, nrgba.Green)
 
 			g.Bar.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				return split.Layout(gtx,
 					func(gtx layout.Context) layout.Dimensions {
-						return decor.Fill(
+						return decorate.Fill(
 							gtx,
-							nrgba.Background,
+							nrgba.NRGBA(config.Current.Theme.Background),
 							func(gtx layout.Context) layout.Dimensions {
 								{
 									warnings := []string{}
-
 									if config.Current.Advanced.IncreasedCaptureRate > 0 {
-										warnings = append(warnings, fmt.Sprintf("Match Frequency: %d%%", 100+config.Current.Advanced.IncreasedCaptureRate))
+										warnings = append(warnings, fmt.Sprintf("Match Frequency: %d%%",
+											100+config.Current.Advanced.IncreasedCaptureRate))
 									}
 
 									if len(warnings) > 0 {
@@ -569,25 +566,25 @@ func (g *GUI) main() {
 									}.Layout(gtx, windowHeader.Layout)
 								}
 								{
-									cpuLabel.Text = g.cpu
+									decorate.Label(&cpuLabel, g.cpu)
 									layout.Inset{
 										Top:  unit.Dp(28),
 										Left: unit.Dp(float32(gtx.Constraints.Max.X - 408)),
 									}.Layout(gtx, cpuLabel.Layout)
 
-									cpuGraph.Text = stats.CPUData()
+									decorate.Label(&cpuGraph, stats.CPUData())
 									layout.Inset{
 										Top:  unit.Dp(1),
 										Left: unit.Dp(float32(gtx.Constraints.Max.X - 450)),
 									}.Layout(gtx, cpuGraph.Layout)
 
-									ramLabel.Text = g.ram
+									decorate.Label(&ramLabel, g.ram)
 									layout.Inset{
 										Top:  unit.Dp(28),
 										Left: unit.Dp(float32(gtx.Constraints.Max.X - 248)),
 									}.Layout(gtx, ramLabel.Layout)
 
-									ramGraph.Text = stats.RAMData()
+									decorate.Label(&ramGraph, stats.RAMData())
 									layout.Inset{
 										Top:  unit.Dp(1),
 										Left: unit.Dp(float32(gtx.Constraints.Max.X - 300)),
@@ -598,7 +595,7 @@ func (g *GUI) main() {
 										h = "0" + h
 									}
 
-									holdingLabel.Text = h
+									decorate.Label(&holdingLabel, h)
 									layout.Inset{
 										Top:  unit.Dp(50),
 										Left: unit.Dp(float32(gtx.Constraints.Max.X - 35)),
@@ -694,7 +691,7 @@ func (g *GUI) main() {
 									}.Layout(gtx, selfScoreLabel.Layout)
 								}
 								{
-									clockLabel.Text = server.Clock()
+									decorate.Label(&clockLabel, server.Clock())
 									layout.Inset{
 										Top:  unit.Dp(2),
 										Left: unit.Dp(float32(gtx.Constraints.Max.X - 90)),
@@ -770,9 +767,9 @@ func (g *GUI) main() {
 						)
 					},
 					func(gtx layout.Context) layout.Dimensions {
-						return decor.Fill(
+						return decorate.Fill(
 							gtx,
-							nrgba.Background,
+							nrgba.NRGBA(config.Current.Theme.Background),
 							func(gtx layout.Context) layout.Dimensions {
 								// Right-side criteria.
 								{
