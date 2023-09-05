@@ -434,9 +434,10 @@ func (b *Widget) Layout(gtx layout.Context, content layout.Widget) layout.Dimens
 	b.decorations.buttons.resize.HoverHint()
 	b.decorations.buttons.close.HoverHint()
 
-	customSizes := 0
+	customSizes := button.IconSize.Mul(3) // Min, Max, Close.
+	customSizes.Y = 0
 	for _, btn := range b.decorations.buttons.custom {
-		customSizes += btn.Size.X
+		customSizes.X += btn.Size.X
 		btn.HoverHint()
 
 		if !b.decorations.buttons.open {
@@ -444,7 +445,7 @@ func (b *Widget) Layout(gtx layout.Context, content layout.Widget) layout.Dimens
 		}
 	}
 
-	defer clip.Rect(bar.Sub(image.Pt(b.decorations.buttons.minimize.Size.X+b.decorations.buttons.resize.Size.X+b.decorations.buttons.close.Size.X+customSizes, 0))).Push(gtx.Ops).Pop()
+	defer clip.Rect(bar.Sub(customSizes)).Push(gtx.Ops).Pop()
 	pointer.InputOp{
 		Tag:   b,
 		Types: pointer.Press | pointer.Drag | pointer.Release | pointer.Leave | pointer.Enter | pointer.Move,

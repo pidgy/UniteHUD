@@ -39,7 +39,7 @@ type split struct {
 }
 
 var (
-	DefaultBarSizeAdjustable = unit.Dp(50)
+	defaultBarSizeAdjustable = unit.Dp(5)
 	defaultBarSize           = unit.Dp(0)
 )
 
@@ -48,7 +48,7 @@ func (h *Horizontal) Layout(gtx layout.Context, top, bottom layout.Widget) layou
 	if size <= 1 {
 		size = gtx.Dp(defaultBarSize)
 		if h.Adjustable {
-			size = gtx.Dp(DefaultBarSizeAdjustable)
+			size = gtx.Dp(defaultBarSizeAdjustable)
 		}
 	}
 
@@ -149,7 +149,7 @@ func (v *Vertical) Layout(gtx layout.Context, left, right layout.Widget) layout.
 	if barSize <= 1 {
 		barSize = gtx.Dp(defaultBarSize)
 		if v.Adjustable {
-			barSize = gtx.Dp(DefaultBarSizeAdjustable)
+			barSize = gtx.Dp(defaultBarSizeAdjustable)
 		}
 	}
 
