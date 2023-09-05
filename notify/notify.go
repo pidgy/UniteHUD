@@ -72,10 +72,6 @@ func Dedup(r nrgba.NRGBA, format string, a ...interface{}) {
 	feed.log(r, true, true, false, format, a...)
 }
 
-func Denounce(format string, a ...interface{}) {
-	feed.log(nrgba.Denounce, true, false, false, format, a...)
-}
-
 func Error(format string, a ...interface{}) {
 	feed.log(nrgba.DarkRed, true, false, false, format, a...)
 }
@@ -95,13 +91,8 @@ func Iter(i int) (string, int) {
 	return "", i
 }
 
-func LastSystem() string {
-	for i := len(feed.logs) - 1; i >= 0; i-- {
-		if feed.logs[i].NRGBA == nrgba.System {
-			return feed.logs[i].orig
-		}
-	}
-	return "..."
+func Missed(event interface{}, window string) {
+	Debug("%T missed in %s window", event, window)
 }
 
 func (p *Post) String() string {

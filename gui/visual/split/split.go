@@ -11,7 +11,6 @@ import (
 	"gioui.org/op/paint"
 	"gioui.org/unit"
 	"github.com/pidgy/unitehud/cursor"
-	"github.com/pidgy/unitehud/img"
 	"github.com/pidgy/unitehud/nrgba"
 )
 
@@ -42,8 +41,6 @@ type split struct {
 var (
 	DefaultBarSizeAdjustable = unit.Dp(50)
 	defaultBarSize           = unit.Dp(0)
-
-	dragIcon = img.Icon("drag")
 )
 
 func (h *Horizontal) Layout(gtx layout.Context, top, bottom layout.Widget) layout.Dimensions {

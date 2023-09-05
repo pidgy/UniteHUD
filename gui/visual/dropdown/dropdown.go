@@ -12,7 +12,6 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 
-	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/cursor"
 	"github.com/pidgy/unitehud/gui/visual/decorate"
 	"github.com/pidgy/unitehud/nrgba"
@@ -25,12 +24,13 @@ var (
 
 type Widget struct {
 	Items         []*Item
-	Callback      func(*Item, *Widget)
+	Callback      func(item *Item, this *Widget)
 	WidthModifier int
 	Radio         bool
 	TextSize      float32
+	Theme         *material.Theme
 
-	list *widget.List
+	liststyle material.ListStyle
 }
 
 type Item struct {
@@ -41,7 +41,7 @@ type Item struct {
 	Disabled bool
 	Weight   int
 
-	Callback func(*Item)
+	Callback func(this *Item)
 }
 
 func (l *Widget) Checked() *Item {
@@ -88,24 +88,24 @@ func (l *Widget) Enabled() {
 }
 
 // Layout handles drawing the letters view.
-func (l *Widget) Layout(gtx layout.Context, th *material.Theme) layout.Dimensions {
-	if l.list == nil {
-		l.list = &widget.List{
+func (l *Widget) Layout(gtx layout.Context) layout.Dimensions {
+	if l.liststyle.Scrollbar == nil {
+		l.liststyle = material.List(l.Theme, &widget.List{
 			Scrollbar: widget.Scrollbar{},
 			List: layout.List{
 				Axis:      layout.Vertical,
 				Alignment: layout.Start,
 			},
-		}
+		})
 	}
 
-	style := material.List(th, l.list)
-	style.Track.Color = config.Current.Theme.Scrollbar
+	decorate.Scrollbar(&l.liststyle.ScrollbarStyle)
+	decorate.List(&l.liststyle)
 
-	return style.Layout(gtx, len(l.Items), func(gtx layout.Context, index int) layout.Dimensions {
+	return l.liststyle.Layout(gtx, len(l.Items), func(gtx layout.Context, index int) layout.Dimensions {
 		item := l.Items[index]
 
-		check := material.CheckBox(th, &item.Checked, item.Text)
+		check := material.CheckBox(l.Theme, &item.Checked, item.Text)
 		check.Font.Weight = font.Weight(item.Weight)
 		check.Size = unit.Dp(l.TextSize)
 		check.TextSize = unit.Sp(l.TextSize)
@@ -166,14 +166,14 @@ func (l *Widget) Layout(gtx layout.Context, th *material.Theme) layout.Dimension
 		})
 
 		if item.Hint != "" {
-			l := material.Label(
-				th,
+			label := material.Label(
+				l.Theme,
 				check.TextSize*unit.Sp(.9),
 				item.Hint,
 			)
-			l.Color = nrgba.Transparent80.Color()
+			label.Color = nrgba.Transparent80.Color()
 
-			dims = l.Layout(gtx)
+			dims = label.Layout(gtx)
 		}
 
 		return dims

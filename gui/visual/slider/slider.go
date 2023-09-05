@@ -21,7 +21,11 @@ type Widget struct {
 func (s *Widget) Layout(gtx layout.Context) layout.Dimensions {
 	defer s.event()
 
-	col := int((float32(len(s.TextColors)) * (s.Slider.Float.Value / s.Slider.Max)))
+	v := s.Slider.Float.Value
+	if v < 0 {
+		v *= -1
+	}
+	col := int((float32(len(s.TextColors)) * (v / s.Slider.Max)))
 	if col == len(s.TextColors) {
 		col--
 	}

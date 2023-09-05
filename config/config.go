@@ -58,13 +58,34 @@ type Config struct {
 	Platform                 string
 	HUDOverlay               bool
 
-	Theme Theme
+	Theme  Theme
+	Themes map[string]Theme
 
 	Advanced struct {
 		IncreasedCaptureRate int64
-	}
 
-	DisableScoring, DisableTime, DisableObjectives, DisableEnergy, DisableDefeated, DisableKOs, DisablePreviews bool
+		Notifications struct {
+			Muted    bool
+			Disabled struct {
+				All,
+				Updates,
+				MatchStarting,
+				MatchStopped bool
+			}
+		}
+
+		Matching struct {
+			Disabled struct {
+				Scoring,
+				Time,
+				Objectives,
+				Energy,
+				Defeated,
+				KOs,
+				Previews bool
+			}
+		}
+	}
 
 	Crashed string
 
@@ -79,15 +100,27 @@ type Theme struct {
 	Background,
 	BackgroundAlt,
 	Foreground,
+	ForegroundAlt,
 	Splash,
 	TitleBarBackground,
 	TitleBarForeground,
-	ToolTipForeground,
 	Borders,
-	Scrollbar color.NRGBA
+	ScrollbarBackground,
+	ScrollbarForeground color.NRGBA
 }
 
-var Current Config
+var (
+	Current Config
+	cached  Config
+)
+
+func Cached() Config {
+	return cached
+}
+
+func (c *Config) AssetIcon(file string) string {
+	return fmt.Sprintf("%s/icon/%s", c.Assets(), file)
+}
 
 func (c *Config) Assets() string {
 	e, err := os.Executable()
@@ -99,7 +132,7 @@ func (c *Config) Assets() string {
 	return fmt.Sprintf(`%s\assets`, filepath.Dir(e))
 }
 
-func (c *Config) Eq(c2 *Config) bool {
+func (c Config) Eq(c2 Config) bool {
 	return cmp.Equal(c, c2,
 		cmpopts.IgnoreTypes(
 			func() {},
@@ -110,7 +143,7 @@ func (c *Config) Eq(c2 *Config) bool {
 }
 
 func (c *Config) File() string {
-	return fmt.Sprintf("%s-config.unitehud.%s", strings.ReplaceAll(global.Version, ".", "-"), c.Profile)
+	return fmt.Sprintf("config-%s-%s.unitehud", c.Profile, strings.ReplaceAll(global.Version, ".", "-"))
 }
 
 func (c *Config) ProfileAssets() string {
@@ -143,7 +176,7 @@ func (c *Config) Reset() error {
 }
 
 func (c *Config) Save() error {
-	notify.System("Saving configuration to %s", c.File())
+	notify.System("Saving %s configuration to %s", c.Profile, c.File())
 
 	f, err := os.Create(c.File())
 	if err != nil {
@@ -159,6 +192,8 @@ func (c *Config) Save() error {
 	if err != nil {
 		return err
 	}
+
+	cached = Current
 
 	return nil
 }
@@ -191,15 +226,16 @@ func (c *Config) SetDefaultAreas() {
 
 func (c *Config) SetDefaultTheme() {
 	c.Theme = Theme{
-		Background:         nrgba.Background.Color(),
-		BackgroundAlt:      nrgba.BackgroundAlt.Color(),
-		Foreground:         nrgba.White.Color(),
-		Splash:             nrgba.Splash.Color(),
-		TitleBarBackground: nrgba.Background.Color(),
-		TitleBarForeground: nrgba.White.Color(),
-		ToolTipForeground:  nrgba.White.Alpha(100).Color(),
-		Borders:            nrgba.Gray.Color(),
-		Scrollbar:          nrgba.Slate.Alpha(0x05).Color(),
+		Background:          nrgba.Background.Color(),
+		BackgroundAlt:       nrgba.BackgroundAlt.Color(),
+		ForegroundAlt:       nrgba.White.Alpha(100).Color(),
+		Foreground:          nrgba.White.Color(),
+		Splash:              nrgba.Splash.Color(),
+		TitleBarBackground:  nrgba.Background.Color(),
+		TitleBarForeground:  nrgba.White.Color(),
+		Borders:             nrgba.Gray.Color(),
+		ScrollbarBackground: nrgba.Transparent.Color(),
+		ScrollbarForeground: nrgba.White.Alpha(100).Color(),
 	}
 }
 
@@ -408,9 +444,9 @@ func (c *Config) setProfileBroadcaster() {
 
 	c.load = loadProfileAssetsBroadcaster
 
-	c.DisableEnergy = true
-	c.DisableScoring = true
-	c.DisableDefeated = true
+	c.Advanced.Matching.Disabled.Energy = true
+	c.Advanced.Matching.Disabled.Scoring = true
+	c.Advanced.Matching.Disabled.Defeated = true
 }
 
 func (c *Config) setProfilePlayer() {
@@ -418,17 +454,6 @@ func (c *Config) setProfilePlayer() {
 
 	c.load = loadProfileAssetsPlayer
 
-}
-
-func recovered(r interface{}) {
-	s := ""
-	switch e := r.(type) {
-	case error:
-		s = e.Error()
-	case string:
-		s = e
-	}
-	notify.Debug("Recovered from %s", s)
 }
 
 func Load(profile string) error {
@@ -447,7 +472,7 @@ func Load(profile string) error {
 
 	defer validate()
 
-	notify.System("Loading \"%s\" configuration from \"%s\"", profile, Current.File())
+	notify.System("Loading %s configuration from \"%s\"", profile, Current.File())
 
 	ok := open()
 	if !ok {
@@ -466,7 +491,7 @@ func Load(profile string) error {
 		Current.load()
 	}
 
-	Current.UnsetHiddenThemes()
+	//Current.UnsetHiddenThemes()
 
 	if Current.Window == "" {
 		Current.Window = MainDisplay
@@ -658,6 +683,17 @@ func open() bool {
 	Current.load()
 
 	return true
+}
+
+func recovered(r interface{}) {
+	s := ""
+	switch e := r.(type) {
+	case error:
+		s = e.Error()
+	case string:
+		s = e
+	}
+	notify.Debug("Recovered from %s", s)
 }
 
 func validate() {

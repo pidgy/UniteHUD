@@ -56,6 +56,7 @@ func (g *GUI) audios(text float32, session *audio.Session) *audios {
 	a := &audios{
 		in: capture{
 			list: &dropdown.Widget{
+				Theme:         g.header.Collection.Calibri().Theme,
 				WidthModifier: 1,
 				TextSize:      text,
 				Items: []*dropdown.Item{
@@ -95,6 +96,7 @@ func (g *GUI) audios(text float32, session *audio.Session) *audios {
 		},
 		out: capture{
 			list: &dropdown.Widget{
+				Theme:         g.header.Collection.Calibri().Theme,
 				WidthModifier: 1,
 				TextSize:      text,
 				Items: []*dropdown.Item{
@@ -314,6 +316,7 @@ func (g *GUI) videos(text float32) *videos {
 
 	v.monitor = capture{
 		list: &dropdown.Widget{
+			Theme:    g.header.Collection.Calibri().Theme,
 			TextSize: text,
 			Items:    []*dropdown.Item{},
 			Callback: func(i *dropdown.Item, _ *dropdown.Widget) {
@@ -370,6 +373,7 @@ func (g *GUI) videos(text float32) *videos {
 
 	v.window = capture{
 		list: &dropdown.Widget{
+			Theme:    g.header.Collection.Calibri().Theme,
 			TextSize: text,
 			Items:    []*dropdown.Item{},
 			Callback: func(i *dropdown.Item, _ *dropdown.Widget) {
@@ -437,6 +441,7 @@ func (g *GUI) videos(text float32) *videos {
 
 	v.device = capture{
 		list: &dropdown.Widget{
+			Theme:    g.header.Collection.Calibri().Theme,
 			TextSize: text,
 			Items: []*dropdown.Item{
 				{
@@ -529,6 +534,7 @@ func (g *GUI) videos(text float32) *videos {
 
 	v.platform = capture{
 		list: &dropdown.Widget{
+			Theme: g.header.Collection.Calibri().Theme,
 			Items: []*dropdown.Item{
 				{
 					Text:    strings.Title(config.PlatformSwitch),
@@ -581,6 +587,7 @@ func (g *GUI) videos(text float32) *videos {
 
 	v.profile = capture{
 		list: &dropdown.Widget{
+			Theme: g.header.Collection.Calibri().Theme,
 			Radio: true,
 			Items: []*dropdown.Item{
 				{
@@ -606,7 +613,6 @@ func (g *GUI) videos(text float32) *videos {
 				electron.Close()
 
 				config.Current.Profile = strings.ToLower(i.Text)
-
 				err := config.Load(config.Current.Profile)
 				if err != nil {
 					notify.Error("Failed to load %s profile configuration", config.Current.Profile)

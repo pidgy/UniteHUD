@@ -87,6 +87,10 @@ func (b *Widget) Layout(gtx layout.Context) layout.Dimensions {
 		b.TextColor = nrgba.NRGBA(config.Current.Theme.Foreground)
 	}
 
+	if b.BorderWidth == 0 && !b.NoBorder {
+		b.BorderWidth = unit.Sp(.5)
+	}
+
 	if b.alpha == 0 {
 		b.alpha = b.Released.A
 	}
@@ -211,7 +215,7 @@ func (b *Widget) draw(gtx layout.Context) layout.Dimensions {
 		}.Layout(gtx, b.uniform)
 	} else {
 		widget.Border{
-			Color:        nrgba.White.Alpha(25).Color(),
+			Color:        nrgba.NRGBA(config.Current.Theme.Borders).Alpha(50).Color(),
 			Width:        unit.Dp(b.BorderWidth),
 			CornerRadius: unit.Dp(2),
 		}.Layout(gtx, b.uniform)
@@ -226,12 +230,9 @@ func (b *Widget) draw(gtx layout.Context) layout.Dimensions {
 	b.label.Color = b.TextColor.Color()
 	b.label.MaxLines = 1
 	b.label.Truncator = b.label.Text
-
 	if b.active && b.Click != nil {
 		b.label.Color.A = 0xFF
-	}
-
-	if !b.active && b.Click == nil {
+	} else if !b.active && b.Click == nil {
 		b.label.Color.A = 0x3F
 	}
 
@@ -257,11 +258,6 @@ func (b *Widget) draw(gtx layout.Context) layout.Dimensions {
 	b.inset.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 		return layout.Center.Layout(gtx, b.label.Layout)
 	})
-
-	// if b.hover {
-	// 	gtx.Constraints.Min.Y -= 100
-	// 	component.DesktopTooltip(b.Font.Theme, "This is a tooltip").Layout(gtx)
-	// }
 
 	return layout.Dimensions{Size: gtx.Constraints.Max}
 }

@@ -1,7 +1,6 @@
 package img
 
 import (
-	"fmt"
 	"image"
 	"os"
 
@@ -39,8 +38,7 @@ func Icon(name string) image.Image {
 		}
 	}
 
-	path := fmt.Sprintf(`%s/icon/%s.png`, config.Current.Assets(), name)
-	f, err := os.Open(path)
+	f, err := os.Open(config.Current.AssetIcon(name))
 	if err != nil {
 		notify.Error("Failed to open image %s (%v)", name, err)
 		return Empty

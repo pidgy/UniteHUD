@@ -38,7 +38,7 @@ func (g *GUI) loading() {
 	width := 720
 	height := 440
 
-	g.Window.Option(
+	g.window.Option(
 		app.Title("UniteHUD"),
 		app.Size(unit.Dp(width), unit.Dp(height)),
 		app.MaxSize(unit.Dp(width), unit.Dp(height)),
@@ -52,24 +52,25 @@ func (g *GUI) loading() {
 	dims := layout.Dimensions{}
 	inset := layout.Inset{}
 
-	messageLabel := material.Label(g.Bar.Collection.Calibri().Theme, unit.Sp(18.5), l.message)
+	messageLabel := material.Label(g.header.Collection.Calibri().Theme, unit.Sp(18.5), l.message)
 	messageLabel.Alignment = text.Middle
 	messageLabel.Font.Weight = 50
 
-	g.Window.Perform(system.ActionCenter)
-	g.Window.Perform(system.ActionRaise)
+	g.window.Perform(system.ActionCenter)
+	g.window.Perform(system.ActionRaise)
 
 	var ops op.Ops
 
 	for g.is == is.Loading {
-		switch e := (<-g.Events()).(type) {
+		switch event := (<-g.window.Events()).(type) {
 		case app.ViewEvent:
-			g.HWND = e.HWND
+			g.HWND = event.HWND
 		case system.DestroyEvent:
 			g.next(is.Closing)
 			return
 		case system.FrameEvent:
-			gtx := layout.NewContext(&ops, e)
+			gtx := layout.NewContext(&ops, event)
+			op.InvalidateOp{}.Add(gtx.Ops)
 
 			cursor.Draw(gtx)
 
@@ -101,11 +102,11 @@ func (g *GUI) loading() {
 				})
 			})
 
-			g.frame(gtx, e)
+			g.frame(gtx, event)
 
-			g.Window.Invalidate()
+			g.window.Invalidate()
 		default:
-			notify.Debug("Event missed: %T (Loading Window)", e)
+			notify.Missed(event, "Loading")
 		}
 	}
 }

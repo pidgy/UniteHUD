@@ -92,7 +92,7 @@ func CPU(v float64) {
 	}
 }
 
-func CPUData() string {
+func CPUGraph() string {
 	return asciigraph.Plot(cpus, []asciigraph.Option{
 		asciigraph.Height(5),
 		asciigraph.Width(20),
@@ -245,7 +245,7 @@ func RAM(v float64) {
 	}
 }
 
-func RAMData() string {
+func RAMGraph() string {
 	return asciigraph.Plot(rams, []asciigraph.Option{
 		asciigraph.Height(5),
 		asciigraph.Width(20),

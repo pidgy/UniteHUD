@@ -1,4 +1,4 @@
-package debug
+package save
 
 import (
 	"fmt"
@@ -21,11 +21,15 @@ import (
 )
 
 var (
-	Dir = fmt.Sprintf("%d_%02d_%02d_%02d_%02d", now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute())
+	Directory = fmt.Sprintf("%d_%02d_%02d_%02d_%02d", now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute())
+
+	top    = "saved"
+	images = "img"
+	logs   = "log"
 
 	now = time.Now()
 
-	logs = fmt.Sprintf("%d.log", time.Now().Unix())
+	logfile = fmt.Sprintf("unitehud_%d.log", time.Now().Unix())
 
 	cpu, ram *os.File
 
@@ -33,12 +37,12 @@ var (
 	countsLock = &sync.Mutex{}
 )
 
-func Capture(img image.Image, mat gocv.Mat, t *team.Team, p image.Point, value int, r match.Result) string {
+func Image(img image.Image, mat gocv.Mat, t *team.Team, p image.Point, value int, r match.Result) string {
 	if mat.Empty() {
 		return ""
 	}
 
-	subdir := fmt.Sprintf("tmp/%s/capture/%s", Dir, t.Name)
+	subdir := fmt.Sprintf("%s/%s/%s/%s", top, Directory, images, t.Name)
 	err := createDirIfNotExist(subdir)
 	if err != nil {
 		notify.Error("[DEBUG] failed to create directory \"%s\" (%v)", subdir, err)
@@ -52,23 +56,23 @@ func Capture(img image.Image, mat gocv.Mat, t *team.Team, p image.Point, value i
 		return ""
 	}
 
-	file := filename(t.Name, subdir, value)
+	file := imagename(t.Name, subdir, value)
 
 	gocv.IMWrite(file, mat.Region(t.Crop(p)))
 
 	return file
 }
 
-func Log() {
+func Logs() {
 	_, err := createAllIfNotExist()
 	if err != nil {
-		notify.Error("Failed to create %s directory (%v)", Dir, err)
+		notify.Error("Failed to create %s directory (%v)", Directory, err)
 		return
 	}
 
-	f, err := os.OpenFile(fmt.Sprintf("tmp/%s/log/unitehud_%s", Dir, logs), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(fmt.Sprintf("%s/%s/%s/%s", top, Directory, logs, logfile), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		notify.Error("Failed to open log file in %s (%v)", Dir, err)
+		notify.Error("Failed to open log file in %s (%v)", Directory, err)
 		return
 	}
 	defer f.Close()
@@ -76,14 +80,14 @@ func Log() {
 	for _, p := range notify.Feeds() {
 		_, err := f.WriteString(fmt.Sprintf("%s\n", p.String()))
 		if err != nil {
-			notify.Error("Failed to write event logs in %s (%v)", Dir, err)
+			notify.Error("Failed to write event logs in %s (%v)", Directory, err)
 		}
 	}
 
 	for _, line := range stats.Lines() {
 		_, err := f.WriteString(fmt.Sprintf("%s\n", line))
 		if err != nil {
-			notify.Error("Failed to append statistic logs in %s (%v)", Dir, err)
+			notify.Error("Failed to append statistic logs in %s (%v)", Directory, err)
 		}
 	}
 }
@@ -91,7 +95,7 @@ func Log() {
 func Open() error {
 	d, err := createAllIfNotExist()
 	if err != nil {
-		notify.Error("Failed to create %s directory (%v)", Dir, err)
+		notify.Error("Failed to create %s directory (%v)", Directory, err)
 		return err
 	}
 
@@ -101,10 +105,10 @@ func Open() error {
 func OpenLogDirectory() error {
 	d, err := createAllIfNotExist()
 	if err != nil {
-		notify.Error("Failed to create %s directory (%v)", Dir, err)
+		notify.Error("Failed to create %s directory (%v)", Directory, err)
 		return err
 	}
-	return open.Run(fmt.Sprintf("%s/%s/log", d, Dir))
+	return open.Run(fmt.Sprintf("%s/%s/%s", d, Directory, logs))
 }
 
 func ProfileStart() {
@@ -151,10 +155,10 @@ func createAllIfNotExist() (string, error) {
 
 	for _, subdir := range []string{
 		"/",
-		"/log",
-		"/capture",
+		fmt.Sprintf("/%s", logs),
+		fmt.Sprintf("/%s", images),
 	} {
-		err := createDirIfNotExist(fmt.Sprintf("tmp/%s/%s", Dir, subdir))
+		err := createDirIfNotExist(fmt.Sprintf("%s/%s/%s", top, Directory, subdir))
 		if err != nil {
 			return "", err
 		}
@@ -164,7 +168,7 @@ func createAllIfNotExist() (string, error) {
 }
 
 func createDirIfNotExist(subdir string) error {
-	_, err := os.Stat(fmt.Sprintf("tmp/%s", Dir))
+	_, err := os.Stat(fmt.Sprintf("%s/%s", top, Directory))
 	if err != nil {
 		if !os.IsNotExist(err) {
 			return err
@@ -194,7 +198,7 @@ func createTmpIfNotExist() (string, error) {
 		return "", err
 	}
 
-	d := fmt.Sprintf("%s/tmp", dir)
+	d := fmt.Sprintf("%s/%s", dir, top)
 
 	err = os.Mkdir(d, 0755)
 	if err != nil {
@@ -208,7 +212,7 @@ func createTmpIfNotExist() (string, error) {
 	return d, nil
 }
 
-func filename(name, subdir string, value int) string {
+func imagename(name, subdir string, value int) string {
 	countsLock.Lock()
 	defer countsLock.Unlock()
 

@@ -14,7 +14,6 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 
-	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/fonts"
 	"github.com/pidgy/unitehud/gui/visual/area"
 	"github.com/pidgy/unitehud/gui/visual/button"
@@ -56,7 +55,7 @@ func (p *preview) open(a *areas, onclose func()) {
 		app.Title("Preview"),
 		app.Size(unit.Dp(p.width), unit.Dp(p.height)),
 		app.MinSize(unit.Dp(p.width), unit.Dp(p.height)),
-		app.MaxSize(unit.Dp(p.width), unit.Dp(p.parent.max.Y)),
+		app.MaxSize(unit.Dp(p.width), unit.Dp(p.parent.dimensions.max.Y)),
 		app.Decorated(false),
 	)
 
@@ -70,6 +69,7 @@ func (p *preview) open(a *areas, onclose func()) {
 		func() { p.window.Perform(system.ActionClose) },
 	)
 	bar.NoTip = true
+	bar.NoDrag = true
 
 	captures := []*area.Capture{
 		a.energy.Capture,
@@ -116,8 +116,7 @@ func (p *preview) open(a *areas, onclose func()) {
 			Alignment: layout.Baseline,
 		},
 	}
-	style := material.List(bar.Collection.Calibri().Theme, list)
-	style.Track.Color = config.Current.Theme.Scrollbar
+	liststyle := material.List(bar.Collection.Calibri().Theme, list)
 
 	var ops op.Ops
 
@@ -158,7 +157,7 @@ func (p *preview) open(a *areas, onclose func()) {
 			gtx := layout.NewContext(&ops, e)
 
 			bar.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-				decorate.ColorBox(gtx, gtx.Constraints.Max, nrgba.NRGBA(config.Current.Theme.Background))
+				decorate.Background(gtx)
 
 				return layout.Flex{
 					Axis: layout.Vertical,
@@ -189,7 +188,7 @@ func (p *preview) open(a *areas, onclose func()) {
 					}),
 
 					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-						decorate.ColorBox(gtx, image.Pt(gtx.Constraints.Max.X, 1), nrgba.White.Alpha(5))
+						decorate.Border(gtx)
 						return layout.Spacer{Width: unit.Dp(1), Height: unit.Dp(5)}.Layout(gtx)
 					}),
 
@@ -198,7 +197,9 @@ func (p *preview) open(a *areas, onclose func()) {
 					}),
 
 					layout.Flexed(.8, func(gtx layout.Context) layout.Dimensions {
-						return style.Layout(gtx, len(images), func(gtx layout.Context, index int) layout.Dimensions {
+						decorate.Scrollbar(&liststyle.ScrollbarStyle)
+
+						return liststyle.Layout(gtx, len(images), func(gtx layout.Context, index int) layout.Dimensions {
 							cap := captures[index]
 							img := images[index]
 
@@ -261,7 +262,7 @@ func (p *preview) open(a *areas, onclose func()) {
 								}),
 
 								layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-									decorate.ColorBox(gtx, image.Pt(gtx.Constraints.Max.X, 1), nrgba.White.Alpha(5))
+									decorate.Border(gtx)
 									return layout.Spacer{Width: unit.Dp(1), Height: unit.Dp(5)}.Layout(gtx)
 								}),
 
@@ -277,7 +278,7 @@ func (p *preview) open(a *areas, onclose func()) {
 			p.window.Invalidate()
 			e.Frame(gtx.Ops)
 		default:
-			notify.Debug("Event missed: %T (Preview Window)", e)
+			notify.Missed(event, "Preview")
 		}
 	}
 }

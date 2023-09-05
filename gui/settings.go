@@ -4,6 +4,7 @@ import (
 	"image"
 
 	"gioui.org/app"
+	"gioui.org/font"
 	"gioui.org/io/system"
 	"gioui.org/layout"
 	"gioui.org/op"
@@ -14,8 +15,10 @@ import (
 	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/fonts"
 	"github.com/pidgy/unitehud/gui/visual"
+	"github.com/pidgy/unitehud/gui/visual/button"
 	"github.com/pidgy/unitehud/gui/visual/colorpicker"
 	"github.com/pidgy/unitehud/gui/visual/decorate"
+	"github.com/pidgy/unitehud/gui/visual/dropdown"
 	"github.com/pidgy/unitehud/gui/visual/slider"
 	"github.com/pidgy/unitehud/gui/visual/title"
 	"github.com/pidgy/unitehud/notify"
@@ -25,7 +28,6 @@ import (
 type section struct {
 	title, description material.LabelStyle
 	warning, widget    visual.Widgeter
-	dims               layout.Dimensions
 }
 
 type settings struct {
@@ -57,7 +59,7 @@ func (s *settings) open(onclose func()) {
 		app.Title("Settings"),
 		app.Size(unit.Dp(s.width), unit.Dp(s.height)),
 		app.MinSize(unit.Dp(s.width), unit.Dp(s.height)),
-		app.MaxSize(unit.Dp(s.width), unit.Dp(s.parent.max.Y)),
+		app.MaxSize(unit.Dp(s.width), unit.Dp(s.parent.dimensions.max.Y)),
 		app.Decorated(false),
 	)
 
@@ -69,12 +71,96 @@ func (s *settings) open(onclose func()) {
 		func() { s.window.Perform(system.ActionClose) },
 	)
 	bar.NoTip = true
+	bar.NoDrag = true
+
+	notifications := &section{
+		title:       material.H1(bar.Collection.Calibri().Theme, "Desktop Notifications"),
+		description: material.Caption(bar.Collection.Calibri().Theme, "Adjust desktop notifications for UniteHUD"),
+	}
+	warning := material.Label(bar.Collection.NotoSans().Theme, unit.Sp(11), "📌 Some settings are automatically applied by the OS")
+	warning.Color = nrgba.PastelRed.Alpha(127).Color()
+	warning.Font.Weight = 0
+	notifications.warning = warning
+	notifications.widget = &dropdown.Widget{
+		Theme:    bar.Collection.Calibri().Theme,
+		TextSize: 12,
+		Items: []*dropdown.Item{
+			{
+				Text: "Disabled",
+				Checked: widget.Bool{
+					Value: config.Current.Advanced.Notifications.Disabled.All,
+				},
+				Callback: func(this *dropdown.Item) {
+					config.Current.Advanced.Notifications.Disabled.All = this.Checked.Value
+				},
+			},
+			{
+				Text: "Muted",
+				Checked: widget.Bool{
+					Value: config.Current.Advanced.Notifications.Muted,
+				},
+				Callback: func(this *dropdown.Item) {
+					config.Current.Advanced.Notifications.Muted = this.Checked.Value
+				},
+			},
+			{
+				Text: "Match Starting",
+				Checked: widget.Bool{
+					Value: config.Current.Advanced.Notifications.Disabled.MatchStarting,
+				},
+				Callback: func(this *dropdown.Item) {
+					this.Checked.Value = !this.Checked.Value
+					config.Current.Advanced.Notifications.Disabled.MatchStarting = this.Checked.Value
+				},
+			},
+			{
+				Text: "Match Stopped",
+				Checked: widget.Bool{
+					Value: config.Current.Advanced.Notifications.Disabled.MatchStopped,
+				},
+				Callback: func(this *dropdown.Item) {
+					config.Current.Advanced.Notifications.Disabled.MatchStopped = this.Checked.Value
+				},
+			},
+			{
+				Text: "Updates",
+				Checked: widget.Bool{
+					Value: config.Current.Advanced.Notifications.Disabled.Updates,
+				},
+				Callback: func(this *dropdown.Item) {
+					config.Current.Advanced.Notifications.Disabled.Updates = this.Checked.Value
+				},
+			},
+		},
+		Callback: func(item *dropdown.Item, this *dropdown.Widget) {
+			if item.Text != "Disabled" {
+				return
+			}
+
+			for i := range this.Items {
+				if this.Items[i] == item {
+					continue
+				}
+				this.Items[i].Checked.Value = !item.Checked.Value
+			}
+		},
+	}
+
+	if config.Current.Advanced.Notifications.Disabled.All {
+		this := notifications.widget.(*dropdown.Widget)
+		for i := range this.Items {
+			if this.Items[i].Text == "Disabled" {
+				continue
+			}
+			this.Items[i].Checked.Value = true
+		}
+	}
 
 	frequency := &section{
-		title:       material.Label(bar.Collection.Calibri().Theme, unit.Sp(15), "Match Interval"),
+		title:       material.H1(bar.Collection.Calibri().Theme, "Match Interval"),
 		description: material.Caption(bar.Collection.Calibri().Theme, "Increase the amount of match attempts per second"),
 		widget: &slider.Widget{
-			Slider:     material.Slider(bar.Collection.Calibri().Theme, &widget.Float{Value: float32(config.Current.Advanced.IncreasedCaptureRate)}, 0, 99),
+			Slider:     material.Slider(bar.Collection.Calibri().Theme, &widget.Float{Value: float32(config.Current.Advanced.IncreasedCaptureRate)}, -99, 99),
 			Label:      material.Label(bar.Collection.Calibri().Theme, unit.Sp(15), ""),
 			TextColors: []nrgba.NRGBA{nrgba.White, nrgba.PastelYellow, nrgba.PastelOrange, nrgba.PastelRed},
 			OnValueChanged: func(f float32) {
@@ -82,55 +168,101 @@ func (s *settings) open(onclose func()) {
 			},
 		},
 	}
-	frequencyWarningLabel := material.Label(bar.Collection.NotoSans().Theme, unit.Sp(11), "⚠ Increases CPU Usage")
-	frequencyWarningLabel.Color = nrgba.PastelRed.Alpha(127).Color()
-	frequencyWarningLabel.Font.Weight = 0
-	frequency.warning = frequencyWarningLabel
+	warning = material.Label(bar.Collection.NotoSans().Theme, unit.Sp(11), "⚠ CPU Increase when ≥ 1")
+	warning.Color = nrgba.PastelRed.Alpha(127).Color()
+	warning.Font.Weight = 0
+	frequency.warning = warning
 
 	theme := &section{
-		title:       material.Label(bar.Collection.Calibri().Theme, unit.Sp(15), "Theme"),
+		title:       material.H1(bar.Collection.Calibri().Theme, "Theme"),
 		description: material.Caption(bar.Collection.Calibri().Theme, "Change the color theme of UniteHUD"),
-		widget: colorpicker.New(bar.Collection.Calibri(), []colorpicker.Option{
-			{
-				Label: "Background",
-				Value: &config.Current.Theme.Background,
+		widget: colorpicker.New(
+			bar.Collection.Calibri(),
+			[]colorpicker.Options{
+				{
+					Label: "Background",
+					Value: &config.Current.Theme.Background,
+				},
+				{
+					Label: "Background Alt.",
+					Value: &config.Current.Theme.BackgroundAlt,
+				},
+				{
+					Label: "Foreground",
+					Value: &config.Current.Theme.Foreground,
+				},
+				{
+					Label: "Foreground Alt.",
+					Value: &config.Current.Theme.ForegroundAlt,
+				},
+				{
+					Label: "Title Bar Foreground",
+					Value: &config.Current.Theme.TitleBarForeground,
+				},
+				{
+					Label: "Title Bar Background",
+					Value: &config.Current.Theme.TitleBarBackground,
+				},
+				{
+					Label: "Splash",
+					Value: &config.Current.Theme.Splash,
+				},
+				{
+					Label: "Borders",
+					Value: &config.Current.Theme.Borders,
+				},
+				{
+					Label: "Scrollbar Background",
+					Value: &config.Current.Theme.ScrollbarBackground,
+				},
+				{
+					Label: "Scrollbar Foreground",
+					Value: &config.Current.Theme.ScrollbarForeground,
+				},
+			}...,
+		),
+		warning: &button.Widget{
+			Text:            "Defaults",
+			Pressed:         nrgba.Transparent80,
+			Released:        nrgba.DarkGray,
+			TextSize:        unit.Sp(14),
+			TextInsetBottom: unit.Dp(-2),
+			Size:            image.Pt(80, 20),
+			Font:            bar.Collection.Calibri(),
+
+			OnHoverHint: func() {},
+
+			Click: func(this *button.Widget) {
+				config.Current.SetDefaultTheme()
 			},
-			{
-				Label: "Background Alt.",
-				Value: &config.Current.Theme.BackgroundAlt,
-			},
-			{
-				Label: "Foreground",
-				Value: &config.Current.Theme.Foreground,
-			},
-			{
-				Label: "Title Bar Foreground",
-				Value: &config.Current.Theme.TitleBarForeground,
-			},
-			{
-				Label: "Title Bar Background",
-				Value: &config.Current.Theme.TitleBarBackground,
-			},
-			{
-				Label: "Splash",
-				Value: &config.Current.Theme.Splash,
-			},
-			{
-				Label: "Tool Tip Foreground",
-				Value: &config.Current.Theme.ToolTipForeground,
-			},
-			{
-				Label: "Borders",
-				Value: &config.Current.Theme.Borders,
-			},
-			{
-				Label: "Scrollbar",
-				Value: &config.Current.Theme.Scrollbar,
-			},
-		}...),
+		},
+	}
+	theme.warning.(*button.Widget).Click = func(this *button.Widget) {
+		defer this.Deactivate()
+
+		theme.widget.(*colorpicker.Widget).ApplyDefaults()
 	}
 
-	theme.warning = theme.widget.(*colorpicker.Widget).DefaultButton
+	themes := &section{
+		title:       material.H1(bar.Collection.Calibri().Theme, "Preset Themes"),
+		description: material.Caption(bar.Collection.Calibri().Theme, "Select a theme preset to apply to UniteHUD"),
+		warning:     material.H1(bar.Collection.Calibri().Theme, ""),
+		widget: &dropdown.Widget{
+			Theme:    bar.Collection.Calibri().Theme,
+			TextSize: 16,
+			Items:    []*dropdown.Item{},
+		},
+	}
+	for name := range config.Current.Themes {
+		themes.widget.(*dropdown.Widget).Items = append(themes.widget.(*dropdown.Widget).Items,
+			&dropdown.Item{
+				Text: name,
+				Callback: func(this *dropdown.Item) {
+					println(this.Text)
+				},
+			},
+		)
+	}
 
 	var ops op.Ops
 
@@ -139,19 +271,22 @@ func (s *settings) open(onclose func()) {
 	s.parent.setInsetRight(s.width)
 	defer s.parent.unsetInsetRight(s.width)
 
-	list := material.List(bar.Collection.Calibri().Theme, &widget.List{
-		Scrollbar: widget.Scrollbar{},
-		List: layout.List{
-			Axis:      layout.Vertical,
-			Alignment: layout.Start,
+	list := material.List(
+		bar.Collection.Calibri().Theme,
+		&widget.List{
+			Scrollbar: widget.Scrollbar{},
+			List: layout.List{
+				Axis:      layout.Vertical,
+				Alignment: layout.Start,
+			},
 		},
-	})
+	)
 
-	widgets := []layout.Widget{
-		frequency.section,
-		s.spacer,
-		theme.section,
-		s.spacer,
+	sections := []*section{
+		notifications,
+		frequency,
+		theme,
+		themes,
 	}
 
 	for event := range s.window.Events() {
@@ -174,17 +309,20 @@ func (s *settings) open(onclose func()) {
 			gtx := layout.NewContext(&ops, e)
 
 			bar.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-				decorate.ColorBox(gtx, gtx.Constraints.Max, nrgba.NRGBA(config.Current.Theme.BackgroundAlt))
+				return decorate.BackgroundAlt(gtx, func(gtx layout.Context) layout.Dimensions {
+					decorate.Scrollbar(&list.ScrollbarStyle)
 
-				return list.Layout(gtx, len(widgets), func(gtx layout.Context, index int) layout.Dimensions {
-					return widgets[index](gtx)
+					return list.Layout(gtx, len(sections), func(gtx layout.Context, index int) layout.Dimensions {
+						defer s.spacer(gtx)
+						return sections[index].section(gtx)
+					})
 				})
 			})
 
 			s.window.Invalidate()
 			e.Frame(gtx.Ops)
 		default:
-			notify.Debug("Event missed: %T (Settings Window)", e)
+			notify.Missed(event, "Settings")
 		}
 	}
 }
@@ -198,22 +336,23 @@ func (s *settings) fill() layout.FlexChild {
 func (s *section) section(gtx layout.Context) layout.Dimensions {
 	inset := layout.UniformInset(2)
 
-	decorate.ColorBox(gtx, s.dims.Size, nrgba.NRGBA(config.Current.Theme.BackgroundAlt))
+	s.title.TextSize = 16
+	s.title.Font.Weight = font.ExtraLight
 
 	decorate.Label(&s.title, s.title.Text)
-	decorate.Label(&s.description, s.title.Text)
+	decorate.Label(&s.description, s.description.Text)
 
-	s.dims = layout.Inset{
+	return layout.Inset{
 		Top: unit.Dp(5),
 	}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 		return layout.Flex{
 			Axis:      layout.Vertical,
 			Alignment: layout.Baseline,
 		}.Layout(gtx,
-			s.spacer(),
-
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-				return inset.Layout(gtx, s.title.Layout)
+				return inset.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+					return decorate.Underline(gtx, s.title.Layout)
+				})
 			}),
 
 			s.spacer(),
@@ -227,8 +366,6 @@ func (s *section) section(gtx layout.Context) layout.Dimensions {
 
 			s.spacer(),
 
-			s.spacer(),
-
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 				inset.Top += 5
 				return inset.Layout(gtx, s.description.Layout)
@@ -237,23 +374,22 @@ func (s *section) section(gtx layout.Context) layout.Dimensions {
 			s.spacer(),
 
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-				inset.Top -= 5
+				inset.Bottom += 5
 				return inset.Layout(gtx, s.warning.Layout)
 			}),
 
 			s.spacer(),
+			s.spacer(),
 		)
 	})
-
-	return s.dims
 }
 
 func (s *settings) spacer(gtx layout.Context) layout.Dimensions {
-	return decorate.ColorBox(gtx, image.Pt(gtx.Constraints.Max.X, 5), nrgba.White.Alpha(80))
+	return layout.Inset{Bottom: 10}.Layout(gtx, decorate.Border)
 }
 
 func (s *section) spacer() layout.FlexChild {
 	return layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-		return layout.Spacer{Width: unit.Dp(gtx.Constraints.Max.X), Height: 1}.Layout(gtx)
+		return layout.Spacer{Width: unit.Dp(gtx.Constraints.Max.X), Height: 2}.Layout(gtx)
 	})
 }

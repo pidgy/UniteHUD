@@ -9,16 +9,19 @@ import (
 	"gocv.io/x/gocv"
 
 	"github.com/pidgy/unitehud/config"
-	"github.com/pidgy/unitehud/debug"
+	"github.com/pidgy/unitehud/desktop"
+	"github.com/pidgy/unitehud/desktop/clicked"
 	"github.com/pidgy/unitehud/duplicate"
 	"github.com/pidgy/unitehud/history"
 	"github.com/pidgy/unitehud/match"
 	"github.com/pidgy/unitehud/notify"
+	"github.com/pidgy/unitehud/save"
 	"github.com/pidgy/unitehud/server"
 	"github.com/pidgy/unitehud/splash"
 	"github.com/pidgy/unitehud/state"
 	"github.com/pidgy/unitehud/team"
 	"github.com/pidgy/unitehud/video"
+	"github.com/pidgy/unitehud/video/device"
 	"github.com/pidgy/unitehud/video/monitor"
 	"github.com/pidgy/unitehud/video/window"
 )
@@ -31,10 +34,8 @@ var (
 )
 
 func Clock() {
-	for {
-		sleep(team.Delay(team.Time.Name))
-
-		if idle || config.Current.DisableTime {
+	for ; ; sleep(team.Delay(team.Time.Name)) {
+		if idle || config.Current.Advanced.Matching.Disabled.Time {
 			continue
 		}
 
@@ -64,10 +65,8 @@ func Defeated() {
 	modified := config.Current.TemplatesKilled(team.Game.Name)
 	unmodified := config.Current.TemplatesKilled(team.Game.Name)
 
-	for {
-		sleep(time.Second)
-
-		if idle || config.Current.DisableDefeated {
+	for ; ; sleep(time.Second) {
+		if idle || config.Current.Advanced.Matching.Disabled.Defeated {
 			modified = config.Current.TemplatesKilled(team.Game.Name)
 			unmodified = config.Current.TemplatesKilled(team.Game.Name)
 			continue
@@ -129,10 +128,8 @@ func Energy() {
 
 	confirmScore := -1
 
-	for {
-		sleep(team.Energy.Delay)
-
-		if idle || config.Current.DisableEnergy {
+	for ; ; sleep(team.Energy.Delay) {
+		if idle || config.Current.Advanced.Matching.Disabled.Energy {
 			assured = make(map[int]int)
 			confirmScore = -1
 			continue
@@ -200,10 +197,8 @@ func Energy() {
 func KOs() {
 	var last *duplicate.Duplicate
 
-	for {
-		sleep(time.Millisecond * 1500)
-
-		if idle || config.Current.DisableKOs {
+	for ; ; sleep(time.Millisecond * 1500) {
+		if idle || config.Current.Advanced.Matching.Disabled.KOs {
 			last = nil
 			continue
 		}
@@ -245,10 +240,8 @@ func KOs() {
 func Objectives() {
 	top, bottom, middle := time.Time{}, time.Time{}, time.Time{}
 
-	for {
-		sleep(time.Second)
-
-		if idle || config.Current.DisableObjectives {
+	for ; ; sleep(time.Second) {
+		if idle || config.Current.Advanced.Matching.Disabled.Objectives {
 			top, bottom, middle = time.Time{}, time.Time{}, time.Time{}
 			continue
 		}
@@ -357,9 +350,7 @@ func Objectives() {
 }
 
 func PressButtonToScore() {
-	for {
-		sleep(time.Millisecond * 500)
-
+	for ; ; sleep(time.Millisecond * 500) {
 		if idle {
 			continue
 		}
@@ -405,7 +396,7 @@ func Preview() {
 		notify.Preview = img
 
 		if config.Current.Window != window && config.Current.VideoCaptureDevice != device {
-			notify.System("Input resolution calculated %s", img.Bounds().Max)
+			notify.System("Input resolution calculated: %dpx,%dpx", img.Bounds().Max.X, img.Bounds().Max.Y)
 		}
 
 		window = config.Current.Window
@@ -415,7 +406,7 @@ func Preview() {
 	preview()
 
 	for {
-		if config.Current.DisablePreviews {
+		if config.Current.Advanced.Matching.Disabled.Previews {
 			time.Sleep(time.Second)
 			continue
 		}
@@ -434,10 +425,8 @@ func Preview() {
 }
 
 func Scores(name string) {
-	for {
-		sleep(team.Delay(name))
-
-		if idle || config.Current.DisableScoring {
+	for ; ; sleep(team.Delay(name)) {
+		if idle || config.Current.Advanced.Matching.Disabled.Scoring {
 			continue
 		}
 
@@ -507,7 +496,7 @@ func Scores(name string) {
 		}
 
 		if config.Current.Record {
-			debug.Capture(img, matrix, m.Team, m.Point, p, r)
+			save.Image(img, matrix, m.Team, m.Point, p, r)
 		}
 
 		matrix.Close()
@@ -517,9 +506,7 @@ func Scores(name string) {
 func States() {
 	area := image.Rectangle{}
 
-	for {
-		sleep(time.Second * 2)
-
+	for ; ; sleep(time.Second * 2) {
 		if idle {
 			continue
 		}
@@ -556,7 +543,15 @@ func States() {
 			team.Clear()
 			state.Clear()
 
-			notify.Feed(team.Game.NRGBA, "[%s] Match starting", strings.Title(team.Game.Name))
+			d := config.Current.Window
+			if device.IsActive() {
+				d = device.ActiveName()
+			}
+
+			desktop.Notification("Match is starting").
+				Says("Capturing from %s", d).
+				When(clicked.OpenUniteHUD).
+				Send()
 
 			// Also tells javascript to turn on.
 			server.SetTime(10, 0)
@@ -567,11 +562,9 @@ func States() {
 					break
 				}
 
-				notify.Feed(team.Game.NRGBA, "[%s] Match ended", strings.Title(team.Game.Name))
-
 				// Purple score and objective results.
 				regielekis, regices, regirocks, registeels, rayquazas := server.Objectives(team.Purple)
-				notify.Feed(team.Purple.NRGBA,
+				purpleResult := fmt.Sprintf(
 					"[%s] [+%d KO%s] [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s] [+%d Rayquazas]",
 					strings.Title(team.Purple.Name),
 					server.KOs(team.Purple), s(server.KOs(team.Purple)),
@@ -581,6 +574,7 @@ func States() {
 					registeels, s(registeels),
 					rayquazas,
 				)
+				notify.Feed(team.Purple.NRGBA, purpleResult)
 
 				// Orange score and objective results.
 				regielekis, regices, regirocks, registeels, rayquazas = server.Objectives(team.Orange)
@@ -594,8 +588,8 @@ func States() {
 					registeels, s(registeels),
 					rayquazas,
 				)
-
 				notify.Feed(team.Orange.NRGBA, orangeResult)
+
 			case config.ProfilePlayer:
 				o, p, self := server.Scores()
 				if o+p+self > 0 {
@@ -603,7 +597,7 @@ func States() {
 
 					// Purple score and objective results.
 					regielekis, regices, regirocks, registeels, rayquazas := server.Objectives(team.Purple)
-					notify.Feed(team.Purple.NRGBA,
+					purpleResult := fmt.Sprintf(
 						"[%s] %d [+%d KO%s] [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s] [+%d Rayquazas]",
 						strings.Title(team.Purple.Name),
 						p,
@@ -615,9 +609,11 @@ func States() {
 						rayquazas,
 					)
 
+					notify.Feed(team.Purple.NRGBA, purpleResult)
+
 					// Orange score and objective results.
 					regielekis, regices, regirocks, registeels, rayquazas = server.Objectives(team.Orange)
-					notify.Feed(team.Orange.NRGBA,
+					orangeResult := fmt.Sprintf(
 						"[%s] %d [+%d KO%s] [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s] [+%d Rayquazas]",
 						strings.Title(team.Orange.Name),
 						o,
@@ -629,8 +625,23 @@ func States() {
 						rayquazas,
 					)
 
+					notify.Feed(team.Orange.NRGBA, orangeResult)
+
 					// Self score and objective results.
 					notify.Feed(team.Self.NRGBA, "[%s] %d", strings.Title(team.Self.Name), self)
+
+					pwin := ""
+					owin := ""
+					if p > o {
+						pwin = "(Won)"
+					} else if o > p {
+						owin = "(Won)"
+					}
+
+					desktop.Notification("Match has ended").
+						Says("Purple: %d %s\nOrange: %d %s\nYou scored %d points", p, pwin, o, owin, self).
+						When(clicked.OpenUniteHUD).
+						Send()
 
 					history.Add(p, o, self)
 				}
@@ -657,8 +668,7 @@ func States() {
 }
 
 func Window() {
-	for {
-		time.Sleep(time.Second * 2)
+	for ; ; time.Sleep(time.Second * 2) {
 
 		if config.Current.LostWindow == "" {
 			continue
@@ -746,5 +756,9 @@ func s(size int) string {
 
 func sleep(d time.Duration) {
 	delta := time.Duration(float64(d) * (float64(config.Current.Advanced.IncreasedCaptureRate) / 100))
-	time.Sleep(d - delta)
+	if delta < 0 {
+		time.Sleep(d - delta)
+	} else {
+		time.Sleep(d + delta)
+	}
 }

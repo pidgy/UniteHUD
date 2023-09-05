@@ -5,12 +5,10 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/pidgy/unitehud/desktop"
+	"github.com/pidgy/unitehud/desktop/clicked"
 	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/notify"
-)
-
-var (
-	Available = false
 )
 
 type query struct {
@@ -40,10 +38,13 @@ func Check() {
 		return
 	}
 
-	Available = q.Latest != global.Version && strings.Contains(q.Latest, "beta") == strings.Contains(global.Version, "beta")
+	available := q.Latest != global.Version && strings.Contains(q.Latest, "beta") == strings.Contains(global.Version, "beta")
 
-	if Available {
-		notify.Announce("UniteHUD %s is now available for download at UniteHUD.dev", q.Latest)
+	if available {
+		desktop.Notification("%s Update", q.Latest).
+			Says("An update is available for UniteHUD").
+			When(clicked.VisitWebsite).
+			Send()
 	} else {
 		notify.System("Running the latest version of UniteHUD (%s)", global.Version)
 	}

@@ -7,13 +7,13 @@ import (
 	"os/signal"
 
 	"github.com/pidgy/unitehud/config"
-	"github.com/pidgy/unitehud/debug"
 	"github.com/pidgy/unitehud/detect"
 	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/gui"
 	"github.com/pidgy/unitehud/gui/visual/title"
 	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/process"
+	"github.com/pidgy/unitehud/save"
 	"github.com/pidgy/unitehud/server"
 	"github.com/pidgy/unitehud/state"
 	"github.com/pidgy/unitehud/stats"
@@ -50,15 +50,15 @@ func kill(errs ...error) {
 
 	report := make(chan bool)
 
-	gui.Window.ToastCrash(
+	gui.UI.ToastCrash(
 		"UniteHUD has encountered an unrecoverable error",
 		func() {
 			close(report)
 		},
 		func() {
-			debug.Log()
+			save.Logs()
 
-			err := debug.OpenLogDirectory()
+			err := save.OpenLogDirectory()
 			if err != nil {
 				println(err.Error())
 			}
@@ -71,7 +71,7 @@ func signals() {
 	signal.Notify(sigq, os.Interrupt)
 	<-sigq
 
-	gui.Window.Close()
+	gui.UI.Close()
 	video.Close()
 	electron.Close()
 
@@ -80,7 +80,7 @@ func signals() {
 
 func main() {
 	gui.New()
-	defer gui.Window.Open()
+	defer gui.UI.Open()
 
 	err := process.Replace()
 	if err != nil {
@@ -114,12 +114,10 @@ func main() {
 	notify.System("Assets: %s", config.Current.Assets())
 	notify.System("Default match threshold: %.0f%%", config.Current.Acceptance*100)
 
-	go detect.Preview()
-	// go detect.Window()
-
 	go detect.Clock()
 	go detect.Energy()
 	go detect.PressButtonToScore()
+	go detect.Preview()
 	go detect.Defeated()
 	go detect.KOs()
 	go detect.Objectives()
@@ -132,7 +130,7 @@ func main() {
 	go func() {
 		lastWindow := config.Current.Window
 
-		for action := range gui.Window.Actions {
+		for action := range gui.UI.Actions {
 			switch action {
 			case gui.Closing:
 				close(sigq)
@@ -156,12 +154,12 @@ func main() {
 			case gui.Stop:
 				detect.Pause()
 
-				notify.Denounce("Stopping %s...", title.Default)
+				notify.Announce("Stopping %s...", title.Default)
 
 				// Wait for the capture routines to go idle.
 				// time.Sleep(time.Second * 2)
 
-				notify.Denounce("Stopped %s", gui.Window.Bar.Title)
+				notify.Announce("Stopped %s", title.Default)
 
 				server.Clear()
 				team.Clear()
@@ -181,36 +179,36 @@ func main() {
 					str = "Recording"
 				}
 
-				notify.System("%s template match results in %s", str, debug.Dir)
+				notify.System("%s template match results in %s", str, save.Directory)
 
 				if config.Current.Record {
-					notify.System("Using \"%s\" directory for recording data", debug.Dir)
+					notify.System("Using \"%s\" directory for recording data", save.Directory)
 
 					err = config.Current.Save()
 					if err != nil {
 						kill(err)
 					}
 
-					err := debug.Open()
+					err := save.Open()
 					if err != nil {
-						notify.Error("Failed to open \"%s\" (%v)", debug.Dir, err)
+						notify.Error("Failed to open \"%s\" (%v)", save.Directory, err)
 					}
 				} else {
-					notify.System("Closing open files in %s", debug.Dir)
+					notify.System("Closing open files in %s", save.Directory)
 				}
 			case gui.Log:
-				debug.Log()
+				save.Logs()
 
-				err := debug.Open()
+				err := save.Open()
 				if err != nil {
-					notify.Error("Failed to open \"%s\" (%v)", debug.Dir, err)
+					notify.Error("Failed to open \"%s\" (%v)", save.Directory, err)
 				}
 			case gui.Open:
-				notify.System("Opening \"%s\"", debug.Dir)
+				notify.System("Opening \"%s\"", save.Directory)
 
-				err := debug.Open()
+				err := save.Open()
 				if err != nil {
-					notify.Error("Failed to open \"%s\" (%v)", debug.Dir, err)
+					notify.Error("Failed to open \"%s\" (%v)", save.Directory, err)
 				}
 			case gui.Refresh:
 				notify.Debug("GUI sent \"Refresh\"")

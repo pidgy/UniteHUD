@@ -39,35 +39,53 @@ type Widget struct {
 	Title      string
 	Collection fonts.Collection
 
-	tip         string
-	NoTip       bool
-	Hide        bool
+	NoTip,
+	NoDrag,
+	Hide,
 	HideButtons bool
-
-	grabbed *bool
 
 	*decorations
 }
 
 type decorations struct {
-	title, tip material.LabelStyle
-	titleSet   bool
-	titleInset layout.Inset
-	tipInset   layout.Inset
+	title struct {
+		material.LabelStyle
+		set   bool
+		inset layout.Inset
+	}
 
-	icon      widget.Image
-	iconSet   bool
-	iconInset layout.Inset
+	tip struct {
+		material.LabelStyle
+		set   bool
+		inset layout.Inset
+	}
 
-	minimize, resize, close *button.Widget
-	customs                 []*button.Widget
-	customButtonsOpen       bool
+	icon struct {
+		widget.Image
+		set   bool
+		inset layout.Inset
+	}
 
-	clicked time.Time
+	buttons struct {
+		minimize,
+		resize,
+		close *button.Widget
 
-	drag struct {
-		first, last, diff f32.Point
-		dragging          bool
+		custom []*button.Widget
+		open   bool
+	}
+
+	clicked struct {
+		last time.Time
+	}
+
+	dragging struct {
+		is,
+		was bool
+
+		first,
+		last,
+		diff f32.Point
 	}
 }
 
@@ -76,78 +94,102 @@ func New(title string, collection fonts.Collection, minimize, resize, close func
 		Title:      title,
 		Collection: collection,
 
-		grabbed: new(bool),
-
 		decorations: &decorations{
-			title: material.Label(collection.Calibri().Theme, titleTextSize, title),
-			tip:   material.Label(collection.Calibri().Theme, tipTextSize, ""),
-			icon: widget.Image{
-				Src:   paint.NewImageOp(img.Icon("icon48x48")),
-				Fit:   widget.ScaleDown,
-				Scale: .27,
+			title: struct {
+				material.LabelStyle
+				set   bool
+				inset layout.Inset
+			}{
+				LabelStyle: material.Label(collection.Calibri().Theme, titleTextSize, title),
 			},
-			minimize: &button.Widget{
-				Text:         "-",
-				TextSize:     buttonTextSize,
-				Font:         collection.Cascadia(),
-				Size:         button.IconSize,
-				Pressed:      nrgba.NRGBA(config.Current.Theme.BackgroundAlt).Alpha(255),
-				Released:     nrgba.PastelBlue,
-				NoBorder:     true,
-				SharpCorners: true,
-				Disabled:     minimize == nil,
-				Click: func(this *button.Widget) {
-					defer this.Deactivate()
-					if minimize != nil {
-						minimize()
-					}
+			tip: struct {
+				material.LabelStyle
+				set   bool
+				inset layout.Inset
+			}{
+				LabelStyle: material.Label(collection.Calibri().Theme, tipTextSize, ""),
+			},
+			icon: struct {
+				widget.Image
+				set   bool
+				inset layout.Inset
+			}{
+				Image: widget.Image{
+					Src:   paint.NewImageOp(img.Icon("icon48x48.png")),
+					Fit:   widget.ScaleDown,
+					Scale: .27,
 				},
 			},
-			resize: &button.Widget{
-				Text:         "□",
-				TextSize:     buttonTextSize,
-				Font:         collection.Cascadia(),
-				Size:         button.IconSize,
-				Pressed:      nrgba.NRGBA(config.Current.Theme.BackgroundAlt).Alpha(255),
-				Released:     nrgba.PastelGreen,
-				NoBorder:     true,
-				SharpCorners: true,
-				Disabled:     resize == nil,
-				Click: func(this *button.Widget) {
-					defer this.Deactivate()
-
-					if resize != nil {
-						resize()
-					}
+			buttons: struct {
+				minimize *button.Widget
+				resize   *button.Widget
+				close    *button.Widget
+				custom   []*button.Widget
+				open     bool
+			}{
+				minimize: &button.Widget{
+					Text:         "-",
+					TextSize:     buttonTextSize,
+					Font:         collection.Cascadia(),
+					Size:         button.IconSize,
+					Pressed:      nrgba.NRGBA(config.Current.Theme.BackgroundAlt).Alpha(255),
+					Released:     nrgba.PastelBlue,
+					NoBorder:     true,
+					SharpCorners: true,
+					Disabled:     minimize == nil,
+					Click: func(this *button.Widget) {
+						defer this.Deactivate()
+						if minimize != nil {
+							minimize()
+						}
+					},
 				},
-			},
-			close: &button.Widget{
-				Text:         "×",
-				TextSize:     buttonTextSize,
-				Font:         collection.Cascadia(),
-				Size:         button.IconSize,
-				Pressed:      nrgba.NRGBA(config.Current.Theme.BackgroundAlt).Alpha(255),
-				Released:     nrgba.PastelRed,
-				NoBorder:     true,
-				SharpCorners: true,
+				resize: &button.Widget{
+					Text:         "□",
+					TextSize:     buttonTextSize,
+					Font:         collection.Cascadia(),
+					Size:         button.IconSize,
+					Pressed:      nrgba.NRGBA(config.Current.Theme.BackgroundAlt).Alpha(255),
+					Released:     nrgba.PastelGreen,
+					NoBorder:     true,
+					SharpCorners: true,
+					Disabled:     resize == nil,
+					Click: func(this *button.Widget) {
+						defer this.Deactivate()
 
-				TextInsetBottom: .5,
-				Disabled:        close == nil,
-				Click: func(this *button.Widget) {
-					defer this.Deactivate()
-					if close != nil {
-						close()
-					}
+						if resize != nil {
+							resize()
+						}
+					},
+				},
+				close: &button.Widget{
+					Text:         "×",
+					TextSize:     buttonTextSize,
+					Font:         collection.Cascadia(),
+					Size:         button.IconSize,
+					Pressed:      nrgba.NRGBA(config.Current.Theme.BackgroundAlt).Alpha(255),
+					Released:     nrgba.PastelRed,
+					NoBorder:     true,
+					SharpCorners: true,
+
+					TextInsetBottom: .5,
+					Disabled:        close == nil,
+					Click: func(this *button.Widget) {
+						defer this.Deactivate()
+						if close != nil {
+							close()
+						}
+					},
 				},
 			},
 		},
 	}
 
-	b.decorations.minimize.OnHoverHint = func() { b.ToolTip("Minimize") }
-	b.decorations.resize.OnHoverHint = func() { b.ToolTip("Resize") }
-	b.decorations.close.OnHoverHint = func() { b.ToolTip("Close") }
+	b.decorations.buttons.minimize.OnHoverHint = func() { b.Tip("Minimize") }
+	b.decorations.buttons.resize.OnHoverHint = func() { b.Tip("Resize") }
+	b.decorations.buttons.close.OnHoverHint = func() { b.Tip("Close") }
 
-	b.customs = append(b.customs,
+	b.decorations.buttons.custom = append(b.decorations.buttons.custom,
 		&button.Widget{
 			Text:            "≡",
 			TextSize:        unit.Sp(25),
@@ -157,23 +199,28 @@ func New(title string, collection fonts.Collection, minimize, resize, close func
 			Pressed:         nrgba.NRGBA(config.Current.Theme.BackgroundAlt).Alpha(255),
 			NoBorder:        true,
 			SharpCorners:    true,
-			OnHoverHint:     func() { b.ToolTip("Additional options") },
+			OnHoverHint:     func() { b.Tip("Additional options") },
 			TextInsetBottom: 1,
 			Click: func(this *button.Widget) {
 				defer this.Deactivate()
 
-				b.customButtonsOpen = !b.customButtonsOpen
+				b.decorations.buttons.open = !b.decorations.buttons.open
 
 				this.Text = "≡"
 				this.TextSize = unit.Sp(25)
 				this.TextInsetBottom = 1
-				if b.customButtonsOpen {
+				if b.decorations.buttons.open {
 					this.Text = "🗦"
 					this.TextSize = unit.Sp(20)
 					this.TextInsetBottom = 0
 				}
 			},
-		})
+		},
+	)
+
+	b.decorations.title.Font.Weight = font.Normal
+	b.decorations.tip.Font.Weight = font.ExtraLight
+	b.decorations.tip.Font.Style = font.Italic
 
 	return b
 }
@@ -194,71 +241,78 @@ func (b *Widget) Add(btn *button.Widget) *button.Widget {
 	btn.SharpCorners = true
 	btn.TextInsetBottom++
 
-	b.customs = append(b.customs, btn)
+	b.decorations.buttons.custom = append(b.decorations.buttons.custom, btn)
 
 	return btn
 }
 
 func (b *Widget) Remove(btn *button.Widget) {
 	c := []*button.Widget{}
-	for _, b := range b.customs {
+	for _, b := range b.decorations.buttons.custom {
 		if b.Text != btn.Text {
 			c = append(c, b)
 		}
 	}
-	b.customs = c
+	b.decorations.buttons.custom = c
 
-	if len(b.customs) == 1 && b.customButtonsOpen {
-		b.customs[0].Click(b.customs[0])
+	if len(b.decorations.buttons.custom) == 1 && b.decorations.buttons.open {
+		b.decorations.buttons.custom[0].Click(b.decorations.buttons.custom[0])
 	}
 }
 
 func (b *Widget) Dragging() (image.Point, bool) {
-	if !b.drag.dragging {
+	if !b.dragging.is {
 		return image.Pt(0, 0), false
 	}
-	return b.drag.diff.Round(), true
+	return b.dragging.diff.Round(), true
 }
 
 func (b *Widget) Layout(gtx layout.Context, content layout.Widget) layout.Dimensions {
 	cursor.Draw(gtx)
 
-	for _, ev := range gtx.Events(b.grabbed) {
+	for _, ev := range gtx.Events(b) {
 		e, ok := ev.(pointer.Event)
 		if !ok {
 			continue
 		}
 
-		//cursor.Is(pointer.CursorDefault)
-		if b.drag.dragging {
-			cursor.Is(pointer.CursorPointer)
+		if b.dragging.is {
+			if b.NoDrag {
+				cursor.Is(pointer.CursorNotAllowed)
+			} else {
+				cursor.Is(pointer.CursorPointer)
+			}
+			b.dragging.was = true
+		} else if b.dragging.was {
+			b.dragging.was = false
+			cursor.Is(pointer.CursorDefault)
 		}
 
 		switch e.Type {
 		case pointer.Enter, pointer.Move:
 		case pointer.Press:
-			b.drag.first = e.Position
+			b.dragging.first = e.Position
 		case pointer.Release:
-			b.drag.dragging = false
+			b.dragging.is = false
 
-			b.drag.last = e.Position
-			b.drag.diff = b.drag.last.Sub(b.drag.first)
+			b.dragging.last = e.Position
+			b.dragging.diff = b.dragging.last.Sub(b.dragging.first)
 
-			if time.Since(b.decorations.clicked) < time.Millisecond*250 {
-				defer b.decorations.resize.Deactivate()
-				b.decorations.resize.Click(b.resize)
+			if time.Since(b.decorations.clicked.last) < time.Millisecond*250 {
+				defer b.decorations.buttons.resize.Deactivate()
+				b.decorations.buttons.resize.Click(b.decorations.buttons.resize)
 				break
 			}
-			b.decorations.clicked = time.Now()
+			b.decorations.clicked.last = time.Now()
 		case pointer.Drag:
-			if b.drag.last.Round().Eq(e.Position.Round()) {
+			if b.dragging.last.Round().Eq(e.Position.Round()) {
 				break
 			}
-			b.drag.last = e.Position
+			b.dragging.last = e.Position
 
-			b.drag.diff = b.drag.last.Sub(b.drag.first)
+			b.dragging.diff = b.dragging.last.Sub(b.dragging.first)
 
-			b.drag.dragging = true
+			b.dragging.is = true
 		}
 	}
 
@@ -274,61 +328,58 @@ func (b *Widget) Layout(gtx layout.Context, content layout.Widget) layout.Dimens
 				return layout.Dimensions{Size: image.Pt(gtx.Constraints.Max.X, Height/3)}
 			}
 
-			decorate.ColorBox(gtx, image.Pt(gtx.Constraints.Max.X, Height), nrgba.NRGBA(config.Current.Theme.TitleBarBackground))
+			decorate.BackgroundTitleBar(gtx, image.Pt(gtx.Constraints.Max.X, Height))
 
 			children := []layout.FlexChild{
 				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					if !b.decorations.iconSet {
-						b.decorations.iconSet = true
+					if !b.decorations.icon.set {
+						b.decorations.icon.set = true
 
 						idims := b.decorations.icon.Layout(gtx)
 
 						y := unit.Dp((float64(bar.Max.Y) - float64(idims.Size.Y)) / 2)
-						b.iconInset = layout.Inset{Left: 5, Top: y - 1, Bottom: y}
+						b.icon.inset = layout.Inset{Left: 5, Top: y - 1, Bottom: y}
 					}
 
-					idims := b.iconInset.Layout(gtx, b.icon.Layout)
+					iconDims := b.icon.inset.Layout(gtx, b.icon.Layout)
 
-					decorate.LabelColor(&b.decorations.title, config.Current.Theme.TitleBarForeground)
-					decorate.LabelColor(&b.decorations.tip, config.Current.Theme.ToolTipForeground)
+					decorate.LabelColor(&b.decorations.title.LabelStyle, config.Current.Theme.TitleBarForeground)
+					decorate.LabelColor(&b.decorations.tip.LabelStyle, config.Current.Theme.ForegroundAlt)
 
-					if !b.decorations.titleSet {
-						b.decorations.titleSet = true
+					if !b.decorations.title.set {
+						b.decorations.title.set = true
 
 						titleDims := b.decorations.title.Layout(gtx)
 
-						b.decorations.title.Font.Weight = font.SemiBold
-
 						y := unit.Dp((float64(bar.Max.Y) - float64(titleDims.Size.Y)))
-						b.decorations.titleInset = layout.Inset{Left: 5 + unit.Dp(idims.Size.X), Top: y, Bottom: y}
+						b.decorations.title.inset = layout.Inset{Left: 5 + unit.Dp(iconDims.Size.X), Top: y, Bottom: y}
 
 						tipDims := b.decorations.tip.Layout(gtx)
-						y = unit.Dp((float64(bar.Max.Y) - float64(tipDims.Size.Y)))
-						b.decorations.tipInset = layout.Inset{Left: 5 + unit.Dp(idims.Size.X), Top: y - 1, Bottom: y + 1}
-						b.tipInset.Left += unit.Dp(5 + titleDims.Size.X)
-						b.decorations.tip.Font.Weight = font.ExtraLight
-						b.decorations.tip.Font.Style = font.Italic
+						b.decorations.tip.inset = layout.Inset{
+							Left:   unit.Dp(12 + iconDims.Size.X + titleDims.Size.X),
+							Top:    2,
+							Bottom: 0,
+						}
 
 						return layout.Dimensions{Size: titleDims.Size.Add(tipDims.Size)}
 					}
 
-					dims := b.decorations.titleInset.Layout(gtx, b.decorations.title.Layout)
-
-					if !b.NoTip && b.tip != "" {
-						b.decorations.tip.Text = b.tip
-						dims = layout.Dimensions{Size: dims.Size.Add(b.tipInset.Layout(gtx, b.decorations.tip.Layout).Size)}
+					dims := b.decorations.title.inset.Layout(gtx, b.decorations.title.Layout)
+					if !b.NoTip && b.decorations.tip.Text != "" {
+						b.decorations.tip.Text = "🗧" + b.decorations.tip.Text
+						dims = layout.Dimensions{Size: dims.Size.Add(b.decorations.tip.inset.Layout(gtx, b.decorations.tip.Layout).Size)}
 					}
 
-					return layout.Dimensions{Size: layout.Exact(image.Pt(dims.Size.X+idims.Size.X+10, bar.Max.Y)).Max}
+					return layout.Dimensions{Size: layout.Exact(image.Pt(dims.Size.X+iconDims.Size.X+10, bar.Max.Y)).Max}
 				}),
 
 				layout.Flexed(.1, layout.Spacer{Width: unit.Dp(gtx.Constraints.Max.X)}.Layout),
 			}
 
-			if len(b.customs) > 1 {
-				if b.customButtonsOpen {
-					for i := range b.customs[1:] {
-						btn := b.customs[len(b.customs)-1-i]
+			if len(b.decorations.buttons.custom) > 1 {
+				if b.decorations.buttons.open {
+					for i := range b.decorations.buttons.custom[1:] {
+						btn := b.decorations.buttons.custom[len(b.decorations.buttons.custom)-1-i]
 
 						children = append(children, layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 							return btn.Layout(gtx)
@@ -337,20 +388,20 @@ func (b *Widget) Layout(gtx layout.Context, content layout.Widget) layout.Dimens
 				}
 
 				children = append(children, layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					return b.customs[0].Layout(gtx)
+					return b.decorations.buttons.custom[0].Layout(gtx)
 				}))
 			}
 
 			if !b.HideButtons {
 				children = append(children,
 					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-						return b.decorations.minimize.Layout(gtx)
+						return b.decorations.buttons.minimize.Layout(gtx)
 					}),
 					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-						return b.decorations.resize.Layout(gtx)
+						return b.decorations.buttons.resize.Layout(gtx)
 					}),
 					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-						return b.decorations.close.Layout(gtx)
+						return b.decorations.buttons.close.Layout(gtx)
 					}),
 				)
 			}
@@ -370,45 +421,41 @@ func (b *Widget) Layout(gtx layout.Context, content layout.Widget) layout.Dimens
 			if b.Hide {
 				return layout.Dimensions{Size: image.Pt(gtx.Constraints.Max.X, Height/3)}
 			}
-
-			size := image.Rect(0, 0, gtx.Constraints.Max.X, 1).Max
-			decorate.ColorBox(gtx, size, nrgba.Gray)
-			return layout.Dimensions{Size: size}
+			return decorate.Border(gtx)
 		}),
 
 		layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-			b.tip = ""
+			b.decorations.tip.Text = ""
 			return content(gtx)
 		}),
 	)
 
-	b.decorations.minimize.HoverHint()
-	b.decorations.resize.HoverHint()
-	b.decorations.close.HoverHint()
+	b.decorations.buttons.minimize.HoverHint()
+	b.decorations.buttons.resize.HoverHint()
+	b.decorations.buttons.close.HoverHint()
 
 	customSizes := 0
-	for _, btn := range b.customs {
+	for _, btn := range b.decorations.buttons.custom {
 		customSizes += btn.Size.X
 		btn.HoverHint()
 
-		if !b.customButtonsOpen {
+		if !b.decorations.buttons.open {
 			break
 		}
 	}
 
-	defer clip.Rect(bar.Sub(image.Pt(b.minimize.Size.X+b.resize.Size.X+b.close.Size.X+customSizes, 0))).Push(gtx.Ops).Pop()
+	defer clip.Rect(bar.Sub(image.Pt(b.decorations.buttons.minimize.Size.X+b.decorations.buttons.resize.Size.X+b.decorations.buttons.close.Size.X+customSizes, 0))).Push(gtx.Ops).Pop()
 	pointer.InputOp{
-		Tag:   b.grabbed,
+		Tag:   b,
 		Types: pointer.Press | pointer.Drag | pointer.Release | pointer.Leave | pointer.Enter | pointer.Move,
-		Grab:  true,
 	}.Add(gtx.Ops)
 
 	return dims
 }
 
-func (b *Widget) ToolTip(t string) {
+func (b *Widget) Tip(t string) {
 	if t == "" {
 		return
 	}
-	b.tip = t
+	b.decorations.tip.Text = t
 }

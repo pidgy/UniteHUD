@@ -20,7 +20,7 @@ var (
 )
 
 func AsTimeImage(mat gocv.Mat, kitchen string) (image.Image, error) {
-	if config.Current.DisablePreviews {
+	if config.Current.Advanced.Matching.Disabled.Previews {
 		return nil, nil
 	}
 

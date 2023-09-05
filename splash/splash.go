@@ -28,6 +28,10 @@ var (
 	projectorImg image.Image = nil
 )
 
+func init() {
+	notify.Preview = Projector()
+}
+
 func AsRGBA(i image.Image) *image.RGBA {
 	if i == nil {
 		return &image.RGBA{}

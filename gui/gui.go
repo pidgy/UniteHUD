@@ -12,9 +12,9 @@ import (
 	"gioui.org/app"
 	"gioui.org/io/system"
 	"gioui.org/layout"
-	"gioui.org/op"
 
 	"github.com/pidgy/unitehud/fonts"
+	"github.com/pidgy/unitehud/fps"
 	"github.com/pidgy/unitehud/gui/is"
 	"github.com/pidgy/unitehud/gui/visual/title"
 	"github.com/pidgy/unitehud/notify"
@@ -26,49 +26,54 @@ import (
 type Action string
 
 type GUI struct {
-	loaded bool
+	HWND uintptr
 
 	is is.Is
 
-	*app.Window
-	Bar *title.Widget
+	window *app.Window
+	header *title.Widget
 
-	min, max,
-	size,
-	shift image.Point
-
-	insetLeft,
-	insetRight int
-
-	HWND uintptr
+	inset struct {
+		left,
+		right int
+	}
 
 	Preview bool
 	open    bool
-
-	fullscreen bool
-	resizing   bool
-
 	Actions chan Action
-
 	Running bool
 
-	cpu, ram, uptime string
-	time             time.Time
+	dimensions struct {
+		min,
+		max,
+		size,
+		shift image.Point
 
-	toastActive    bool
-	lastToastError error
-	lastToastTime  time.Time
+		fullscreen,
+		resizing bool
+	}
 
-	ecoMode bool
+	performance struct {
+		cpu, ram, uptime string
+		time             time.Time
+		eco              bool
+	}
+
+	previous struct {
+		position,
+		size image.Point
+
+		toast struct {
+			active bool
+			time   time.Time
+			err    error
+		}
+	}
 
 	resizeToMax bool
 	firstOpen   bool
 
-	fps struct {
-		frames int
-		max    int
-		ticks  int
-	}
+	fps *fps.FPS
 }
 
 const (
@@ -85,7 +90,7 @@ const (
 	Log     = Action("Log")
 )
 
-var Window *GUI
+var UI *GUI
 
 func New() {
 	min := image.Pt(1080, 700)
@@ -93,51 +98,61 @@ func New() {
 
 	notify.System("Generating UI")
 
-	Window = &GUI{
+	UI = &GUI{
 		is: is.Loading,
 
-		Window: app.NewWindow(app.Title(title.Default), app.Decorated(false)),
+		window: app.NewWindow(app.Title(title.Default), app.Decorated(false)),
 
 		HWND: 0,
 
-		min: min,
-		max: max,
+		dimensions: struct {
+			min,
+			max,
+			size,
+			shift image.Point
 
-		size: min,
+			fullscreen,
+			resizing bool
+		}{min, max, min, image.Pt(0, 0), false, false},
 
 		Preview: true,
 		Actions: make(chan Action, 1024),
 
-		resizing: false,
+		fps: fps.New(),
 
-		ecoMode: true,
+		performance: struct {
+			cpu,
+			ram,
+			uptime string
 
-		fps: struct {
-			frames int
-			max    int
-			ticks  int
-		}{0, 60, 0},
+			time time.Time
 
-		cpu:    "0%",
-		ram:    "0MB",
-		uptime: "00:00",
+			eco bool
+		}{
+			cpu:    "0%",
+			ram:    "0MB",
+			uptime: "00:00",
+			time:   time.Now(),
+
+			eco: true,
+		},
 	}
 
-	Window.Bar = title.New(
+	UI.header = title.New(
 		title.Default,
 		fonts.NewCollection(),
-		Window.minimize,
-		Window.resize,
+		UI.minimize,
+		UI.resize,
 		func() {
-			Window.Perform(system.ActionClose)
+			UI.window.Perform(system.ActionClose)
 		},
 	)
 
 	notify.System("Default dimensions detected: %s", max.String())
 
-	go Window.loading()
+	go UI.loading()
 
-	go Window.draw()
+	// go UI.draw()
 }
 
 func (g *GUI) Close() {
@@ -178,24 +193,24 @@ func (g *GUI) Open() {
 }
 
 func (g *GUI) SetWindowPos(shift image.Point) {
-	if g.fullscreen || g.HWND == 0 || g.resizing {
+	if g.dimensions.fullscreen || g.HWND == 0 || g.dimensions.resizing {
 		return
 	}
-	g.resizing = true
+	g.dimensions.resizing = true
 
 	go func() {
-		defer func() { g.resizing = false }()
+		defer func() { g.dimensions.resizing = false }()
 
-		if shift.Eq(g.shift) {
+		if shift.Eq(g.dimensions.shift) {
 			return
 		}
 
 		pos := g.position().Add(shift)
-		if !pos.In(image.Rectangle{Min: image.Pt(0, 0).Sub(g.size), Max: g.max.Add(g.size)}) {
+		if !pos.In(image.Rectangle{Min: image.Pt(0, 0).Sub(g.dimensions.size), Max: g.dimensions.max.Add(g.dimensions.size)}) {
 			return
 		}
 
-		g.shift = shift
+		g.dimensions.shift = shift
 
 		wapi.SetWindowPosNoSize(g.HWND, pos)
 	}()
@@ -217,7 +232,7 @@ func (g *GUI) attachWindowLeft(hwnd uintptr, width int) {
 		y += title.Height
 	}
 
-	wapi.SetWindowPosNone(hwnd, image.Pt(x, y), image.Pt(width, g.size.Y))
+	wapi.SetWindowPosNone(hwnd, image.Pt(x, y), image.Pt(width, g.dimensions.size.Y))
 }
 
 func (g *GUI) attachWindowRight(hwnd uintptr, width int) bool {
@@ -227,73 +242,72 @@ func (g *GUI) attachWindowRight(hwnd uintptr, width int) bool {
 
 	pos := g.position()
 
-	x := pos.X + g.size.X
+	x := pos.X + g.dimensions.size.X
 	y := pos.Y
 	if y < 0 {
 		y += title.Height
 	}
 
-	wapi.SetWindowPosNone(hwnd, image.Pt(x, y), image.Pt(width, g.size.Y))
+	wapi.SetWindowPosNone(hwnd, image.Pt(x, y), image.Pt(width, g.dimensions.size.Y))
 
 	return true
 }
 
-func (g *GUI) draw() {
-	for {
-		tps := time.Second / time.Duration(g.fps.max+1)
-		tick := time.NewTicker(tps)
-		persecond := time.NewTicker(time.Second)
-		g.fps.ticks = 0
+// func (g *GUI) draw() {
+// 	for {
+// 		tps := time.Second / time.Duration(g.fps.max+1)
+// 		tick := time.NewTicker(tps)
+// 		persecond := time.NewTicker(time.Second)
+// 		g.fps.ticks = 0
 
-		notify.Debug("Running at %dfps", g.fps.max)
+// 		notify.Debug("Running at %dfps", g.fps.max)
 
-		for fps := g.fps.max; fps == g.fps.max; {
-			if g.resizing {
-				continue
-			}
+// 		for fps := g.fps.max; fps == g.fps.max; {
+// 			if g.dimensions.resizing {
+// 				continue
+// 			}
 
-			select {
-			case <-persecond.C:
-				g.fps.frames = g.fps.ticks
-				g.fps.ticks = 0
-			case <-tick.C:
-				if g.fps.ticks < g.fps.max {
-					g.Invalidate()
-					g.fps.ticks++
-				}
-			}
-		}
-	}
-}
+// 			select {
+// 			case <-persecond.C:
+// 				g.fps.frames = g.fps.ticks
+// 				g.fps.ticks = 0
+// 			case <-tick.C:
+// 				if g.fps.ticks < g.fps.max {
+// 					g.window.Invalidate()
+// 					g.fps.ticks++
+// 				}
+// 			}
+// 		}
+// 	}
+// }
 
 func (g *GUI) frame(gtx layout.Context, e system.FrameEvent) {
-	op.InvalidateOp{}.Add(gtx.Ops)
-
 	e.Frame(gtx.Ops)
 
-	p, ok := g.Bar.Dragging()
+	p, ok := g.header.Dragging()
 	if ok {
 		g.SetWindowPos(p)
 		return
 	}
+
+	g.fps.Tick(gtx.Now)
 }
 
 func (g *GUI) maximize() {
-	size := g.max.Sub(image.Pt(g.insetRight, 0)).Sub(image.Pt(g.insetLeft, 0))
+	g.previous.position = g.position()
+	g.previous.size = g.dimensions.size
 
-	pt := image.Pt(0, 0).Add(image.Pt(g.insetLeft, 0))
+	left := image.Pt(0, 0).Add(image.Pt(g.inset.left, 0))
+	right := g.dimensions.max.Sub(image.Pt(g.inset.right, 0)).Sub(image.Pt(g.inset.left, 0))
+	wapi.SetWindowPosShow(g.HWND, left, right)
 
-	wapi.SetWindowPosShow(g.HWND, pt, size)
+	g.window.Perform(system.ActionCenter)
 
-	g.Perform(system.ActionMaximize)
-
-	//	g.Perform(system.ActionMaximize)
-
-	g.fullscreen = true
+	g.dimensions.fullscreen = true
 }
 
 func (g *GUI) minimize() {
-	Window.Perform(system.ActionMinimize)
+	g.window.Perform(system.ActionMinimize)
 }
 
 func (g *GUI) next(i is.Is) {
@@ -324,8 +338,6 @@ func (g *GUI) proc() {
 	prev := ctime.Nanoseconds()
 	usage := ktime.Nanoseconds() + utime.Nanoseconds() // Always overflows.
 
-	g.time = time.Now()
-
 	cpus := float64(runtime.NumCPU()) - 2
 
 	peakCPU := 0.0
@@ -353,7 +365,7 @@ func (g *GUI) proc() {
 			notify.SystemWarn("Consumed %.1f%s CPU", peakCPU, "%")
 		}
 
-		g.cpu = fmt.Sprintf("CPU %.1f%s", cpu, "%")
+		g.performance.cpu = fmt.Sprintf("CPU %.1f%s", cpu, "%")
 
 		var m runtime.MemStats
 		runtime.ReadMemStats(&m)
@@ -364,13 +376,13 @@ func (g *GUI) proc() {
 			notify.SystemWarn("Consumed %.0f%s of RAM", peakRAM, "MB")
 		}
 
-		g.ram = fmt.Sprintf("RAM %.0f%s", ram, "MB")
+		g.performance.ram = fmt.Sprintf("RAM %.0f%s", ram, "MB")
 
-		run := time.Time{}.Add(time.Since(g.time))
+		run := time.Time{}.Add(time.Since(g.performance.time))
 		if run.Hour() > 0 {
-			g.uptime = fmt.Sprintf("%1d:%02d:%02d", run.Hour(), run.Minute(), run.Second())
+			g.performance.uptime = fmt.Sprintf("%1d:%02d:%02d", run.Hour(), run.Minute(), run.Second())
 		} else {
-			g.uptime = fmt.Sprintf("%02d:%02d", run.Minute(), run.Second())
+			g.performance.uptime = fmt.Sprintf("%02d:%02d", run.Minute(), run.Second())
 		}
 
 		go stats.CPU(cpu)
@@ -379,18 +391,17 @@ func (g *GUI) proc() {
 }
 
 func (g *GUI) resize() {
-	if g.fullscreen {
+	if g.dimensions.fullscreen {
 		g.unmaximize()
-		return
+	} else {
+		g.maximize()
 	}
-
-	g.maximize()
 }
 
 func (g *GUI) setInsetLeft(left int) {
-	g.insetLeft += left
+	g.inset.left += left
 
-	if g.fullscreen {
+	if g.dimensions.fullscreen {
 		g.maximize()
 		return
 	}
@@ -398,60 +409,57 @@ func (g *GUI) setInsetLeft(left int) {
 	// Move right when space is not available for the inset.
 	pos := g.position()
 
-	if pos.X < g.insetLeft {
-		pos.X += g.insetLeft - pos.X
+	if pos.X < g.inset.left {
+		pos.X += g.inset.left - pos.X
 	}
 
-	wapi.SetWindowPosShow(g.HWND, pos, g.size)
+	wapi.SetWindowPosShow(g.HWND, pos, g.dimensions.size)
 }
 
 func (g *GUI) setInsetRight(right int) {
-	g.insetRight += right
+	g.inset.right += right
 
-	if g.fullscreen {
+	if g.dimensions.fullscreen {
 		g.maximize()
 		return
 	}
 
 	// Move left when new size exceeds max boundaries.
 	pos := g.position()
-	size := pos.X + g.size.X + g.insetRight
+	size := pos.X + g.dimensions.size.X + g.inset.right
 
-	if size > g.max.X {
-		pos.X -= size - g.max.X
+	if size > g.dimensions.max.X {
+		pos.X -= size - g.dimensions.max.X
 	}
 
-	wapi.SetWindowPosShow(g.HWND, pos, g.size)
+	wapi.SetWindowPosShow(g.HWND, pos, g.dimensions.size)
 }
 
 func (g *GUI) unsetInsetLeft(left int) {
-	g.insetLeft -= left
+	g.inset.left -= left
 
-	if g.fullscreen {
+	if g.dimensions.fullscreen {
 		g.maximize()
 		return
 	}
 
-	wapi.SetWindowPosShow(g.HWND, g.position(), g.size)
+	wapi.SetWindowPosShow(g.HWND, g.position(), g.dimensions.size)
 }
 
 func (g *GUI) unsetInsetRight(right int) {
-	g.insetRight -= right
+	g.inset.right -= right
 
-	if g.fullscreen {
+	if g.dimensions.fullscreen {
 		g.maximize()
 		return
 	}
 
-	wapi.SetWindowPosShow(g.HWND, g.position(), g.size)
+	wapi.SetWindowPosShow(g.HWND, g.position(), g.dimensions.size)
 }
 
 func (g *GUI) unmaximize() {
-	g.Perform(system.ActionUnmaximize)
-
-	// wapi.SetWindowPosShow(g.HWND, g.position(), g.min)
-
-	g.fullscreen = false
+	wapi.SetWindowPosShow(g.HWND, g.previous.position, g.previous.size)
+	g.dimensions.fullscreen = false
 }
 
 func max(i, j int) int {

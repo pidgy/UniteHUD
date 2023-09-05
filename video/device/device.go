@@ -31,18 +31,19 @@ func init() {
 	go func() {
 		for ; ; time.Sleep(time.Second * 5) {
 			s, n := sources()
-			if len(s) != len(Sources) {
-				Sources, names = s, n
-				continue
-			}
-
-			for i := range s {
-				if s[i] == Sources[i] {
-					continue
+			for _, got := range n {
+				found := false
+				for _, have := range names {
+					if have == got {
+						found = true
+						break
+					}
 				}
-
-				Sources, names = s, n
-				continue
+				if !found {
+					Sources, names = s, n
+					notify.Debug("New Video Capture Device detected (%s)", got)
+					break
+				}
 			}
 		}
 	}()
@@ -99,6 +100,13 @@ func IsActive() bool {
 	return config.Current.VideoCaptureDevice == active && active != config.NoVideoCaptureDevice
 }
 
+func Name(d int) string {
+	if d != config.NoVideoCaptureDevice && len(names) > d {
+		return names[d]
+	}
+	return fmt.Sprintf("Video Capture Device %d", d)
+}
+
 func Open() error {
 	if running || config.Current.VideoCaptureDevice == config.NoVideoCaptureDevice {
 		notify.Debug("Ignorning call to open video capture device (%s)", ActiveName())
@@ -115,13 +123,6 @@ func Open() error {
 	}
 
 	return nil
-}
-
-func Name(d int) string {
-	if d != config.NoVideoCaptureDevice && len(names) > d {
-		return names[d]
-	}
-	return fmt.Sprintf("Video Capture Device: %d", d)
 }
 
 func reset() {
@@ -187,13 +188,13 @@ func startCaptureDevice() error {
 		close(errq)
 
 		for running && active == config.Current.VideoCaptureDevice {
-			time.Sleep(time.Millisecond)
+			time.Sleep(time.Microsecond)
 
 			if config.Current.VideoCaptureDevice == config.NoVideoCaptureDevice {
 				go Close()
 			}
 
-			if time.Since(lastRequest) > time.Millisecond {
+			if time.Since(lastRequest) > time.Second {
 				continue
 			}
 

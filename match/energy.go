@@ -17,7 +17,7 @@ import (
 )
 
 func AsAeosImage(mat gocv.Mat, points int) (image.Image, error) {
-	if config.Current.DisablePreviews {
+	if config.Current.Advanced.Matching.Disabled.Previews {
 		return nil, nil
 	}
 

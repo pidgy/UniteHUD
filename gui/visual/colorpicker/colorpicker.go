@@ -2,26 +2,21 @@ package colorpicker
 
 import (
 	"fmt"
-	"image"
 	"image/color"
-	"strings"
 
 	"gioui.org/io/key"
 	"gioui.org/layout"
-	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 	"gioui.org/x/colorpicker"
 
-	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/fonts"
-	"github.com/pidgy/unitehud/gui/visual/button"
+	"github.com/pidgy/unitehud/gui/visual/decorate"
 	"github.com/pidgy/unitehud/nrgba"
 )
 
 type Widget struct {
-	DefaultButton *button.Widget
-	DrawButton    bool
+	DrawButton bool
 
 	slider colorpicker.PickerStyle
 	radio  colorpicker.MuxStyle
@@ -31,25 +26,12 @@ type Widget struct {
 	options []colorpicker.MuxOption
 }
 
-type Option colorpicker.MuxOption
+type Options colorpicker.MuxOption
 
-func New(style *fonts.Style, options ...Option) *Widget {
+func New(style *fonts.Style, options ...Options) *Widget {
 	collection := fonts.NewCollection()
 
 	c := &Widget{
-		DefaultButton: &button.Widget{
-			Text:            "Default",
-			Pressed:         nrgba.Transparent80,
-			Released:        nrgba.DarkGray,
-			TextSize:        unit.Sp(14),
-			TextInsetBottom: unit.Dp(-2),
-			Size:            image.Pt(80, 20),
-			BorderWidth:     unit.Sp(.2),
-			Font:            style,
-
-			OnHoverHint: func() {},
-		},
-
 		slider: colorpicker.PickerStyle{
 			MonospaceFace: "monospace",
 
@@ -74,18 +56,10 @@ func New(style *fonts.Style, options ...Option) *Widget {
 			},
 		}),
 	}
-	defer c.defaults()
+	defer c.ApplyDefaults()
 
 	for _, o := range options {
 		c.options = append(c.options, colorpicker.MuxOption(o))
-	}
-
-	c.DefaultButton.Click = func(this *button.Widget) {
-		defer this.Deactivate()
-
-		config.Current.SetDefaultTheme()
-
-		c.defaults()
 	}
 
 	return c
@@ -94,6 +68,10 @@ func New(style *fonts.Style, options ...Option) *Widget {
 func (c *Widget) Layout(gtx layout.Context) layout.Dimensions {
 	//gtx.Constraints.Max.Y = 250
 	gtx.Constraints.Min.X = 1 // Sets the radio button size.
+
+	c.slider.ContrastBg = nrgba.Black.Color()
+	c.slider.Fg = nrgba.Black.Color()
+	//c.slider.Editor = material.Editor(c.radio.Theme, &c.slider.Editor, "")
 
 	switch {
 	case c.radio.Changed():
@@ -110,10 +88,10 @@ func (c *Widget) Layout(gtx layout.Context) layout.Dimensions {
 
 		if !c.slider.Editor.Focused() {
 			c.slider.Editor.SetText(hex(col))
-		} else {
-			c.slider.Editor.SetText(strings.ToUpper(c.slider.Editor.Text()))
 		}
 	}
+
+	c.slider.Label = ""
 
 	widgets := []layout.Widget{
 		c.slider.Layout,
@@ -121,16 +99,15 @@ func (c *Widget) Layout(gtx layout.Context) layout.Dimensions {
 			return c.radio.Layout(gtx)
 		},
 	}
-	if c.DrawButton {
-		widgets = append([]layout.Widget{c.DefaultButton.Layout}, widgets...)
-	}
+
+	decorate.Scrollbar(&c.list.ScrollbarStyle)
 
 	return c.list.Layout(gtx, len(widgets), func(gtx layout.Context, index int) layout.Dimensions {
 		return widgets[index](gtx)
 	})
 }
 
-func (c *Widget) defaults() {
+func (c *Widget) ApplyDefaults() {
 	collection := fonts.NewCollection()
 
 	w := colorpicker.NewMuxState(c.options...)
@@ -143,8 +120,6 @@ func (c *Widget) defaults() {
 	c.slider.Theme.Fg = nrgba.White.Color()
 	c.slider.Theme.ContrastFg = nrgba.Black.Color()
 	c.slider.Theme.ContrastBg = nrgba.Black.Color()
-
-	c.list.Track.Color = config.Current.Theme.Scrollbar
 }
 
 func hex(c color.NRGBA) string {
