@@ -64,6 +64,8 @@ type projected struct {
 }
 
 func (g *GUI) projector() {
+	g.header.Open()
+
 	projected := projected{
 		img:   splash.Invalid(),
 		tag:   new(bool),
@@ -142,7 +144,7 @@ func (g *GUI) projector() {
 		OnHoverHint:     func() { g.header.Tip("Save configuration") },
 		Click: func(this *button.Widget) {
 			g.ToastYesNo("Save", "Save configuration changes?",
-				func() {
+				OnToastYes(func() {
 					defer this.Deactivate()
 
 					server.Clear()
@@ -159,8 +161,8 @@ func (g *GUI) projector() {
 					}
 
 					notify.System("Configuration saved to " + config.Current.File())
-				},
-				this.Deactivate,
+				}),
+				OnToastNo(this.Deactivate),
 			)
 		},
 	}))
@@ -287,10 +289,8 @@ func (g *GUI) projector() {
 				return
 			}
 
-			g.ToastYesNo(
-				"Save",
-				"Save configuration changes?",
-				func() {
+			g.ToastYesNo("Save", "Save configuration changes?",
+				OnToastYes(func() {
 					defer this.Deactivate()
 
 					server.Clear()
@@ -304,8 +304,8 @@ func (g *GUI) projector() {
 
 					g.Actions <- Refresh
 					g.next(is.MainMenu)
-				},
-				func() {
+				}),
+				OnToastNo(func() {
 					defer this.Deactivate()
 
 					server.Clear()
@@ -315,10 +315,21 @@ func (g *GUI) projector() {
 
 					g.Actions <- Refresh
 					g.next(is.MainMenu)
-				},
+				}),
 			)
 		},
 	}
+
+	defer g.header.Remove(g.header.Add(&button.Widget{
+		Text:            "🏠",
+		Font:            g.header.Collection.NishikiTeki(),
+		Released:        nrgba.ForestGreen.Alpha(100),
+		TextSize:        unit.Sp(16),
+		TextInsetBottom: -1,
+		Disabled:        false,
+		OnHoverHint:     backButton.OnHoverHint,
+		Click:           backButton.Click,
+	}))
 
 	resetButton := &button.Widget{
 		Text:            "Reset",
@@ -331,37 +342,40 @@ func (g *GUI) projector() {
 		Size:            image.Pt(115, 20),
 		BorderWidth:     unit.Sp(.5),
 		Click: func(this *button.Widget) {
-			g.ToastYesNo("Reset", fmt.Sprintf("Reset %s configuration?", config.Current.Profile), func() {
-				defer this.Deactivate()
-				defer server.Clear()
+			g.ToastYesNo("Reset", fmt.Sprintf("Reset %s configuration?", config.Current.Profile),
+				OnToastYes(func() {
+					defer this.Deactivate()
+					defer server.Clear()
 
-				videos.device.list.Callback(videos.device.list.Items[0], videos.device.list)
+					videos.device.list.Callback(videos.device.list.Items[0], videos.device.list)
 
-				electron.Close()
+					electron.Close()
 
-				err = config.Current.Reset()
-				if err != nil {
-					notify.Error("Failed to reset %s configuration (%v)", config.Current.Profile, err)
-				}
+					err = config.Current.Reset()
+					if err != nil {
+						notify.Error("Failed to reset %s configuration (%v)", config.Current.Profile, err)
+					}
 
-				config.Current.Reload()
+					config.Current.Reload()
 
-				areas.energy.Min, areas.energy.Max = config.Current.Energy.Min, config.Current.Energy.Max
-				areas.time.Min, areas.time.Max = config.Current.Time.Min, config.Current.Time.Max
-				areas.score.Min, areas.score.Max = config.Current.Scores.Min, config.Current.Scores.Max
-				areas.objective.Min, areas.objective.Max = config.Current.Objectives.Min, config.Current.Objectives.Max
-				areas.ko.Min, areas.ko.Max = config.Current.KOs.Min, config.Current.KOs.Max
+					areas.energy.Min, areas.energy.Max = config.Current.Energy.Min, config.Current.Energy.Max
+					areas.time.Min, areas.time.Max = config.Current.Time.Min, config.Current.Time.Max
+					areas.score.Min, areas.score.Max = config.Current.Scores.Min, config.Current.Scores.Max
+					areas.objective.Min, areas.objective.Max = config.Current.Objectives.Min, config.Current.Objectives.Max
+					areas.ko.Min, areas.ko.Max = config.Current.KOs.Min, config.Current.KOs.Max
 
-				// videos.window.populate(true)
-				videos.device.populate(true)
-				videos.monitor.populate(true)
+					// videos.window.populate(true)
+					videos.device.populate(true)
+					videos.monitor.populate(true)
 
-				g.Actions <- Refresh
+					g.Actions <- Refresh
 
-				g.next(is.MainMenu)
+					g.next(is.MainMenu)
 
-				notify.Announce("Reset UniteHUD %s configuration", config.Current.Profile)
-			}, this.Deactivate)
+					notify.Announce("Reset UniteHUD %s configuration", config.Current.Profile)
+				}),
+				OnToastNo(this.Deactivate),
+			)
 		},
 	}
 
@@ -376,14 +390,17 @@ func (g *GUI) projector() {
 		Size:            image.Pt(115, 20),
 		BorderWidth:     unit.Sp(.5),
 		Click: func(this *button.Widget) {
-			g.ToastYesNo("Close HUD Overlay", "Close HUD Overlay?", func() {
-				defer this.Deactivate()
+			g.ToastYesNo("Close HUD Overlay", "Close HUD Overlay?",
+				OnToastYes(func() {
+					defer this.Deactivate()
 
-				electron.Close()
+					electron.Close()
 
-				config.Current.HUDOverlay = false
+					config.Current.HUDOverlay = false
 
-			}, this.Deactivate)
+				}),
+				OnToastNo(this.Deactivate),
+			)
 		},
 	}
 
@@ -398,21 +415,24 @@ func (g *GUI) projector() {
 		Size:            image.Pt(115, 20),
 		BorderWidth:     unit.Sp(.5),
 		Click: func(this *button.Widget) {
-			g.ToastYesNo("Open HUD Overlay", "Open HUD overlay?", func() {
-				defer this.Deactivate()
+			g.ToastYesNo("Open HUD Overlay", "Open HUD overlay?",
+				OnToastYes(func() {
+					defer this.Deactivate()
 
-				electron.Close()
+					electron.Close()
 
-				config.Current.HUDOverlay = true
+					config.Current.HUDOverlay = true
 
-				err = electron.Open()
-				if err != nil {
-					g.ToastError(err)
-					g.next(is.MainMenu)
-					return
-				}
+					err = electron.Open()
+					if err != nil {
+						g.ToastError(err)
+						g.next(is.MainMenu)
+						return
+					}
 
-			}, this.Deactivate)
+				}),
+				OnToastNo(this.Deactivate),
+			)
 		},
 	}
 
@@ -905,6 +925,7 @@ func (p *projected) spacer(x, y float32) layout.FlexChild {
 		if x != 0 {
 			gtx.Constraints.Max.X = int(x)
 		}
+
 		if y != 0 {
 			gtx.Constraints.Max.Y = int(y)
 		}

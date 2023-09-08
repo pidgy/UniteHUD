@@ -93,10 +93,10 @@ func Underline(gtx layout.Context, w layout.Widget) layout.Dimensions {
 	dims := w(gtx)
 
 	paint.FillShape(gtx.Ops,
-		config.Current.Theme.Foreground,
+		nrgba.NRGBA(config.Current.Theme.Foreground).Alpha(127).Color(),
 		clip.Stroke{
 			Path:  clip.UniformRRect(image.Rect(0, dims.Size.Y, dims.Size.X, dims.Size.Y), 0).Path(gtx.Ops),
-			Width: 1,
+			Width: .5,
 		}.Op(),
 	)
 

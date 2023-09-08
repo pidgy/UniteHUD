@@ -8,6 +8,7 @@ import (
 
 	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/detect"
+	"github.com/pidgy/unitehud/discord"
 	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/gui"
 	"github.com/pidgy/unitehud/gui/visual/title"
@@ -106,6 +107,8 @@ func main() {
 	if err != nil {
 		notify.Error("Failed to start UniteHUD overlay (%v)", err)
 	}
+
+	go discord.Connect()
 
 	notify.System("Debug mode: %t", global.DebugMode)
 	notify.System("Server address: \"%s\"", server.Address)

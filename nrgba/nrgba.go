@@ -1,6 +1,7 @@
 package nrgba
 
 import (
+	"fmt"
 	"image/color"
 
 	"github.com/pidgy/unitehud/rgba"
@@ -32,8 +33,10 @@ var (
 	Gray           = NRGBA(rgba.Gray)
 	Green          = NRGBA(rgba.Green)
 	Highlight      = NRGBA(rgba.Highlight)
+	Lemon          = NRGBA(rgba.Lemon)
 	LightGray      = NRGBA(rgba.LightGray)
 	LightPurple    = NRGBA(rgba.LightPurple)
+	Lilac          = NRGBA(rgba.Lilac)
 	Night          = NRGBA(rgba.Night)
 	Nothing        = NRGBA(rgba.Nothing)
 	OfficeBlue     = NRGBA(rgba.OfficeBlue)
@@ -86,6 +89,10 @@ func (n NRGBA) Color() color.NRGBA {
 func (n NRGBA) Ref() *color.NRGBA {
 	c := color.NRGBA(n)
 	return &c
+}
+
+func (n NRGBA) String() string {
+	return fmt.Sprintf("(%d,%d,%d,%d)", n.R, n.G, n.B, n.A)
 }
 
 func Objective(name string) NRGBA {

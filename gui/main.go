@@ -173,7 +173,7 @@ func (g *GUI) main() {
 		Text:        "🗠",
 		TextSize:    unit.Sp(16),
 		Font:        g.header.Collection.NishikiTeki(),
-		OnHoverHint: func() { g.header.Tip("View event history") },
+		OnHoverHint: func() { g.header.Tip("View win/loss history") },
 		Released:    nrgba.Seafoam,
 
 		Click: func(this *button.Widget) {
@@ -198,21 +198,22 @@ func (g *GUI) main() {
 				drag = "Drag \"UniteHUD Broadcaster\" into any OBS scene."
 			}
 
-			g.ToastOK("Overlay", drag, func() {
-				exe, err := os.Executable()
-				if err != nil {
-					notify.Error("Failed to open www/ directory: %v", err)
-					return
-				}
+			g.ToastOK("Overlay", drag,
+				OnToastOK(func() {
+					exe, err := os.Executable()
+					if err != nil {
+						notify.Error("Failed to open www/ directory: %v", err)
+						return
+					}
 
-				dir := filepath.Dir(exe)
+					dir := filepath.Dir(exe)
 
-				err = open.Run(dir + "/www")
-				if err != nil {
-					notify.Error("Failed to open www/ directory: %v", err)
-					return
-				}
-			},
+					err = open.Run(dir + "/www")
+					if err != nil {
+						notify.Error("Failed to open www/ directory: %v", err)
+						return
+					}
+				}),
 			)
 		},
 	}))
@@ -312,7 +313,7 @@ func (g *GUI) main() {
 				}
 			}
 
-			g.ToastYesNo(title, description, yes, this.Deactivate)
+			g.ToastYesNo(title, description, OnToastYes(yes), OnToastNo(this.Deactivate))
 		},
 	}))
 
@@ -512,7 +513,7 @@ func (g *GUI) main() {
 			)
 		}
 
-		if g.performance.eco && state.Since() > time.Minute*30 && !stopButton.Disabled {
+		if g.performance.eco && state.Idle() > time.Minute*30 && !stopButton.Disabled {
 			desktop.Notification("Eco Mode").
 				Says("No matches detected for 30 minutes, stopping to save resources").
 				When(clicked.OpenUniteHUD).
@@ -532,20 +533,42 @@ func (g *GUI) main() {
 
 			g.dimensions.size = event.Size
 
+			decorate.Background(gtx)
+			decorate.Label(&cpuLabel, g.performance.cpu)
+			decorate.Label(&cpuGraph, stats.CPUGraph())
+			decorate.Label(&ramLabel, g.performance.ram)
+			decorate.Label(&ramGraph, stats.RAMGraph())
+			decorate.Label(&holdingLabel, holdingLabel.Text)
+			decorate.ForegroundAlt(&cpuGraph.Color)
+			decorate.ForegroundAlt(&ramGraph.Color)
+
 			g.header.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				return split.Layout(gtx,
 					func(gtx layout.Context) layout.Dimensions {
 						return decorate.BackgroundAlt(gtx, func(gtx layout.Context) layout.Dimensions {
 							{
-								warnings := []string{}
-								if config.Current.Advanced.IncreasedCaptureRate > 0 {
+								warnings, nonwarnings := []string{}, []string{}
+								switch {
+								case config.Current.Advanced.IncreasedCaptureRate > 0:
 									warnings = append(warnings, fmt.Sprintf("Match Frequency: %d%%",
+										100+config.Current.Advanced.IncreasedCaptureRate))
+								case config.Current.Advanced.IncreasedCaptureRate < 0:
+									nonwarnings = append(warnings, fmt.Sprintf("Match Frequency: %d%%",
 										100+config.Current.Advanced.IncreasedCaptureRate))
 								}
 
 								if len(warnings) > 0 {
 									warningLabel.Text = fmt.Sprintf("⚠ CPU (%s)", strings.Join(warnings, ","))
 
+									layout.Inset{
+										Left: unit.Dp(4),
+										Top:  unit.Dp(1),
+									}.Layout(gtx, warningLabel.Layout)
+								}
+
+								if len(nonwarnings) > 0 {
+									warningLabel.Text = fmt.Sprintf("⚠ CPU (%s)", strings.Join(nonwarnings, ","))
+									warningLabel.Color = nrgba.PastelGreen.Color()
 									layout.Inset{
 										Left: unit.Dp(4),
 										Top:  unit.Dp(1),
@@ -578,38 +601,28 @@ func (g *GUI) main() {
 								}.Layout(gtx, windowHeader.Layout)
 							}
 							{
-								decorate.Label(&cpuLabel, g.performance.cpu)
 								layout.Inset{
 									Top:  unit.Dp(28),
 									Left: unit.Dp(float32(gtx.Constraints.Max.X - 408)),
 								}.Layout(gtx, cpuLabel.Layout)
 
-								decorate.Label(&cpuGraph, stats.CPUGraph())
-								decorate.ForegroundAlt(&cpuGraph.Color)
 								layout.Inset{
 									Top:  unit.Dp(1),
 									Left: unit.Dp(float32(gtx.Constraints.Max.X - 450)),
 								}.Layout(gtx, cpuGraph.Layout)
 
-								decorate.Label(&ramLabel, g.performance.ram)
 								layout.Inset{
 									Top:  unit.Dp(28),
 									Left: unit.Dp(float32(gtx.Constraints.Max.X - 248)),
 								}.Layout(gtx, ramLabel.Layout)
 
-								decorate.Label(&ramGraph, stats.RAMGraph())
-								decorate.ForegroundAlt(&ramGraph.Color)
 								layout.Inset{
 									Top:  unit.Dp(1),
 									Left: unit.Dp(float32(gtx.Constraints.Max.X - 300)),
 								}.Layout(gtx, ramGraph.Layout)
 
-								h := fmt.Sprintf("%d/%2d", team.Energy.Holding, team.Energy.HoldingMax)
-								if team.Energy.Holding < 10 {
-									h = "0" + h
-								}
+								holdingLabel.Text = fmt.Sprintf("%02d/%02d", team.Energy.Holding, team.Energy.HoldingMax)
 
-								decorate.Label(&holdingLabel, h)
 								layout.Inset{
 									Top:  unit.Dp(50),
 									Left: unit.Dp(float32(gtx.Constraints.Max.X - 35)),

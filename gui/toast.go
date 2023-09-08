@@ -22,6 +22,12 @@ import (
 	"github.com/pidgy/unitehud/nrgba"
 )
 
+type (
+	OnToastYes func()
+	OnToastNo  func()
+	OnToastOK  func()
+)
+
 const (
 	toastTextSize = unit.Sp(16)
 )
@@ -113,7 +119,7 @@ func (g *GUI) ToastCrash(reason string, closed, logs func()) {
 				e.Frame(gtx.Ops)
 
 			default:
-				notify.Missed(event, "Toast Crash")
+				notify.Missed(event, "ToastCrash")
 			}
 		}
 	}()
@@ -131,7 +137,7 @@ func (g *GUI) ToastError(err error) {
 	es := strings.Split(e, " ")
 	es[0] = strings.Title(es[0])
 
-	g.ToastOK("Error", strings.Join(es, " "))
+	g.ToastOK("Error", strings.Join(es, " "), OnToastOK(nil))
 }
 
 func (g *GUI) ToastErrorf(format string, a ...interface{}) {
@@ -148,10 +154,10 @@ func (g *GUI) ToastErrorForce(err error) {
 
 	g.previous.toast.active = false
 
-	g.ToastOK("Error", strings.Join(es, " "))
+	g.ToastOK("Error", strings.Join(es, " "), OnToastOK(nil))
 }
 
-func (g *GUI) ToastOK(header, msg string, callbacks ...func()) {
+func (g *GUI) ToastOK(header, msg string, ok OnToastOK) {
 	if g.previous.toast.active {
 		return
 	}
@@ -190,8 +196,8 @@ func (g *GUI) ToastOK(header, msg string, callbacks ...func()) {
 			Click: func(this *button.Widget) {
 				defer this.Deactivate()
 
-				for _, cb := range callbacks {
-					cb()
+				if ok != nil {
+					ok()
 				}
 
 				w.Perform(system.ActionClose)
@@ -203,7 +209,7 @@ func (g *GUI) ToastOK(header, msg string, callbacks ...func()) {
 		for event := range w.Events() {
 			e, ok := event.(system.FrameEvent)
 			if !ok {
-				notify.Missed(event, "Toast Ok")
+				notify.Missed(event, "ToastOk")
 				continue
 			}
 
@@ -249,7 +255,7 @@ func (g *GUI) ToastOK(header, msg string, callbacks ...func()) {
 	}()
 }
 
-func (g *GUI) ToastYesNo(header, msg string, y, n func()) {
+func (g *GUI) ToastYesNo(header, msg string, y OnToastYes, n OnToastNo) {
 	if g.previous.toast.active {
 		return
 	}
@@ -313,7 +319,7 @@ func (g *GUI) ToastYesNo(header, msg string, y, n func()) {
 		for event := range w.Events() {
 			e, ok := event.(system.FrameEvent)
 			if !ok {
-				notify.Missed(event, "Toast Yes/No")
+				notify.Missed(event, "ToastYesNo")
 				continue
 			}
 

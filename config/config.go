@@ -85,6 +85,10 @@ type Config struct {
 				Previews bool
 			}
 		}
+
+		Discord struct {
+			Disabled bool
+		}
 	}
 
 	Crashed string

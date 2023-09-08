@@ -73,16 +73,56 @@ func (s *settings) open(onclose func()) {
 	bar.NoTip = true
 	bar.NoDrag = true
 
-	notifications := &section{
-		title:       material.H1(bar.Collection.Calibri().Theme, "Desktop Notifications"),
-		description: material.Caption(bar.Collection.Calibri().Theme, "Adjust desktop notifications for UniteHUD"),
+	discord := &section{
+		title: material.Label(bar.Collection.NotoSans().Theme, 14, "🎮 Discord Activity"),
+		description: material.Caption(bar.Collection.Calibri().Theme,
+			"Enable/Disable Discord activity updates"),
+		widget: &button.Widget{
+			Text:            "Enabled",
+			Pressed:         nrgba.Transparent80,
+			Released:        nrgba.PastelGreen,
+			TextSize:        unit.Sp(14),
+			TextInsetBottom: unit.Dp(-2),
+			Size:            image.Pt(80, 20),
+			Font:            bar.Collection.Calibri(),
+
+			OnHoverHint: func() {},
+
+			Click: func(this *button.Widget) {
+				config.Current.Advanced.Discord.Disabled = !config.Current.Advanced.Discord.Disabled
+
+				this.Released = nrgba.PastelGreen
+				this.Text = "Enabled"
+
+				if config.Current.Advanced.Discord.Disabled {
+					this.Released = nrgba.PastelRed
+					this.Text = "Disabled"
+				}
+			},
+		},
 	}
-	warning := material.Label(bar.Collection.NotoSans().Theme, unit.Sp(11), "📌 Some settings are automatically applied by the OS")
-	warning.Color = nrgba.PastelRed.Alpha(127).Color()
-	warning.Font.Weight = 0
-	notifications.warning = warning
+	discordWarning := material.Label(bar.Collection.NotoSans().Theme, unit.Sp(11),
+		"🔌 Activity Privacy settings in Discord can prevent this feature from working")
+	discordWarning.Color = nrgba.PastelRed.Alpha(127).Color()
+	discordWarning.Font.Weight = 0
+	discord.warning = discordWarning
+
+	if config.Current.Advanced.Discord.Disabled {
+		discord.widget.(*button.Widget).Released = nrgba.PastelRed
+		discord.widget.(*button.Widget).Text = "Disabled"
+	}
+
+	notifications := &section{
+		title:       material.Label(bar.Collection.NotoSans().Theme, 14, "🔔 Desktop Notifications"),
+		description: material.Caption(bar.Collection.NotoSans().Theme, "Adjust desktop notifications for UniteHUD"),
+	}
+	notificationsWarning := material.Label(bar.Collection.NotoSans().Theme, unit.Sp(11),
+		"📌 Some settings are automatically applied by the OS")
+	notificationsWarning.Color = nrgba.PastelRed.Alpha(127).Color()
+	notificationsWarning.Font.Weight = 0
+	notifications.warning = notificationsWarning
 	notifications.widget = &dropdown.Widget{
-		Theme:    bar.Collection.Calibri().Theme,
+		Theme:    bar.Collection.NotoSans().Theme,
 		TextSize: 12,
 		Items: []*dropdown.Item{
 			{
@@ -157,27 +197,27 @@ func (s *settings) open(onclose func()) {
 	}
 
 	frequency := &section{
-		title:       material.H1(bar.Collection.Calibri().Theme, "Match Interval"),
-		description: material.Caption(bar.Collection.Calibri().Theme, "Increase the amount of match attempts per second"),
+		title:       material.Label(bar.Collection.NotoSans().Theme, 14, "🕔 Match Interval"),
+		description: material.Caption(bar.Collection.NotoSans().Theme, "Increase the amount of match attempts per second"),
 		widget: &slider.Widget{
-			Slider:     material.Slider(bar.Collection.Calibri().Theme, &widget.Float{Value: float32(config.Current.Advanced.IncreasedCaptureRate)}, -99, 99),
-			Label:      material.Label(bar.Collection.Calibri().Theme, unit.Sp(15), ""),
+			Slider:     material.Slider(bar.Collection.NotoSans().Theme, &widget.Float{Value: float32(config.Current.Advanced.IncreasedCaptureRate)}, -99, 99),
+			Label:      material.Label(bar.Collection.NotoSans().Theme, unit.Sp(15), ""),
 			TextColors: []nrgba.NRGBA{nrgba.White, nrgba.PastelYellow, nrgba.PastelOrange, nrgba.PastelRed},
 			OnValueChanged: func(f float32) {
 				config.Current.Advanced.IncreasedCaptureRate = int64(f)
 			},
 		},
 	}
-	warning = material.Label(bar.Collection.NotoSans().Theme, unit.Sp(11), "⚠ CPU Increase when ≥ 1")
-	warning.Color = nrgba.PastelRed.Alpha(127).Color()
-	warning.Font.Weight = 0
-	frequency.warning = warning
+	notificationsWarning = material.Label(bar.Collection.NotoSans().Theme, unit.Sp(11), "⚠ CPU Increase when ≥ 1")
+	notificationsWarning.Color = nrgba.PastelRed.Alpha(127).Color()
+	notificationsWarning.Font.Weight = 0
+	frequency.warning = notificationsWarning
 
 	theme := &section{
-		title:       material.H1(bar.Collection.Calibri().Theme, "Theme"),
-		description: material.Caption(bar.Collection.Calibri().Theme, "Change the color theme of UniteHUD"),
+		title:       material.Label(bar.Collection.NotoSans().Theme, 14, "🎨 Theme"),
+		description: material.Caption(bar.Collection.NotoSans().Theme, "Change the color theme of UniteHUD"),
 		widget: colorpicker.New(
-			bar.Collection.Calibri(),
+			bar.Collection.NotoSans(),
 			[]colorpicker.Options{
 				{
 					Label: "Background",
@@ -244,11 +284,11 @@ func (s *settings) open(onclose func()) {
 	}
 
 	themes := &section{
-		title:       material.H1(bar.Collection.Calibri().Theme, "Preset Themes"),
-		description: material.Caption(bar.Collection.Calibri().Theme, "Select a theme preset to apply to UniteHUD"),
-		warning:     material.H1(bar.Collection.Calibri().Theme, ""),
+		title:       material.Label(bar.Collection.NotoSans().Theme, 14, "📦 Preset Themes"),
+		description: material.Caption(bar.Collection.NotoSans().Theme, "Select a theme preset to apply to UniteHUD"),
+		warning:     material.Label(bar.Collection.NotoSans().Theme, 14, ""),
 		widget: &dropdown.Widget{
-			Theme:    bar.Collection.Calibri().Theme,
+			Theme:    bar.Collection.NotoSans().Theme,
 			TextSize: 16,
 			Items:    []*dropdown.Item{},
 		},
@@ -283,6 +323,7 @@ func (s *settings) open(onclose func()) {
 	)
 
 	sections := []*section{
+		discord,
 		notifications,
 		frequency,
 		theme,
@@ -335,8 +376,7 @@ func (s *settings) fill() layout.FlexChild {
 
 func (s *section) section(gtx layout.Context) layout.Dimensions {
 	inset := layout.UniformInset(2)
-
-	s.title.TextSize = 16
+	inset.Left += 10
 	s.title.Font.Weight = font.ExtraLight
 
 	decorate.Label(&s.title, s.title.Text)

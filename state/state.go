@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/team"
 )
 
@@ -63,7 +64,7 @@ const (
 )
 
 var (
-	Events = []*Event{}
+	Events = []*Event{{EventType: Nothing, Time: global.Uptime}}
 )
 
 func (e EventType) Int() int {
@@ -167,7 +168,7 @@ func Add(e EventType, clock string, points int) {
 }
 
 func Clear() {
-	Events = []*Event{}
+	Events = []*Event{{EventType: Nothing, Time: global.Uptime}}
 }
 
 func Dump() (string, bool) {
@@ -243,6 +244,10 @@ func First(e EventType, since time.Duration) *Event {
 	return nil
 }
 
+func Last() *Event {
+	return Events[0]
+}
+
 func Occured(since time.Duration, e ...EventType) *Event {
 	for _, e := range e {
 		event := e.Occured(since)
@@ -257,16 +262,11 @@ func Past(e EventType, since time.Duration) []*Event {
 	events := []*Event{}
 
 	for _, event := range Events {
-		// Have we gone too far?
 		if time.Since(event.Time) > since {
 			return events
 		}
 
 		if event.EventType == e {
-			if time.Since(event.Time) > since {
-				return events
-			}
-
 			events = append(events, event)
 		}
 	}
@@ -324,8 +324,17 @@ func ScoreMissedBy(name string) EventType {
 	return Nothing
 }
 
-func Since() time.Duration {
-	if len(Events) == 0 {
+func Since(e EventType) time.Duration {
+	for _, event := range Events {
+		if event.EventType == e {
+			return time.Since(event.Time)
+		}
+	}
+	return 0
+}
+
+func Idle() time.Duration {
+	if len(Events) < 2 {
 		return 0
 	}
 

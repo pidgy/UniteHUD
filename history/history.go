@@ -36,16 +36,19 @@ func Dump() {
 		result := ""
 		switch {
 		case h.purple > h.orange:
-			result = "Win »"
+			result = "Won"
 			color = nrgba.Green
 		case h.orange > h.purple:
-			result = "Loss «"
+			result = "Lost"
 			color = nrgba.DarkRed
 		case h.orange == h.purple:
-			result = "Tie ¤"
+			result = "Tied"
 			color = nrgba.Yellow
 		}
 
 		notify.Append(color, "(%s) %s %d - %d - %d", h.Time.Format(time.Kitchen), result, h.purple, h.orange, h.self)
 	}
+}
+
+func Record() {
 }

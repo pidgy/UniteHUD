@@ -37,6 +37,7 @@ type notify struct {
 var feed = &notify{}
 
 func Announce(format string, a ...interface{}) {
+	println(fmt.Sprintf(format, a...))
 	feed.log(nrgba.Announce, true, false, false, format, a...)
 }
 

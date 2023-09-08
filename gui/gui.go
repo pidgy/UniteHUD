@@ -15,6 +15,7 @@ import (
 
 	"github.com/pidgy/unitehud/fonts"
 	"github.com/pidgy/unitehud/fps"
+	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/gui/is"
 	"github.com/pidgy/unitehud/gui/visual/title"
 	"github.com/pidgy/unitehud/notify"
@@ -57,7 +58,6 @@ type GUI struct {
 
 	performance struct {
 		cpu, ram, uptime string
-		time             time.Time
 		eco              bool
 	}
 
@@ -137,14 +137,11 @@ func New() {
 			ram,
 			uptime string
 
-			time time.Time
-
 			eco bool
 		}{
 			cpu:    "0%",
 			ram:    "0MB",
 			uptime: "00:00",
-			time:   time.Now(),
 
 			eco: true,
 		},
@@ -366,7 +363,7 @@ func (g *GUI) proc() {
 
 		g.performance.ram = fmt.Sprintf("RAM %.0f%s", ram, "MB")
 
-		run := time.Time{}.Add(time.Since(g.performance.time))
+		run := time.Time{}.Add(time.Since(global.Uptime))
 		if run.Hour() > 0 {
 			g.performance.uptime = fmt.Sprintf("%1d:%02d:%02d", run.Hour(), run.Minute(), run.Second())
 		} else {

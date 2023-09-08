@@ -32,8 +32,10 @@ var (
 	Gray           = RGBA{R: 75, G: 75, B: 75, A: 255}
 	Green          = RGBA{R: 0, G: 255, B: 0, A: 255}
 	Highlight      = RGBA{R: 255, G: 255, B: 255, A: 255}
+	Lemon          = RGBA{R: 206, G: 242, B: 85, A: 255}
 	LightGray      = RGBA{R: 100, G: 100, B: 100, A: 50}
 	LightPurple    = RGBA{R: 204, G: 0, B: 204, A: 255}
+	Lilac          = RGBA{R: 121, G: 103, B: 181, A: 255}
 	Night          = RGBA{R: 50, G: 50, B: 255, A: 63}
 	Nothing        = RGBA{R: 0, G: 0, B: 0, A: 0}
 	OfficeBlue     = RGBA{R: 51, G: 102, B: 255, A: 255}

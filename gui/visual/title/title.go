@@ -225,6 +225,11 @@ func New(title string, collection fonts.Collection, minimize, resize, close func
 	return b
 }
 
+func (b *Widget) Open() {
+	this := b.decorations.buttons.custom[0]
+	this.Click(this)
+}
+
 func (b *Widget) Add(btn *button.Widget) *button.Widget {
 	if btn.Size.Eq(image.Pt(0, 0)) {
 		btn.Size = button.IconSize
