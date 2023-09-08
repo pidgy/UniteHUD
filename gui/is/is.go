@@ -7,9 +7,10 @@ const (
 	Loading
 	MainMenu
 	Projecting
-	TabMenu
 	Display
 )
+
+var Now Is = Loading
 
 func (i Is) String() string {
 	switch i {
@@ -18,13 +19,9 @@ func (i Is) String() string {
 	case Loading:
 		return "Loading"
 	case MainMenu:
-		return "MainMenu"
+		return "Main Menu"
 	case Projecting:
-		return "Projecting"
-	case TabMenu:
-		return "TabMenu"
-	case Display:
-		return "Display"
+		return "Projector Menu"
 	}
 	return "Unknown"
 }

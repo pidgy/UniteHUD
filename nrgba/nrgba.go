@@ -26,9 +26,11 @@ var (
 	DeepBlue       = NRGBA(rgba.DeepBlue)
 	Denounce       = NRGBA(rgba.Denounce)
 	Disabled       = NRGBA(rgba.Disabled)
+	Discord        = NRGBA(rgba.Discord)
 	DreamyBlue     = NRGBA(rgba.DreamyBlue)
 	DreamyPurple   = NRGBA(rgba.DreamyPurple)
 	ForestGreen    = NRGBA(rgba.ForestGreen)
+	FullMoonBlue   = NRGBA(rgba.FullMoonBlue)
 	Gold           = NRGBA(rgba.Gold)
 	Gray           = NRGBA(rgba.Gray)
 	Green          = NRGBA(rgba.Green)
@@ -51,6 +53,7 @@ var (
 	PastelRed      = NRGBA(rgba.PastelRed)
 	PastelYellow   = NRGBA(rgba.PastelYellow)
 	Pinkity        = NRGBA(rgba.Pinkity)
+	PolarBlue      = NRGBA(rgba.PolarBlue)
 	Red            = NRGBA(rgba.Red)
 	Regice         = SeaBlue
 	Regieleki      = Yellow

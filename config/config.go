@@ -237,7 +237,7 @@ func (c *Config) SetDefaultTheme() {
 		Splash:              nrgba.Splash.Color(),
 		TitleBarBackground:  nrgba.Background.Color(),
 		TitleBarForeground:  nrgba.White.Color(),
-		Borders:             nrgba.Gray.Color(),
+		Borders:             nrgba.Discord.Color(),
 		ScrollbarBackground: nrgba.Transparent.Color(),
 		ScrollbarForeground: nrgba.White.Alpha(100).Color(),
 	}

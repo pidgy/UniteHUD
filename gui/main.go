@@ -20,6 +20,7 @@ import (
 	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/desktop"
 	"github.com/pidgy/unitehud/desktop/clicked"
+	"github.com/pidgy/unitehud/discord"
 	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/gui/is"
 	"github.com/pidgy/unitehud/gui/visual/button"
@@ -337,6 +338,10 @@ func (g *GUI) main() {
 	warningLabel.Color = nrgba.Yellow.Alpha(200).Color()
 	warningLabel.Font.Weight = 0
 
+	discordLabel := material.Label(g.header.Collection.NotoSans().Theme, unit.Sp(11), "👾 Discord")
+	discordLabel.Color = nrgba.Discord.Alpha(200).Color()
+	discordLabel.Font.Weight = 0
+
 	profileHeader := material.Caption(g.header.Collection.Calibri().Theme, "")
 	profileHeader.Color = nrgba.DreamyPurple.Color()
 	profileHeader.Alignment = text.Middle
@@ -488,11 +493,12 @@ func (g *GUI) main() {
 	if !g.firstOpen {
 		g.firstOpen = true
 		g.window.Perform(system.ActionCenter)
+		g.window.Perform(system.ActionUnmaximize)
 	}
 
 	var ops op.Ops
 
-	for g.is == is.MainMenu {
+	for is.Now == is.MainMenu {
 		if !g.open {
 			time.Sleep(time.Millisecond * 10)
 			continue
@@ -558,22 +564,39 @@ func (g *GUI) main() {
 								}
 
 								if len(warnings) > 0 {
-									warningLabel.Text = fmt.Sprintf("⚠ CPU (%s)", strings.Join(warnings, ","))
-
 									layout.Inset{
 										Left: unit.Dp(4),
-										Top:  unit.Dp(1),
-									}.Layout(gtx, warningLabel.Layout)
+										Top:  unit.Dp(18),
+									}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+										warningLabel.Text = fmt.Sprintf("⚠ CPU (%s)", strings.Join(warnings, ","))
+										return warningLabel.Layout(gtx)
+									})
 								}
 
 								if len(nonwarnings) > 0 {
-									warningLabel.Text = fmt.Sprintf("⚠ CPU (%s)", strings.Join(nonwarnings, ","))
-									warningLabel.Color = nrgba.PastelGreen.Color()
 									layout.Inset{
 										Left: unit.Dp(4),
 										Top:  unit.Dp(1),
-									}.Layout(gtx, warningLabel.Layout)
+									}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+										warningLabel.Text = fmt.Sprintf("⚠ CPU (%s)", strings.Join(nonwarnings, ","))
+										warningLabel.Color = nrgba.PastelGreen.Color()
+										return warningLabel.Layout(gtx)
+									})
 								}
+
+								layout.Inset{
+									Left: unit.Dp(2),
+									Top:  unit.Dp(1),
+								}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+									if config.Current.Advanced.Discord.Disabled {
+										discordLabel.Color.A = 127
+										discordLabel.Text = "👾 Discord — Disabled"
+									} else {
+										discordLabel.Color.A = 200
+										discordLabel.Text = fmt.Sprintf("👾 Discord — %s: %s", strings.ReplaceAll(discord.Activity.Details, "UniteHUD - ", ""), discord.Activity.State)
+									}
+									return discordLabel.Layout(gtx)
+								})
 
 								profileHeader.Text = fmt.Sprintf("%s // %s", strings.Title(config.Current.Profile), strings.Title(config.Current.Platform))
 								layout.Inset{

@@ -25,9 +25,11 @@ var (
 	DeepBlue       = RGBA{R: 51, G: 51, B: 255, A: 255}
 	Denounce       = RGBA{R: 222, G: 202, B: 206, A: 255}
 	Disabled       = BackgroundAlt
+	Discord        = RGBA{R: 114, G: 137, B: 218, A: 255}
 	DreamyBlue     = RGBA{R: 115, G: 119, B: 250, A: 255}
 	DreamyPurple   = RGBA{R: 143, G: 152, B: 247, A: 255}
 	ForestGreen    = RGBA{R: 15, G: 255, B: 15, A: 63}
+	FullMoonBlue   = RGBA{R: 20, G: 50, B: 71, A: 255}
 	Gold           = RGBA{R: 255, G: 204, B: 102, A: 255}
 	Gray           = RGBA{R: 75, G: 75, B: 75, A: 255}
 	Green          = RGBA{R: 0, G: 255, B: 0, A: 255}
@@ -50,6 +52,7 @@ var (
 	PurpleBlue     = RGBA{R: 83, G: 94, B: 255, A: 255}
 	PaleRed        = RGBA{R: 168, G: 49, B: 49, A: 255}
 	Pinkity        = RGBA{R: 255, G: 112, B: 150, A: 255}
+	PolarBlue      = RGBA{R: 64, G: 75, B: 122, A: 50}
 	Red            = RGBA{R: 255, G: 0, B: 0, A: 255}
 	Regice         = SeaBlue
 	Regieleki      = Yellow

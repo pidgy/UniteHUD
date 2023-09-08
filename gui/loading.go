@@ -61,7 +61,7 @@ func (g *GUI) loading() {
 
 	var ops op.Ops
 
-	for g.is == is.Loading {
+	for is.Now == is.Loading {
 		switch event := (<-g.window.Events()).(type) {
 		case app.ViewEvent:
 			g.HWND = event.HWND
@@ -114,7 +114,7 @@ func (g *GUI) loading() {
 func (l *loading) while(g *GUI) {
 	i := 0
 
-	for ; g.is == is.Loading; <-l.tick {
+	for ; is.Now == is.Loading; <-l.tick {
 		l.message, i = notify.Iter(i)
 	}
 }

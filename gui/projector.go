@@ -105,6 +105,177 @@ func (g *GUI) projector() {
 	}
 	areas := g.areas(g.header.Collection)
 
+	backButton := &button.Widget{
+		Text:            "Back",
+		Font:            g.header.Collection.Calibri(),
+		OnHoverHint:     func() { g.header.Tip("Return to main menu") },
+		Pressed:         nrgba.Transparent80,
+		Released:        nrgba.DarkGray,
+		TextSize:        unit.Sp(projected.listTextSize),
+		TextInsetBottom: unit.Dp(-2),
+		Size:            image.Pt(115, 20),
+		BorderWidth:     unit.Sp(.5),
+		Click: func(this *button.Widget) {
+			defer this.Deactivate()
+
+			config.Current.Scores = areas.score.Rectangle()
+			config.Current.Time = areas.time.Rectangle()
+			config.Current.Energy = areas.energy.Rectangle()
+			config.Current.Objectives = areas.objective.Rectangle()
+			config.Current.KOs = areas.ko.Rectangle()
+
+			if config.Cached().Eq(config.Current) {
+				g.Actions <- Refresh
+				g.next(is.MainMenu)
+				return
+			}
+
+			g.ToastYesNo("Save", "Save configuration changes?",
+				OnToastYes(func() {
+					defer this.Deactivate()
+
+					server.Clear()
+
+					err := config.Current.Save()
+					if err != nil {
+						notify.Error("Failed to save UniteHUD configuration (%v)", err)
+					}
+
+					notify.System("Configuration saved to " + config.Current.File())
+
+					g.Actions <- Refresh
+					g.next(is.MainMenu)
+				}),
+				OnToastNo(func() {
+					defer this.Deactivate()
+
+					server.Clear()
+					video.Close()
+
+					config.Current = config.Cached()
+
+					g.Actions <- Refresh
+					g.next(is.MainMenu)
+				}),
+			)
+		},
+	}
+	resetButton := &button.Widget{
+		Text:            "Reset",
+		Font:            g.header.Collection.Calibri(),
+		OnHoverHint:     func() { g.header.Tip("Reset configuration") },
+		Pressed:         nrgba.Transparent80,
+		Released:        nrgba.DarkGray,
+		TextSize:        unit.Sp(projected.listTextSize),
+		TextInsetBottom: unit.Dp(-2),
+		Size:            image.Pt(115, 20),
+		BorderWidth:     unit.Sp(.5),
+		Click: func(this *button.Widget) {
+			g.ToastYesNo("Reset", fmt.Sprintf("Reset %s configuration?", config.Current.Profile),
+				OnToastYes(func() {
+					defer this.Deactivate()
+					defer server.Clear()
+
+					videos.device.list.Callback(videos.device.list.Items[0], videos.device.list)
+
+					electron.Close()
+
+					err = config.Current.Reset()
+					if err != nil {
+						notify.Error("Failed to reset %s configuration (%v)", config.Current.Profile, err)
+					}
+
+					config.Current.Reload()
+
+					areas.energy.Min, areas.energy.Max = config.Current.Energy.Min, config.Current.Energy.Max
+					areas.time.Min, areas.time.Max = config.Current.Time.Min, config.Current.Time.Max
+					areas.score.Min, areas.score.Max = config.Current.Scores.Min, config.Current.Scores.Max
+					areas.objective.Min, areas.objective.Max = config.Current.Objectives.Min, config.Current.Objectives.Max
+					areas.ko.Min, areas.ko.Max = config.Current.KOs.Min, config.Current.KOs.Max
+
+					// videos.window.populate(true)
+					videos.device.populate(true)
+					videos.monitor.populate(true)
+
+					g.Actions <- Refresh
+
+					g.next(is.MainMenu)
+
+					notify.Announce("Reset UniteHUD %s configuration", config.Current.Profile)
+				}),
+				OnToastNo(this.Deactivate),
+			)
+		},
+	}
+
+	closeHUDButton := &button.Widget{
+		Text:            "Close HUD Overlay",
+		TextSize:        unit.Sp(projected.listTextSize),
+		TextInsetBottom: unit.Dp(-2),
+		Font:            g.header.Collection.Calibri(),
+		OnHoverHint:     func() { g.header.Tip("Close HUD overlay") },
+		Pressed:         nrgba.Transparent80,
+		Released:        nrgba.DarkGray,
+		Size:            image.Pt(115, 20),
+		BorderWidth:     unit.Sp(.5),
+		Click: func(this *button.Widget) {
+			g.ToastYesNo("Close HUD Overlay", "Close HUD Overlay?",
+				OnToastYes(func() {
+					defer this.Deactivate()
+
+					electron.Close()
+
+					config.Current.HUDOverlay = false
+
+				}),
+				OnToastNo(this.Deactivate),
+			)
+		},
+	}
+
+	openHUDButton := &button.Widget{
+		Text:            "Open HUD Overlay",
+		TextSize:        unit.Sp(projected.listTextSize),
+		TextInsetBottom: unit.Dp(-2),
+		Font:            g.header.Collection.Calibri(),
+		OnHoverHint:     func() { g.header.Tip("Open HUD overlay") },
+		Pressed:         nrgba.Transparent80,
+		Released:        nrgba.DarkGray,
+		Size:            image.Pt(115, 20),
+		BorderWidth:     unit.Sp(.5),
+		Click: func(this *button.Widget) {
+			g.ToastYesNo("Open HUD Overlay", "Open HUD overlay?",
+				OnToastYes(func() {
+					defer this.Deactivate()
+
+					electron.Close()
+
+					config.Current.HUDOverlay = true
+
+					err = electron.Open()
+					if err != nil {
+						g.ToastError(err)
+						g.next(is.MainMenu)
+						return
+					}
+
+				}),
+				OnToastNo(this.Deactivate),
+			)
+		},
+	}
+
+	defer g.header.Remove(g.header.Add(&button.Widget{
+		Text:            "🏠",
+		Font:            g.header.Collection.NishikiTeki(),
+		Released:        nrgba.Discord.Alpha(100),
+		TextSize:        unit.Sp(16),
+		TextInsetBottom: -1,
+		Disabled:        false,
+		OnHoverHint:     backButton.OnHoverHint,
+		Click:           backButton.Click,
+	}))
+
 	defer g.header.Remove(g.header.Add(&button.Widget{
 		Text:            "⚙",
 		TextSize:        unit.Sp(18),
@@ -234,10 +405,10 @@ func (g *GUI) projector() {
 	}))
 
 	defer g.header.Remove(g.header.Add(&button.Widget{
-		Text:            "🗚",
+		Text:            "📝",
 		Font:            g.header.Collection.NishikiTeki(),
 		Released:        nrgba.CoolBlue,
-		TextSize:        unit.Sp(16),
+		TextSize:        unit.Sp(17),
 		TextInsetBottom: -1,
 		Disabled:        false,
 		OnHoverHint:     func() { g.header.Tip("Open configuration file") },
@@ -263,178 +434,6 @@ func (g *GUI) projector() {
 			areas.onevent()
 		},
 	}))
-
-	backButton := &button.Widget{
-		Text:            "Back",
-		Font:            g.header.Collection.Calibri(),
-		OnHoverHint:     func() { g.header.Tip("Return to main menu") },
-		Pressed:         nrgba.Transparent80,
-		Released:        nrgba.DarkGray,
-		TextSize:        unit.Sp(projected.listTextSize),
-		TextInsetBottom: unit.Dp(-2),
-		Size:            image.Pt(115, 20),
-		BorderWidth:     unit.Sp(.5),
-		Click: func(this *button.Widget) {
-			defer this.Deactivate()
-
-			config.Current.Scores = areas.score.Rectangle()
-			config.Current.Time = areas.time.Rectangle()
-			config.Current.Energy = areas.energy.Rectangle()
-			config.Current.Objectives = areas.objective.Rectangle()
-			config.Current.KOs = areas.ko.Rectangle()
-
-			if config.Cached().Eq(config.Current) {
-				g.Actions <- Refresh
-				g.next(is.MainMenu)
-				return
-			}
-
-			g.ToastYesNo("Save", "Save configuration changes?",
-				OnToastYes(func() {
-					defer this.Deactivate()
-
-					server.Clear()
-
-					err := config.Current.Save()
-					if err != nil {
-						notify.Error("Failed to save UniteHUD configuration (%v)", err)
-					}
-
-					notify.System("Configuration saved to " + config.Current.File())
-
-					g.Actions <- Refresh
-					g.next(is.MainMenu)
-				}),
-				OnToastNo(func() {
-					defer this.Deactivate()
-
-					server.Clear()
-					video.Close()
-
-					config.Current = config.Cached()
-
-					g.Actions <- Refresh
-					g.next(is.MainMenu)
-				}),
-			)
-		},
-	}
-
-	defer g.header.Remove(g.header.Add(&button.Widget{
-		Text:            "🏠",
-		Font:            g.header.Collection.NishikiTeki(),
-		Released:        nrgba.ForestGreen.Alpha(100),
-		TextSize:        unit.Sp(16),
-		TextInsetBottom: -1,
-		Disabled:        false,
-		OnHoverHint:     backButton.OnHoverHint,
-		Click:           backButton.Click,
-	}))
-
-	resetButton := &button.Widget{
-		Text:            "Reset",
-		Font:            g.header.Collection.Calibri(),
-		OnHoverHint:     func() { g.header.Tip("Reset configuration") },
-		Pressed:         nrgba.Transparent80,
-		Released:        nrgba.DarkGray,
-		TextSize:        unit.Sp(projected.listTextSize),
-		TextInsetBottom: unit.Dp(-2),
-		Size:            image.Pt(115, 20),
-		BorderWidth:     unit.Sp(.5),
-		Click: func(this *button.Widget) {
-			g.ToastYesNo("Reset", fmt.Sprintf("Reset %s configuration?", config.Current.Profile),
-				OnToastYes(func() {
-					defer this.Deactivate()
-					defer server.Clear()
-
-					videos.device.list.Callback(videos.device.list.Items[0], videos.device.list)
-
-					electron.Close()
-
-					err = config.Current.Reset()
-					if err != nil {
-						notify.Error("Failed to reset %s configuration (%v)", config.Current.Profile, err)
-					}
-
-					config.Current.Reload()
-
-					areas.energy.Min, areas.energy.Max = config.Current.Energy.Min, config.Current.Energy.Max
-					areas.time.Min, areas.time.Max = config.Current.Time.Min, config.Current.Time.Max
-					areas.score.Min, areas.score.Max = config.Current.Scores.Min, config.Current.Scores.Max
-					areas.objective.Min, areas.objective.Max = config.Current.Objectives.Min, config.Current.Objectives.Max
-					areas.ko.Min, areas.ko.Max = config.Current.KOs.Min, config.Current.KOs.Max
-
-					// videos.window.populate(true)
-					videos.device.populate(true)
-					videos.monitor.populate(true)
-
-					g.Actions <- Refresh
-
-					g.next(is.MainMenu)
-
-					notify.Announce("Reset UniteHUD %s configuration", config.Current.Profile)
-				}),
-				OnToastNo(this.Deactivate),
-			)
-		},
-	}
-
-	closeHUDButton := &button.Widget{
-		Text:            "Close HUD Overlay",
-		TextSize:        unit.Sp(projected.listTextSize),
-		TextInsetBottom: unit.Dp(-2),
-		Font:            g.header.Collection.Calibri(),
-		OnHoverHint:     func() { g.header.Tip("Close HUD overlay") },
-		Pressed:         nrgba.Transparent80,
-		Released:        nrgba.DarkGray,
-		Size:            image.Pt(115, 20),
-		BorderWidth:     unit.Sp(.5),
-		Click: func(this *button.Widget) {
-			g.ToastYesNo("Close HUD Overlay", "Close HUD Overlay?",
-				OnToastYes(func() {
-					defer this.Deactivate()
-
-					electron.Close()
-
-					config.Current.HUDOverlay = false
-
-				}),
-				OnToastNo(this.Deactivate),
-			)
-		},
-	}
-
-	openHUDButton := &button.Widget{
-		Text:            "Open HUD Overlay",
-		TextSize:        unit.Sp(projected.listTextSize),
-		TextInsetBottom: unit.Dp(-2),
-		Font:            g.header.Collection.Calibri(),
-		OnHoverHint:     func() { g.header.Tip("Open HUD overlay") },
-		Pressed:         nrgba.Transparent80,
-		Released:        nrgba.DarkGray,
-		Size:            image.Pt(115, 20),
-		BorderWidth:     unit.Sp(.5),
-		Click: func(this *button.Widget) {
-			g.ToastYesNo("Open HUD Overlay", "Open HUD overlay?",
-				OnToastYes(func() {
-					defer this.Deactivate()
-
-					electron.Close()
-
-					config.Current.HUDOverlay = true
-
-					err = electron.Open()
-					if err != nil {
-						g.ToastError(err)
-						g.next(is.MainMenu)
-						return
-					}
-
-				}),
-				OnToastNo(this.Deactivate),
-			)
-		},
-	}
 
 	audioInLabel := material.Label(g.header.Collection.Calibri().Theme, unit.Sp(12), "Audio In (Capture)")
 	audioInLabel.Color = nrgba.Highlight.Color()
@@ -492,7 +491,7 @@ func (g *GUI) projector() {
 
 	var ops op.Ops
 
-	for g.is == is.Projecting {
+	for is.Now == is.Projecting {
 		if populateTicks++; populateTicks > populateTicksThreshold {
 			videos.window.populate(false)
 			videos.device.populate(false)
@@ -531,7 +530,7 @@ func (g *GUI) projector() {
 			}
 
 			decorate.Background(gtx)
-			decorate.Label(&footer.is, "HUD %s", g.is.String())
+			decorate.Label(&footer.is, "HUD %s", is.Now.String())
 			decorate.Label(&footer.state, "%s %s", areas.state.Text, areas.state.Subtext)
 			decorate.Label(&footer.cpu, g.performance.cpu)
 			decorate.Label(&footer.ram, g.performance.ram)
@@ -587,14 +586,17 @@ func (g *GUI) projector() {
 							return layout.Flex{
 								Axis: layout.Horizontal,
 							}.Layout(gtx,
-
 								projected.spacer(2, 0),
 
 								layout.Flexed(0.33, func(gtx layout.Context) layout.Dimensions {
-									return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
+									return layout.Flex{
+										Axis: layout.Vertical,
+									}.Layout(gtx,
 										layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 											return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-												return layout.Inset{Top: unit.Dp(5)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+												return layout.Inset{
+													Top: unit.Dp(5),
+												}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 													return audioInLabel.Layout(gtx)
 												})
 											})
@@ -611,10 +613,14 @@ func (g *GUI) projector() {
 								projected.spacer(2, 0),
 
 								layout.Flexed(0.33, func(gtx layout.Context) layout.Dimensions {
-									return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
+									return layout.Flex{
+										Axis: layout.Vertical,
+									}.Layout(gtx,
 										layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 											return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-												return layout.Inset{Top: unit.Dp(5)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+												return layout.Inset{
+													Top: unit.Dp(5),
+												}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 													return audioOutLabel.Layout(gtx)
 												})
 											})
@@ -731,8 +737,6 @@ func (g *GUI) projector() {
 						})
 					}),
 
-					projected.spacer(0, 1),
-
 					projected.footer(gtx, footer),
 
 					projected.empty(2, 0),
@@ -798,7 +802,7 @@ func (p *projected) footer(gtx layout.Context, f *footer) layout.FlexChild {
 		gtx.Constraints.Max.Y = gtx.Dp(25)
 
 		decorate.BackgroundTitleBar(gtx, gtx.Constraints.Max)
-
+		decorate.Border(gtx)
 		layout.W.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 			return layout.Inset{Top: unit.Dp(5)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Middle}.Layout(gtx,

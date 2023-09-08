@@ -29,8 +29,6 @@ type Action string
 type GUI struct {
 	HWND uintptr
 
-	is is.Is
-
 	window *app.Window
 	header *title.Widget
 
@@ -98,11 +96,11 @@ func New() {
 	min := image.Pt(1080, 700)
 	max := monitor.MainResolution().Max
 
+	is.Now = is.Loading
+
 	notify.System("Generating UI")
 
 	UI = &GUI{
-		is: is.Loading,
-
 		window: app.NewWindow(app.Title(title.Default), app.Decorated(false)),
 
 		HWND: 0,
@@ -179,8 +177,8 @@ func (g *GUI) Open() {
 			g.Actions <- Closing
 		}()
 
-		for g.is != is.Closing {
-			switch g.is {
+		for is.Now != is.Closing {
+			switch is.Now {
 			case is.Loading:
 				notify.Debug("Loading...")
 			case is.MainMenu:
@@ -196,7 +194,7 @@ func (g *GUI) Open() {
 
 	go g.proc()
 
-	if g.is != is.Closing {
+	if is.Now != is.Closing {
 		app.Main()
 	}
 }
@@ -227,13 +225,12 @@ func (g *GUI) attachWindowRight(hwnd uintptr, width int) bool {
 
 	pos := g.position()
 
-	x := pos.X + g.dimensions.size.X
-	y := pos.Y
-	if y < 0 {
-		y += title.Height
+	attached := pos.Add(image.Pt(g.dimensions.size.X, 0))
+	if attached.Y < 0 {
+		attached.Y += title.Height
 	}
 
-	wapi.SetWindowPosNone(hwnd, image.Pt(x, y), image.Pt(width, g.dimensions.size.Y))
+	wapi.SetWindowPosNone(hwnd, attached, image.Pt(width, g.dimensions.size.Y))
 
 	return true
 }
@@ -283,10 +280,10 @@ func (g *GUI) maximize() {
 	g.previous.size = g.dimensions.size
 
 	left := image.Pt(0, 0).Add(image.Pt(g.inset.left, 0))
-	right := g.dimensions.max.Sub(image.Pt(g.inset.right, 0)).Sub(image.Pt(g.inset.left, 0))
+	right := g.dimensions.max.Sub(image.Pt(g.inset.right+1, 0))
 	wapi.SetWindowPosShow(g.HWND, left, right)
 
-	g.window.Perform(system.ActionCenter)
+	//g.window.Perform(system.ActionCenter)
 
 	g.dimensions.fullscreen = true
 }
@@ -297,7 +294,7 @@ func (g *GUI) minimize() {
 
 func (g *GUI) next(i is.Is) {
 	notify.Debug("Next state set to \"%s\"", i)
-	g.is = i
+	is.Now = i
 }
 
 func (g *GUI) position() image.Point {
@@ -328,7 +325,7 @@ func (g *GUI) proc() {
 	peakCPU := 0.0
 	peakRAM := 0.0
 
-	for g.is != is.Closing {
+	for is.Now != is.Closing {
 		time.Sleep(time.Second)
 
 		err := syscall.GetProcessTimes(handle, &ctime, &etime, &ktime, &utime)

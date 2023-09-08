@@ -74,9 +74,8 @@ func (s *settings) open(onclose func()) {
 	bar.NoDrag = true
 
 	discord := &section{
-		title: material.Label(bar.Collection.NotoSans().Theme, 14, "🎮 Discord Activity"),
-		description: material.Caption(bar.Collection.Calibri().Theme,
-			"Enable/Disable Discord activity updates"),
+		title:       material.Label(bar.Collection.NotoSans().Theme, 14, "🎮 Discord Activity"),
+		description: material.Caption(bar.Collection.NotoSans().Theme, "Enable/Disable Discord activity updates"),
 		widget: &button.Widget{
 			Text:            "Enabled",
 			Pressed:         nrgba.Transparent80,
@@ -306,11 +305,6 @@ func (s *settings) open(onclose func()) {
 
 	var ops op.Ops
 
-	s.window.Perform(system.ActionRaise)
-
-	s.parent.setInsetRight(s.width)
-	defer s.parent.unsetInsetRight(s.width)
-
 	list := material.List(
 		bar.Collection.Calibri().Theme,
 		&widget.List{
@@ -329,6 +323,11 @@ func (s *settings) open(onclose func()) {
 		theme,
 		themes,
 	}
+
+	s.window.Perform(system.ActionRaise)
+
+	s.parent.setInsetRight(s.width)
+	defer s.parent.unsetInsetRight(s.width)
 
 	for event := range s.window.Events() {
 		switch e := event.(type) {
@@ -354,7 +353,6 @@ func (s *settings) open(onclose func()) {
 					decorate.Scrollbar(&list.ScrollbarStyle)
 
 					return list.Layout(gtx, len(sections), func(gtx layout.Context, index int) layout.Dimensions {
-						defer s.spacer(gtx)
 						return sections[index].section(gtx)
 					})
 				})
@@ -375,8 +373,12 @@ func (s *settings) fill() layout.FlexChild {
 }
 
 func (s *section) section(gtx layout.Context) layout.Dimensions {
-	inset := layout.UniformInset(2)
-	inset.Left += 10
+	inset := layout.Inset{
+		Top:    0,
+		Left:   12,
+		Right:  12,
+		Bottom: 0,
+	}
 	s.title.Font.Weight = font.ExtraLight
 
 	decorate.Label(&s.title, s.title.Text)
@@ -391,7 +393,7 @@ func (s *section) section(gtx layout.Context) layout.Dimensions {
 		}.Layout(gtx,
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 				return inset.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-					return decorate.Underline(gtx, s.title.Layout)
+					return s.title.Layout(gtx)
 				})
 			}),
 

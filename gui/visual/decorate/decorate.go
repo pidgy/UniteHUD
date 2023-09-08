@@ -86,7 +86,7 @@ func Scrollbar(s *material.ScrollbarStyle) {
 }
 
 func Spacer(gtx layout.Context, size image.Point) layout.Dimensions {
-	return ColorBox(gtx, size, nrgba.NRGBA(config.Current.Theme.Borders))
+	return ColorBox(gtx, size, nrgba.NRGBA(config.Current.Theme.Borders).Alpha(25))
 }
 
 func Underline(gtx layout.Context, w layout.Widget) layout.Dimensions {
