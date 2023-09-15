@@ -76,7 +76,7 @@ func Line(gtx layout.Context, rect clip.Rect, n nrgba.NRGBA) layout.Dimensions {
 }
 
 func List(l *material.ListStyle) {
-	l.AnchorStrategy = material.Occupy
+	l.AnchorStrategy = material.Overlay
 }
 
 func Scrollbar(s *material.ScrollbarStyle) {

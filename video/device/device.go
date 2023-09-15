@@ -41,7 +41,7 @@ func init() {
 				}
 				if !found {
 					Sources, names = s, n
-					notify.Debug("New Video Capture Device detected (%s)", got)
+					notify.Debug("New video capture device detected (%s)", got)
 					break
 				}
 			}
@@ -70,8 +70,21 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 		return nil, nil
 	}
 
+	err := outside(rect, monitor.MainResolution())
+	if err != nil {
+		return nil, err
+	}
+
 	if !rect.In(monitor.MainResolution()) {
-		return nil, fmt.Errorf("capture is outside of the legal boundary (%s intersects %s)", rect, monitor.MainResolution())
+		return nil, fmt.Errorf("Illegal boundaries %s intersects %s", rect, monitor.MainResolution())
+	}
+
+	s := mat.Size()
+	mrect := image.Rect(0, 0, s[0], s[1])
+
+	err = outside(rect, mrect)
+	if err != nil {
+		return nil, err
 	}
 
 	i, err := img.RGBA(mat.Region(rect))
@@ -80,6 +93,14 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 	}
 
 	return i, nil
+}
+
+func outside(r1, r2 image.Rectangle) error {
+	if r1.In(r2) {
+		return nil
+	}
+
+	return fmt.Errorf("Illegal boundaries %s", r1.Intersect(r2))
 }
 
 func Close() {
@@ -104,7 +125,7 @@ func Name(d int) string {
 	if d != config.NoVideoCaptureDevice && len(names) > d {
 		return names[d]
 	}
-	return fmt.Sprintf("Video Capture Device %d", d)
+	return fmt.Sprintf("Video Capture Device: %d", d)
 }
 
 func Open() error {
@@ -117,7 +138,7 @@ func Open() error {
 
 	err := startCaptureDevice()
 	if err != nil {
-		notify.Error("Failed to open Video Capture Device (%v)", err)
+		notify.Error("Failed to open video capture device (%v)", err)
 		reset()
 		return err
 	}
@@ -168,15 +189,22 @@ func startCaptureDevice() error {
 		notify.System("Starting video capture (%s)", name)
 		defer notify.System("Closing video capture (%s)", name)
 
-		device, err := gocv.OpenVideoCaptureWithAPI(config.Current.VideoCaptureDevice, gocv.VideoCaptureAny)
+		device, err := gocv.OpenVideoCaptureWithAPI(config.Current.VideoCaptureDevice, gocv.VideoCaptureDshow)
 		if err != nil {
 			errq <- err
 			return
 		}
 		defer device.Close()
 
+		notify.System("Applying video capture dimensions: %s", monitor.MainResolution())
 		device.Set(gocv.VideoCaptureFrameWidth, float64(monitor.MainResolution().Dx()))
 		device.Set(gocv.VideoCaptureFrameHeight, float64(monitor.MainResolution().Dy()))
+		x, y := int(device.Get(gocv.VideoCaptureFrameWidth)), int(device.Get(gocv.VideoCaptureFrameHeight))
+
+		if !image.Rect(0, 0, x, y).Eq(monitor.MainResolution()) {
+			errq <- fmt.Errorf("Illegal dimensions %s", monitor.MainResolution())
+			return
+		}
 
 		area := image.Rect(0, 0, int(device.Get(gocv.VideoCaptureFrameWidth)), int(device.Get(gocv.VideoCaptureFrameHeight)))
 		if !area.Eq(monitor.MainResolution()) {

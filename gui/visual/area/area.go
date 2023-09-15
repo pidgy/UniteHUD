@@ -34,8 +34,8 @@ const alpha = 150
 
 var (
 	Locked = nrgba.Black
-	Match  = nrgba.PastelGreen
-	Miss   = nrgba.PastelRed
+	Match  = nrgba.Green
+	Miss   = nrgba.Red
 )
 
 type Widget struct {
@@ -108,7 +108,7 @@ func (a *Widget) Layout(gtx layout.Context, collection fonts.Collection, capture
 
 		a.subtitleLabel = material.Body2(a.Theme, "")
 		a.subtitleLabel.Font.Weight = 1000
-		decorate.LabelColor(&a.titleLabel, nrgba.White.Alpha(175).Color())
+		decorate.Label(&a.subtitleLabel, a.subtitleLabel.Text)
 	}
 
 	// Scale up or down based on area and image size.
@@ -263,7 +263,7 @@ func (a *Widget) Layout(gtx layout.Context, collection fonts.Collection, capture
 	}.Layout(
 		gtx,
 		func(gtx layout.Context) layout.Dimensions {
-			a.titleLabel.TextSize = a.TextSize * unit.Sp(.75)
+			a.titleLabel.TextSize = a.TextSize
 			a.titleLabel.Text = a.Text
 			layout.Inset{
 				Left: unit.Dp(2),

@@ -17,6 +17,10 @@ func Recording() *Widget {
 	return withDelayAndBytes(time.Millisecond*500, []string{"•", " "})
 }
 
+func Stopped() *Widget {
+	return defaultWithBytes([]string{"×", "+"})
+}
+
 func (s *Widget) Stop() {
 	s.ticker.Stop()
 }
@@ -24,10 +28,6 @@ func (s *Widget) Stop() {
 func (s *Widget) Next() string {
 	s.ready = true
 	return s.bytes[s.pos]
-}
-
-func Stopped() *Widget {
-	return defaultWithBytes([]string{"×", "+"})
 }
 
 func withDelayAndBytes(d time.Duration, b []string) *Widget {

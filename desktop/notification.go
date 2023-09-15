@@ -15,7 +15,7 @@ type Factory struct {
 }
 
 func Notification(format string, args ...interface{}) *Factory {
-	a := toast.IM
+	a := toast.Mail
 	if config.Current.Advanced.Notifications.Muted {
 		a = toast.Silent
 	}

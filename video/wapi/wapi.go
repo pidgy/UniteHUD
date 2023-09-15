@@ -5,19 +5,11 @@ import (
 	"syscall"
 )
 
-type (
-	Handle  uintptr
-	HWND    Handle
-	HGDIOBJ Handle
-	HDC     Handle
-	HBITMAP Handle
-)
-
 // http://msdn.microsoft.com/en-us/library/windows/desktop/dd183375.aspx
 type BitmapInfo struct {
 	BmiHeader BitmapInfoHeader
 	BmiColors *RGBQuad
-}
+} //
 
 // http://msdn.microsoft.com/en-us/library/windows/desktop/dd183376.aspx
 type BitmapInfoHeader struct {
@@ -113,7 +105,7 @@ var (
 		RGB: 0,
 	}
 	CreateDIBSectionError = struct {
-		InvalidParameter HBITMAP
+		InvalidParameter uintptr
 	}{
 		InvalidParameter: 2,
 	}

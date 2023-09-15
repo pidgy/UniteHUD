@@ -20,8 +20,6 @@ var (
 	displays = map[string]int{}
 	bounds   = map[string]image.Rectangle{}
 
-	mainResolution = image.Rectangle{}
-
 	mutex = &sync.RWMutex{}
 )
 
@@ -108,7 +106,7 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 	if dst == 0 {
 		return nil, fmt.Errorf("Could not Create Compatible DC (%d)", getLastError())
 	}
-	defer wapi.DeleteDC.Call(uintptr(dst))
+	defer wapi.DeleteDC.Call(dst) // nolint
 
 	x, y := rect.Dx(), rect.Dy()
 
@@ -122,18 +120,18 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 		BiCompression: wapi.BitmapInfoHeaderCompression.RGB,
 	}
 
-	ptr := unsafe.Pointer(uintptr(0))
+	ptr := uintptr(0)
 
-	mhBmp := createDIBSection(dst, &bt, wapi.CreateDIBSectionUsage.RGBColors, &ptr, 0, 0)
-	if mhBmp == 0 {
+	m, _, _ := wapi.CreateDIBSection.Call(uintptr(dst), uintptr(unsafe.Pointer(&bt)), uintptr(wapi.CreateDIBSectionUsage.RGBColors), uintptr(unsafe.Pointer(&ptr)), 0, 0)
+	if m == 0 {
 		return nil, fmt.Errorf("Could not Create DIB Section err:%d.\n", getLastError())
 	}
-	if mhBmp == wapi.CreateDIBSectionError.InvalidParameter {
+	if m == wapi.CreateDIBSectionError.InvalidParameter {
 		return nil, fmt.Errorf("One or more of the input parameters is invalid while calling CreateDIBSection.\n")
 	}
-	defer deleteObject(wapi.HGDIOBJ(mhBmp))
+	defer deleteObject(m)
 
-	obj := selectObject(dst, wapi.HGDIOBJ(mhBmp))
+	obj := selectObject(dst, m)
 	if obj == 0 {
 		return nil, fmt.Errorf("error occurred and the selected object is not a region err:%d.\n", getLastError())
 	}
@@ -214,83 +212,25 @@ func IsDisplay() bool {
 }
 
 func MainResolution() image.Rectangle {
-	if mainResolution.Max.Eq(image.Pt(0, 0)) {
-		cx := uintptr(0)
-		cy := uintptr(1)
-		x, _, _ := wapi.GetSystemMetrics.Call(cx)
-		y, _, _ := wapi.GetSystemMetrics.Call(cy)
-		mainResolution = image.Rectangle{Max: image.Pt(int(x), int(y))}
-	}
+	return image.Rect(0, 0, 1920, 1080)
+	// if mainResolution.Max.Eq(image.Pt(0, 0)) {
+	// 	cx := uintptr(0)
+	// 	cy := uintptr(1)
+	// 	x, _, _ := wapi.GetSystemMetrics.Call(cx)
+	// 	y, _, _ := wapi.GetSystemMetrics.Call(cy)
+	// 	mainResolution = image.Rectangle{Max: image.Pt(int(x), int(y))}
+	// }
 
-	return mainResolution
+	// return mainResolution
 }
 
-func bitBlt(dst wapi.HDC, dstx, dsty, dstw, dsth int, src wapi.HDC, srcx, srcy int) bool {
-
-	var ret uintptr
-	switch config.Current.Scale {
-	case 1:
-		ret, _, _ = wapi.BitBlt.Call(
-			uintptr(dst),
-			0,
-			0,
-			uintptr(dstw),
-			uintptr(dsth),
-			uintptr(src),
-			uintptr(dstx),
-			uintptr(dsty),
-			wapi.BitBltRasterOperations.CaptureBLT|wapi.BitBltRasterOperations.SrcCopy,
-		)
-	default: // Scaled.
-		scaledW := int(float64(dstw) * config.Current.Scale)
-		scaledH := int(float64(dsth) * config.Current.Scale)
-
-		ret, _, _ = wapi.StretchBlt.Call(
-			uintptr(dst),
-			0,
-			0,
-			uintptr(scaledW),
-			uintptr(scaledH),
-			uintptr(src),
-			uintptr(dstx),
-			uintptr(dsty),
-			uintptr(srcx),
-			uintptr(srcy),
-			wapi.BitBltRasterOperations.CaptureBLT|wapi.BitBltRasterOperations.SrcCopy,
-		)
-	}
-	return ret != 0
-}
-
-func createCompatibleDC(hdc wapi.HDC) wapi.HDC {
+func createCompatibleDC(hdc uintptr) uintptr {
 	ret, _, _ := wapi.CreateCompatibleDC.Call(uintptr(hdc))
-
-	if ret == 0 {
-		panic("Create compatible DC failed")
-	}
-
-	return wapi.HDC(ret)
+	return ret
 }
 
-func createDIBSection(hdc wapi.HDC, pbmi *wapi.BitmapInfo, iUsage uint, ppvBits *unsafe.Pointer, hSection wapi.Handle, dwOffset uint) wapi.HBITMAP {
-	ret, _, _ := wapi.CreateDIBSection.Call(
-		uintptr(hdc),
-		uintptr(unsafe.Pointer(pbmi)),
-		uintptr(iUsage),
-		uintptr(unsafe.Pointer(ppvBits)),
-		uintptr(hSection),
-		uintptr(dwOffset))
-
-	return wapi.HBITMAP(ret)
-}
-
-func deleteDC(hdc wapi.HDC) bool {
-	ret, _, _ := wapi.DeleteDC.Call(uintptr(hdc))
-	return ret != 0
-}
-
-func deleteObject(hObject wapi.HGDIOBJ) bool {
-	ret, _, _ := wapi.DeleteObject.Call(uintptr(hObject))
+func deleteObject(hObject uintptr) bool {
+	ret, _, _ := wapi.DeleteObject.Call(hObject)
 	return ret != 0
 }
 
@@ -309,9 +249,9 @@ func display(name string, count int) string {
 	return fmt.Sprintf("%s %d", name, count)
 }
 
-func getDC(hwnd wapi.HWND) wapi.HDC {
+func getDC(hwnd uintptr) uintptr {
 	ret, _, _ := wapi.GetDC.Call(uintptr(hwnd))
-	return wapi.HDC(ret)
+	return ret
 }
 
 func getLastError() uint32 {
@@ -319,7 +259,7 @@ func getLastError() uint32 {
 	return uint32(ret)
 }
 
-func releaseDC(hwnd wapi.HWND, hdc wapi.HDC) bool {
+func releaseDC(hwnd uintptr, hdc uintptr) bool {
 	ret, _, _ := wapi.ReleaseDC.Call(uintptr(hwnd), uintptr(hdc))
 	return ret != 0
 }
@@ -337,16 +277,9 @@ func mainDisplayRect() (image.Rectangle, error) {
 	return image.Rect(0, 0, int(x), int(y)), nil
 }
 
-func selectObject(hdc wapi.HDC, hgdiobj wapi.HGDIOBJ) wapi.HGDIOBJ {
-	ret, _, _ := wapi.SelectObject.Call(
-		uintptr(hdc),
-		uintptr(hgdiobj))
-
-	if ret == 0 {
-		panic("SelectObject failed")
-	}
-
-	return wapi.HGDIOBJ(ret)
+func selectObject(hdc, hgdiobj uintptr) uintptr {
+	ret, _, _ := wapi.SelectObject.Call(uintptr(hdc), uintptr(hgdiobj))
+	return ret
 }
 
 func set(s []string, d map[string]int, b map[string]image.Rectangle) {

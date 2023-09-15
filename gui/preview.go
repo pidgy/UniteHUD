@@ -10,6 +10,7 @@ import (
 	"gioui.org/io/system"
 	"gioui.org/layout"
 	"gioui.org/op"
+	"gioui.org/text"
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
@@ -26,260 +27,305 @@ import (
 )
 
 type preview struct {
-	parent *GUI
-	window *app.Window
-	hwnd   uintptr
+	hwnd uintptr
 
-	closed bool
-	resize bool
+	bar *title.Widget
 
-	width,
-	height int
+	windows struct {
+		parent  *GUI
+		current *app.Window
+	}
+
+	state struct {
+		open bool
+	}
+
+	dimensions struct {
+		width,
+		height int
+
+		resize bool
+	}
+
+	capture struct {
+		areas     []*area.Capture
+		liststyle material.ListStyle
+		images    []*button.ImageWidget
+	}
+
+	labels struct {
+		header,
+		capture,
+		match material.LabelStyle
+	}
 }
 
-func (p *preview) close() bool {
-	was := p.closed
-	p.closed = true
-	return !was
-}
-
-func (p *preview) open(a *areas, onclose func()) {
-	if !p.closed {
-		return
-	}
-	p.closed = false
-
-	defer onclose()
-
-	p.window = app.NewWindow(
-		app.Title("Preview"),
-		app.Size(unit.Dp(p.width), unit.Dp(p.height)),
-		app.MinSize(unit.Dp(p.width), unit.Dp(p.height)),
-		app.MaxSize(unit.Dp(p.width), unit.Dp(p.parent.dimensions.max.Y)),
-		app.Decorated(false),
-	)
-
-	images := []*button.ImageWidget{}
-
-	bar := title.New(
-		"Preview",
-		fonts.NewCollection(),
-		nil,
-		nil,
-		func() { p.window.Perform(system.ActionClose) },
-	)
-	bar.NoTip = true
-	bar.NoDrag = true
-
-	captures := []*area.Capture{
-		a.energy.Capture,
-		a.ko.Capture,
-		a.objective.Capture,
-		a.score.Capture,
-		a.state.Capture,
-		a.time.Capture,
-	}
-
-	// Ordered by least widest.
-	sort.Slice(captures, func(i, j int) bool {
-		return captures[i].Base.Dy() < captures[j].Base.Dy()
-	})
-
-	for _, cap := range captures {
-		img, err := video.CaptureRect(cap.Base)
-		if err != nil {
-			p.parent.ToastError(err)
-			return
-		}
-
-		images = append(images, p.makePreviewCaptureButton(cap, img))
-	}
+func (g *GUI) preview(a *areas, onclose func()) *preview {
+	ui := g.previewUI()
 
 	go func() {
-		for ; p.closed; time.Sleep(time.Second) {
-			for i, cap := range captures {
-				img, err := video.CaptureRect(cap.Base)
-				if err != nil {
-					p.parent.ToastError(err)
-					return
+		defer onclose()
+
+		ui.state.open = true
+		defer func() {
+			ui.state.open = false
+		}()
+
+		ui.capture.images = []*button.ImageWidget{}
+		ui.capture.areas = []*area.Capture{
+			a.energy.Capture,
+			a.ko.Capture,
+			a.objective.Capture,
+			a.score.Capture,
+			a.state.Capture,
+			a.time.Capture,
+		}
+
+		// Ordered by least widest.
+		sort.Slice(ui.capture.areas, func(i, j int) bool {
+			return ui.capture.areas[i].Base.Dy() < ui.capture.areas[j].Base.Dy()
+		})
+
+		for _, cap := range ui.capture.areas {
+			img, err := video.CaptureRect(cap.Base)
+			if err != nil {
+				ui.windows.parent.ToastError(err)
+				return
+			}
+
+			ui.capture.images = append(ui.capture.images, ui.makePreviewCaptureButton(cap, img))
+		}
+
+		go func() {
+			for ; ui.state.open; time.Sleep(time.Second) {
+				for i, cap := range ui.capture.areas {
+					img, err := video.CaptureRect(cap.Base)
+					if err != nil {
+						ui.windows.parent.ToastError(err)
+						return
+					}
+
+					ui.capture.images[i].SetImage(img)
+				}
+			}
+		}()
+
+		ui.windows.current.Perform(system.ActionRaise)
+
+		ui.windows.parent.setInsetLeft(ui.dimensions.width)
+		defer ui.windows.parent.unsetInsetLeft(ui.dimensions.width)
+
+		var ops op.Ops
+
+		for event := range ui.windows.current.Events() {
+			switch e := event.(type) {
+			case system.DestroyEvent:
+				ui.state.open = false
+				return
+			case app.ViewEvent:
+				ui.hwnd = e.HWND
+				ui.windows.parent.attachWindowLeft(ui.hwnd, ui.dimensions.width)
+			case system.FrameEvent:
+				if !ui.state.open {
+					go ui.windows.current.Perform(system.ActionClose)
 				}
 
-				images[i].SetImage(img)
+				if ui.dimensions.resize {
+					ui.dimensions.resize = false
+					ui.windows.parent.attachWindowLeft(ui.hwnd, ui.dimensions.width)
+				}
+
+				gtx := layout.NewContext(&ops, e)
+
+				ui.bar.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+					decorate.BackgroundAlt(gtx, func(gtx layout.Context) layout.Dimensions {
+						return layout.Dimensions{Size: gtx.Constraints.Max}
+					})
+
+					return layout.Flex{
+						Axis: layout.Vertical,
+					}.Layout(gtx,
+						// Title.
+						layout.Flexed(.2, func(gtx layout.Context) layout.Dimensions {
+							return layout.Flex{
+								Axis: layout.Horizontal,
+							}.Layout(gtx,
+								layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+									return layout.Spacer{Width: unit.Dp(10), Height: unit.Dp(1)}.Layout(gtx)
+								}),
+
+								layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+									return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+										return ui.labels.header.Layout(gtx)
+									})
+								}),
+
+								layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+									return layout.Spacer{Width: unit.Dp(10), Height: unit.Dp(1)}.Layout(gtx)
+								}),
+							)
+						}),
+
+						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+							return layout.Spacer{Width: unit.Dp(1), Height: unit.Dp(15)}.Layout(gtx)
+						}),
+
+						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+							decorate.Border(gtx)
+							return layout.Spacer{Width: unit.Dp(1), Height: unit.Dp(5)}.Layout(gtx)
+						}),
+
+						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+							return layout.Spacer{Width: unit.Dp(1), Height: unit.Dp(5)}.Layout(gtx)
+						}),
+
+						layout.Flexed(.8, func(gtx layout.Context) layout.Dimensions {
+							decorate.Scrollbar(&ui.capture.liststyle.ScrollbarStyle)
+
+							return ui.capture.liststyle.Layout(gtx, len(ui.capture.images), func(gtx layout.Context, index int) layout.Dimensions {
+								cap := ui.capture.areas[index]
+								img := ui.capture.images[index]
+
+								return layout.Flex{
+									Axis:      layout.Vertical,
+									Spacing:   layout.SpaceEvenly,
+									Alignment: layout.Middle,
+								}.Layout(gtx,
+									layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+										return layout.Flex{
+											Axis:      layout.Horizontal,
+											Spacing:   layout.SpaceEvenly,
+											Alignment: layout.Middle,
+										}.Layout(gtx,
+											layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+												return layout.Spacer{Width: unit.Dp(1), Height: unit.Dp(1)}.Layout(gtx)
+											}),
+
+											layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+												return layout.Flex{
+													Axis: layout.Vertical,
+												}.Layout(gtx,
+													// Title.
+													layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+														return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+															return layout.Inset{Top: unit.Dp(5)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+																ui.labels.capture.Text = cap.Option
+																if cap.MatchedText != "" {
+																	ui.labels.capture.Text = cap.MatchedText
+																}
+
+																if cap.MatchedColor != nrgba.Nothing.Color() {
+																	ui.labels.capture.Color = cap.MatchedColor
+																} else {
+																	decorate.Label(&ui.labels.capture, ui.labels.capture.Text)
+																}
+
+																return ui.labels.capture.Layout(gtx)
+															})
+														})
+													}),
+
+													// Image.
+													layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+														gtx.Constraints.Max.X /= 2
+														gtx.Constraints.Max.Y /= len(ui.capture.images)
+														return img.Layout(ui.bar.Collection.Calibri().Theme, gtx)
+													}),
+												)
+											}),
+
+											layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+												return layout.Spacer{Width: unit.Dp(1), Height: unit.Dp(1)}.Layout(gtx)
+											}),
+										)
+									}),
+
+									layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+										return layout.Spacer{Width: unit.Dp(1), Height: unit.Dp(15)}.Layout(gtx)
+									}),
+
+									layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+										decorate.Border(gtx)
+										return layout.Spacer{Width: unit.Dp(1), Height: unit.Dp(5)}.Layout(gtx)
+									}),
+
+									layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+										return layout.Spacer{Width: unit.Dp(1), Height: unit.Dp(5)}.Layout(gtx)
+									}),
+								)
+							})
+						}),
+					)
+				})
+
+				ui.windows.current.Invalidate()
+
+				e.Frame(gtx.Ops)
+			default:
+				notify.Missed(event, "Preview")
 			}
 		}
 	}()
 
-	list := &widget.List{
+	return ui
+}
+
+func (g *GUI) previewUI() *preview {
+	ui := &preview{}
+
+	ui.dimensions.width = 350
+	ui.dimensions.height = 700
+
+	ui.windows.parent = g
+
+	ui.windows.current = app.NewWindow(
+		app.Title("Preview"),
+		app.Size(unit.Dp(ui.dimensions.width), unit.Dp(ui.dimensions.height)),
+		app.MinSize(unit.Dp(ui.dimensions.width), unit.Dp(ui.dimensions.height)),
+		app.MaxSize(unit.Dp(ui.dimensions.width), unit.Dp(ui.windows.parent.dimensions.max.Y)),
+		app.Decorated(false),
+	)
+
+	ui.bar = title.New(
+		"Preview",
+		fonts.NewCollection(),
+		nil,
+		nil,
+		func() { ui.windows.current.Perform(system.ActionClose) },
+	)
+	ui.bar.NoTip = true
+	ui.bar.NoDrag = true
+
+	ui.labels.header = material.Body1(ui.bar.Collection.NotoSans().Theme, "🗗 Preview the areas visible to UniteHUD. Select an image to save and preview on your desktop")
+	ui.labels.header.Color = nrgba.Highlight.Color()
+	ui.labels.header.Font.Weight = 200
+	ui.labels.header.TextSize = 16
+	ui.labels.header.Alignment = text.Middle
+
+	ui.labels.capture = material.Label(ui.bar.Collection.Calibri().Theme, unit.Sp(18), "")
+	ui.labels.capture.Color = nrgba.Highlight.Color()
+	ui.labels.capture.Font.Weight = 200
+
+	ui.labels.match = material.Label(ui.bar.Collection.Calibri().Theme, unit.Sp(18), "")
+	ui.labels.match.Color = nrgba.Highlight.Color()
+	ui.labels.match.Font.Weight = 200
+
+	ui.capture.liststyle = material.List(ui.bar.Collection.Calibri().Theme, &widget.List{
 		Scrollbar: widget.Scrollbar{},
 		List: layout.List{
 			Axis:      layout.Vertical,
 			Alignment: layout.Baseline,
 		},
-	}
-	liststyle := material.List(bar.Collection.Calibri().Theme, list)
+	})
 
-	var ops op.Ops
+	ui.capture.images = []*button.ImageWidget{}
 
-	headerLabel := material.Body1(bar.Collection.Calibri().Theme, "Preview the areas visible to UniteHUD, select an image to save and preview on your desktop")
-	headerLabel.Color = nrgba.Highlight.Color()
-	headerLabel.Font.Weight = 200
+	return ui
+}
 
-	captureLabel := material.Label(bar.Collection.Calibri().Theme, unit.Sp(18), "")
-	captureLabel.Color = nrgba.Highlight.Color()
-	captureLabel.Font.Weight = 200
-
-	matchLabel := material.Label(bar.Collection.Calibri().Theme, unit.Sp(18), "")
-	matchLabel.Color = nrgba.Highlight.Color()
-	matchLabel.Font.Weight = 200
-
-	p.window.Perform(system.ActionRaise)
-
-	p.parent.setInsetLeft(p.width)
-	defer p.parent.unsetInsetLeft(p.width)
-
-	for event := range p.window.Events() {
-		switch e := event.(type) {
-		case system.DestroyEvent:
-			return
-		case app.ViewEvent:
-			p.hwnd = e.HWND
-			p.parent.attachWindowLeft(p.hwnd, p.width)
-		case system.FrameEvent:
-			if p.closed {
-				go p.window.Perform(system.ActionClose)
-			}
-
-			if p.resize {
-				p.resize = false
-				p.parent.attachWindowLeft(p.hwnd, p.width)
-			}
-
-			gtx := layout.NewContext(&ops, e)
-
-			bar.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-				decorate.Background(gtx)
-
-				return layout.Flex{
-					Axis: layout.Vertical,
-				}.Layout(gtx,
-					// Title.
-					layout.Flexed(.2, func(gtx layout.Context) layout.Dimensions {
-						return layout.Flex{
-							Axis: layout.Horizontal,
-						}.Layout(gtx,
-							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-								return layout.Spacer{Width: unit.Dp(10), Height: unit.Dp(1)}.Layout(gtx)
-							}),
-
-							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-								return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-									return headerLabel.Layout(gtx)
-								})
-							}),
-
-							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-								return layout.Spacer{Width: unit.Dp(10), Height: unit.Dp(1)}.Layout(gtx)
-							}),
-						)
-					}),
-
-					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-						return layout.Spacer{Width: unit.Dp(1), Height: unit.Dp(15)}.Layout(gtx)
-					}),
-
-					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-						decorate.Border(gtx)
-						return layout.Spacer{Width: unit.Dp(1), Height: unit.Dp(5)}.Layout(gtx)
-					}),
-
-					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-						return layout.Spacer{Width: unit.Dp(1), Height: unit.Dp(5)}.Layout(gtx)
-					}),
-
-					layout.Flexed(.8, func(gtx layout.Context) layout.Dimensions {
-						decorate.Scrollbar(&liststyle.ScrollbarStyle)
-
-						return liststyle.Layout(gtx, len(images), func(gtx layout.Context, index int) layout.Dimensions {
-							cap := captures[index]
-							img := images[index]
-
-							return layout.Flex{
-								Axis:      layout.Vertical,
-								Spacing:   layout.SpaceEvenly,
-								Alignment: layout.Middle,
-							}.Layout(gtx,
-								layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-									return layout.Flex{
-										Axis:      layout.Horizontal,
-										Spacing:   layout.SpaceEvenly,
-										Alignment: layout.Middle,
-									}.Layout(gtx,
-										layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-											return layout.Spacer{Width: unit.Dp(1), Height: unit.Dp(1)}.Layout(gtx)
-										}),
-
-										layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-											return layout.Flex{
-												Axis: layout.Vertical,
-											}.Layout(gtx,
-												// Title.
-												layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-													return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-														return layout.Inset{Top: unit.Dp(5)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-															captureLabel.Text = cap.Option
-															if cap.MatchedText != "" {
-																captureLabel.Text = cap.MatchedText
-															}
-
-															if cap.MatchedColor != nrgba.Nothing.Color() {
-																captureLabel.Color = cap.MatchedColor
-															} else {
-																decorate.Label(&captureLabel, captureLabel.Text)
-															}
-
-															return captureLabel.Layout(gtx)
-														})
-													})
-												}),
-
-												// Image.
-												layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-													gtx.Constraints.Max.X /= 2
-													gtx.Constraints.Max.Y /= len(images)
-													return img.Layout(bar.Collection.Calibri().Theme, gtx)
-												}),
-											)
-										}),
-
-										layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-											return layout.Spacer{Width: unit.Dp(1), Height: unit.Dp(1)}.Layout(gtx)
-										}),
-									)
-								}),
-
-								layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-									return layout.Spacer{Width: unit.Dp(1), Height: unit.Dp(15)}.Layout(gtx)
-								}),
-
-								layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-									decorate.Border(gtx)
-									return layout.Spacer{Width: unit.Dp(1), Height: unit.Dp(5)}.Layout(gtx)
-								}),
-
-								layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-									return layout.Spacer{Width: unit.Dp(1), Height: unit.Dp(5)}.Layout(gtx)
-								}),
-							)
-						})
-					}),
-				)
-			})
-
-			p.window.Invalidate()
-			e.Frame(gtx.Ops)
-		default:
-			notify.Missed(event, "Preview")
-		}
+func (p *preview) close() {
+	if p != nil {
+		p.windows.current.Perform(system.ActionClose)
 	}
 }
 
@@ -294,9 +340,19 @@ func (p *preview) makePreviewCaptureButton(cap *area.Capture, img image.Image) *
 		Click: func(i *button.ImageWidget) {
 			err := cap.Open()
 			if err != nil {
-				p.parent.ToastError(fmt.Errorf("Failed to open capture preview (%v)", err))
+				p.windows.parent.ToastError(fmt.Errorf("Failed to open capture preview (%v)", err))
 			}
 		},
+	}
+}
+
+func (p *preview) open() bool {
+	return p != nil
+}
+
+func (p *preview) resize() {
+	if p != nil {
+		p.dimensions.resize = true
 	}
 }
 

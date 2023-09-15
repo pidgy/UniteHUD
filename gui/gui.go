@@ -70,8 +70,8 @@ type GUI struct {
 		}
 	}
 
-	resizeToMax bool
-	firstOpen   bool
+	resizeToMax,
+	firstOpen bool
 
 	fps *fps.FPS
 }
@@ -280,7 +280,7 @@ func (g *GUI) maximize() {
 	g.previous.size = g.dimensions.size
 
 	left := image.Pt(0, 0).Add(image.Pt(g.inset.left, 0))
-	right := g.dimensions.max.Sub(image.Pt(g.inset.right+1, 0))
+	right := g.dimensions.max.Sub(image.Pt(g.inset.left+g.inset.right+1, 0))
 	wapi.SetWindowPosShow(g.HWND, left, right)
 
 	//g.window.Perform(system.ActionCenter)

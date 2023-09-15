@@ -95,7 +95,7 @@ func main() {
 
 	err = video.Open()
 	if err != nil {
-		notify.Error("Failed to open Video Capture Device (%v)", err)
+		notify.Error("Failed to capture video (%v)", err)
 	}
 
 	err = server.Listen()
@@ -218,7 +218,7 @@ func main() {
 
 				err := video.Open()
 				if err != nil {
-					notify.Error("Failed to open Video Capture Device (%v)", err)
+					notify.Error("Failed to open video capture device (%v)", err)
 				}
 
 				if lastWindow != config.Current.Window {

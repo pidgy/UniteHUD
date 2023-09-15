@@ -42,6 +42,8 @@ type Item struct {
 	Weight   int
 
 	Callback func(this *Item)
+
+	hovered bool
 }
 
 func (l *Widget) Checked() *Item {
@@ -151,8 +153,14 @@ func (l *Widget) Layout(gtx layout.Context) layout.Dimensions {
 		switch {
 		case item.Checked.Hovered(), item.Checked.Focused():
 			hoverItem(gtx, index)
+
+			item.hovered = true
+			cursor.Is(pointer.CursorPointer)
 		case item.Checked.Value:
 			selectedItem(gtx, index)
+		case item.hovered:
+			item.hovered = false
+			cursor.Is(pointer.CursorDefault)
 		}
 
 		if l.WidthModifier == 0 {
@@ -181,8 +189,6 @@ func (l *Widget) Layout(gtx layout.Context) layout.Dimensions {
 }
 
 func selectedItem(gtx layout.Context, index int) {
-	// cursor.Is(pointer.CursorDefault)
-
 	widget.Border{
 		Color:        nrgba.White.Alpha(5).Color(),
 		Width:        unit.Dp(1),
@@ -205,8 +211,6 @@ func selectedItem(gtx layout.Context, index int) {
 }
 
 func hoverItem(gtx layout.Context, index int) {
-	cursor.Is(pointer.CursorPointer)
-
 	colorRect(gtx,
 		clip.Rect{
 			Min: image.Pt(

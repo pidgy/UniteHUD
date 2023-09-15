@@ -43,6 +43,14 @@ var (
 	defaultBarSize           = unit.Dp(0)
 )
 
+func NewHorizontal(ratio float32) *Horizontal {
+	return &Horizontal{Ratio: ratio}
+}
+
+func NewVertical(ratio float32) *Vertical {
+	return &Vertical{Ratio: ratio}
+}
+
 func (h *Horizontal) Layout(gtx layout.Context, top, bottom layout.Widget) layout.Dimensions {
 	size := gtx.Dp(h.bar)
 	if size <= 1 {

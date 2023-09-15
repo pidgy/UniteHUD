@@ -473,7 +473,7 @@ func (g *GUI) videos(text float32) *videos {
 				go func() {
 					err := video.Open()
 					if err != nil {
-						g.ToastErrorForce(err)
+						g.ToastError(err)
 
 						config.Current.Window = config.MainDisplay
 						config.Current.VideoCaptureDevice = config.NoVideoCaptureDevice

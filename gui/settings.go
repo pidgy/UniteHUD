@@ -8,6 +8,7 @@ import (
 	"gioui.org/io/system"
 	"gioui.org/layout"
 	"gioui.org/op"
+	"gioui.org/text"
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
@@ -28,54 +29,156 @@ import (
 type section struct {
 	title, description material.LabelStyle
 	warning, widget    visual.Widgeter
+	header             bool
 }
 
 type settings struct {
-	parent *GUI
-	window *app.Window
-	hwnd   uintptr
-	closed bool
-	resize bool
+	hwnd uintptr
 
-	width,
-	height int
-}
+	bar *title.Widget
 
-func (s *settings) close() bool {
-	was := s.closed
-	s.closed = true
-	return !was
-}
-
-func (s *settings) open(onclose func()) {
-	if !s.closed {
-		return
+	windows struct {
+		parent  *GUI
+		current *app.Window
 	}
-	s.closed = false
 
-	defer onclose()
+	state struct {
+		open bool
+	}
 
-	s.window = app.NewWindow(
-		app.Title("Settings"),
-		app.Size(unit.Dp(s.width), unit.Dp(s.height)),
-		app.MinSize(unit.Dp(s.width), unit.Dp(s.height)),
-		app.MaxSize(unit.Dp(s.width), unit.Dp(s.parent.dimensions.max.Y)),
-		app.Decorated(false),
-	)
+	dimensions struct {
+		width,
+		height int
 
-	bar := title.New(
+		resize bool
+	}
+
+	list material.ListStyle
+
+	sections struct {
+		instructions,
+		discord,
+		notifications,
+		frequency,
+		theme,
+		themes *section
+	}
+}
+
+func (g *GUI) settings(onclose func()) *settings {
+	ui := g.settingsUI()
+
+	go func() {
+		defer onclose()
+
+		ui.state.open = true
+		defer func() {
+			ui.state.open = false
+		}()
+
+		ui.windows.current.Perform(system.ActionRaise)
+
+		ui.windows.parent.setInsetRight(ui.dimensions.width)
+		defer ui.windows.parent.unsetInsetRight(ui.dimensions.width)
+
+		sections := []*section{
+			ui.sections.instructions,
+			ui.sections.discord,
+			ui.sections.notifications,
+			ui.sections.frequency,
+			ui.sections.theme,
+			ui.sections.themes,
+		}
+
+		var ops op.Ops
+
+		for event := range ui.windows.current.Events() {
+			switch e := event.(type) {
+			case system.DestroyEvent:
+				return
+			case app.ViewEvent:
+				ui.hwnd = e.HWND
+				ui.windows.parent.attachWindowRight(ui.hwnd, ui.dimensions.width)
+			case system.FrameEvent:
+				if !ui.state.open {
+					go ui.windows.current.Perform(system.ActionClose)
+				}
+
+				if ui.dimensions.resize {
+					ui.dimensions.resize = false
+					ui.windows.parent.attachWindowRight(ui.hwnd, ui.dimensions.width)
+				}
+
+				gtx := layout.NewContext(&ops, e)
+
+				ui.bar.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+					return decorate.BackgroundAlt(gtx, func(gtx layout.Context) layout.Dimensions {
+						decorate.List(&ui.list)
+						decorate.Scrollbar(&ui.list.ScrollbarStyle)
+
+						return ui.list.Layout(gtx, len(sections), func(gtx layout.Context, index int) layout.Dimensions {
+							return sections[index].section(gtx)
+						})
+					})
+				})
+
+				ui.windows.current.Invalidate()
+				e.Frame(gtx.Ops)
+			default:
+				notify.Missed(event, "Settings")
+			}
+		}
+	}()
+
+	return ui
+}
+
+func (g *GUI) settingsUI() *settings {
+	ui := &settings{}
+
+	ui.dimensions.width = 350
+	ui.dimensions.height = 700
+
+	ui.windows.parent = g
+
+	ui.bar = title.New(
 		"Settings",
 		fonts.NewCollection(),
 		nil,
 		nil,
-		func() { s.window.Perform(system.ActionClose) },
+		func() { ui.windows.current.Perform(system.ActionClose) },
 	)
-	bar.NoTip = true
-	bar.NoDrag = true
+	ui.bar.NoTip = true
+	ui.bar.NoDrag = true
 
-	discord := &section{
-		title:       material.Label(bar.Collection.NotoSans().Theme, 14, "🎮 Discord Activity"),
-		description: material.Caption(bar.Collection.NotoSans().Theme, "Enable/Disable Discord activity updates"),
+	ui.windows.current = app.NewWindow(
+		app.Title("Settings"),
+		app.Size(unit.Dp(ui.dimensions.width), unit.Dp(ui.dimensions.height)),
+		app.MinSize(unit.Dp(ui.dimensions.width), unit.Dp(ui.dimensions.height)),
+		app.MaxSize(unit.Dp(ui.dimensions.width), unit.Dp(ui.windows.parent.dimensions.max.Y)),
+		app.Decorated(false),
+	)
+
+	ui.list = material.List(
+		ui.bar.Collection.Calibri().Theme,
+		&widget.List{
+			Scrollbar: widget.Scrollbar{},
+			List: layout.List{
+				Axis:      layout.Vertical,
+				Alignment: layout.Start,
+			},
+		},
+	)
+
+	ui.sections.instructions = &section{
+		description: material.Label(ui.bar.Collection.NotoSans().Theme, 16, "⚙  Advanced Settings"),
+		header:      true,
+	}
+	ui.sections.instructions.description.Alignment = text.Middle
+
+	ui.sections.discord = &section{
+		title:       material.Label(ui.bar.Collection.NotoSans().Theme, 14, "🎮  Discord Activity"),
+		description: material.Caption(ui.bar.Collection.NotoSans().Theme, "Enable/Disable Discord activity updates"),
 		widget: &button.Widget{
 			Text:            "Enabled",
 			Pressed:         nrgba.Transparent80,
@@ -83,7 +186,7 @@ func (s *settings) open(onclose func()) {
 			TextSize:        unit.Sp(14),
 			TextInsetBottom: unit.Dp(-2),
 			Size:            image.Pt(80, 20),
-			Font:            bar.Collection.Calibri(),
+			Font:            ui.bar.Collection.Calibri(),
 
 			OnHoverHint: func() {},
 
@@ -100,28 +203,28 @@ func (s *settings) open(onclose func()) {
 			},
 		},
 	}
-	discordWarning := material.Label(bar.Collection.NotoSans().Theme, unit.Sp(11),
+	discordWarning := material.Label(ui.bar.Collection.NotoSans().Theme, unit.Sp(11),
 		"🔌 Activity Privacy settings in Discord can prevent this feature from working")
 	discordWarning.Color = nrgba.PastelRed.Alpha(127).Color()
 	discordWarning.Font.Weight = 0
-	discord.warning = discordWarning
+	ui.sections.discord.warning = discordWarning
 
 	if config.Current.Advanced.Discord.Disabled {
-		discord.widget.(*button.Widget).Released = nrgba.PastelRed
-		discord.widget.(*button.Widget).Text = "Disabled"
+		ui.sections.discord.widget.(*button.Widget).Released = nrgba.PastelRed
+		ui.sections.discord.widget.(*button.Widget).Text = "Disabled"
 	}
 
-	notifications := &section{
-		title:       material.Label(bar.Collection.NotoSans().Theme, 14, "🔔 Desktop Notifications"),
-		description: material.Caption(bar.Collection.NotoSans().Theme, "Adjust desktop notifications for UniteHUD"),
+	ui.sections.notifications = &section{
+		title:       material.Label(ui.bar.Collection.NotoSans().Theme, 14, "🔔  Desktop Notifications"),
+		description: material.Caption(ui.bar.Collection.NotoSans().Theme, "Adjust desktop notifications for UniteHUD"),
 	}
-	notificationsWarning := material.Label(bar.Collection.NotoSans().Theme, unit.Sp(11),
+	notificationsWarning := material.Label(ui.bar.Collection.NotoSans().Theme, unit.Sp(11),
 		"📌 Some settings are automatically applied by the OS")
 	notificationsWarning.Color = nrgba.PastelRed.Alpha(127).Color()
 	notificationsWarning.Font.Weight = 0
-	notifications.warning = notificationsWarning
-	notifications.widget = &dropdown.Widget{
-		Theme:    bar.Collection.NotoSans().Theme,
+	ui.sections.notifications.warning = notificationsWarning
+	ui.sections.notifications.widget = &dropdown.Widget{
+		Theme:    ui.bar.Collection.NotoSans().Theme,
 		TextSize: 12,
 		Items: []*dropdown.Item{
 			{
@@ -186,7 +289,7 @@ func (s *settings) open(onclose func()) {
 	}
 
 	if config.Current.Advanced.Notifications.Disabled.All {
-		this := notifications.widget.(*dropdown.Widget)
+		this := ui.sections.notifications.widget.(*dropdown.Widget)
 		for i := range this.Items {
 			if this.Items[i].Text == "Disabled" {
 				continue
@@ -195,28 +298,28 @@ func (s *settings) open(onclose func()) {
 		}
 	}
 
-	frequency := &section{
-		title:       material.Label(bar.Collection.NotoSans().Theme, 14, "🕔 Match Interval"),
-		description: material.Caption(bar.Collection.NotoSans().Theme, "Increase the amount of match attempts per second"),
+	ui.sections.frequency = &section{
+		title:       material.Label(ui.bar.Collection.NotoSans().Theme, 14, "🕔  Match Interval"),
+		description: material.Caption(ui.bar.Collection.NotoSans().Theme, "Increase the amount of match attempts per second"),
 		widget: &slider.Widget{
-			Slider:     material.Slider(bar.Collection.NotoSans().Theme, &widget.Float{Value: float32(config.Current.Advanced.IncreasedCaptureRate)}, -99, 99),
-			Label:      material.Label(bar.Collection.NotoSans().Theme, unit.Sp(15), ""),
+			Slider:     material.Slider(ui.bar.Collection.NotoSans().Theme, &widget.Float{Value: float32(config.Current.Advanced.IncreasedCaptureRate)}, -99, 99),
+			Label:      material.Label(ui.bar.Collection.NotoSans().Theme, unit.Sp(15), ""),
 			TextColors: []nrgba.NRGBA{nrgba.White, nrgba.PastelYellow, nrgba.PastelOrange, nrgba.PastelRed},
 			OnValueChanged: func(f float32) {
 				config.Current.Advanced.IncreasedCaptureRate = int64(f)
 			},
 		},
 	}
-	notificationsWarning = material.Label(bar.Collection.NotoSans().Theme, unit.Sp(11), "⚠ CPU Increase when ≥ 1")
-	notificationsWarning.Color = nrgba.PastelRed.Alpha(127).Color()
-	notificationsWarning.Font.Weight = 0
-	frequency.warning = notificationsWarning
+	frequencyWarning := material.Label(ui.bar.Collection.NotoSans().Theme, unit.Sp(11), "⚠ CPU Increase when ≥ 1")
+	frequencyWarning.Color = nrgba.PastelRed.Alpha(127).Color()
+	frequencyWarning.Font.Weight = 0
+	ui.sections.frequency.warning = frequencyWarning
 
-	theme := &section{
-		title:       material.Label(bar.Collection.NotoSans().Theme, 14, "🎨 Theme"),
-		description: material.Caption(bar.Collection.NotoSans().Theme, "Change the color theme of UniteHUD"),
+	ui.sections.theme = &section{
+		title:       material.Label(ui.bar.Collection.NotoSans().Theme, 14, "🎨  Theme"),
+		description: material.Caption(ui.bar.Collection.NotoSans().Theme, "Change the color theme of UniteHUD"),
 		widget: colorpicker.New(
-			bar.Collection.NotoSans(),
+			ui.bar.Collection.NotoSans(),
 			[]colorpicker.Options{
 				{
 					Label: "Background",
@@ -267,7 +370,7 @@ func (s *settings) open(onclose func()) {
 			TextSize:        unit.Sp(14),
 			TextInsetBottom: unit.Dp(-2),
 			Size:            image.Pt(80, 20),
-			Font:            bar.Collection.Calibri(),
+			Font:            ui.bar.Collection.Calibri(),
 
 			OnHoverHint: func() {},
 
@@ -276,24 +379,24 @@ func (s *settings) open(onclose func()) {
 			},
 		},
 	}
-	theme.warning.(*button.Widget).Click = func(this *button.Widget) {
+	ui.sections.theme.warning.(*button.Widget).Click = func(this *button.Widget) {
 		defer this.Deactivate()
 
-		theme.widget.(*colorpicker.Widget).ApplyDefaults()
+		ui.sections.theme.widget.(*colorpicker.Widget).ApplyDefaults()
 	}
 
-	themes := &section{
-		title:       material.Label(bar.Collection.NotoSans().Theme, 14, "📦 Preset Themes"),
-		description: material.Caption(bar.Collection.NotoSans().Theme, "Select a theme preset to apply to UniteHUD"),
-		warning:     material.Label(bar.Collection.NotoSans().Theme, 14, ""),
+	ui.sections.themes = &section{
+		title:       material.Label(ui.bar.Collection.NotoSans().Theme, 14, "📦  Preset Themes"),
+		description: material.Caption(ui.bar.Collection.NotoSans().Theme, "Select a theme preset to apply to UniteHUD"),
+		warning:     material.Label(ui.bar.Collection.NotoSans().Theme, 14, ""),
 		widget: &dropdown.Widget{
-			Theme:    bar.Collection.NotoSans().Theme,
+			Theme:    ui.bar.Collection.NotoSans().Theme,
 			TextSize: 16,
 			Items:    []*dropdown.Item{},
 		},
 	}
 	for name := range config.Current.Themes {
-		themes.widget.(*dropdown.Widget).Items = append(themes.widget.(*dropdown.Widget).Items,
+		ui.sections.themes.widget.(*dropdown.Widget).Items = append(ui.sections.themes.widget.(*dropdown.Widget).Items,
 			&dropdown.Item{
 				Text: name,
 				Callback: func(this *dropdown.Item) {
@@ -303,66 +406,90 @@ func (s *settings) open(onclose func()) {
 		)
 	}
 
-	var ops op.Ops
+	return ui
+}
 
-	list := material.List(
-		bar.Collection.Calibri().Theme,
-		&widget.List{
-			Scrollbar: widget.Scrollbar{},
-			List: layout.List{
-				Axis:      layout.Vertical,
-				Alignment: layout.Start,
-			},
-		},
-	)
-
-	sections := []*section{
-		discord,
-		notifications,
-		frequency,
-		theme,
-		themes,
+func (s *section) section(gtx layout.Context) layout.Dimensions {
+	inset := layout.Inset{
+		Top:    5,
+		Left:   12.5,
+		Right:  2,
+		Bottom: 5,
 	}
 
-	s.window.Perform(system.ActionRaise)
+	alignment := layout.Baseline
+	if s.header {
+		alignment = layout.Middle
+		inset = layout.Inset{}
+	}
 
-	s.parent.setInsetRight(s.width)
-	defer s.parent.unsetInsetRight(s.width)
+	s.title.Font.Weight = font.Black
 
-	for event := range s.window.Events() {
-		switch e := event.(type) {
-		case system.DestroyEvent:
-			return
-		case app.ViewEvent:
-			s.hwnd = e.HWND
-			s.parent.attachWindowRight(s.hwnd, s.width)
-		case system.FrameEvent:
-			if s.closed {
-				go s.window.Perform(system.ActionClose)
-			}
+	decorate.Label(&s.title, s.title.Text)
+	decorate.Label(&s.description, s.description.Text)
 
-			if s.resize {
-				s.resize = false
-				s.parent.attachWindowRight(s.hwnd, s.width)
-			}
+	return decorate.Fill(gtx, nrgba.NRGBA(config.Current.Theme.Background), func(gtx layout.Context) layout.Dimensions {
+		return layout.Inset{
+			Top: unit.Dp(5),
+		}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+			return decorate.Fill(gtx, nrgba.NRGBA(config.Current.Theme.BackgroundAlt), func(gtx layout.Context) layout.Dimensions {
+				return layout.Flex{
+					Axis:      layout.Vertical,
+					Alignment: alignment,
+				}.Layout(gtx,
+					s.spacer(),
 
-			gtx := layout.NewContext(&ops, e)
+					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+						if s.title.Text == "" {
+							return layout.Dimensions{Size: layout.Exact(image.Pt(0, 0)).Max}
+						}
+						return inset.Layout(gtx, s.title.Layout)
+					}),
 
-			bar.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-				return decorate.BackgroundAlt(gtx, func(gtx layout.Context) layout.Dimensions {
-					decorate.Scrollbar(&list.ScrollbarStyle)
+					s.spacer(),
 
-					return list.Layout(gtx, len(sections), func(gtx layout.Context, index int) layout.Dimensions {
-						return sections[index].section(gtx)
-					})
-				})
+					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+						if s.widget == nil {
+							return layout.Dimensions{Size: layout.Exact(image.Pt(0, 0)).Max}
+						}
+						return inset.Layout(gtx, s.widget.Layout)
+					}),
+
+					s.spacer(),
+
+					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+						if s.description.Text == "" {
+							return layout.Dimensions{Size: layout.Exact(image.Pt(0, 0)).Max}
+						}
+						return inset.Layout(gtx, s.description.Layout)
+					}),
+
+					s.spacer(),
+
+					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+						if s.warning == nil {
+							return layout.Dimensions{Size: layout.Exact(image.Pt(0, 0)).Max}
+						}
+						return inset.Layout(gtx, s.warning.Layout)
+					}),
+
+					s.spacer(),
+					s.spacer(),
+				)
 			})
+		})
+	})
+}
 
-			s.window.Invalidate()
-			e.Frame(gtx.Ops)
-		default:
-			notify.Missed(event, "Settings")
-		}
+func (s *section) spacer() layout.FlexChild {
+	return layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+		return layout.Spacer{Width: unit.Dp(gtx.Constraints.Max.X), Height: 2}.Layout(gtx)
+	})
+}
+
+func (s *settings) close() {
+	if s != nil {
+		go s.windows.current.Perform(system.ActionClose)
 	}
 }
 
@@ -372,66 +499,15 @@ func (s *settings) fill() layout.FlexChild {
 	})
 }
 
-func (s *section) section(gtx layout.Context) layout.Dimensions {
-	inset := layout.Inset{
-		Top:    0,
-		Left:   12,
-		Right:  12,
-		Bottom: 0,
-	}
-	s.title.Font.Weight = font.ExtraLight
-
-	decorate.Label(&s.title, s.title.Text)
-	decorate.Label(&s.description, s.description.Text)
-
-	return layout.Inset{
-		Top: unit.Dp(5),
-	}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-		return layout.Flex{
-			Axis:      layout.Vertical,
-			Alignment: layout.Baseline,
-		}.Layout(gtx,
-			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-				return inset.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-					return s.title.Layout(gtx)
-				})
-			}),
-
-			s.spacer(),
-
-			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-				if s.widget == nil {
-					return layout.Dimensions{Size: gtx.Constraints.Max}
-				}
-				return inset.Layout(gtx, s.widget.Layout)
-			}),
-
-			s.spacer(),
-
-			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-				inset.Top += 5
-				return inset.Layout(gtx, s.description.Layout)
-			}),
-
-			s.spacer(),
-
-			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-				inset.Bottom += 5
-				return inset.Layout(gtx, s.warning.Layout)
-			}),
-
-			s.spacer(),
-			s.spacer(),
-		)
-	})
+func (s *settings) open() bool {
+	return s != nil
 }
 
+func (s *settings) resize() {
+	if s != nil {
+		s.dimensions.resize = true
+	}
+}
 func (s *settings) spacer(gtx layout.Context) layout.Dimensions {
 	return layout.Inset{Bottom: 10}.Layout(gtx, decorate.Border)
-}
-
-func (s *section) spacer() layout.FlexChild {
-	return layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-		return layout.Spacer{Width: unit.Dp(gtx.Constraints.Max.X), Height: 2}.Layout(gtx)
-	})
 }

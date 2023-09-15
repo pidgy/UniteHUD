@@ -86,45 +86,45 @@ func (e EventType) String() string {
 	case KilledWithoutPoints:
 		return "Defeated without points"
 	case MatchStarting:
-		return "Match starting"
+		return "Match Starting"
 	case MatchEnding:
-		return "Match ending"
+		return "Match Ending"
 	case HoldingEnergy:
-		return "Holding energy"
+		return "Holding Energy"
 	case PurpleBaseOpen:
-		return "Purple base open"
+		return "Purple Open"
 	case OrangeBaseOpen:
-		return "Orange base open"
+		return "Orange Open"
 	case PurpleBaseClosed:
-		return "Purple base closed"
+		return "Purple Closed"
 	case OrangeBaseClosed:
-		return "Orange base closed"
+		return "Orange Cclosed"
 	case PurpleScore:
-		return "Purple scored"
+		return "Purple Scored"
 	case OrangeScore:
-		return "Orange scored"
+		return "Orange Scored"
 	case FirstScored:
-		return "First scored"
+		return "First score"
 	case OrangeScoreMissed:
 		return "Orange score missed"
 	case PurpleScoreMissed:
 		return "Purple score missed"
 	case RegielekiSecurePurple:
-		return "Regieleki secured by Purple team"
+		return "Regieleki Secured (Purple)"
 	case RegielekiSecureOrange:
-		return "Regieleki secured by Orange team"
+		return "Regieleki Secured (Orange)"
 	case RegiceSecurePurple:
-		return "Regice secured by Purple team"
+		return "Regice Secured (Purple)"
 	case RegiceSecureOrange:
-		return "Regice secured by Orange team"
+		return "Regice Secured (Orange)"
 	case RegirockSecurePurple:
-		return "Regirock secured by Purple team"
+		return "Regirock Secured (Purple)"
 	case RegirockSecureOrange:
-		return "Regirock secured by Orange team"
+		return "Regirock Secured (Orange)"
 	case RegisteelSecurePurple:
-		return "Registeel secured by Purple team"
+		return "Registeel Secured (Purple)"
 	case RegisteelSecureOrange:
-		return "Registeel secured by Orange team"
+		return "Registeel Secured (Orange)"
 	case PressButtonToScore:
 		return "Press button to score"
 	case ScoreOverride:
@@ -140,17 +140,17 @@ func (e EventType) String() string {
 	case ServerStopped:
 		return "Server Stopped"
 	case KOPurple:
-		return "KO by Purple team"
+		return "+1 KO (Purple)"
 	case KOOrange:
-		return "KO by Orange team"
+		return "+1 KO (Orange)"
 	case KOStreakPurple:
-		return "KO streak by Purple team"
+		return "KO Streak (Purple)"
 	case KOStreakOrange:
-		return "KO streak by Orange team"
+		return "KO Streak (Orange)"
 	case RayquazaSecurePurple:
-		return "Rayquaza secured by Purple team"
+		return "Rayquaza Secured (Purple)"
 	case RayquazaSecureOrange:
-		return "Rayquaza secured by Orange team"
+		return "Rayquaza Secured (Orange)"
 	default:
 		return fmt.Sprintf("Unknown (%d)", e.Int())
 	}

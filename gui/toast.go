@@ -144,19 +144,6 @@ func (g *GUI) ToastErrorf(format string, a ...interface{}) {
 	g.ToastError(fmt.Errorf(format, a...))
 }
 
-func (g *GUI) ToastErrorForce(err error) {
-	g.previous.toast.err = err
-	g.previous.toast.time = time.Now()
-
-	e := err.Error()
-	es := strings.Split(e, " ")
-	es[0] = strings.Title(es[0])
-
-	g.previous.toast.active = false
-
-	g.ToastOK("Error", strings.Join(es, " "), OnToastOK(nil))
-}
-
 func (g *GUI) ToastOK(header, msg string, ok OnToastOK) {
 	if g.previous.toast.active {
 		return

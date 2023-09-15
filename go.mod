@@ -8,10 +8,12 @@ require (
 	gioui.org v0.3.0
 	gioui.org/x v0.3.0
 	git.sr.ht/~jackmordaunt/go-toast v1.0.0
+	github.com/Microsoft/go-winio v0.6.1
 	github.com/asticode/go-astikit v0.38.0
 	github.com/asticode/go-astilectron v0.29.0
 	github.com/gen2brain/malgo v0.11.10
 	github.com/google/go-cmp v0.5.9
+	github.com/google/uuid v1.3.1
 	github.com/guptarohit/asciigraph v0.5.5
 	github.com/kbinani/screenshot v0.0.0-20210720154843-7d3a670d8329
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
@@ -21,18 +23,17 @@ require (
 	gocv.io/x/gocv v0.28.0
 	golang.org/x/sys v0.12.0
 	nhooyr.io/websocket v1.8.7
+	github.com/golang/protobuf v1.5.2
 )
 
 require (
 	gioui.org/cpu v0.0.0-20210817075930-8d6a761490d2 // indirect
 	gioui.org/shader v1.0.6 // indirect
-	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/gen2brain/shm v0.0.0-20221026125803-c33c9e32b1c8 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-text/typesetting v0.0.0-20230803102845-24e03d8b5372 // indirect
 	github.com/gobwas/ws v1.1.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
-	github.com/google/uuid v1.3.1 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/jezek/xgb v1.1.0 // indirect
 	github.com/klauspost/compress v1.15.6 // indirect
