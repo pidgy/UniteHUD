@@ -84,28 +84,28 @@ func (c Collection) load(path, typeface string) *Style {
 
 	s := cached(path)
 	if s != nil {
-		notify.Debug("Cached font: %s (%s)", path, typeface)
+		notify.Debug("Font: Cached \"%s\"", typeface)
 		c[path] = s
 		return c[path]
 	}
 
-	notify.Debug("Loading font: %s (%s)", path, typeface)
+	notify.Debug("Font: Loading \"%s\"", typeface)
 
 	bytes, err := os.ReadFile("assets/font/" + path)
 	if err != nil {
-		notify.Warn("%v", err)
+		notify.Warn("Font: %v", err)
 		return noStyle()
 	}
 
 	custom, err := opentype.ParseCollection(bytes)
 	if err != nil {
-		notify.Warn("%v", err)
+		notify.Warn("Font: %v", err)
 		return noStyle()
 	}
 
 	face, err := opentype.Parse(bytes)
 	if err != nil {
-		notify.Warn("%v", err)
+		notify.Warn("Font: %v", err)
 		return noStyle()
 	}
 

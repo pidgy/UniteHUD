@@ -30,50 +30,52 @@ var (
 			count int
 		}
 	}
+
+	wait struct {
+		activity
+		time.Time
+	}
 )
 
-var Activity = status()
+var (
+	Activity = status()
+)
 
 func Connect() {
-	for ; ; time.Sleep(time.Second * 15) {
-		if !reconnect() {
-			continue
-		}
+	update()
 
-		Activity = status()
-
-		notify.Debug("Discord: %s: \"%s\"", Activity.Details, Activity.State)
-
-		rpc.send(frame{
-			Cmd: commandSetActivity,
-			Args: args{
-				Pid:      os.Getpid(),
-				Activity: status(),
-			},
-			Nonce: uuid.New().String(),
-		})
+	t := time.NewTicker(time.Second * 5)
+	for range t.C {
+		update()
 	}
 }
 
-func reconnect() bool {
-	if config.Current.Advanced.Discord.Disabled {
-		return true
-	}
+func Disconnect() {
+	rpc.cleanup()
+	notify.Feed(nrgba.Discord, "Discord: Disconnected")
+}
 
+func reconnect() {
 	err := rpc.error()
 	if err != nil {
-		notify.Feed(nrgba.Discord, "Reconnecting to Discord (%v)", err)
+		notify.Warn("Discord: Disconnected (%v)", err)
 	}
 
-	for ; !rpc.connected; time.Sleep(time.Second * 15) {
+	if config.Current.Advanced.Discord.Disabled && rpc.conn != nil {
+		rpc.cleanup()
+	}
+
+	for wait := time.Second; rpc.conn == nil; time.Sleep(wait) {
 		if config.Current.Advanced.Discord.Disabled {
 			continue
 		}
+		wait = wait << 1
 
-		notify.Feed(nrgba.Discord, "Connecting to Discord")
+		notify.Feed(nrgba.Discord, "Discord: Connecting...")
 
 		rpc, err = connect()
 		if err != nil {
+			notify.Warn("Discord: Failed to connect (%v)", err)
 			continue
 		}
 
@@ -81,16 +83,19 @@ func reconnect() bool {
 
 		err = rpc.error()
 		if err != nil {
+			notify.Warn("Discord: Failed to connect (%v)", err)
 			continue
 		}
 
-		notify.Feed(nrgba.Discord, "Connected to Discord")
+		notify.Feed(nrgba.Discord, "Discord: Connected")
 	}
-
-	return rpc.connected
 }
 
 func status() activity {
+	if time.Now().Before(wait.Time) {
+		return wait.activity
+	}
+
 	a := activity{
 		State: "Waiting for match to start",
 
@@ -129,13 +134,30 @@ func status() activity {
 			a.State = "Ready to capture scores"
 		}
 
-		if !server.Match() {
+		// event := state.MatchEnding.Occured(time.Second * 5)
+		// if event == nil {
+		// event = state.Last()
+		// }
+
+		event := state.Last()
+
+		if !server.Match() && event.EventType != state.MatchEnding {
 			return a
+		}
+
+		score := ""
+		switch {
+		case last.score.purple > last.score.orange:
+			score = "Winning"
+		case last.score.purple < last.score.orange:
+			score = "Behind"
+		case last.score.purple == last.score.orange:
+			score = "Tied"
 		}
 
 		last.score.orange, last.score.purple, last.score.self = server.Scores()
 		a.Details = "UniteHUD - In a Match"
-		a.State = fmt.Sprintf("[%s] %d - %d", server.Clock(), last.score.purple, last.score.orange)
+		a.State = fmt.Sprintf("%s %d - %d", score, last.score.purple, last.score.orange)
 
 		ten := int64((time.Minute * 10).Milliseconds())
 		ms := int64(server.Seconds() * 1000)
@@ -147,32 +169,42 @@ func status() activity {
 			a.Timestamps.End = time.Now().UnixMilli() + ends
 		}
 
-		event := state.Last()
 		switch event.EventType {
-		case state.HoldingEnergy,
-			state.OrangeScoreMissed, state.PurpleScoreMissed,
-			state.PressButtonToScore, state.PreScore, state.PostScore,
-			state.Nothing:
-
+		case state.HoldingEnergy, state.OrangeScoreMissed, state.PurpleScoreMissed,
+			state.PressButtonToScore, state.PreScore, state.PostScore, state.Nothing:
 		case state.MatchStarting:
 			a.Timestamps = timestamps{}
+			a.Details = "UniteHUD - Match Starting"
+			a.State = "Loading..."
 		case state.Killed, state.KilledWithPoints, state.KilledWithoutPoints:
+			e := state.First(event.EventType, time.Second*30)
+			if e != nil {
+				event = e
+			}
 			a.State = fmt.Sprintf("Died %ds ago", int(time.Since(event.Time).Seconds()))
 		case state.MatchEnding:
 			a.Details = "UniteHUD - Match Ended"
 
-			won := "Purple"
+			winner := "Purple"
 			if last.score.orange > last.score.purple {
-				won = "Orange"
+				winner = "Orange"
 			}
-			a.State = fmt.Sprintf("%s team won %d - %d", won, last.score.purple, last.score.orange)
+			a.State = fmt.Sprintf("%s team won", winner)
+
+			wait.activity = a
+			wait.Time = time.Now().Add(time.Second * 10)
 		case state.PurpleScore, state.OrangeScore, state.FirstScored:
 			fallthrough
 		default:
 			if time.Since(event.Time) > time.Second*30 {
 				break
 			}
-			a.State = fmt.Sprintf("%s %s", event.EventType, a.State)
+
+			a.State = fmt.Sprintf("%s - %s", event.EventType, a.State)
+		}
+
+		if server.IsFinalStretch() {
+			a.State = fmt.Sprintf("Final Stretch - %s", a.State)
 		}
 
 		last.event.EventType = event.EventType
@@ -180,4 +212,19 @@ func status() activity {
 	}
 
 	return a
+}
+
+func update() {
+	reconnect()
+
+	Activity = status()
+
+	rpc.send(frame{
+		Cmd: commandSetActivity,
+		Args: args{
+			Pid:      os.Getpid(),
+			Activity: Activity,
+		},
+		Nonce: uuid.New().String(),
+	})
 }

@@ -8,8 +8,8 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 
-	"github.com/pidgy/unitehud/cursor"
 	"github.com/pidgy/unitehud/fonts"
+	"github.com/pidgy/unitehud/gui/cursor"
 	"github.com/pidgy/unitehud/gui/visual/decorate"
 	"github.com/pidgy/unitehud/notify"
 )

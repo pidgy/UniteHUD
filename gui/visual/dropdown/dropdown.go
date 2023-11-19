@@ -12,7 +12,7 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 
-	"github.com/pidgy/unitehud/cursor"
+	"github.com/pidgy/unitehud/gui/cursor"
 	"github.com/pidgy/unitehud/gui/visual/decorate"
 	"github.com/pidgy/unitehud/nrgba"
 )
@@ -192,7 +192,7 @@ func selectedItem(gtx layout.Context, index int) {
 	widget.Border{
 		Color:        nrgba.White.Alpha(5).Color(),
 		Width:        unit.Dp(1),
-		CornerRadius: unit.Dp(3),
+		CornerRadius: unit.Dp(1),
 	}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 		return colorRect(gtx,
 			clip.Rect{

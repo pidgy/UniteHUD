@@ -17,7 +17,7 @@ type query struct {
 }
 
 func Check() {
-	notify.System("Checking for updates...")
+	notify.System("Update: Validating...")
 
 	r, err := http.Get("https://unitehud.dev/update.json")
 	if err != nil {
@@ -29,12 +29,12 @@ func Check() {
 	q := query{}
 	err = json.NewDecoder(r.Body).Decode(&q)
 	if err != nil {
-		notify.Error("Failed to read update file (%v)", err)
+		notify.Error("Update: Failed to read update file (%v)", err)
 		return
 	}
 
 	if q.Latest == "" {
-		notify.SystemWarn("Failed to verify latest version")
+		notify.SystemWarn("Update: Failed to verify latest version")
 		return
 	}
 
@@ -46,7 +46,7 @@ func Check() {
 			When(clicked.VisitWebsite).
 			Send()
 	} else {
-		notify.System("Running the latest version of UniteHUD (%s)", global.Version)
+		notify.System("Update: Running the latest version of UniteHUD (%s)", global.Version)
 	}
 
 	for _, n := range q.News {

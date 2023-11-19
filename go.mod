@@ -2,8 +2,9 @@ module github.com/pidgy/unitehud
 
 go 1.21
 
-// Previous gioui -> v0.0.0-20220113184748-9209fd91431f
-
+// Stable
+// gioui          v0.0.0-20220113184748-9209fd91431f
+// gocv.io/x/gocv v0.28.0
 require (
 	gioui.org v0.3.0
 	gioui.org/x v0.3.0
@@ -19,11 +20,12 @@ require (
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/errors v0.9.1
+	github.com/rupor-github/win-gpg-agent v1.6.3
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
+	github.com/tc-hib/winres v0.2.1
 	gocv.io/x/gocv v0.28.0
 	golang.org/x/sys v0.12.0
 	nhooyr.io/websocket v1.8.7
-	github.com/golang/protobuf v1.5.2
 )
 
 require (
@@ -42,9 +44,9 @@ require (
 	github.com/stretchr/testify v1.8.2 // indirect
 	golang.org/x/exp v0.0.0-20221012211006-4de253d81b95 // indirect
 	golang.org/x/exp/shiny v0.0.0-20220827204233-334a2380cb91 // indirect
-	golang.org/x/image v0.7.0 // indirect
+	golang.org/x/image v0.12.0 // indirect
 	golang.org/x/mod v0.12.0 // indirect
-	golang.org/x/text v0.9.0 // indirect
+	golang.org/x/text v0.13.0 // indirect
 	golang.org/x/tools v0.13.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )

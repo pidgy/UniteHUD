@@ -72,17 +72,30 @@ var (
 	Yellow         = NRGBA(rgba.Yellow)
 )
 
-func (n NRGBA) Alpha(a uint8) NRGBA {
-	n.A = a
-	return n
-}
-
 func Bool(b bool) NRGBA {
 	if b {
 		return System
 	}
 
 	return System.Alpha(255 / 2)
+}
+
+func FPS(fps float64) NRGBA {
+	switch {
+	case fps >= 50:
+		return Green
+	case fps >= 30:
+		return Orange
+	case fps >= 15:
+		return Yellow
+	default:
+		return PaleRed
+	}
+}
+
+func (n NRGBA) Alpha(a uint8) NRGBA {
+	n.A = a
+	return n
 }
 
 func (n NRGBA) Color() color.NRGBA {

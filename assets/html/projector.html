@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+
+<head>
+    <title> UniteHUD Projector</title>
+    <meta http-equiv="Cache-control" content="no-cache">
+    <meta http-equiv="Expires" content="-1">
+
+    <link rel="icon" href="../../www/assets/img/icon.png">
+    <link rel="stylesheet" href="../css/projector.css">
+
+    <script type="text/javascript" src="../../www/assets/js/jquery-3.7.0.min.js" onload="try{ window.$ = window.jQuery = module.exports;}catch{ console.info('[UniteHUD] Non-electron browser detected')}"></script>
+    <script type="text/javascript" src="../js/projector.js"></script>
+</head>
+
+<body>
+    <div id="projector-base">
+        <canvas id="projector-canvas" width="1920" height="1080" />
+    </div>
+
+    <iframe id="overlay-frame" width="1920" height="1080" src="../../www/UniteHUD Client.html" allowtransparency="true" />
+</body>

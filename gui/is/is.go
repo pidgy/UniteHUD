@@ -1,19 +1,19 @@
 package is
 
-type Is int
+type What int
 
 const (
-	Closing Is = iota
+	Closing What = iota
 	Loading
 	MainMenu
 	Projecting
 	Display
 )
 
-var Now Is = Loading
+var Now What = Loading
 
-func (i Is) String() string {
-	switch i {
+func (w What) String() string {
+	switch w {
 	case Closing:
 		return "Closing"
 	case Loading:

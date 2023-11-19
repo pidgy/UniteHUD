@@ -216,12 +216,11 @@ func (e *Event) Strip() string {
 
 func (e EventType) Occured(since time.Duration) *Event {
 	for _, event := range Events {
-		// Have we gone too far?
 		if time.Since(event.Time) > since {
 			return nil
 		}
 
-		if event.EventType == e {
+		if e == event.EventType {
 			return event
 		}
 	}

@@ -71,34 +71,34 @@ func init() {
 
 // Capture captures the desired area from a Window and returns an image.
 func Capture() (*image.RGBA, error) {
-	handle, err := find(config.Current.Window)
+	handle, err := find(config.Current.VideoCaptureWindow)
 	if err != nil {
-		notify.Error("Failed to find %s (%v)", config.Current.Window, err)
+		notify.Error("Failed to find %s (%v)", config.Current.VideoCaptureWindow, err)
 		if config.Current.LostWindow == "" {
-			config.Current.LostWindow = config.Current.Window
+			config.Current.LostWindow = config.Current.VideoCaptureWindow
 		}
-		config.Current.Window = config.MainDisplay
+		config.Current.VideoCaptureWindow = config.MainDisplay
 		return monitor.Capture()
 	}
 
 	// Determine the full width and height of the window.
 	rect, err := windowRect(handle)
 	if err != nil {
-		notify.Error("Failed to find window dimensions \"%s\" (%v)", config.Current.Window, err)
+		notify.Error("Failed to find window dimensions \"%s\" (%v)", config.Current.VideoCaptureWindow, err)
 		if config.Current.LostWindow == "" {
-			config.Current.LostWindow = config.Current.Window
+			config.Current.LostWindow = config.Current.VideoCaptureWindow
 		}
-		config.Current.Window = config.MainDisplay
+		config.Current.VideoCaptureWindow = config.MainDisplay
 		return monitor.Capture()
 	}
 
 	img, err := CaptureRect(rect)
 	if err != nil {
-		notify.Error("Failed to capture \"%s\" window (%v)", config.Current.Window, err)
+		notify.Error("Failed to capture \"%s\" window (%v)", config.Current.VideoCaptureWindow, err)
 		if config.Current.LostWindow == "" {
-			config.Current.LostWindow = config.Current.Window
+			config.Current.LostWindow = config.Current.VideoCaptureWindow
 		}
-		config.Current.Window = config.MainDisplay
+		config.Current.VideoCaptureWindow = config.MainDisplay
 		return monitor.Capture()
 	}
 
@@ -106,7 +106,7 @@ func Capture() (*image.RGBA, error) {
 }
 
 func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
-	handle, err := find(config.Current.Window)
+	handle, err := find(config.Current.VideoCaptureWindow)
 	if err != nil {
 		notify.Error("%v", err)
 		return monitor.CaptureRect(rect)
@@ -150,7 +150,7 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 		0, 0,
 	)
 	if bitmap == 0 {
-		return nil, fmt.Errorf("Failed to create bitmap for \"%s\" window", config.Current.Window)
+		return nil, fmt.Errorf("Failed to create bitmap for \"%s\" window", config.Current.VideoCaptureWindow)
 	}
 
 	defer wapi.DeleteObject.Call(bitmap)
@@ -188,7 +188,7 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 		)
 	}
 	if ret == 0 {
-		notify.Error("Failed to capture \"%s\" window", config.Current.Window)
+		notify.Error("Failed to capture \"%s\" window", config.Current.VideoCaptureWindow)
 		return nil, fmt.Errorf("bitblt returned: %d", ret)
 	}
 
@@ -208,7 +208,7 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 			slice[i+2], slice[i], slice[i+1], slice[i+3]
 	}
 
-	img := &image.RGBA{
+	return &image.RGBA{
 		Pix:    imageBytes,
 		Stride: 4 * width,
 		Rect: image.Rect(
@@ -217,9 +217,7 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 			width,
 			height,
 		),
-	}
-
-	return img, nil
+	}, nil
 }
 
 func This(title string) (syscall.Handle, error) {
@@ -247,7 +245,7 @@ func Open() error {
 	Sources = windows
 
 	for _, win := range windows {
-		if win == config.Current.Window {
+		if win == config.Current.VideoCaptureWindow {
 			if !monitor.IsDisplay() {
 				config.Current.LostWindow = ""
 			}
@@ -259,10 +257,10 @@ func Open() error {
 		return nil
 	}
 
-	notify.Error("\"%s\" could not be found", config.Current.Window)
+	notify.Error("\"%s\" could not be found", config.Current.VideoCaptureWindow)
 
-	config.Current.LostWindow = config.Current.Window
-	config.Current.Window = config.MainDisplay
+	config.Current.LostWindow = config.Current.VideoCaptureWindow
+	config.Current.VideoCaptureWindow = config.MainDisplay
 
 	return nil
 }
@@ -286,9 +284,9 @@ func Reattach() error {
 
 	for _, win := range windows {
 		if win == config.Current.LostWindow {
-			config.Current.Window = win
+			config.Current.VideoCaptureWindow = win
 
-			notify.Announce("Found \"%s\" window", config.Current.Window)
+			notify.Announce("Found \"%s\" window", config.Current.VideoCaptureWindow)
 			config.Current.LostWindow = ""
 			attempts = 0
 
@@ -298,7 +296,7 @@ func Reattach() error {
 
 	attempts++
 	if attempts == max {
-		config.Current.Window = config.MainDisplay
+		config.Current.VideoCaptureWindow = config.MainDisplay
 		config.Current.LostWindow = ""
 		attempts = 0
 	}
@@ -344,8 +342,8 @@ func find(name string) (syscall.Handle, error) {
 
 	ret, _, _ := wapi.FindWindow.Call(0, uintptr(unsafe.Pointer(argv)))
 	if ret == 0 {
-		config.Current.LostWindow = config.Current.Window
-		config.Current.Window = config.MainDisplay
+		config.Current.LostWindow = config.Current.VideoCaptureWindow
+		config.Current.VideoCaptureWindow = config.MainDisplay
 
 		return handle, fmt.Errorf("Failed to find \"%s\"", name)
 	}

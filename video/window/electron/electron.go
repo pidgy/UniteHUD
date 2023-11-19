@@ -16,28 +16,28 @@ const (
 )
 
 var (
-	window *astilectron.Window
-	app    *astilectron.Astilectron
+	overlayApp    *astilectron.Astilectron
+	overlayWindow *astilectron.Window
 )
 
 func Close() {
 	defer func() {
-		app, window = nil, nil
+		overlayApp, overlayWindow = nil, nil
 	}()
 
-	if window != nil {
+	if overlayWindow != nil {
 		notify.System("Closing %s", Title)
 
-		err := window.Destroy()
+		err := overlayWindow.Destroy()
 		if err != nil {
 			notify.Warn("Failed to close %s (%v)", Title, err)
 		}
 	}
 
-	if app != nil {
+	if overlayApp != nil {
 		notify.Debug("Closing Astilectron")
 
-		err := app.Quit()
+		err := overlayApp.Quit()
 		if err != nil {
 			notify.Warn("Failed to close %s Controller (%v)", Title, err)
 		}
@@ -45,7 +45,7 @@ func Close() {
 }
 
 func IsOpen() bool {
-	return app != nil && window != nil
+	return overlayApp != nil && overlayWindow != nil
 }
 
 func Open() error {
@@ -67,26 +67,34 @@ func Open() error {
 	return openWindow()
 }
 
-func openApp() error {
-	var err error
+var opened = false
 
-	app, err = astilectron.New(nil, astilectron.Options{
+func openApp() error {
+	if opened {
+		return nil
+	}
+	opened = true
+
+	a, err := astilectron.New(nil, astilectron.Options{
 		AppName:            Title,
 		BaseDirectoryPath:  ".",
 		DataDirectoryPath:  "./assets/electron",
 		AppIconDefaultPath: "./assets/icon/icon.png",
+		VersionElectron:    astilectron.DefaultVersionElectron,
+		VersionAstilectron: astilectron.DefaultVersionAstilectron,
 	})
 	if err != nil {
 		return fmt.Errorf("Failed to start app for %s (%v)", Title, err)
 	}
+	overlayApp = a
 
-	app.HandleSignals()
+	overlayApp.HandleSignals()
 
-	app.On(astilectron.EventNameAppCrash, resetWindow)
-	app.On(astilectron.EventNameAppCmdQuit, resetWindow)
-	app.On(astilectron.EventNameAppClose, resetWindow)
+	overlayApp.On(astilectron.EventNameAppCrash, windowClosed)
+	overlayApp.On(astilectron.EventNameAppCmdQuit, windowClosed)
+	overlayApp.On(astilectron.EventNameAppClose, windowClosed)
 
-	return app.Start()
+	return overlayApp.Start()
 }
 
 func openWindow() error {
@@ -98,12 +106,12 @@ func openWindow() error {
 			url = "www/UniteHUD Broadcaster.html"
 		}
 
-		area := monitor.MainResolution()
+		area := monitor.MainResolution
 		w, h := area.Max.X, area.Max.Y
 
 		var err error
 
-		window, err = app.NewWindow(url, &astilectron.WindowOptions{
+		overlayWindow, err = overlayApp.NewWindow(url, &astilectron.WindowOptions{
 			Title:     astikit.StrPtr(Title),
 			Width:     astikit.IntPtr(w),
 			Height:    astikit.IntPtr(h),
@@ -125,7 +133,7 @@ func openWindow() error {
 			Focusable:              astikit.BoolPtr(true),
 			Frame:                  astikit.BoolPtr(false),
 			HasShadow:              astikit.BoolPtr(true),
-			Icon:                   astikit.StrPtr("./assets/icon/icon_browser.png"),
+			Icon:                   astikit.StrPtr("./assets/icon/icon-browser.png"),
 
 			Show: astikit.BoolPtr(true),
 
@@ -142,11 +150,11 @@ func openWindow() error {
 		}
 
 		waitq := make(chan bool)
-		app.On(astilectron.EventNameAppEventReady, func(e astilectron.Event) (deleteListener bool) {
+		overlayApp.On(astilectron.EventNameAppEventReady, func(e astilectron.Event) (deleteListener bool) {
 			return <-waitq
 		})
 
-		err = window.Create()
+		err = overlayWindow.Create()
 		if err != nil {
 			errq <- fmt.Errorf("Failed to open %s (%v)", Title, err)
 			return
@@ -157,19 +165,13 @@ func openWindow() error {
 		close(errq)
 		close(waitq)
 
-		app.Wait()
+		overlayApp.Wait()
 	}()
 
 	return <-errq
 }
 
-func resetWindow(e astilectron.Event) (deleteListener bool) {
-	if config.Current.Window == config.MainDisplay {
-		return true
-	}
-
-	notify.SystemWarn("%s closed by user, display has been set to %s", Title, config.MainDisplay)
-	config.Current.Window = config.MainDisplay
-
-	return true
+func windowClosed(e astilectron.Event) (deleteListener bool) {
+	notify.SystemWarn("Window crashed (%s)", e.Code)
+	return
 }

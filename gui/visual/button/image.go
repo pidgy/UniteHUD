@@ -9,11 +9,11 @@ import (
 	"gioui.org/text"
 	"gioui.org/unit"
 	"gioui.org/widget/material"
-	"github.com/pidgy/unitehud/cursor"
+	"github.com/pidgy/unitehud/gui/cursor"
 	"github.com/pidgy/unitehud/gui/visual/decorate"
 	"github.com/pidgy/unitehud/gui/visual/screen"
+	"github.com/pidgy/unitehud/img/splash"
 	"github.com/pidgy/unitehud/nrgba"
-	"github.com/pidgy/unitehud/splash"
 )
 
 type ImageWidget struct {

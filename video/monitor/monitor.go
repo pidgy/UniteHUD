@@ -15,7 +15,8 @@ import (
 )
 
 var (
-	Sources = []string{}
+	MainResolution = image.Rect(0, 0, 1920, 1080)
+	Sources        = []string{}
 
 	displays = map[string]int{}
 	bounds   = map[string]image.Rectangle{}
@@ -26,7 +27,7 @@ var (
 func Bounds() image.Rectangle {
 	mutex.RLock()
 	defer mutex.RUnlock()
-	b := bounds[config.Current.Window]
+	b := bounds[config.Current.VideoCaptureWindow]
 	return b
 }
 
@@ -35,52 +36,6 @@ func BoundsOf(d string) image.Rectangle {
 	defer mutex.RUnlock()
 	b := bounds[d]
 	return b
-}
-
-func Open() {
-	sourcesTmp := []string{}
-	displaysTmp := map[string]int{}
-	boundsTmp := map[string]image.Rectangle{}
-
-	leftDisplays := 0
-	rightDisplays := 0
-	topDisplays := 0
-	bottomDisplays := 0
-
-	m, err := mainDisplayRect()
-	if err != nil {
-		notify.SystemWarn("Failed to locate %s bounds", config.MainDisplay)
-	}
-
-	for i := 0; i < screenshot.NumActiveDisplays(); i++ {
-		name := ""
-
-		r := screenshot.GetDisplayBounds(i)
-		switch {
-		case r.Eq(m):
-			name = config.MainDisplay
-		case r.Min.X < m.Min.X:
-			leftDisplays++
-			name = display("Left Display", leftDisplays)
-		case r.Min.X > m.Min.X:
-			rightDisplays++
-			name = display("Right Display", rightDisplays)
-		case r.Min.Y < m.Min.Y:
-			topDisplays++
-			name = display("Top Display", topDisplays)
-		case r.Min.Y > m.Min.Y:
-			bottomDisplays++
-			name = display("Bottom Display", bottomDisplays)
-		default:
-			notify.Error("Failed to locate display #%d [%s] relative to %s [%s]", i, r, config.MainDisplay, m)
-			continue
-		}
-
-		displaysTmp[name] = i
-		boundsTmp[name] = r
-		sourcesTmp = append(sourcesTmp, name)
-	}
-	set(sourcesTmp, displaysTmp, boundsTmp)
 }
 
 func Capture() (*image.RGBA, error) {
@@ -180,7 +135,7 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 		)
 	}
 	if ret == 0 {
-		notify.Error("Failed to capture \"%s\"", config.Current.Window)
+		notify.Error("Failed to capture \"%s\"", config.Current.VideoCaptureWindow)
 		return nil, fmt.Errorf("bitblt returned: %d", ret)
 	}
 
@@ -207,21 +162,51 @@ func IsDisplay() bool {
 	mutex.RLock()
 	defer mutex.RUnlock()
 
-	_, ok := displays[config.Current.Window]
+	_, ok := displays[config.Current.VideoCaptureWindow]
 	return ok
 }
 
-func MainResolution() image.Rectangle {
-	return image.Rect(0, 0, 1920, 1080)
-	// if mainResolution.Max.Eq(image.Pt(0, 0)) {
-	// 	cx := uintptr(0)
-	// 	cy := uintptr(1)
-	// 	x, _, _ := wapi.GetSystemMetrics.Call(cx)
-	// 	y, _, _ := wapi.GetSystemMetrics.Call(cy)
-	// 	mainResolution = image.Rectangle{Max: image.Pt(int(x), int(y))}
-	// }
+func Open() {
+	sourcesTmp := []string{}
+	displaysTmp := map[string]int{}
+	boundsTmp := map[string]image.Rectangle{}
 
-	// return mainResolution
+	leftDisplays := 0
+	rightDisplays := 0
+	topDisplays := 0
+	bottomDisplays := 0
+
+	m := MainResolution
+
+	for i := 0; i < screenshot.NumActiveDisplays(); i++ {
+		name := ""
+
+		r := screenshot.GetDisplayBounds(i)
+		switch {
+		case r.Eq(m):
+			name = config.MainDisplay
+		case r.Min.X < m.Min.X:
+			leftDisplays++
+			name = display("Left Display", leftDisplays)
+		case r.Min.X > m.Min.X:
+			rightDisplays++
+			name = display("Right Display", rightDisplays)
+		case r.Min.Y < m.Min.Y:
+			topDisplays++
+			name = display("Top Display", topDisplays)
+		case r.Min.Y > m.Min.Y:
+			bottomDisplays++
+			name = display("Bottom Display", bottomDisplays)
+		default:
+			notify.Error("Failed to locate display #%d [%s] relative to %s [%s]", i, r, config.MainDisplay, m)
+			continue
+		}
+
+		displaysTmp[name] = i
+		boundsTmp[name] = r
+		sourcesTmp = append(sourcesTmp, name)
+	}
+	set(sourcesTmp, displaysTmp, boundsTmp)
 }
 
 func createCompatibleDC(hdc uintptr) uintptr {
@@ -238,7 +223,7 @@ func dims() image.Rectangle {
 	mutex.RLock()
 	defer mutex.RUnlock()
 
-	b := bounds[config.Current.Window]
+	b := bounds[config.Current.VideoCaptureWindow]
 	return b
 }
 
@@ -262,19 +247,6 @@ func getLastError() uint32 {
 func releaseDC(hwnd uintptr, hdc uintptr) bool {
 	ret, _, _ := wapi.ReleaseDC.Call(uintptr(hwnd), uintptr(hdc))
 	return ret != 0
-}
-
-func mainDisplayRect() (image.Rectangle, error) {
-	hdc := getDC(0)
-	if hdc == 0 {
-		return image.Rectangle{}, fmt.Errorf("Could not Get primary display err:%d\n", getLastError())
-	}
-	defer releaseDC(0, hdc)
-
-	x, _, _ := wapi.GetDeviceCaps.Call(uintptr(hdc), uintptr(wapi.GetDeviceCapsIndex.HorzRes))
-	y, _, _ := wapi.GetDeviceCaps.Call(uintptr(hdc), uintptr(wapi.GetDeviceCapsIndex.VertRes))
-
-	return image.Rect(0, 0, int(x), int(y)), nil
 }
 
 func selectObject(hdc, hgdiobj uintptr) uintptr {

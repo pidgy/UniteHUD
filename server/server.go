@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"image/png"
+	"io"
 	"math"
 	"net/http"
 	"strings"
@@ -13,11 +15,14 @@ import (
 	"nhooyr.io/websocket"
 
 	"github.com/pidgy/unitehud/config"
+	"github.com/pidgy/unitehud/fps"
 	"github.com/pidgy/unitehud/global"
+	"github.com/pidgy/unitehud/img"
 	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/nrgba"
 	"github.com/pidgy/unitehud/state"
 	"github.com/pidgy/unitehud/team"
+	"github.com/pidgy/unitehud/video"
 )
 
 const Address = "127.0.0.1:17069"
@@ -92,7 +97,7 @@ func Clients() int {
 
 	for c := range current.clients {
 		if time.Since(current.clients[c]) > time.Second*5 {
-			notify.Feed(nrgba.Slate, "Client %s has disconnected", c)
+			notify.Feed(nrgba.Slate, "Server: Client has disconnected (%s)", c)
 			delete(current.clients, c)
 		}
 	}
@@ -129,13 +134,64 @@ func KOs(t *team.Team) int {
 }
 
 func Listen() error {
+	http.Handle("/stream", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add(
+			"Content-Type",
+			"multipart/x-mixed-replace; boundary=frame",
+		)
+
+		boundary := "\r\n--frame\r\nContent-Type: image/png\r\n\r\n"
+
+		enc := &png.Encoder{
+			CompressionLevel: png.NoCompression,
+			BufferPool:       img.NewPNGPool(),
+		}
+
+		defer fps.NewLoop(&fps.LoopOptions{
+			Stats: "/stream",
+			FPS:   120,
+			Render: func(min, max, avg time.Duration) (close bool) {
+				if global.DebugMode {
+					defer fmt.Printf("HTTP /stream min=%s, max=%s, avg=%s\n", min, max, avg)
+				}
+
+				img, err := video.Capture()
+				if err != nil {
+					notify.Error("Server: /stream (%v)", err)
+					return true
+				}
+
+				n, err := io.WriteString(w, boundary)
+				if err != nil || n != len(boundary) {
+					notify.Error("Server: /stream (%v)", err)
+					return true
+				}
+
+				err = enc.Encode(w, img)
+				if err != nil {
+					notify.Error("Server: /stream (%v)", err)
+					return true
+				}
+
+				n, err = io.WriteString(w, "\r\n")
+				if err != nil || n != 2 {
+					return true
+				}
+
+				current.client(r, "/stream")
+
+				return
+			},
+		}).Stop()
+	}))
+
 	http.Handle("/ws", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c, err := websocket.Accept(w, r, &websocket.AcceptOptions{
 			OriginPatterns:     []string{"127.0.0.1", "localhost", "0.0.0.0"},
 			InsecureSkipVerify: true,
 		})
 		if err != nil {
-			notify.Error("Server failed to accept websocket connection (%v)", err)
+			notify.Error("Server: Failed to accept websocket connection (%v)", err)
 			return
 		}
 		defer c.Close(websocket.StatusNormalClosure, "cross origin WebSocket accepted")
@@ -145,19 +201,19 @@ func Listen() error {
 
 		raw, err := json.Marshal(current.game)
 		if err != nil {
-			notify.Error("Server failed to create server response (%v)", err)
+			notify.Error("Server: Failed to create server response (%v)", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
 		err = c.Write(context.Background(), websocket.MessageText, raw)
 		if err != nil {
-			notify.Error("Server failed to send server response (%v)", err)
+			notify.Error("Server: Failed to send server response (%v)", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
-		current.client(r, "/ws", raw)
+		current.client(r, "/ws")
 
 		current.tx += len(raw)
 		current.requests++
@@ -169,19 +225,19 @@ func Listen() error {
 
 		raw, err := json.Marshal(current.game)
 		if err != nil {
-			notify.Error("Server failed to create server response (%v)", err)
+			notify.Error("Server: Failed to create server response (%v)", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
 		_, err = w.Write(raw)
 		if err != nil {
-			notify.Error("Server failed to send server response (%v)", err)
+			notify.Error("Server: Failed to send server response (%v)", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
-		current.client(r, "/http", raw)
+		current.client(r, "/http")
 		current.tx += len(raw)
 		current.requests++
 	})
@@ -189,8 +245,7 @@ func Listen() error {
 	go func() {
 		last := 0
 
-		for {
-			time.Sleep(time.Minute)
+		for ; ; time.Sleep(time.Minute) {
 
 			if current.requests < 1 {
 				continue
@@ -202,7 +257,7 @@ func Listen() error {
 			}
 			last = current.tx / current.requests
 
-			notify.System("Server is sending an average of %d bytes per request", last)
+			notify.System("Server: Averaging %d bytes per request", last)
 		}
 	}()
 
@@ -473,7 +528,7 @@ func SetScore(t *team.Team, value int) {
 		case team.Orange.Name:
 			current.game.Orange.Value += s.Value
 		default:
-			notify.Error("Server received first goal from an unknown team")
+			notify.Error("Server: Received first goal from an unknown team")
 		}
 	}
 }
@@ -505,7 +560,7 @@ func Started() bool {
 	return current.game.Started
 }
 
-func (i *info) client(r *http.Request, route string, raw []byte) {
+func (i *info) client(r *http.Request, route string) {
 	i.mutex.Lock()
 	defer i.mutex.Unlock()
 
@@ -514,8 +569,7 @@ func (i *info) client(r *http.Request, route string, raw []byte) {
 
 	_, ok := i.clients[key]
 	if !ok {
-		notify.System("Server accepted a new %s connection from %s", route, key)
-
+		notify.System("Server: New %s connection (%s)", route, key)
 	}
 
 	i.clients[key] = time.Now()

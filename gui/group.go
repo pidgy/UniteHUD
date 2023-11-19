@@ -329,9 +329,9 @@ func (g *GUI) videos(text float32) *videos {
 				defer v.window.populate(true)
 				defer v.device.populate(true)
 
-				config.Current.Window = i.Text
-				if config.Current.Window == "" {
-					config.Current.Window = config.MainDisplay
+				config.Current.VideoCaptureWindow = i.Text
+				if config.Current.VideoCaptureWindow == "" {
+					config.Current.VideoCaptureWindow = config.MainDisplay
 					return
 				}
 			},
@@ -340,7 +340,7 @@ func (g *GUI) videos(text float32) *videos {
 			if videoCaptureDisabledEvent {
 				for _, item := range v.monitor.list.Items {
 					item.Checked.Value = false
-					if item.Text == config.Current.Window && !device.IsActive() {
+					if item.Text == config.Current.VideoCaptureWindow && !device.IsActive() {
 						item.Checked.Value = true
 					}
 				}
@@ -354,15 +354,15 @@ func (g *GUI) videos(text float32) *videos {
 
 			items := []*dropdown.Item{}
 
-			if videoCaptureDisabledEvent && config.Current.Window == "" {
-				config.Current.Window = config.MainDisplay
+			if videoCaptureDisabledEvent && config.Current.VideoCaptureWindow == "" {
+				config.Current.VideoCaptureWindow = config.MainDisplay
 			}
 
 			for _, screen := range screens {
 				items = append(items,
 					&dropdown.Item{
 						Text:    screen,
-						Checked: widget.Bool{Value: screen == config.Current.Window && !device.IsActive()},
+						Checked: widget.Bool{Value: screen == config.Current.VideoCaptureWindow && !device.IsActive()},
 					},
 				)
 			}
@@ -386,20 +386,20 @@ func (g *GUI) videos(text float32) *videos {
 				defer v.monitor.populate(true)
 				defer v.device.populate(true)
 
-				config.Current.Window = i.Text
-				if config.Current.Window == "" {
-					config.Current.Window = config.MainDisplay
+				config.Current.VideoCaptureWindow = i.Text
+				if config.Current.VideoCaptureWindow == "" {
+					config.Current.VideoCaptureWindow = config.MainDisplay
 					return
 				}
 			},
 		},
 		populate: func(videoCaptureDisabledEvent bool) {
-			if videoCaptureDisabledEvent && config.Current.Window == "" {
-				config.Current.Window = config.MainDisplay
+			if videoCaptureDisabledEvent && config.Current.VideoCaptureWindow == "" {
+				config.Current.VideoCaptureWindow = config.MainDisplay
 			}
 
 			for _, item := range v.window.list.Items {
-				item.Checked.Value = config.Current.Window == item.Text && config.Current.VideoCaptureDevice == config.NoVideoCaptureDevice
+				item.Checked.Value = config.Current.VideoCaptureWindow == item.Text && config.Current.VideoCaptureDevice == config.NoVideoCaptureDevice
 			}
 
 			items := []*dropdown.Item{}
@@ -425,7 +425,7 @@ func (g *GUI) videos(text float32) *videos {
 				for _, win := range windows {
 					item := &dropdown.Item{
 						Text:    win,
-						Checked: widget.Bool{Value: win == config.Current.Window},
+						Checked: widget.Bool{Value: win == config.Current.VideoCaptureWindow},
 					}
 					if item.Checked.Value {
 						items = append([]*dropdown.Item{item}, items...)
@@ -475,7 +475,7 @@ func (g *GUI) videos(text float32) *videos {
 					if err != nil {
 						g.ToastError(err)
 
-						config.Current.Window = config.MainDisplay
+						config.Current.VideoCaptureWindow = config.MainDisplay
 						config.Current.VideoCaptureDevice = config.NoVideoCaptureDevice
 
 						defer v.window.populate(true)

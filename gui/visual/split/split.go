@@ -10,7 +10,7 @@ import (
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
 	"gioui.org/unit"
-	"github.com/pidgy/unitehud/cursor"
+	"github.com/pidgy/unitehud/gui/cursor"
 	"github.com/pidgy/unitehud/nrgba"
 )
 

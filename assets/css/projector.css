@@ -1,0 +1,22 @@
+* {
+    overflow: hidden;
+}
+
+#projector-base {
+    position: absolute;
+}
+
+#projector-canvas {
+    background: url("../splash/projector.png");
+    position: fixed;
+    top: 0;
+    left: 0;
+}
+
+#overlay-frame {
+    position: fixed;
+    top: 0;
+    left: 0;
+    border: 0;
+    pointer-events: none;
+}

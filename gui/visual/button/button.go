@@ -13,8 +13,8 @@ import (
 	"gioui.org/widget/material"
 
 	"github.com/pidgy/unitehud/config"
-	"github.com/pidgy/unitehud/cursor"
 	"github.com/pidgy/unitehud/fonts"
+	"github.com/pidgy/unitehud/gui/cursor"
 	"github.com/pidgy/unitehud/nrgba"
 )
 
@@ -179,7 +179,15 @@ func (b *Widget) HoverHint() {
 func (b *Widget) uniform(gtx layout.Context) layout.Dimensions {
 	rect := clip.RRect{SE: 3, SW: 3, NE: 3, NW: 3, Rect: image.Rectangle{Max: image.Pt((b.Size.X), b.Size.Y)}}
 	if b.SharpCorners {
-		rect = clip.RRect{SE: 0, SW: 0, NE: 0, NW: 0, Rect: image.Rectangle{Max: image.Pt((b.Size.X), b.Size.Y)}}
+		rect = clip.RRect{
+			SE: 0,
+			SW: 0,
+			NE: 0,
+			NW: 0,
+			Rect: image.Rectangle{
+				Max: image.Pt((b.Size.X), b.Size.Y),
+			},
+		}
 	}
 
 	defer rect.Push(gtx.Ops).Pop()

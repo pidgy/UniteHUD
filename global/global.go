@@ -7,7 +7,9 @@ import (
 )
 
 const (
-	Version = "v2.1"
+	Title        = "UniteHUD"
+	Version      = "v2.3.0"
+	TitleVersion = Title + " " + Version
 )
 
 var (

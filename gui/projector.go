@@ -21,16 +21,16 @@ import (
 
 	"github.com/pidgy/unitehud/audio"
 	"github.com/pidgy/unitehud/config"
-	"github.com/pidgy/unitehud/cursor"
+	"github.com/pidgy/unitehud/gui/cursor"
 	"github.com/pidgy/unitehud/gui/is"
 	"github.com/pidgy/unitehud/gui/visual/area"
 	"github.com/pidgy/unitehud/gui/visual/button"
 	"github.com/pidgy/unitehud/gui/visual/decorate"
 	"github.com/pidgy/unitehud/gui/visual/title"
+	"github.com/pidgy/unitehud/img/splash"
 	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/nrgba"
 	"github.com/pidgy/unitehud/server"
-	"github.com/pidgy/unitehud/splash"
 	"github.com/pidgy/unitehud/video"
 	"github.com/pidgy/unitehud/video/device"
 	"github.com/pidgy/unitehud/video/monitor"
@@ -41,6 +41,7 @@ import (
 type footer struct {
 	state,
 	is,
+	log,
 	cpu,
 	ram,
 	fps,
@@ -54,8 +55,6 @@ type projected struct {
 
 	cursor bool
 	since  time.Time
-
-	tag *bool
 
 	showCaptureAreas bool
 	hideOptions      bool
@@ -119,8 +118,8 @@ func (g *GUI) projector() {
 	defer ui.audio.Close()
 
 	defer g.header.Remove(g.header.Add(ui.buttons.menu.home))
-	defer g.header.Remove(g.header.Add(ui.buttons.menu.settings))
 	defer g.header.Remove(g.header.Add(ui.buttons.menu.save))
+	defer g.header.Remove(g.header.Add(ui.buttons.menu.settings))
 	defer g.header.Remove(g.header.Add(ui.buttons.menu.preview))
 	defer g.header.Remove(g.header.Add(ui.buttons.menu.hide))
 	defer g.header.Remove(g.header.Add(ui.buttons.menu.capture))
@@ -145,6 +144,7 @@ func (g *GUI) projector() {
 		case system.StageEvent:
 		case app.ConfigEvent:
 		case system.DestroyEvent:
+			ui.buttons.back.Click(ui.buttons.back)
 			g.next(is.Closing)
 		case system.FrameEvent:
 			gtx := layout.NewContext(&ops, event)
@@ -382,7 +382,6 @@ func (g *GUI) projector() {
 				fallthrough
 			default:
 				ui.img = splash.Default()
-
 			case device.IsActive(), monitor.IsDisplay(), window.IsOpen():
 				ui.img, err = video.Capture()
 				if err != nil {
@@ -392,16 +391,28 @@ func (g *GUI) projector() {
 				}
 			}
 
-			g.frame(gtx, event)
-		case key.Event:
-			if event.State != key.Release {
-				continue
+			for _, e := range gtx.Events(g) {
+				switch event := e.(type) {
+				case key.Event:
+					if event.State != key.Release {
+						continue
+					}
+
+					switch event.Name {
+					case key.NameEscape:
+						ui.buttons.back.Click(ui.buttons.back)
+					}
+				}
 			}
 
-			switch event.Name {
-			case key.NameEscape:
-				g.next(is.Closing)
-			}
+			area := clip.Rect(gtx.Constraints).Push(gtx.Ops)
+			key.InputOp{
+				Tag:  g,
+				Keys: key.Set(key.NameEscape),
+			}.Add(gtx.Ops)
+			area.Pop()
+
+			g.frame(gtx, event)
 		default:
 			notify.Missed(event, "Projector")
 		}
@@ -416,7 +427,6 @@ func (g *GUI) projectorUI() *projected {
 
 	ui := &projected{
 		img:   splash.Invalid(),
-		tag:   new(bool),
 		since: time.Now(),
 
 		listTextSize: float32(14),
@@ -473,8 +483,6 @@ func (g *GUI) projectorUI() *projected {
 					if err != nil {
 						notify.Error("Failed to save UniteHUD configuration (%v)", err)
 					}
-
-					notify.System("Configuration saved to " + config.Current.File())
 
 					g.Actions <- Refresh
 					g.next(is.MainMenu)
@@ -788,6 +796,7 @@ func (g *GUI) projectorUI() *projected {
 	ui.footer = &footer{
 		state: material.Label(g.header.Collection.Calibri().Theme, unit.Sp(12), ""),
 		is:    material.Label(g.header.Collection.Calibri().Theme, unit.Sp(12), ""),
+		log:   material.Label(g.header.Collection.Calibri().Theme, unit.Sp(12), ""),
 		cpu:   material.Label(g.header.Collection.Calibri().Theme, unit.Sp(12), ""),
 		ram:   material.Label(g.header.Collection.Calibri().Theme, unit.Sp(12), ""),
 		fps:   material.Label(g.header.Collection.Calibri().Theme, unit.Sp(12), ""),
@@ -820,7 +829,7 @@ func (p *projected) Layout(gtx layout.Context, fullscreen bool) layout.Dimension
 		Max: gtx.Constraints.Max.Sub(image.Pt(0, 5)),
 	}
 
-	for _, ev := range gtx.Events(p.tag) {
+	for _, ev := range gtx.Events(p) {
 		e, ok := ev.(pointer.Event)
 		if !ok {
 			continue
@@ -840,7 +849,7 @@ func (p *projected) Layout(gtx layout.Context, fullscreen bool) layout.Dimension
 
 	push := rect.Push(gtx.Ops)
 	pointer.InputOp{
-		Tag:   p.tag,
+		Tag:   p,
 		Types: pointer.Move | pointer.Enter | pointer.Leave,
 	}.Add(gtx.Ops)
 	push.Pop()
@@ -887,6 +896,7 @@ func (p *projected) foot(gtx layout.Context, f *footer) layout.FlexChild {
 
 		decorate.BackgroundTitleBar(gtx, gtx.Constraints.Max)
 		decorate.Border(gtx)
+
 		layout.W.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 			return layout.Inset{Top: unit.Dp(5)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Middle}.Layout(gtx,
@@ -904,6 +914,15 @@ func (p *projected) foot(gtx layout.Context, f *footer) layout.FlexChild {
 
 					p.empty(2, 0),
 				)
+			})
+		})
+
+		layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+			return layout.Inset{Top: unit.Dp(5)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+				post := notify.Last()
+				f.log.Text = post.String()
+				f.log.Color = post.Color()
+				return f.log.Layout(gtx)
 			})
 		})
 

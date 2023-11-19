@@ -3,14 +3,16 @@ package device
 import (
 	"fmt"
 	"image"
+	"runtime"
 	"time"
 
 	"gocv.io/x/gocv"
 
 	"github.com/pidgy/unitehud/config"
+	"github.com/pidgy/unitehud/fps"
 	"github.com/pidgy/unitehud/img"
+	"github.com/pidgy/unitehud/img/splash"
 	"github.com/pidgy/unitehud/notify"
-	"github.com/pidgy/unitehud/splash"
 	"github.com/pidgy/unitehud/video/device/win32"
 	"github.com/pidgy/unitehud/video/monitor"
 )
@@ -23,8 +25,6 @@ var (
 
 	running = false
 	stopped = true
-
-	lastRequest = time.Now()
 )
 
 func init() {
@@ -41,7 +41,7 @@ func init() {
 				}
 				if !found {
 					Sources, names = s, n
-					notify.Debug("New video capture device detected (%s)", got)
+					notify.Debug("Video Capture Device: Discovered \"%s\"", got)
 					break
 				}
 			}
@@ -56,56 +56,35 @@ func ActiveName() string {
 	if len(names) > active {
 		return names[active]
 	}
-	return fmt.Sprintf("Video Capture Device: %d", active)
+	return fmt.Sprintf("Video Capture Device: \"%d\"", active)
 }
 
 func Capture() (*image.RGBA, error) {
-	return CaptureRect(monitor.MainResolution())
+	return CaptureRect(monitor.MainResolution)
 }
 
 func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
-	lastRequest = time.Now()
-
 	if mat.Empty() {
 		return nil, nil
 	}
 
-	err := outside(rect, monitor.MainResolution())
-	if err != nil {
-		return nil, err
-	}
-
-	if !rect.In(monitor.MainResolution()) {
-		return nil, fmt.Errorf("Illegal boundaries %s intersects %s", rect, monitor.MainResolution())
+	if !rect.In(monitor.MainResolution) {
+		return nil, fmt.Errorf("illegal boundaries %s intersects %s", rect, monitor.MainResolution)
 	}
 
 	s := mat.Size()
-	mrect := image.Rect(0, 0, s[0], s[1])
+	mrect := image.Rect(0, 0, s[1], s[0])
 
-	err = outside(rect, mrect)
-	if err != nil {
-		return nil, err
+	if !rect.In(mrect) {
+		return nil, fmt.Errorf("illegal boundaries %s, %s", rect, mrect)
 	}
 
-	i, err := img.RGBA(mat.Region(rect))
-	if err != nil {
-		return nil, err
-	}
-
-	return i, nil
-}
-
-func outside(r1, r2 image.Rectangle) error {
-	if r1.In(r2) {
-		return nil
-	}
-
-	return fmt.Errorf("Illegal boundaries %s", r1.Intersect(r2))
+	return img.RGBA(mat.Region(rect))
 }
 
 func Close() {
 	if !running {
-		notify.Debug("Ignorning call to close %s video capture device", ActiveName())
+		notify.Debug("Video Capture Device: Ignorning call to close \"%s\"", ActiveName())
 		return
 	}
 
@@ -118,7 +97,7 @@ func Close() {
 }
 
 func IsActive() bool {
-	return config.Current.VideoCaptureDevice == active && active != config.NoVideoCaptureDevice
+	return !deviceChanged() && !deviceNotActive()
 }
 
 func Name(d int) string {
@@ -129,8 +108,8 @@ func Name(d int) string {
 }
 
 func Open() error {
-	if running || config.Current.VideoCaptureDevice == config.NoVideoCaptureDevice {
-		notify.Debug("Ignorning call to open video capture device (%s)", ActiveName())
+	if running || deviceNotActive() {
+		notify.Debug("Video Capture Device: Ignorning call to open \"%s\"", ActiveName())
 		return nil
 	}
 
@@ -138,7 +117,6 @@ func Open() error {
 
 	err := startCaptureDevice()
 	if err != nil {
-		notify.Error("Failed to open video capture device (%v)", err)
 		reset()
 		return err
 	}
@@ -146,8 +124,16 @@ func Open() error {
 	return nil
 }
 
+func deviceChanged() bool {
+	return active != config.Current.VideoCaptureDevice
+}
+
+func deviceNotActive() bool {
+	return config.Current.VideoCaptureDevice == config.NoVideoCaptureDevice
+}
+
 func reset() {
-	config.Current.Window = config.MainDisplay
+	config.Current.VideoCaptureWindow = config.MainDisplay
 	config.Current.VideoCaptureDevice = config.NoVideoCaptureDevice
 }
 
@@ -176,6 +162,9 @@ func startCaptureDevice() error {
 	errq := make(chan error)
 
 	go func() {
+		runtime.LockOSThread()
+		defer runtime.UnlockOSThread()
+
 		running = true
 
 		stopped = false
@@ -186,51 +175,58 @@ func startCaptureDevice() error {
 
 		name := Name(config.Current.VideoCaptureDevice)
 
-		notify.System("Starting video capture (%s)", name)
-		defer notify.System("Closing video capture (%s)", name)
+		notify.System("Video Capture Device: Starting \"%s\"", name)
+		defer notify.System("Video Capture Device: Closing \"%s\"", name)
 
-		device, err := gocv.OpenVideoCaptureWithAPI(config.Current.VideoCaptureDevice, gocv.VideoCaptureDshow)
+		device, err := gocv.OpenVideoCaptureWithAPI(config.Current.VideoCaptureDevice, gocv.VideoCaptureAny)
 		if err != nil {
 			errq <- err
 			return
 		}
 		defer device.Close()
 
-		notify.System("Applying video capture dimensions: %s", monitor.MainResolution())
-		device.Set(gocv.VideoCaptureFrameWidth, float64(monitor.MainResolution().Dx()))
-		device.Set(gocv.VideoCaptureFrameHeight, float64(monitor.MainResolution().Dy()))
-		x, y := int(device.Get(gocv.VideoCaptureFrameWidth)), int(device.Get(gocv.VideoCaptureFrameHeight))
+		notify.System("Video Capture Device: Applying dimensions (%s)", monitor.MainResolution)
 
-		if !image.Rect(0, 0, x, y).Eq(monitor.MainResolution()) {
-			errq <- fmt.Errorf("Illegal dimensions %s", monitor.MainResolution())
+		device.Set(gocv.VideoCaptureFrameWidth, float64(monitor.MainResolution.Dx()))
+		device.Set(gocv.VideoCaptureFrameHeight, float64(monitor.MainResolution.Dy()))
+		capture := image.Rect(0, 0,
+			int(device.Get(gocv.VideoCaptureFrameWidth)),
+			int(device.Get(gocv.VideoCaptureFrameHeight)),
+		)
+		if !capture.Eq(monitor.MainResolution) {
+			errq <- fmt.Errorf("illegal dimensions %s", monitor.MainResolution)
 			return
 		}
 
 		area := image.Rect(0, 0, int(device.Get(gocv.VideoCaptureFrameWidth)), int(device.Get(gocv.VideoCaptureFrameHeight)))
-		if !area.Eq(monitor.MainResolution()) {
+		if !area.Eq(monitor.MainResolution) {
 			mat = splash.DeviceMat().Clone()
-			errq <- fmt.Errorf("%s has invalid dimensions: %s", name, area.String())
+			errq <- fmt.Errorf("invalid dimensions \"%s\": %s", name, area.String())
 			return
 		}
 
 		close(errq)
 
-		for running && active == config.Current.VideoCaptureDevice {
-			time.Sleep(time.Microsecond)
+		defer fps.NewLoop(&fps.LoopOptions{
+			FPS: 120,
+			Render: func(min, max, avg time.Duration) (close bool) {
+				if !running || deviceChanged() {
+					return true
+				}
 
-			if config.Current.VideoCaptureDevice == config.NoVideoCaptureDevice {
-				go Close()
-			}
+				if deviceNotActive() {
+					go Close()
+					return true
+				}
 
-			if time.Since(lastRequest) > time.Second {
-				continue
-			}
+				if !device.Read(&mat) || mat.Empty() {
+					notify.Warn("Video Capture Device: Failed to capture \"%s\"", name)
+					return true
+				}
 
-			if !device.Read(&mat) || mat.Empty() {
-				notify.Warn("Failed to read from %s", name)
-				continue
-			}
-		}
+				return false
+			},
+		}).Stop()
 	}()
 
 	return <-errq

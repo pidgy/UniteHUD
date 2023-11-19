@@ -3,10 +3,10 @@ const urlWS = "ws://127.0.0.1:17069/ws";
 const urlHTTP = "http://127.0.0.1:17069/http";
 
 var loaders = [".", "..", "..."];
-var index = 0;
+var loaderIndex = 0;
 var loggedError = false;
-
 var lastShake = 0;
+var testing = false;
 
 function clear(err = '') {
     $('.purple').css('opacity', 0);
@@ -43,12 +43,13 @@ function error(err) {
                     loggedError = false;
                 }, 3600000);
             }
+
             break;
         default:
-            clear(`Connecting${loaders[index]}`);
+            clear(`Connecting${loaders[loaderIndex]}`);
     }
 
-    index = (index + 1) % loaders.length;
+    loaderIndex = (loaderIndex + 1) % loaders.length;
 
     return shake();
 }
@@ -66,19 +67,8 @@ function http() {
     });
 };
 
-function occurences(str, of) {
-    var o = 0;
-    for (var i in str) {
-        if (str[i] == of) {
-            o++;
-        }
-    }
-    return o;
-}
-
 function shake() {
-    lastShake++;
-    if (lastShake == 5) {
+    if (++lastShake === 5) {
         $('.error').css('animation', 'shake 1s cubic-bezier(.36,.07,.19,.97) both');
         $('.logo').css('animation', 'shake 1s cubic-bezier(.36,.07,.19,.97) both');
         lastShake = 0;
@@ -123,15 +113,14 @@ function success(data) {
 
         $('.purplescore').html(`${data.purple.value} <span>${p}</span>`);
         $('.orangescore').html(`${data.orange.value} <span>${o}</span>`);
-        $('.selfscore').html(data.self.value);
-
-        $('.purplekos').html(data.purple.kos);
-        $('.orangekos').html(data.orange.kos);
+        // $('.selfscore').html(data.self.value);
+        // $('.purplekos').html(data.purple.kos);
+        // $('.orangekos').html(data.orange.kos);
     } else {
         clear();
     }
 
-    $('.stacks').html(data.stacks);
+    // $('.stacks').html(data.stacks);
 
     var elekis = {
         "none": ["none", "orange", "purple"],
@@ -186,7 +175,6 @@ function websocket() {
 $(document).ready(() => {
     clear();
 
-    const testing = false;
     if (testing) {
         return sendtestdata();
     }
@@ -207,6 +195,8 @@ $(document).ready(() => {
 
 function sendtestdata() {
     return setInterval(() => {
+        clear(`Testing${loaders[loaderIndex]}`);
+
         success({
             "profile": "player",
             // "profile": "broadcaster",

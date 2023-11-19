@@ -9,75 +9,66 @@ import (
 	"time"
 
 	"github.com/Microsoft/go-winio"
-
-	"github.com/pidgy/unitehud/notify"
 )
 
 type client struct {
-	connected bool
+	addr string
 
-	socket int
-	addr   string
-
-	inq  chan message
-	outq chan payload
 	errq chan error
 
 	conn io.ReadWriteCloser
 }
 
 const (
-	id       = "1148787786816696350"
-	min, max = 0, 9
+	id = "1148787786816696350"
 )
 
 var (
+	socket = struct {
+		min, max int
+	}{0, 9}
+
 	timeout = time.Second
 )
 
 func connect() (client, error) {
-	prefix := ""
-
 	c := client{
-		connected: false,
-		socket:    min,
-
-		outq: make(chan payload, 1),
-		inq:  make(chan message),
 		errq: make(chan error, 1),
 	}
 
-	for ; !c.connected && c.socket <= max; c.socket++ {
-		c.addr = fmt.Sprintf(`\\?\pipe\%sdiscord-ipc-%d`, prefix, c.socket)
+	for s := socket.min; s <= socket.max; s++ {
+		c.addr = fmt.Sprintf(`\\?\pipe\discord-ipc-%d`, s)
 
 		conn, err := winio.DialPipe(c.addr, &timeout)
 		if err != nil {
 			continue
 		}
 
-		c.connected = true
 		c.conn = conn
-		c.loop()
 
 		return c, nil
 	}
 
-	return c, fmt.Errorf("max socket connections attempted")
-}
-
-func (c *client) close() {
-	if c.outq != nil {
-		close(c.outq)
-	}
+	return c, fmt.Errorf("socket error")
 }
 
 func (c *client) cleanup() {
-	close(c.inq)
-	c.conn.Close()
-	c.conn = nil
+	if c.conn != nil {
+		c.conn.Close()
+		c.conn = nil
+	}
+
+	if c.errq != nil {
+		close(c.errq)
+		c.errq = nil
+	}
 }
 
 func (c *client) error() error {
+	if c.conn == nil {
+		return nil
+	}
+
 	select {
 	case err := <-c.errq:
 		return err
@@ -94,111 +85,75 @@ func (c *client) handshake(clientId string) {
 	})
 }
 
-func (c *client) loop() {
-	go func() {
-		defer c.cleanup()
-
-		next := opHandshake
-
-		for c.connected {
-			resultq := make(chan result, 1)
-			go func() {
-				msg, err := c.receive()
-				resultq <- result{msg, err}
-			}()
-
-			select {
-			case payload, ok := <-c.outq:
-				if !ok {
-					continue
-				}
-
-				m := message{
-					Opcode:  next,
-					Payload: payload,
-				}
-
-				err := m.writeMessage(c.conn)
-				if err != nil {
-					c.errq <- err
-					continue
-				}
-
-				next = opFrame
-
-				// Block on an answer from Discord.
-				r := <-resultq
-				if r.err != nil {
-					c.errq <- r.err
-					continue
-				}
-
-				c.inq <- r.msg
-			case r := <-resultq:
-				// Unsolicited message from Discord.
-				switch {
-				case r.err != nil:
-					c.errq <- r.err
-				case r.msg.Opcode == opPing:
-					// Respond immediately to ping.
-					r.msg.Opcode = opPong
-					if err := r.msg.writeMessage(c.conn); err != nil {
-						c.errq <- err
-						continue
-					}
-				case r.msg.Opcode == opClose:
-					c.errq <- fmt.Errorf("connection terminated")
-				default:
-					c.errq <- fmt.Errorf("unexpected opcode: %d, payload: %v", r.msg.Opcode, r.msg.Payload)
-				}
-			}
-		}
-
-		notify.Debug("Discord exited loop...")
-	}()
-}
-
 func (c *client) receive() (message, error) {
 	var msg message
 
 	header := make([]byte, headerLen)
-	switch n, err := c.conn.Read(header); {
-	case err != nil:
+	n, err := c.conn.Read(header)
+	if err != nil {
 		return msg, err
-	case n != headerLen:
-		return msg, fmt.Errorf("wanted %d-byte header, read %d bytes", headerLen, n)
+	}
+
+	if n != headerLen {
+		return msg, fmt.Errorf("expected to read %d-byte header, got %d bytes", headerLen, n)
 	}
 
 	reader := bytes.NewReader(header)
-	binary.Read(reader, binary.LittleEndian, &msg.Opcode)
+	binary.Read(reader, binary.LittleEndian, &msg.opcode)
+
 	var payloadLen int32
 	binary.Read(reader, binary.LittleEndian, &payloadLen)
 
 	msg.Payload = make([]byte, payloadLen)
-	_, err := io.ReadFull(c.conn, msg.Payload)
-	return msg, err
+
+	_, err = io.ReadFull(c.conn, msg.Payload)
+	if err != nil {
+		return msg, err
+	}
+
+	return msg, nil
 }
 
-func (c *client) send(i interface{}) {
-	p, err := json.Marshal(i)
+func (c *client) send(o opper) {
+	p, err := json.Marshal(o)
 	if err != nil {
 		c.errq <- err
 		return
 	}
 
-	c.outq <- p
+	m := message{
+		opcode:  o.opcode(),
+		Payload: p,
+	}
 
-	msg, ok := <-c.inq
-	if !ok {
-		c.errq <- fmt.Errorf("socket closed while waiting for response")
+	err = m.writeMessage(c.conn)
+	if err != nil {
+		c.errq <- err
 		return
 	}
 
-	notify.Debug("Discord received opcode %s", msg.Opcode.String())
+	for {
+		m, err := c.receive()
+		if err != nil {
+			c.errq <- err
+			return
+		}
 
-	f := frame{}
-	err = json.Unmarshal(msg.Payload, &f)
-	if err == nil {
-		notify.Debug("Discord received frame %s, %T", f.Cmd, f.Args)
+		switch m.opcode {
+		case o.opreceived():
+			return
+		case opPing:
+			m.opcode = opPong
+			err := m.writeMessage(c.conn)
+			if err != nil {
+				c.errq <- err
+			}
+		case opClose:
+			c.errq <- fmt.Errorf("connection terminated")
+			return
+		default:
+			c.errq <- fmt.Errorf("%s received while waiting for %s", o.opcode(), m.opcode)
+			return
+		}
 	}
 }

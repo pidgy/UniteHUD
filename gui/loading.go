@@ -14,12 +14,13 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 
-	"github.com/pidgy/unitehud/cursor"
+	"github.com/pidgy/unitehud/global"
+	"github.com/pidgy/unitehud/gui/cursor"
 	"github.com/pidgy/unitehud/gui/is"
 	"github.com/pidgy/unitehud/gui/visual/decorate"
+	"github.com/pidgy/unitehud/img/splash"
 	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/nrgba"
-	"github.com/pidgy/unitehud/splash"
 )
 
 type loading struct {
@@ -39,7 +40,7 @@ func (g *GUI) loading() {
 	height := 440
 
 	g.window.Option(
-		app.Title("UniteHUD"),
+		app.Title(global.Title),
 		app.Size(unit.Dp(width), unit.Dp(height)),
 		app.MaxSize(unit.Dp(width), unit.Dp(height)),
 		app.MinSize(unit.Dp(width), unit.Dp(height)),

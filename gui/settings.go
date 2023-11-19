@@ -14,7 +14,11 @@ import (
 	"gioui.org/widget/material"
 
 	"github.com/pidgy/unitehud/config"
+	"github.com/pidgy/unitehud/desktop"
+	"github.com/pidgy/unitehud/desktop/clicked"
+	"github.com/pidgy/unitehud/discord"
 	"github.com/pidgy/unitehud/fonts"
+	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/gui/visual"
 	"github.com/pidgy/unitehud/gui/visual/button"
 	"github.com/pidgy/unitehud/gui/visual/colorpicker"
@@ -29,7 +33,9 @@ import (
 type section struct {
 	title, description material.LabelStyle
 	warning, widget    visual.Widgeter
-	header             bool
+	isTitle            bool
+
+	extras []visual.Widgeter
 }
 
 type settings struct {
@@ -56,7 +62,7 @@ type settings struct {
 	list material.ListStyle
 
 	sections struct {
-		instructions,
+		title,
 		discord,
 		notifications,
 		frequency,
@@ -82,7 +88,7 @@ func (g *GUI) settings(onclose func()) *settings {
 		defer ui.windows.parent.unsetInsetRight(ui.dimensions.width)
 
 		sections := []*section{
-			ui.sections.instructions,
+			ui.sections.title,
 			ui.sections.discord,
 			ui.sections.notifications,
 			ui.sections.frequency,
@@ -170,11 +176,11 @@ func (g *GUI) settingsUI() *settings {
 		},
 	)
 
-	ui.sections.instructions = &section{
+	ui.sections.title = &section{
 		description: material.Label(ui.bar.Collection.NotoSans().Theme, 16, "⚙  Advanced Settings"),
-		header:      true,
+		isTitle:     true,
 	}
-	ui.sections.instructions.description.Alignment = text.Middle
+	ui.sections.title.description.Alignment = text.Middle
 
 	ui.sections.discord = &section{
 		title:       material.Label(ui.bar.Collection.NotoSans().Theme, 14, "🎮  Discord Activity"),
@@ -193,12 +199,13 @@ func (g *GUI) settingsUI() *settings {
 			Click: func(this *button.Widget) {
 				config.Current.Advanced.Discord.Disabled = !config.Current.Advanced.Discord.Disabled
 
-				this.Released = nrgba.PastelGreen
-				this.Text = "Enabled"
-
 				if config.Current.Advanced.Discord.Disabled {
 					this.Released = nrgba.PastelRed
 					this.Text = "Disabled"
+					discord.Disconnect()
+				} else {
+					this.Released = nrgba.PastelGreen
+					this.Text = "Enabled"
 				}
 			},
 		},
@@ -217,6 +224,27 @@ func (g *GUI) settingsUI() *settings {
 	ui.sections.notifications = &section{
 		title:       material.Label(ui.bar.Collection.NotoSans().Theme, 14, "🔔  Desktop Notifications"),
 		description: material.Caption(ui.bar.Collection.NotoSans().Theme, "Adjust desktop notifications for UniteHUD"),
+
+		extras: []visual.Widgeter{
+			&button.Widget{
+				Text:            "🔔 Test",
+				Pressed:         nrgba.Transparent80,
+				Released:        nrgba.PastelBlue,
+				TextSize:        unit.Sp(12),
+				TextInsetBottom: unit.Dp(0),
+				Size:            image.Pt(80, 20),
+				Font:            ui.bar.Collection.NotoSans(),
+
+				OnHoverHint: func() {},
+
+				Click: func(this *button.Widget) {
+					desktop.Notification(global.Title).
+						Says("Testing 1..2..3").
+						When(clicked.VisitWebsite).
+						Send()
+				},
+			},
+		},
 	}
 	notificationsWarning := material.Label(ui.bar.Collection.NotoSans().Theme, unit.Sp(11),
 		"📌 Some settings are automatically applied by the OS")
@@ -248,7 +276,7 @@ func (g *GUI) settingsUI() *settings {
 			{
 				Text: "Match Starting",
 				Checked: widget.Bool{
-					Value: config.Current.Advanced.Notifications.Disabled.MatchStarting,
+					Value: !config.Current.Advanced.Notifications.Disabled.MatchStarting,
 				},
 				Callback: func(this *dropdown.Item) {
 					this.Checked.Value = !this.Checked.Value
@@ -258,7 +286,7 @@ func (g *GUI) settingsUI() *settings {
 			{
 				Text: "Match Stopped",
 				Checked: widget.Bool{
-					Value: config.Current.Advanced.Notifications.Disabled.MatchStopped,
+					Value: !config.Current.Advanced.Notifications.Disabled.MatchStopped,
 				},
 				Callback: func(this *dropdown.Item) {
 					config.Current.Advanced.Notifications.Disabled.MatchStopped = this.Checked.Value
@@ -267,7 +295,7 @@ func (g *GUI) settingsUI() *settings {
 			{
 				Text: "Updates",
 				Checked: widget.Bool{
-					Value: config.Current.Advanced.Notifications.Disabled.Updates,
+					Value: !config.Current.Advanced.Notifications.Disabled.Updates,
 				},
 				Callback: func(this *dropdown.Item) {
 					config.Current.Advanced.Notifications.Disabled.Updates = this.Checked.Value
@@ -279,11 +307,13 @@ func (g *GUI) settingsUI() *settings {
 				return
 			}
 
-			for i := range this.Items {
-				if this.Items[i] == item {
+			for _, i := range this.Items {
+				switch i.Text {
+				case "Disabled", "Muted":
 					continue
+				default:
+					i.Checked.Value = !item.Checked.Value
 				}
-				this.Items[i].Checked.Value = !item.Checked.Value
 			}
 		},
 	}
@@ -418,7 +448,9 @@ func (s *section) section(gtx layout.Context) layout.Dimensions {
 	}
 
 	alignment := layout.Baseline
-	if s.header {
+
+	title := s.warning == nil && s.widget == nil && len(s.extras) == 0
+	if title {
 		alignment = layout.Middle
 		inset = layout.Inset{}
 	}
@@ -428,6 +460,44 @@ func (s *section) section(gtx layout.Context) layout.Dimensions {
 	decorate.Label(&s.title, s.title.Text)
 	decorate.Label(&s.description, s.description.Text)
 
+	children := []layout.FlexChild{
+		s.spacer(),
+
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			if s.title.Text == "" {
+				return layout.Dimensions{Size: layout.Exact(image.Pt(0, 0)).Max}
+			}
+			return inset.Layout(gtx, s.title.Layout)
+		}),
+
+		s.spacer(),
+
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			if s.widget == nil {
+				return layout.Dimensions{Size: layout.Exact(image.Pt(0, 0)).Max}
+			}
+			return inset.Layout(gtx, s.widget.Layout)
+		}),
+
+		s.spacer(),
+
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			if s.description.Text == "" {
+				return layout.Dimensions{Size: layout.Exact(image.Pt(0, 0)).Max}
+			}
+			return inset.Layout(gtx, s.description.Layout)
+		}),
+
+		s.spacer(),
+
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			if s.warning == nil {
+				return layout.Dimensions{Size: layout.Exact(image.Pt(0, 0)).Max}
+			}
+			return inset.Layout(gtx, s.warning.Layout)
+		}),
+	}
+
 	return decorate.Fill(gtx, nrgba.NRGBA(config.Current.Theme.Background), func(gtx layout.Context) layout.Dimensions {
 		return layout.Inset{
 			Top: unit.Dp(5),
@@ -436,49 +506,24 @@ func (s *section) section(gtx layout.Context) layout.Dimensions {
 				return layout.Flex{
 					Axis:      layout.Vertical,
 					Alignment: alignment,
-				}.Layout(gtx,
-					s.spacer(),
-
-					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-						if s.title.Text == "" {
-							return layout.Dimensions{Size: layout.Exact(image.Pt(0, 0)).Max}
-						}
-						return inset.Layout(gtx, s.title.Layout)
-					}),
-
-					s.spacer(),
-
-					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-						if s.widget == nil {
-							return layout.Dimensions{Size: layout.Exact(image.Pt(0, 0)).Max}
-						}
-						return inset.Layout(gtx, s.widget.Layout)
-					}),
-
-					s.spacer(),
-
-					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-						if s.description.Text == "" {
-							return layout.Dimensions{Size: layout.Exact(image.Pt(0, 0)).Max}
-						}
-						return inset.Layout(gtx, s.description.Layout)
-					}),
-
-					s.spacer(),
-
-					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-						if s.warning == nil {
-							return layout.Dimensions{Size: layout.Exact(image.Pt(0, 0)).Max}
-						}
-						return inset.Layout(gtx, s.warning.Layout)
-					}),
-
-					s.spacer(),
-					s.spacer(),
-				)
+				}.Layout(gtx, append(children, s.footer(inset)...)...)
 			})
 		})
 	})
+}
+
+func (s *section) footer(inset layout.Inset) []layout.FlexChild {
+	c := []layout.FlexChild{}
+
+	for _, widget := range s.extras {
+		c = append(c,
+			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+				return inset.Layout(gtx, widget.Layout)
+			}),
+		)
+	}
+
+	return append(c, s.spacer(), s.spacer())
 }
 
 func (s *section) spacer() layout.FlexChild {
@@ -508,6 +553,7 @@ func (s *settings) resize() {
 		s.dimensions.resize = true
 	}
 }
+
 func (s *settings) spacer(gtx layout.Context) layout.Dimensions {
 	return layout.Inset{Bottom: 10}.Layout(gtx, decorate.Border)
 }

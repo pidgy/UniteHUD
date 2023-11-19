@@ -39,7 +39,7 @@ const (
 )
 
 type Config struct {
-	Window                   string
+	VideoCaptureWindow       string
 	VideoCaptureDevice       int
 	LostWindow               string `json:"-"`
 	Record                   bool   `json:"-"` // Record all matched images and logs.
@@ -180,14 +180,25 @@ func (c *Config) Reset() error {
 }
 
 func (c *Config) Save() error {
-	notify.System("Saving %s configuration to %s", c.Profile, c.File())
+	notify.System("Configuration: Saving %s profile (%s)", c.Profile, c.File())
 
 	f, err := os.Create(c.File())
 	if err != nil {
 		return err
 	}
 
-	b, err := json.MarshalIndent(c, "", " ")
+	b, err := json.MarshalIndent(c, "", "    ")
+	if err != nil {
+		return err
+	}
+
+	// Remarshal for an alphabetically sorted object.
+	var i interface{}
+	err = json.Unmarshal(b, &i)
+	if err != nil {
+		return err
+	}
+	b, err = json.MarshalIndent(i, "", "    ")
 	if err != nil {
 		return err
 	}
@@ -214,6 +225,23 @@ func (c *Config) ScoringOption() image.Rectangle {
 		Min: image.Pt(c.Energy.Min.X-100, c.Energy.Min.Y-100),
 		Max: image.Pt(c.Energy.Max.X+100, c.Energy.Max.Y-100),
 	}
+}
+
+func (c *Config) SetDefaults() {
+	c.SetDefaultAreas()
+	c.SetDefaultTheme()
+	c.SetDefaultAdvancedSettings()
+}
+
+func (c *Config) SetDefaultAdvancedSettings() {
+	c.Advanced.Notifications.Muted = false
+	c.Advanced.Notifications.Disabled.All = true
+	c.Advanced.Notifications.Disabled.Updates = true
+	c.Advanced.Notifications.Disabled.MatchStarting = true
+	c.Advanced.Notifications.Disabled.MatchStopped = true
+	c.Advanced.Notifications.Muted = true
+
+	c.Advanced.Discord.Disabled = false
 }
 
 func (c *Config) SetDefaultAreas() {
@@ -323,11 +351,11 @@ func (c *Config) UnsetHiddenThemes() {
 	}
 
 	if len(failed) > 0 {
-		notify.Error("Failed to apply default themes to %s", strings.Join(failed, ", "))
+		notify.Error("Configuration: Failed to apply default themes (%s)", strings.Join(failed, ", "))
 	}
 
 	if len(applied) > 0 {
-		notify.System("Default themes applied to %s", strings.Join(applied, ", "))
+		notify.System("Configuration: Default themes applied to %s", strings.Join(applied, ", "))
 	}
 }
 
@@ -337,11 +365,11 @@ func (c *Config) pointFiles(t *team.Team) []filter.Filter {
 	root := fmt.Sprintf("%s/%s/points/", c.ProfileAssets(), t.Name)
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if info == nil {
-			return fmt.Errorf("Directory does not exist")
+			return fmt.Errorf("directory does not exist")
 		}
 		if info.IsDir() {
 			if info.Name() != "points" {
-				notify.SystemWarn("Skipping templates from %s%s", root, info.Name())
+				notify.SystemWarn("Configuration: Skipping templates from %s%s", root, info.Name())
 				return filepath.SkipDir
 			}
 		}
@@ -351,7 +379,7 @@ func (c *Config) pointFiles(t *team.Team) []filter.Filter {
 		return nil
 	})
 	if err != nil {
-		notify.Error("Failed to read from \"point\" directory \"%s\" (%v)", root, err)
+		notify.Error("Configuration: Failed to read from \"point\" directory \"%s\" (%v)", root, err)
 		return nil
 	}
 
@@ -372,7 +400,7 @@ func (c *Config) pointFiles(t *team.Team) []filter.Filter {
 
 		value, err := strconv.Atoi(v)
 		if err != nil {
-			notify.SystemWarn("Failed to invalidate \"%s\" file \"%s\" (%v)", root, file, err)
+			notify.SystemWarn("Configuration: Failed to invalidate \"%s\" file \"%s\" (%v)", root, file, err)
 			continue
 		}
 
@@ -390,11 +418,11 @@ func (c *Config) scoreFiles(t *team.Team) []filter.Filter {
 	root := fmt.Sprintf("%s/%s/score/", c.ProfileAssets(), t.Name)
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if info == nil {
-			return fmt.Errorf("Directory does not exist")
+			return fmt.Errorf("directory does not exist")
 		}
 		if info.IsDir() {
 			if info.Name() != "score" {
-				notify.SystemWarn("Skipping \"%s%s\"", root, info.Name())
+				notify.SystemWarn("Configuration: Skipping \"%s%s\"", root, info.Name())
 				return filepath.SkipDir
 			}
 		}
@@ -404,7 +432,7 @@ func (c *Config) scoreFiles(t *team.Team) []filter.Filter {
 		return nil
 	})
 	if err != nil {
-		notify.Error("Failed to read from \"score\" directory \"%s\" (%v)", root, err)
+		notify.Error("Configuration: Failed to read from \"score\" directory \"%s\" (%v)", root, err)
 		return nil
 	}
 
@@ -464,7 +492,7 @@ func Load(profile string) error {
 	defer func() {
 		r := recover()
 		if r != nil {
-			notify.SystemWarn("Configuration file %s is corrupted, remove or reset", Current.File())
+			notify.SystemWarn("Configuration: Corrupted .unitehud file (%s)", Current.File())
 			recovered(r)
 		}
 	}()
@@ -476,12 +504,12 @@ func Load(profile string) error {
 
 	defer validate()
 
-	notify.System("Loading %s configuration from \"%s\"", profile, Current.File())
+	notify.System("Configuration: Loading %s profile (%s)", profile, Current.File())
 
 	ok := open()
 	if !ok {
 		Current = Config{
-			Window:             MainDisplay,
+			VideoCaptureWindow: MainDisplay,
 			VideoCaptureDevice: NoVideoCaptureDevice,
 			Scale:              1,
 			Shift:              Shift{},
@@ -490,15 +518,14 @@ func Load(profile string) error {
 			Platform:           PlatformSwitch,
 		}
 		Current.SetProfile(profile)
-		Current.SetDefaultAreas()
-		Current.SetDefaultTheme()
+		Current.SetDefaults()
 		Current.load()
 	}
 
 	//Current.UnsetHiddenThemes()
 
-	if Current.Window == "" {
-		Current.Window = MainDisplay
+	if Current.VideoCaptureWindow == "" {
+		Current.VideoCaptureWindow = MainDisplay
 		Current.VideoCaptureDevice = NoVideoCaptureDevice
 	}
 
@@ -697,7 +724,7 @@ func recovered(r interface{}) {
 	case string:
 		s = e
 	}
-	notify.Debug("Recovered from %s", s)
+	notify.Debug("Configuration: Recovered from %s", s)
 }
 
 func validate() {
@@ -778,10 +805,9 @@ func validate() {
 		for subcategory, templates := range Current.templates[category] {
 			for _, t := range templates {
 				if t.Empty() {
-					notify.Error("Failed to read %s/%s template from file \"%s\"", category, subcategory, t.File)
+					notify.Error("Configuration: Failed to read \"%s/%s\" template from file \"%s\"", category, subcategory, t.File)
 					continue
 				}
-
 			}
 		}
 	}

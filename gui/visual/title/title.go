@@ -15,16 +15,12 @@ import (
 	"gioui.org/widget/material"
 
 	"github.com/pidgy/unitehud/config"
-	"github.com/pidgy/unitehud/cursor"
 	"github.com/pidgy/unitehud/fonts"
+	"github.com/pidgy/unitehud/gui/cursor"
 	"github.com/pidgy/unitehud/gui/visual/button"
 	"github.com/pidgy/unitehud/gui/visual/decorate"
 	"github.com/pidgy/unitehud/img"
 	"github.com/pidgy/unitehud/nrgba"
-)
-
-const (
-	Default = "UniteHUD" // +" " +global.Version
 )
 
 var (
@@ -225,11 +221,6 @@ func New(title string, collection fonts.Collection, minimize, resize, close func
 	return b
 }
 
-func (b *Widget) Open() {
-	this := b.decorations.buttons.custom[0]
-	this.Click(this)
-}
-
 func (b *Widget) Add(btn *button.Widget) *button.Widget {
 	if btn.Size.Eq(image.Pt(0, 0)) {
 		btn.Size = button.IconSize
@@ -249,20 +240,6 @@ func (b *Widget) Add(btn *button.Widget) *button.Widget {
 	b.decorations.buttons.custom = append(b.decorations.buttons.custom, btn)
 
 	return btn
-}
-
-func (b *Widget) Remove(btn *button.Widget) {
-	c := []*button.Widget{}
-	for _, b := range b.decorations.buttons.custom {
-		if b.Text != btn.Text {
-			c = append(c, b)
-		}
-	}
-	b.decorations.buttons.custom = c
-
-	if len(b.decorations.buttons.custom) == 1 && b.decorations.buttons.open {
-		b.decorations.buttons.custom[0].Click(b.decorations.buttons.custom[0])
-	}
 }
 
 func (b *Widget) Dragging() (image.Point, bool) {
@@ -330,7 +307,8 @@ func (b *Widget) Layout(gtx layout.Context, content layout.Widget) layout.Dimens
 	}.Layout(gtx,
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 			if b.Hide {
-				return layout.Dimensions{Size: image.Pt(gtx.Constraints.Max.X, Height/3)}
+				// return layout.Dimensions{Size: image.Pt(gtx.Constraints.Max.X, Height/3)}
+				return layout.Dimensions{}
 			}
 
 			decorate.BackgroundTitleBar(gtx, image.Pt(gtx.Constraints.Max.X, Height))
@@ -424,7 +402,8 @@ func (b *Widget) Layout(gtx layout.Context, content layout.Widget) layout.Dimens
 
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 			if b.Hide {
-				return layout.Dimensions{Size: image.Pt(gtx.Constraints.Max.X, Height/3)}
+				return layout.Dimensions{}
+				// return layout.Dimensions{Size: image.Pt(gtx.Constraints.Max.X, Height/3)}
 			}
 			return decorate.Border(gtx)
 		}),
@@ -454,9 +433,33 @@ func (b *Widget) Layout(gtx layout.Context, content layout.Widget) layout.Dimens
 	pointer.InputOp{
 		Tag:   b,
 		Types: pointer.Press | pointer.Drag | pointer.Release | pointer.Leave | pointer.Enter | pointer.Move,
+		Grab:  true,
 	}.Add(gtx.Ops)
 
 	return dims
+}
+
+func (b *Widget) Open() {
+	this := b.decorations.buttons.custom[0]
+	this.Click(this)
+}
+
+func (b *Widget) Remove(btn *button.Widget) {
+	c := []*button.Widget{}
+	for _, b := range b.decorations.buttons.custom {
+		if b.Text != btn.Text {
+			c = append(c, b)
+		}
+	}
+	b.decorations.buttons.custom = c
+
+	if len(b.decorations.buttons.custom) == 1 && b.decorations.buttons.open {
+		b.decorations.buttons.custom[0].Click(b.decorations.buttons.custom[0])
+	}
+}
+
+func (b *Widget) Resize() {
+	b.buttons.resize.Click(b.buttons.resize)
 }
 
 func (b *Widget) Tip(t string) {

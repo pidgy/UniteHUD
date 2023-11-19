@@ -7,7 +7,7 @@ import (
 	"gioui.org/io/pointer"
 	"gioui.org/layout"
 	"gioui.org/widget/material"
-	"github.com/pidgy/unitehud/cursor"
+	"github.com/pidgy/unitehud/gui/cursor"
 	"github.com/pidgy/unitehud/nrgba"
 )
 

@@ -17,6 +17,7 @@ import (
 	"github.com/pidgy/unitehud/fps"
 	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/gui/is"
+	"github.com/pidgy/unitehud/gui/tray"
 	"github.com/pidgy/unitehud/gui/visual/title"
 	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/stats"
@@ -93,15 +94,15 @@ const (
 var UI *GUI
 
 func New() {
-	min := image.Pt(1080, 700)
-	max := monitor.MainResolution().Max
+	min := image.Pt(1200, 700)
+	max := monitor.MainResolution.Max
 
 	is.Now = is.Loading
 
-	notify.System("Generating UI")
+	notify.System("UI: Generating")
 
 	UI = &GUI{
-		window: app.NewWindow(app.Title(title.Default), app.Decorated(false)),
+		window: app.NewWindow(app.Title(global.Title), app.Decorated(false)),
 
 		HWND: 0,
 
@@ -146,7 +147,7 @@ func New() {
 	}
 
 	UI.header = title.New(
-		title.Default,
+		global.Title,
 		fonts.NewCollection(),
 		UI.minimize,
 		UI.resize,
@@ -155,7 +156,7 @@ func New() {
 		},
 	)
 
-	notify.System("Default dimensions detected: %s", max.String())
+	notify.System("UI: Default dimensions detected (%s)", max.String())
 
 	go UI.loading()
 
@@ -169,6 +170,9 @@ func (g *GUI) Close() {
 func (g *GUI) Open() {
 	g.next(is.MainMenu)
 
+	tray.Open(g.Close)
+	defer tray.Close()
+
 	go func() {
 		g.open = true
 
@@ -180,7 +184,7 @@ func (g *GUI) Open() {
 		for is.Now != is.Closing {
 			switch is.Now {
 			case is.Loading:
-				notify.Debug("Loading...")
+				notify.Debug("UI: Loading...")
 			case is.MainMenu:
 				g.main()
 			case is.Projecting:
@@ -235,34 +239,6 @@ func (g *GUI) attachWindowRight(hwnd uintptr, width int) bool {
 	return true
 }
 
-// func (g *GUI) draw() {
-// 	for {
-// 		tps := time.Second / time.Duration(g.fps.max+1)
-// 		tick := time.NewTicker(tps)
-// 		persecond := time.NewTicker(time.Second)
-// 		g.fps.ticks = 0
-
-// 		notify.Debug("Running at %dfps", g.fps.max)
-
-// 		for fps := g.fps.max; fps == g.fps.max; {
-// 			if g.dimensions.resizing {
-// 				continue
-// 			}
-
-// 			select {
-// 			case <-persecond.C:
-// 				g.fps.frames = g.fps.ticks
-// 				g.fps.ticks = 0
-// 			case <-tick.C:
-// 				if g.fps.ticks < g.fps.max {
-// 					g.window.Invalidate()
-// 					g.fps.ticks++
-// 				}
-// 			}
-// 		}
-// 	}
-// }
-
 func (g *GUI) frame(gtx layout.Context, e system.FrameEvent) {
 	e.Frame(gtx.Ops)
 
@@ -292,8 +268,8 @@ func (g *GUI) minimize() {
 	g.window.Perform(system.ActionMinimize)
 }
 
-func (g *GUI) next(i is.Is) {
-	notify.Debug("Next state set to \"%s\"", i)
+func (g *GUI) next(i is.What) {
+	notify.Debug("UI: Next state set to \"%s\"", i)
 	is.Now = i
 }
 
@@ -306,14 +282,14 @@ func (g *GUI) position() image.Point {
 func (g *GUI) proc() {
 	handle, err := syscall.GetCurrentProcess()
 	if err != nil {
-		notify.Error("Failed to monitor usage: (%v)", err)
+		notify.Error("UI: Failed to monitor usage: (%v)", err)
 		return
 	}
 
 	var ctime, etime, ktime, utime syscall.Filetime
 	err = syscall.GetProcessTimes(handle, &ctime, &etime, &ktime, &utime)
 	if err != nil {
-		notify.Error("Failed to monitor CPU/RAM (%v)", err)
+		notify.Error("UI: Failed to monitor CPU/RAM (%v)", err)
 		return
 	}
 
@@ -330,7 +306,7 @@ func (g *GUI) proc() {
 
 		err := syscall.GetProcessTimes(handle, &ctime, &etime, &ktime, &utime)
 		if err != nil {
-			notify.Error("Failed to monitor CPU/RAM (%v)", err)
+			notify.Error("UI: Failed to monitor CPU/RAM (%v)", err)
 			continue
 		}
 
@@ -342,9 +318,9 @@ func (g *GUI) proc() {
 		usage = current
 
 		cpu := (100 * float64(diff2) / float64(diff)) / cpus
-		if cpu > peakCPU+10 {
+		if cpu > peakCPU*2 {
 			peakCPU = cpu
-			notify.SystemWarn("Consumed %.1f%s CPU", peakCPU, "%")
+			notify.SystemWarn("UI: Consumed %.1f%s CPU", peakCPU, "%")
 		}
 
 		g.performance.cpu = fmt.Sprintf("CPU %.1f%s", cpu, "%")
@@ -353,9 +329,9 @@ func (g *GUI) proc() {
 		runtime.ReadMemStats(&m)
 
 		ram := (float64(m.Sys) / 1024 / 1024)
-		if ram > peakRAM+10 {
+		if ram > peakRAM+100 {
 			peakRAM = ram
-			notify.SystemWarn("Consumed %.0f%s of RAM", peakRAM, "MB")
+			notify.SystemWarn("UI: Consumed %.0f%s of RAM", peakRAM, "MB")
 		}
 
 		g.performance.ram = fmt.Sprintf("RAM %.0f%s", ram, "MB")

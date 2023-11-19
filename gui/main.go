@@ -10,9 +10,11 @@ import (
 
 	"gioui.org/app"
 	"gioui.org/font"
+	"gioui.org/io/key"
 	"gioui.org/io/system"
 	"gioui.org/layout"
 	"gioui.org/op"
+	"gioui.org/op/clip"
 	"gioui.org/text"
 	"gioui.org/unit"
 	"gioui.org/widget/material"
@@ -21,6 +23,7 @@ import (
 	"github.com/pidgy/unitehud/desktop"
 	"github.com/pidgy/unitehud/desktop/clicked"
 	"github.com/pidgy/unitehud/discord"
+	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/gui/is"
 	"github.com/pidgy/unitehud/gui/visual/button"
 	"github.com/pidgy/unitehud/gui/visual/decorate"
@@ -67,7 +70,8 @@ type main struct {
 		orangeScore,
 		selfScore,
 		clock,
-		uptime material.LabelStyle
+		uptime,
+		version material.LabelStyle
 
 		regielekis, regielekiUnderlines,
 		regiBottoms, regiBottomUnderlines []material.LabelStyle
@@ -96,7 +100,7 @@ type main struct {
 	}
 
 	menu struct {
-		projector,
+		client,
 		stats,
 		results,
 		obs,
@@ -111,7 +115,7 @@ func (g *GUI) main() {
 	if once {
 		once = false
 		g.window.Option(
-			app.Title("UniteHUD"),
+			app.Title(global.Title),
 			app.Size(
 				unit.Dp(g.dimensions.min.X),
 				unit.Dp(g.dimensions.min.Y),
@@ -132,7 +136,7 @@ func (g *GUI) main() {
 	defer ui.spinners.run.Stop()
 	defer ui.spinners.stop.Stop()
 
-	defer g.header.Remove(g.header.Add(ui.menu.projector))
+	defer g.header.Remove(g.header.Add(ui.menu.client))
 	defer g.header.Remove(g.header.Add(ui.menu.stats))
 	defer g.header.Remove(g.header.Add(ui.menu.results))
 	defer g.header.Remove(g.header.Add(ui.menu.obs))
@@ -259,13 +263,13 @@ func (g *GUI) main() {
 
 							switch {
 							case device.IsActive():
-								if ui.labels.window.Text == "" || ui.labels.window.Text == config.Current.Window {
+								if ui.labels.window.Text == "" || ui.labels.window.Text == config.Current.VideoCaptureWindow {
 									ui.labels.window.Text = device.Name(config.Current.VideoCaptureDevice)
 								}
 							case window.IsOpen():
-								ui.labels.window.Text = config.Current.Window
+								ui.labels.window.Text = config.Current.VideoCaptureWindow
 							case monitor.IsDisplay():
-								ui.labels.window.Text = config.Current.Window
+								ui.labels.window.Text = config.Current.VideoCaptureWindow
 							}
 							if config.Current.LostWindow != "" {
 								ui.labels.window.Text = config.Current.LostWindow
@@ -345,22 +349,15 @@ func (g *GUI) main() {
 								Left: unit.Dp(float32(gtx.Constraints.Max.X - 124)),
 							}.Layout(gtx, ui.labels.acronym.Layout)
 
-							ui.labels.fps.Color = nrgba.Green.Color()
-
-							// switch {
-							// case g.fps.FPS() == g.fps.max:
-							// 	ui.labels.fps.Color = nrgba.Green.Color()
-							// case g.fps.frames < g.fps.max/3:
-							// 	ui.labels.fps.Color = nrgba.Red.Color()
-							// case g.fps.frames < g.fps.max/2:
-							// 	ui.labels.fps.Color = nrgba.Orange.Color()
-							// case g.fps.frames < g.fps.max:
-							// 	ui.labels.fps.Color = nrgba.Yellow.Color()
-							// }
-
-							ui.labels.fps.Text = fmt.Sprintf("%s FPS", g.fps)
 							layout.Inset{
 								Top:  unit.Dp(2),
+								Left: unit.Dp(float32(gtx.Constraints.Max.X - 135)),
+							}.Layout(gtx, ui.labels.version.Layout)
+
+							ui.labels.fps.Color = nrgba.FPS(g.fps.FPS()).Color()
+							ui.labels.fps.Text = fmt.Sprintf("%s FPS", g.fps)
+							layout.Inset{
+								Top:  unit.Dp(18),
 								Left: unit.Dp(float32(gtx.Constraints.Max.X - 135)),
 							}.Layout(gtx, ui.labels.fps.Layout)
 						}
@@ -533,6 +530,42 @@ func (g *GUI) main() {
 				)
 			})
 
+			for _, e := range gtx.Events(g) {
+				switch event := e.(type) {
+				case key.Event:
+					if event.State != key.Release {
+						continue
+					}
+
+					switch event.Modifiers {
+					case key.ModCtrl:
+						switch event.Name {
+						case "C":
+							g.next(is.Projecting)
+						case "F":
+							g.header.Resize()
+						case "S":
+							btn := ui.buttons.start
+							if g.Running {
+								btn = ui.buttons.stop
+							}
+							btn.Click(btn)
+						case "W":
+							g.next(is.Closing)
+						}
+					default:
+
+					}
+				}
+			}
+
+			area := clip.Rect(gtx.Constraints).Push(gtx.Ops)
+			key.InputOp{
+				Tag:  g,
+				Keys: key.Set(""),
+			}.Add(gtx.Ops)
+			area.Pop()
+
 			g.frame(gtx, event)
 		default:
 			notify.Missed(event, "Main")
@@ -550,7 +583,7 @@ func (g *GUI) mainUI() *main {
 	ui.buttons.stop = &button.Widget{
 		Text:            "Stop",
 		Font:            g.header.Collection.Calibri(),
-		OnHoverHint:     func() { g.header.Tip("Stop capturing events") },
+		OnHoverHint:     func() { g.header.Tip("Stop capturing events (Ctrl+s)") },
 		Disabled:        true,
 		Released:        nrgba.Disabled,
 		BorderWidth:     unit.Sp(1.5),
@@ -574,7 +607,7 @@ func (g *GUI) mainUI() *main {
 	ui.buttons.start = &button.Widget{
 		Text:            "Start",
 		Font:            g.header.Collection.Calibri(),
-		OnHoverHint:     func() { g.header.Tip("Start capturing events") },
+		OnHoverHint:     func() { g.header.Tip("Start capturing events (Ctrl+s)") },
 		Released:        nrgba.PastelGreen.Alpha(150),
 		Pressed:         nrgba.Transparent80,
 		BorderWidth:     unit.Sp(1.5),
@@ -603,7 +636,7 @@ func (g *GUI) mainUI() *main {
 	}
 
 	ui.buttons.projector = &button.ImageWidget{
-		HintEvent: func() { g.header.Tip("Open projector window") },
+		HintEvent: func() { g.header.Tip("Configure capture settings (Ctrl+c)") },
 
 		Widget: &screen.Widget{
 			Border:      true,
@@ -768,24 +801,26 @@ func (g *GUI) mainUI() *main {
 	ui.labels.uptime.Alignment = text.Middle
 	ui.labels.uptime.TextSize = unit.Sp(14)
 
+	ui.labels.version = material.H5(g.header.Collection.Calibri().Theme, global.Version)
+	ui.labels.version.Color = nrgba.Gray.Color()
+	ui.labels.version.Alignment = text.Middle
+	ui.labels.version.TextSize = unit.Sp(14)
+
 	ui.spinners.run = spinner.Running()
 	ui.spinners.stop = spinner.Stopped()
 
-	ui.menu.projector = &button.Widget{
+	ui.menu.client = &button.Widget{
 		Text:        "📺",
 		Font:        g.header.Collection.NishikiTeki(),
-		OnHoverHint: func() { g.header.Tip("Configure capture settings") },
+		OnHoverHint: ui.buttons.projector.HintEvent,
 		Released:    nrgba.Discord.Alpha(100),
 		TextSize:    unit.Sp(16),
 
 		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
-			if !ui.buttons.stop.Disabled {
-				ui.buttons.stop.Click(ui.buttons.stop)
-			}
-
-			g.next(is.Projecting)
+			// go projector.New()
+			go g.client()
 		},
 	}
 
@@ -794,7 +829,7 @@ func (g *GUI) mainUI() *main {
 		Font:        g.header.Collection.NishikiTeki(),
 		OnHoverHint: func() { g.header.Tip("View capture statistics") },
 		Released:    nrgba.Pinkity,
-		TextSize:    unit.Sp(14),
+		TextSize:    unit.Sp(15),
 
 		Click: func(this *button.Widget) {
 			defer this.Deactivate()
@@ -811,9 +846,9 @@ func (g *GUI) mainUI() *main {
 	}
 
 	ui.menu.results = &button.Widget{
-		Text:        "🗠",
-		TextSize:    unit.Sp(16),
-		Font:        g.header.Collection.NishikiTeki(),
+		Text:        "+/-",
+		TextSize:    unit.Sp(12),
+		Font:        g.header.Collection.Cascadia(),
 		OnHoverHint: func() { g.header.Tip("View win/loss history") },
 		Released:    nrgba.Seafoam,
 

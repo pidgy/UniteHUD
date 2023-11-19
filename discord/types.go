@@ -74,3 +74,9 @@ type (
 		End   int64 `json:"end,omitempty"`
 	}
 )
+
+func (f frame) opcode() opcode     { return opFrame }
+func (f frame) opreceived() opcode { return opFrame }
+
+func (h handshake) opcode() opcode     { return opHandshake }
+func (h handshake) opreceived() opcode { return opFrame }

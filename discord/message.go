@@ -10,13 +10,18 @@ import (
 type (
 	message struct {
 		// The Discord-RPC opcode.
-		Opcode opcode
+		opcode
 
 		// Payload is the JSON string encoded as UTF-8.
 		Payload payload
 	}
 
 	opcode int32
+
+	opper interface {
+		opcode() opcode
+		opreceived() opcode
+	}
 
 	payload []byte
 
@@ -57,7 +62,7 @@ const headerLen = 8
 // encode serializes the message in wire format.
 func (m message) encode() []byte {
 	buf := bytes.NewBuffer(make([]byte, 0, len(m.Payload)+headerLen))
-	binary.Write(buf, binary.LittleEndian, m.Opcode)
+	binary.Write(buf, binary.LittleEndian, m.opcode)
 	binary.Write(buf, binary.LittleEndian, int32(len(m.Payload)))
 	buf.Write(m.Payload)
 	return buf.Bytes()

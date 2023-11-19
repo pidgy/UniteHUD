@@ -92,15 +92,21 @@ func Iter(i int) (string, int) {
 	return "", i
 }
 
+func Last() Post {
+	if len(feed.logs) == 0 {
+		return Post{}
+	}
+	return feed.logs[len(feed.logs)-1]
+}
+
 func Missed(event interface{}, window string) {
-	Debug("%T missed in %s window", event, window)
+	Debug("Window: Missed %T event (%s)", event, window)
 }
 
 func (p *Post) String() string {
 	if p.count > 1 {
 		return fmt.Sprintf("%s (x%d)", p.msg, p.count)
 	}
-
 	return p.msg
 }
 
@@ -110,7 +116,6 @@ func Remove(r string) {
 		if strings.Contains(post.orig, r) {
 			continue
 		}
-
 		logs = append(logs, post)
 	}
 	feed.logs = logs
@@ -137,10 +142,6 @@ func Warn(format string, a ...interface{}) {
 }
 
 func (n *notify) log(r nrgba.NRGBA, clock, dedup, unique bool, format string, a ...interface{}) {
-	if global.DebugMode {
-		fmt.Printf("DebugHUD: %s\n", fmt.Sprintf(format, a...))
-	}
-
 	p := Post{
 		NRGBA: r,
 		Time:  time.Now(),
@@ -149,6 +150,10 @@ func (n *notify) log(r nrgba.NRGBA, clock, dedup, unique bool, format string, a 
 		count:  1,
 		dedup:  dedup,
 		unique: unique,
+	}
+
+	if global.DebugMode {
+		fmt.Printf("[%s] [DebugHUD] %s\n", p.Time.Format(time.TimeOnly), fmt.Sprintf(format, a...))
 	}
 
 	if clock {
