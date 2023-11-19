@@ -3,7 +3,8 @@ package update
 import (
 	"encoding/json"
 	"net/http"
-	"strings"
+
+	"github.com/hashicorp/go-version"
 
 	"github.com/pidgy/unitehud/desktop"
 	"github.com/pidgy/unitehud/desktop/clicked"
@@ -17,7 +18,7 @@ type query struct {
 }
 
 func Check() {
-	notify.System("Update: Validating...")
+	notify.System("Update: Validating %s", global.Version)
 
 	r, err := http.Get("https://unitehud.dev/update.json")
 	if err != nil {
@@ -38,15 +39,32 @@ func Check() {
 		return
 	}
 
-	available := q.Latest != global.Version && strings.Contains(q.Latest, "beta") == strings.Contains(global.Version, "beta")
+	notify.Debug("Update: Comparing %s against %s", q.Latest, global.Version)
 
-	if available {
+	v1, err := version.NewVersion(global.Version)
+	if err != nil {
+		notify.Error("Update: Failed to parse global version number (%v)", err)
+		return
+	}
+
+	v2, err := version.NewVersion(q.Latest)
+	if err != nil {
+		notify.Error("Update: Failed to parse global version number (%v)", err)
+		return
+	}
+
+	switch {
+	case v1.LessThan(v2):
+		notify.System("Update: %s is available for download (http://unitehud.dev)", q.Latest)
+
 		desktop.Notification("%s Update", q.Latest).
 			Says("An update is available for UniteHUD").
 			When(clicked.VisitWebsite).
 			Send()
-	} else {
-		notify.System("Update: Running the latest version of UniteHUD (%s)", global.Version)
+	case v1.Equal(v2):
+		notify.System("Update: Running latest (%s)", global.Version)
+	default:
+		notify.Warn("Update: Failed to validate version %s ", q.Latest)
 	}
 
 	for _, n := range q.News {

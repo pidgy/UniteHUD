@@ -81,7 +81,9 @@ function shake() {
 function success(data) {
     loggedError = false;
 
-    console.log(JSON.stringify(data))
+    if (testing) {
+        console.log(JSON.stringify(data))
+    }
 
     if (data.profile != "player") {
         error(`Invalid profile (${data.profile})`);

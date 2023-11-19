@@ -148,8 +148,7 @@ func Listen() error {
 		}
 
 		defer fps.NewLoop(&fps.LoopOptions{
-			Stats: "/stream",
-			FPS:   120,
+			FPS: 120,
 			Render: func(min, max, avg time.Duration) (close bool) {
 				if global.DebugMode {
 					defer fmt.Printf("HTTP /stream min=%s, max=%s, avg=%s\n", min, max, avg)

@@ -102,11 +102,6 @@ func main() {
 		notify.Error("System: Failed to start server (%v)", err)
 	}
 
-	err = electron.Open()
-	if err != nil {
-		notify.Error("System: Failed to start overlay (%v)", err)
-	}
-
 	go discord.Connect()
 
 	notify.System("System: Server Address (%s)", server.Address)

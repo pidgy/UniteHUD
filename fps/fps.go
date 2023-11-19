@@ -29,7 +29,6 @@ type LoopOptions struct {
 	Async  bool
 	FPS    int
 	Render func(min, max, avg time.Duration) (close bool)
-	Stats  string
 
 	stats struct {
 		min, max, avg,

@@ -56,7 +56,6 @@ type Config struct {
 	Profile                  string
 	DisableBrowserFormatting bool
 	Platform                 string
-	HUDOverlay               bool
 
 	Theme  Theme
 	Themes map[string]Theme

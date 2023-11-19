@@ -208,7 +208,7 @@ func startCaptureDevice() error {
 		close(errq)
 
 		defer fps.NewLoop(&fps.LoopOptions{
-			FPS: 120,
+			FPS: 160,
 			Render: func(min, max, avg time.Duration) (close bool) {
 				if !running || deviceChanged() {
 					return true

@@ -17,19 +17,21 @@ import (
 
 	"github.com/pidgy/unitehud/fonts"
 	"github.com/pidgy/unitehud/fps"
+	"github.com/pidgy/unitehud/gui/cursor"
 	"github.com/pidgy/unitehud/gui/is"
-	"github.com/pidgy/unitehud/gui/visual/button"
 	"github.com/pidgy/unitehud/gui/visual/decorate"
 	"github.com/pidgy/unitehud/gui/visual/title"
 	"github.com/pidgy/unitehud/img/splash"
 	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/video"
+	"github.com/pidgy/unitehud/video/window/electron"
 )
 
 type client struct {
 	hwnd uintptr
 
-	img image.Image
+	video,
+	overlay image.Image
 
 	bar *title.Widget
 
@@ -45,11 +47,8 @@ type client struct {
 		fullscreened bool
 	}
 
-	menu struct {
-		fullscreen *button.Widget
-	}
-
-	hover time.Time
+	hover,
+	clicked time.Time
 }
 
 func (g *GUI) client() {
@@ -57,13 +56,19 @@ func (g *GUI) client() {
 
 	ui.windows.current.Perform(system.ActionRaise)
 
+	err := electron.Open()
+	if err != nil {
+		notify.Warn("Client: Failed to render overlay (%v)", err)
+	}
+	defer electron.Close()
+
 	defer fps.NewLoop(&fps.LoopOptions{
 		Async: true,
 		FPS:   60,
 		Render: func(min, max, avg time.Duration) (close bool) {
 			var err error
 
-			ui.img, err = video.Capture()
+			ui.video, err = video.Capture()
 			if err != nil {
 				g.ToastError(err)
 				g.next(is.MainMenu)
@@ -100,18 +105,23 @@ func (g *GUI) client() {
 
 					switch event.Name {
 					case key.NameF11:
-						ui.menu.fullscreen.Click(ui.menu.fullscreen)
+						ui.fullscreen()
 					case key.NameEscape:
-						if !ui.dimensions.fullscreened {
-							break
+						if ui.dimensions.fullscreened {
+							ui.fullscreen()
 						}
-
-						ui.menu.fullscreen.Click(ui.menu.fullscreen)
 					default:
-						ui.bar.Hide = !ui.bar.Hide
+						if ui.dimensions.fullscreened {
+							ui.bar.Hide = false
+						}
 					}
 				case pointer.Event:
 					switch event.Type {
+					case pointer.Release:
+						if time.Since(ui.clicked) < time.Second/2 {
+							ui.fullscreen()
+						}
+						ui.clicked = time.Now()
 					case pointer.Move, pointer.Enter:
 						if !ui.dimensions.fullscreened {
 							break
@@ -122,19 +132,55 @@ func (g *GUI) client() {
 				}
 			}
 
+			fit := widget.Contain
+
 			ui.bar.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				return decorate.BackgroundAlt(gtx, func(gtx layout.Context) layout.Dimensions {
-					dims := widget.Image{
-						Fit:      widget.Fill,
-						Src:      paint.NewImageOp(notify.Preview),
-						Position: layout.Center,
-					}.Layout(gtx)
+					layout.Flex{
+						Axis: layout.Horizontal,
+					}.Layout(
+						gtx,
+						layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+							return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+								return widget.Image{
+									Fit:      fit,
+									Src:      paint.NewImageOp(ui.video),
+									Position: layout.Center,
+								}.Layout(gtx)
+							})
+						}),
+					)
+
+					layout.Flex{
+						Axis: layout.Horizontal,
+					}.Layout(
+						gtx,
+						layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+							return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+								select {
+								case img := <-electron.Captureq:
+									ui.overlay = img
+								default:
+								}
+
+								if ui.overlay != nil {
+									return widget.Image{
+										Fit:      fit,
+										Src:      paint.NewImageOp(ui.overlay),
+										Position: layout.Center,
+									}.Layout(gtx)
+								}
+
+								return layout.Dimensions{Size: gtx.Constraints.Max}
+							})
+						}),
+					)
 
 					area := clip.Rect(gtx.Constraints).Push(gtx.Ops)
 
 					pointer.InputOp{
 						Tag:   g,
-						Types: pointer.Enter | pointer.Move,
+						Types: pointer.Enter | pointer.Move | pointer.Release,
 					}.Add(gtx.Ops)
 
 					key.InputOp{
@@ -144,9 +190,13 @@ func (g *GUI) client() {
 
 					area.Pop()
 
-					return dims
+					return layout.Dimensions{Size: gtx.Constraints.Max}
 				})
 			})
+
+			if ui.bar.Hide {
+				cursor.Is(pointer.CursorNone)
+			}
 
 			ui.windows.current.Invalidate()
 
@@ -155,32 +205,28 @@ func (g *GUI) client() {
 	}
 }
 
+func (ui *client) fullscreen() {
+	ui.dimensions.fullscreened = !ui.dimensions.fullscreened
+	ui.bar.Hide = ui.dimensions.fullscreened
+
+	if ui.dimensions.fullscreened {
+		ui.windows.current.Option(app.Fullscreen.Option())
+	} else {
+		ui.windows.current.Perform(system.ActionUnmaximize)
+		ui.windows.current.Option(app.Windowed.Option(), app.Size(unit.Dp(ui.dimensions.size.X), unit.Dp(ui.dimensions.size.Y)))
+	}
+}
+
 func (g *GUI) clientUI() *client {
 	ui := &client{
-		img: splash.Default(),
+		video: splash.Projector(),
 	}
 
 	ui.bar = title.New(
-		"Client",
+		"UniteHUD",
 		fonts.NewCollection(),
 		func() { ui.windows.current.Perform(system.ActionMinimize) },
-		func() {
-			ui.bar.Hide = !ui.dimensions.fullscreened
-			ui.dimensions.fullscreened = !ui.dimensions.fullscreened
-			if ui.dimensions.fullscreened {
-				ui.windows.current.Option(
-					app.Fullscreen.Option(),
-				)
-			} else {
-				ui.windows.current.Option(
-					app.Windowed.Option(),
-					app.Size(
-						unit.Dp(ui.dimensions.size.X),
-						unit.Dp(ui.dimensions.size.Y),
-					),
-				)
-			}
-		},
+		ui.fullscreen,
 		func() { ui.windows.current.Perform(system.ActionClose) },
 	)
 	ui.bar.NoDrag = false
@@ -189,7 +235,7 @@ func (g *GUI) clientUI() *client {
 
 	ui.windows.parent = g
 	ui.windows.current = app.NewWindow(
-		app.Title("Client"),
+		app.Title("UniteHUD"),
 		app.Size(unit.Dp(ui.dimensions.size.X), unit.Dp(ui.dimensions.size.Y)),
 		app.MinSize(unit.Dp(ui.dimensions.size.X), unit.Dp(ui.dimensions.size.Y)),
 		app.Decorated(false),

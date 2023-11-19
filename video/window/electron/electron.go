@@ -1,11 +1,16 @@
 package electron
 
 import (
+	"bytes"
 	"fmt"
+	"image"
+	"image/png"
+	"time"
 
 	"github.com/asticode/go-astikit"
 	"github.com/asticode/go-astilectron"
-	"github.com/pidgy/unitehud/config"
+
+	"github.com/pidgy/unitehud/fps"
 	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/video/monitor"
@@ -16,48 +21,45 @@ const (
 )
 
 var (
-	overlayApp    *astilectron.Astilectron
-	overlayWindow *astilectron.Window
+	Captureq = make(chan image.Image)
+
+	app    *astilectron.Astilectron
+	window *astilectron.Window
+
+	opened = false
 )
 
 func Close() {
 	defer func() {
-		overlayApp, overlayWindow = nil, nil
+		app, window = nil, nil
+		opened = false
 	}()
 
-	if overlayWindow != nil {
-		notify.System("Closing %s", Title)
+	if window != nil {
+		notify.System("Overlay: Closing rendering window")
 
-		err := overlayWindow.Destroy()
+		err := window.Destroy()
 		if err != nil {
-			notify.Warn("Failed to close %s (%v)", Title, err)
+			notify.Warn("Overlay: Failed to close (%v)", err)
 		}
 	}
 
-	if overlayApp != nil {
-		notify.Debug("Closing Astilectron")
+	if app != nil {
+		notify.Debug("Overlay: Closing rendering app")
 
-		err := overlayApp.Quit()
+		err := app.Quit()
 		if err != nil {
-			notify.Warn("Failed to close %s Controller (%v)", Title, err)
+			notify.Warn("Overlay: Failed to close rendering app(%v)", err)
 		}
 	}
-}
-
-func IsOpen() bool {
-	return overlayApp != nil && overlayWindow != nil
 }
 
 func Open() error {
-	if IsOpen() {
+	if app != nil && window != nil {
 		return nil
 	}
 
-	if !config.Current.HUDOverlay {
-		return nil
-	}
-
-	notify.System("Opening %s", Title)
+	notify.System("Overlay: Opening...")
 
 	err := openApp()
 	if err != nil {
@@ -66,8 +68,6 @@ func Open() error {
 
 	return openWindow()
 }
-
-var opened = false
 
 func openApp() error {
 	if opened {
@@ -86,92 +86,125 @@ func openApp() error {
 	if err != nil {
 		return fmt.Errorf("Failed to start app for %s (%v)", Title, err)
 	}
-	overlayApp = a
+	app = a
 
-	overlayApp.HandleSignals()
+	app.HandleSignals()
 
-	overlayApp.On(astilectron.EventNameAppCrash, windowClosed)
-	overlayApp.On(astilectron.EventNameAppCmdQuit, windowClosed)
-	overlayApp.On(astilectron.EventNameAppClose, windowClosed)
+	app.On(astilectron.EventNameAppCrash, onClose)
+	app.On(astilectron.EventNameAppCmdQuit, onClose)
+	app.On(astilectron.EventNameAppClose, onClose)
 
-	return overlayApp.Start()
+	return app.Start()
 }
 
 func openWindow() error {
 	errq := make(chan error)
 
-	go func() {
-		url := `www/UniteHUD Client.html`
-		if config.Current.Profile == config.ProfileBroadcaster {
-			url = "www/UniteHUD Broadcaster.html"
-		}
+	app.On(astilectron.EventNameAppEventReady, func(e astilectron.Event) (deleteListener bool) {
+		notify.System("Overlay: Started")
+		return true
+	})
 
+	go func() {
 		area := monitor.MainResolution
 		w, h := area.Max.X, area.Max.Y
 
 		var err error
 
-		overlayWindow, err = overlayApp.NewWindow(url, &astilectron.WindowOptions{
-			Title:     astikit.StrPtr(Title),
-			Width:     astikit.IntPtr(w),
-			Height:    astikit.IntPtr(h),
-			MaxWidth:  astikit.IntPtr(w),
-			MaxHeight: astikit.IntPtr(h),
-			MinWidth:  astikit.IntPtr(w),
-			MinHeight: astikit.IntPtr(h),
+		window, err = app.NewWindow(`assets/html/projector.html`,
+			&astilectron.WindowOptions{
+				Title:     astikit.StrPtr(Title),
+				Width:     astikit.IntPtr(w),
+				Height:    astikit.IntPtr(h),
+				MaxWidth:  astikit.IntPtr(w),
+				MaxHeight: astikit.IntPtr(h),
+				MinWidth:  astikit.IntPtr(w),
+				MinHeight: astikit.IntPtr(h),
 
-			Fullscreen:  astikit.BoolPtr(true),
-			Minimizable: astikit.BoolPtr(false),
-			Resizable:   astikit.BoolPtr(false),
-			Center:      astikit.BoolPtr(true),
-			Closable:    astikit.BoolPtr(true),
+				Fullscreen:  astikit.BoolPtr(true),
+				Minimizable: astikit.BoolPtr(false),
+				Resizable:   astikit.BoolPtr(false),
+				Center:      astikit.BoolPtr(true),
+				Closable:    astikit.BoolPtr(false),
 
-			Transparent: astikit.BoolPtr(true),
-			AlwaysOnTop: astikit.BoolPtr(true),
+				Transparent: astikit.BoolPtr(true),
+				AlwaysOnTop: astikit.BoolPtr(false),
 
-			EnableLargerThanScreen: astikit.BoolPtr(false),
-			Focusable:              astikit.BoolPtr(true),
-			Frame:                  astikit.BoolPtr(false),
-			HasShadow:              astikit.BoolPtr(true),
-			Icon:                   astikit.StrPtr("./assets/icon/icon-browser.png"),
+				EnableLargerThanScreen: astikit.BoolPtr(false),
+				Focusable:              astikit.BoolPtr(false),
+				Frame:                  astikit.BoolPtr(false),
+				HasShadow:              astikit.BoolPtr(false),
+				Icon:                   astikit.StrPtr("assets/icon/icon-browser.png"),
 
-			Show: astikit.BoolPtr(true),
+				Show: astikit.BoolPtr(false),
 
-			WebPreferences: &astilectron.WebPreferences{
-				DevTools:   astikit.BoolPtr(global.DebugMode),
-				Images:     astikit.BoolPtr(true),
-				Javascript: astikit.BoolPtr(true),
+				WebPreferences: &astilectron.WebPreferences{
+					DevTools:                astikit.BoolPtr(global.DebugMode),
+					Images:                  astikit.BoolPtr(true),
+					Javascript:              astikit.BoolPtr(true),
+					NodeIntegrationInWorker: astikit.BoolPtr(true),
+				},
 			},
-		})
+		)
 		if err != nil {
-			notify.Error("Failed to open %s (%v)", Title, err)
+			notify.Error("Overlay: Failed to open (%v)", err)
 			errq <- err
 			return
 		}
 
-		waitq := make(chan bool)
-		overlayApp.On(astilectron.EventNameAppEventReady, func(e astilectron.Event) (deleteListener bool) {
-			return <-waitq
-		})
-
-		err = overlayWindow.Create()
+		err = window.Create()
 		if err != nil {
-			errq <- fmt.Errorf("Failed to open %s (%v)", Title, err)
+			errq <- fmt.Errorf("Overlay: Failed to start (%v)", err)
 			return
 		}
 
-		// window.OpenDevTools()
-
 		close(errq)
-		close(waitq)
 
-		overlayApp.Wait()
+		defer fps.NewLoop(&fps.LoopOptions{
+			Async: true,
+			FPS:   1,
+			Render: func(min, max, avg time.Duration) (close bool) {
+				if window == nil {
+					return true
+				}
+
+				err = window.SendMessage("screenshot", func(m *astilectron.EventMessage) {
+					var response = struct {
+						Type string `json:"type"`
+						Data []byte `json:"data"`
+					}{}
+
+					err = m.Unmarshal(&response)
+					if err != nil {
+						notify.Error("Overlay: Failed to parse response (%v)", err)
+						return
+					}
+
+					img, err := png.Decode(bytes.NewReader(response.Data))
+					if err != nil {
+						notify.Error("Overlay: Failed to decode response (%v)", err)
+						return
+					}
+
+					Captureq <- img
+
+					notify.Debug("Overlay: Received \"%s\" (%d bytes)", response.Type, len(response.Data))
+				})
+				if err != nil {
+					notify.Error("Overlay: Failed to capture (%v)", err)
+				}
+
+				return err != nil
+			},
+		}).Stop()
+
+		app.Wait()
 	}()
 
 	return <-errq
 }
 
-func windowClosed(e astilectron.Event) (deleteListener bool) {
-	notify.SystemWarn("Window crashed (%s)", e.Code)
-	return
+func onClose(e astilectron.Event) (deleteListener bool) {
+	notify.Debug("Render: Closed (%s)", e.Name)
+	return true
 }

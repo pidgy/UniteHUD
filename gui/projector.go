@@ -70,11 +70,6 @@ type projected struct {
 		back,
 		reset *button.Widget
 
-		hud struct {
-			open,
-			close *button.Widget
-		}
-
 		menu struct {
 			home,
 			settings,
@@ -321,15 +316,8 @@ func (g *GUI) projector() {
 											layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 												return layout.Inset{Left: 5, Right: 5, Top: 2.5, Bottom: 2.5}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 													// Empty button.
-													return layout.Spacer{Width: unit.Dp(ui.buttons.hud.open.Size.X), Height: unit.Dp(ui.buttons.hud.open.Size.Y)}.Layout(gtx)
+													return layout.Spacer{Width: unit.Dp(ui.buttons.reset.Size.X), Height: unit.Dp(ui.buttons.reset.Size.Y)}.Layout(gtx)
 												})
-											}),
-
-											layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-												if electron.IsOpen() {
-													return layout.Inset{Left: 5, Right: 5, Top: 2.5, Bottom: 2.5}.Layout(gtx, ui.buttons.hud.close.Layout)
-												}
-												return layout.Inset{Left: 5, Right: 5, Top: 2.5, Bottom: 2.5}.Layout(gtx, ui.buttons.hud.open.Layout)
 											}),
 
 											layout.Rigid(func(gtx layout.Context) layout.Dimensions {
@@ -550,63 +538,6 @@ func (g *GUI) projectorUI() *projected {
 		},
 	}
 
-	ui.buttons.hud.close = &button.Widget{
-		Text:            "Close HUD Overlay",
-		TextSize:        unit.Sp(ui.listTextSize),
-		TextInsetBottom: unit.Dp(-2),
-		Font:            g.header.Collection.Calibri(),
-		OnHoverHint:     func() { g.header.Tip("Close HUD overlay") },
-		Pressed:         nrgba.Transparent80,
-		Released:        nrgba.DarkGray,
-		Size:            image.Pt(115, 20),
-		BorderWidth:     unit.Sp(.5),
-		Click: func(this *button.Widget) {
-			g.ToastYesNo("Close HUD Overlay", "Close HUD Overlay?",
-				OnToastYes(func() {
-					defer this.Deactivate()
-
-					electron.Close()
-
-					config.Current.HUDOverlay = false
-
-				}),
-				OnToastNo(this.Deactivate),
-			)
-		},
-	}
-
-	ui.buttons.hud.open = &button.Widget{
-		Text:            "Open HUD Overlay",
-		TextSize:        unit.Sp(ui.listTextSize),
-		TextInsetBottom: unit.Dp(-2),
-		Font:            g.header.Collection.Calibri(),
-		OnHoverHint:     func() { g.header.Tip("Open HUD overlay") },
-		Pressed:         nrgba.Transparent80,
-		Released:        nrgba.DarkGray,
-		Size:            image.Pt(115, 20),
-		BorderWidth:     unit.Sp(.5),
-		Click: func(this *button.Widget) {
-			g.ToastYesNo("Open HUD Overlay", "Open HUD overlay?",
-				OnToastYes(func() {
-					defer this.Deactivate()
-
-					electron.Close()
-
-					config.Current.HUDOverlay = true
-
-					err := electron.Open()
-					if err != nil {
-						g.ToastError(err)
-						g.next(is.MainMenu)
-						return
-					}
-
-				}),
-				OnToastNo(this.Deactivate),
-			)
-		},
-	}
-
 	ui.buttons.menu.home = &button.Widget{
 		Text:            "🏠",
 		Font:            g.header.Collection.NishikiTeki(),
@@ -756,8 +687,6 @@ func (g *GUI) projectorUI() *projected {
 		OnHoverHint:     func() { g.header.Tip("Open configuration file") },
 		Click: func(this *button.Widget) {
 			defer this.Deactivate()
-
-			config.Current.HUDOverlay = false
 
 			exe := "C:\\Windows\\system32\\notepad.exe"
 			err := exec.Command(exe, config.Current.File()).Run()

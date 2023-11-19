@@ -7,6 +7,11 @@ const consts = require('./src/consts.js')
 const client = require('./src/client.js')
 const readline = require('readline')
 
+// -- @pidgy
+const fs = require('fs');
+const path = require('path');
+// ---
+
 let rl;
 let callbacks = {};
 let counters = {};
@@ -87,9 +92,31 @@ function onReady() {
     });
     ipcMain.on(consts.eventNames.ipcEventMessageCallback, (event, arg) => {
         let payload = { message: arg.message };
-        if (typeof arg.callbackId !== "undefined") payload.callbackId = arg.callbackId;
+
+        if (typeof arg.callbackId !== "undefined") {
+            payload.callbackId = arg.callbackId;
+        }
+
         client.write(arg.targetID, consts.eventNames.windowEventMessageCallback, payload)
     });
+
+    // -- @pidgy
+    ipcMain.on("screenshot", (event, arg) => {
+        let stamp = "main";
+        let payload = { message: `${stamp}::${arg.message}` };
+
+        // Forward the response from projector.js to electron.go
+        if (typeof arg.callbackId !== "undefined") {
+            payload.callbackId = arg.callbackId;
+        }
+
+        elements[arg.targetID].webContents.capturePage().then(image => {
+            payload.message = image.toPNG();
+            client.write(arg.targetID, consts.eventNames.windowEventMessageCallback, payload);
+        });
+    });
+    // ---------------
+
 
     // Read from client
     rl.on('line', function(line) {
@@ -458,10 +485,11 @@ function windowCreate(json) {
     elements[json.targetID] = new BrowserWindow(json.windowOptions)
     windowOptions[json.targetID] = json.windowOptions
 
-    // Added by pidgy, prevent title from changing.
+    // -- @pidgy 
     elements[json.targetID].on('page-title-updated', (e, s, ex) => {
         e.preventDefault();
     });
+    // ---------------
 
     if (typeof json.windowOptions.proxy !== "undefined") {
         elements[json.targetID].webContents.session.setProxy(json.windowOptions.proxy)
@@ -547,6 +575,31 @@ function windowCreateFinish(json) {
                         return
                     }
                     ipcRenderer.on('` + consts.eventNames.ipcCmdMessage + `', function(event, message) {
+                        // -- @pidgy
+                        // Catch the screenshot message from electron.go and send it to ipcMain.
+                        // -- 
+                        if (message.message == "screenshot") {
+                            if (typeof message.callbackId === "undefined") {
+                                return;
+                            }
+
+                            // Add our stamp here.
+                            let stamp = "render::" + "screenshot"
+                        
+                            // Call astilectron.onMessage handler in projector.js.
+                            let response = callback(stamp);
+
+                            let e = {
+                                callbackId: message.callbackId, 
+                                targetID: '` + json.targetID + `',
+                                message: response, 
+                            };
+                            
+                            // Send a screenshot request to ipcMain.
+                            return ipcRenderer.send("screenshot", e);
+                        }
+                        // ---------------
+
                         let v = callback(message.message)
                         if (typeof message.callbackId !== "undefined") {
                             let e = {callbackId: message.callbackId, targetID: '` + json.targetID + `'}
