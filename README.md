@@ -3,7 +3,7 @@ Pokémon UNITE scoreboard HUD and extra tools running over captured game feeds.
 
 #### For beta support, message me on [twitter](https://twitter.com/pidgy_)
 ----
-### v2.0 Download
+### v2.2.0 Download
 🔗 **https://unitehud.dev**
 
 ----
