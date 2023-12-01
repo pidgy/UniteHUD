@@ -78,8 +78,8 @@ func openApp() error {
 	a, err := astilectron.New(nil, astilectron.Options{
 		AppName:            Title,
 		BaseDirectoryPath:  ".",
-		DataDirectoryPath:  "./assets/electron",
-		AppIconDefaultPath: "./assets/icon/icon.png",
+		DataDirectoryPath:  fmt.Sprintf("./%s/electron", global.AssetsFolder),
+		AppIconDefaultPath: fmt.Sprintf("./%s/icon/icon.png", global.AssetsFolder),
 		VersionElectron:    astilectron.DefaultVersionElectron,
 		VersionAstilectron: astilectron.DefaultVersionAstilectron,
 	})
@@ -111,7 +111,7 @@ func openWindow() error {
 
 		var err error
 
-		window, err = app.NewWindow(`assets/html/projector.html`,
+		window, err = app.NewWindow(fmt.Sprintf(`%s/html/UniteHUD Client.html`, global.AssetsFolder),
 			&astilectron.WindowOptions{
 				Title:     astikit.StrPtr(Title),
 				Width:     astikit.IntPtr(w),
@@ -134,7 +134,7 @@ func openWindow() error {
 				Focusable:              astikit.BoolPtr(false),
 				Frame:                  astikit.BoolPtr(false),
 				HasShadow:              astikit.BoolPtr(false),
-				Icon:                   astikit.StrPtr("assets/icon/icon-browser.png"),
+				Icon:                   astikit.StrPtr(fmt.Sprintf("%s/icon/icon-browser.png", global.AssetsFolder)),
 
 				Show: astikit.BoolPtr(false),
 

@@ -260,21 +260,21 @@ func Objectives() {
 				early = true
 			case state.RegirockSecurePurple:
 				state.Add(e, server.Clock(), 0)
-				notify.Feed(team.Purple.NRGBA, "Detect: %s] [%s] Regirock secured", server.Clock(), strings.Title(team.Purple.Name))
+				notify.Feed(team.Purple.NRGBA, "Detect:[%s] [%s] Regirock secured", server.Clock(), strings.Title(team.Purple.Name))
 				server.SetRegirock(team.Purple)
 				bottom = time.Now()
 
 				early = true
 			case state.RegisteelSecureOrange:
 				state.Add(e, server.Clock(), 0)
-				notify.Feed(team.Orange.NRGBA, "Detect: %s] [%s] Registeel secured", server.Clock(), strings.Title(team.Orange.Name))
+				notify.Feed(team.Orange.NRGBA, "Detect:[%s] [%s] Registeel secured", server.Clock(), strings.Title(team.Orange.Name))
 				server.SetRegisteel(team.Orange)
 				bottom = time.Now()
 
 				early = true
 			case state.RegisteelSecurePurple:
 				state.Add(e, server.Clock(), 0)
-				notify.Feed(team.Purple.NRGBA, "Detect: %s] [%s] Registeel secured", server.Clock(), strings.Title(team.Purple.Name))
+				notify.Feed(team.Purple.NRGBA, "Detect:[%s] [%s] Registeel secured", server.Clock(), strings.Title(team.Purple.Name))
 				server.SetRegisteel(team.Purple)
 				bottom = time.Now()
 
@@ -286,14 +286,14 @@ func Objectives() {
 			switch e := state.EventType(e); e {
 			case state.RayquazaSecureOrange:
 				state.Add(e, server.Clock(), 0)
-				notify.Feed(team.Orange.NRGBA, "Detect: %s] [%s] Rayquaza secured", server.Clock(), strings.Title(team.Orange.Name))
+				notify.Feed(team.Orange.NRGBA, "Detect: [%s] [%s] Rayquaza secured", server.Clock(), strings.Title(team.Orange.Name))
 				server.SetRayquaza(team.Orange)
 				middle = time.Now()
 
 				early = true
 			case state.RayquazaSecurePurple:
 				state.Add(e, server.Clock(), 0)
-				notify.Feed(team.Purple.NRGBA, "Detect: %s] [%s] Rayquaza secured", server.Clock(), strings.Title(team.Purple.Name))
+				notify.Feed(team.Purple.NRGBA, "Detect: [%s] [%s] Rayquaza secured", server.Clock(), strings.Title(team.Purple.Name))
 				server.SetRayquaza(team.Purple)
 				middle = time.Now()
 
@@ -311,9 +311,13 @@ func PressButtonToScore() {
 			continue
 		}
 
+		if team.Self.Holding == 0 {
+			continue
+		}
+
 		matrix, img, err := capture(config.Current.ScoringOption())
 		if err != nil {
-			notify.Error("Detect: Failed to capture energy area (%v)", err)
+			notify.Error("Detect: [%s] [Self] Failed to capture energy area (%v)", server.Clock(), err)
 			continue
 		}
 
@@ -325,7 +329,7 @@ func PressButtonToScore() {
 
 		state.Add(state.PressButtonToScore, server.Clock(), team.Energy.Holding)
 
-		notify.Feed(team.Self.NRGBA, "Detect: %s] [Self] Score option present (%d)", server.Clock(), team.Energy.Holding)
+		notify.Feed(team.Self.NRGBA, "Detect: [%s] [Self] Score option present (%d)", server.Clock(), team.Energy.Holding)
 
 		matrix.Close()
 
@@ -346,13 +350,13 @@ func Preview() {
 	preview := func() {
 		img, err := video.Capture()
 		if err != nil {
-			notify.Error("Detect: Failed to capture preview (%v)", err)
+			notify.Error("Detect: [%s] [Preview] Failed to capture preview (%v)", server.Clock(), err)
 			return
 		}
 		notify.Preview = img
 
 		if config.Current.VideoCaptureWindow != window && config.Current.VideoCaptureDevice != device {
-			notify.System("Detect: Input resolution calculated (%dpx, %dpx)", img.Bounds().Max.X, img.Bounds().Max.Y)
+			notify.System("Detect: [Preview] Input resolution calculated (%dpx, %dpx)", img.Bounds().Max.X, img.Bounds().Max.Y)
 		}
 
 		window = config.Current.VideoCaptureWindow
@@ -408,7 +412,7 @@ func Scores(name string) {
 
 			server.SetScore(m.Team, -m.Team.Duplicate.Replaces)
 
-			notify.Feed(m.Team.NRGBA, "Detect: %s] [%s] -%d (override)", server.Clock(), strings.Title(m.Team.Name), m.Team.Duplicate.Replaces)
+			notify.Feed(m.Team.NRGBA, "Detect: [%s] [%s] -%d (override)", server.Clock(), strings.Title(m.Team.Name), m.Team.Duplicate.Replaces)
 
 			fallthrough
 		case match.Found:
@@ -419,7 +423,7 @@ func Scores(name string) {
 				title = fmt.Sprintf("[%s] [%s]", strings.Title(m.Team.Alias), strings.Title(m.Team.Name))
 			}
 
-			notify.Feed(m.Team.NRGBA, "Detect: %s] %s +%d", server.Clock(), title, p)
+			notify.Feed(m.Team.NRGBA, "Detect:[%s] %s +%d", server.Clock(), title, p)
 
 			state.Add(state.ScoredBy(m.Team.Name), server.Clock(), p)
 
@@ -431,6 +435,8 @@ func Scores(name string) {
 
 			switch m.Team.Name {
 			case team.First.Name:
+				team.First.Counted = true
+
 				if team.First.Alias == team.Purple.Name {
 					notify.PurpleScore = score
 				} else {
@@ -549,7 +555,7 @@ func States() {
 			case config.ProfilePlayer:
 				o, p, self := server.Scores()
 				if o+p+self > 0 {
-					notify.Feed(team.Game.NRGBA, "Detect: %s] Match ended", strings.Title(team.Game.Name))
+					notify.Feed(team.Game.NRGBA, "Detect:[%s] Match ended", strings.Title(team.Game.Name))
 
 					// Purple score and objective results.
 					regielekis, regices, regirocks, registeels, rayquazas := server.Objectives(team.Purple)
@@ -584,7 +590,7 @@ func States() {
 					notify.Feed(team.Orange.NRGBA, orangeResult)
 
 					// Self score and objective results.
-					notify.Feed(team.Self.NRGBA, "Detect: %s] %d", strings.Title(team.Self.Name), self)
+					notify.Feed(team.Self.NRGBA, "Detect:[%s] %d", strings.Title(team.Self.Name), self)
 
 					pwin := ""
 					owin := ""
@@ -664,7 +670,7 @@ func energyScoredConfirm(before, after int, at time.Time) {
 	}
 
 	notify.Feed(team.Self.NRGBA,
-		"[%s] [Self] Confirming %d point%s scored %s ago",
+		"Detect: [%s] [Self] Confirming %d point%s scored %s ago",
 		server.Clock(),
 		before,
 		s(before),
@@ -673,15 +679,26 @@ func energyScoredConfirm(before, after int, at time.Time) {
 
 	// Confirm user was not defeated with points since the goal.
 	if state.KilledWithPoints.Occured(time.Second*2) != nil {
-		notify.Warn("[%s] Failed to score because you were defeated (-%d)", server.Clock(), before)
+		notify.Warn("[%s] Defeated before scoring", server.Clock())
 		return
 	}
 
-	p := state.PressButtonToScore.Occured(time.Second * 5)
+	delay := time.Second * time.Duration(config.Current.ConfirmScoreDelay)
+	if delay == 0 {
+		delay = time.Second * 5
+	}
+
+	p := state.PressButtonToScore.Occured(delay)
 	if p != nil && !p.Verified {
 		p.Verified = true
 	} else {
-		notify.Warn("[%s] [Self] Failed to score because the score option was not present (-%d)", server.Clock(), before)
+		notify.Warn(
+			"Detect: [%s] [Self] Failed to score because the score option was not present within %s (-%d)",
+			server.Clock(),
+			delay,
+			before,
+		)
+
 		return
 	}
 

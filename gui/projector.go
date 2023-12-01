@@ -164,8 +164,8 @@ func (g *GUI) projector() {
 			decorate.Background(gtx)
 			decorate.Label(&ui.footer.is, "HUD %s", is.Now.String())
 			decorate.Label(&ui.footer.state, "%s %s", ui.groups.areas.state.Text, ui.groups.areas.state.Subtext)
-			decorate.Label(&ui.footer.cpu, g.performance.cpu)
-			decorate.Label(&ui.footer.ram, g.performance.ram)
+			// decorate.Label(&ui.footer.cpu, g.performance.cpu)
+			// decorate.Label(&ui.footer.ram, g.performance.ram)
 			decorate.Label(&ui.footer.fps, "%s FPS", g.fps)
 			decorate.Label(&ui.footer.tick, "Tick %02d", g.fps.Frames())
 
@@ -556,7 +556,7 @@ func (g *GUI) projectorUI() *projected {
 		Font:            g.header.Collection.NishikiTeki(),
 		OnHoverHint:     func() { g.header.Tip("Open advanced settings") },
 		Pressed:         nrgba.Transparent80,
-		Released:        nrgba.Slate,
+		Released:        nrgba.Lilac,
 		BorderWidth:     unit.Sp(.1),
 		Click: func(this *button.Widget) {
 			defer this.Deactivate()

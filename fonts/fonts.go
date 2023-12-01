@@ -1,6 +1,7 @@
 package fonts
 
 import (
+	"fmt"
 	"os"
 
 	"gioui.org/font"
@@ -9,6 +10,7 @@ import (
 	"gioui.org/text"
 	"gioui.org/widget/material"
 
+	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/notify"
 )
 
@@ -91,7 +93,7 @@ func (c Collection) load(path, typeface string) *Style {
 
 	notify.Debug("Font: Loading \"%s\"", typeface)
 
-	bytes, err := os.ReadFile("assets/font/" + path)
+	bytes, err := os.ReadFile(fmt.Sprintf("%s/font/%s", global.AssetsFolder, path))
 	if err != nil {
 		notify.Warn("Font: %v", err)
 		return noStyle()

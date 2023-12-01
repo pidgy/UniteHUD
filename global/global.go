@@ -10,6 +10,7 @@ const (
 	Title        = "UniteHUD"
 	Version      = "v2.3.0"
 	TitleVersion = Title + " " + Version
+	AssetsFolder = `assets`
 )
 
 var (

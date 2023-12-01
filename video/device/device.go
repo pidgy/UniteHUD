@@ -178,7 +178,12 @@ func startCaptureDevice() error {
 		notify.System("Video Capture Device: Starting \"%s\"", name)
 		defer notify.System("Video Capture Device: Closing \"%s\"", name)
 
-		device, err := gocv.OpenVideoCaptureWithAPI(config.Current.VideoCaptureDevice, gocv.VideoCaptureAny)
+		api := gocv.VideoCaptureDshow
+		if config.Current.VideoCaptureGenericAPI {
+			api = gocv.VideoCaptureAny
+		}
+
+		device, err := gocv.OpenVideoCaptureWithAPI(config.Current.VideoCaptureDevice, api)
 		if err != nil {
 			errq <- err
 			return
@@ -208,7 +213,7 @@ func startCaptureDevice() error {
 		close(errq)
 
 		defer fps.NewLoop(&fps.LoopOptions{
-			FPS: 160,
+			FPS: 20,
 			Render: func(min, max, avg time.Duration) (close bool) {
 				if !running || deviceChanged() {
 					return true

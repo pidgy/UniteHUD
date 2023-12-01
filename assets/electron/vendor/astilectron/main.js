@@ -2,6 +2,7 @@
 
 const { app } = require("electron");
 const { start, getLastWindow, client, consts } = require("./index");
+import { overlayWindow as OW } from 'electron-overlay-window';
 
 app.disableHardwareAcceleration()
 

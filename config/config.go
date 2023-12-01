@@ -9,6 +9,7 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -39,28 +40,27 @@ const (
 )
 
 type Config struct {
-	VideoCaptureWindow       string
-	VideoCaptureDevice       int
-	LostWindow               string `json:"-"`
-	Record                   bool   `json:"-"` // Record all matched images and logs.
-	Energy                   image.Rectangle
-	Scores                   image.Rectangle
-	Time                     image.Rectangle
-	Objectives               image.Rectangle
-	KOs                      image.Rectangle
-	filenames                map[string]map[string][]filter.Filter      `json:"-"`
-	templates                map[string]map[string][]*template.Template `json:"-"`
-	Scale                    float64
-	Shift                    Shift
-	Acceptance               float32
-	Profile                  string
-	DisableBrowserFormatting bool
-	Platform                 string
+	Profile string
+
+	VideoCaptureWindow     string
+	VideoCaptureDevice     int
+	VideoCaptureGenericAPI bool
+
+	ConfirmScoreDelay int
+
+	Scale      float64
+	Shift      Shift
+	Acceptance float32
+	Platform   string
 
 	Theme  Theme
 	Themes map[string]Theme
 
 	Advanced struct {
+		Stats struct {
+			Disabled bool
+		}
+
 		IncreasedCaptureRate int64
 
 		Notifications struct {
@@ -90,9 +90,28 @@ type Config struct {
 		}
 	}
 
+	Energy     image.Rectangle
+	Scores     image.Rectangle
+	Time       image.Rectangle
+	Objectives image.Rectangle
+	KOs        image.Rectangle
+
+	LostWindow string `json:"-"`
+	Record     bool   `json:"-"` // Record all matched images and logs.
+
 	Crashed string
 
+	// Unsaved configurations.
+
+	filenames map[string]map[string][]filter.Filter      `json:"-"`
+	templates map[string]map[string][]*template.Template `json:"-"`
+
 	load func()
+
+	LoadedAssets struct {
+		Categories map[string]int
+		Total      int
+	} `json:"-"`
 }
 
 type Shift struct {
@@ -132,7 +151,7 @@ func (c *Config) Assets() string {
 		return ""
 	}
 
-	return fmt.Sprintf(`%s\assets`, filepath.Dir(e))
+	return fmt.Sprintf(`%s\%s`, filepath.Dir(e), global.AssetsFolder)
 }
 
 func (c Config) Eq(c2 Config) bool {
@@ -156,7 +175,7 @@ func (c *Config) ProfileAssets() string {
 		return ""
 	}
 
-	return path.Join(filepath.Dir(e), "assets", "profiles", c.Profile, c.Platform)
+	return path.Join(filepath.Dir(e), global.AssetsFolder, "profiles", c.Profile, c.Platform)
 }
 
 func (c *Config) Reload() {
@@ -227,6 +246,7 @@ func (c *Config) ScoringOption() image.Rectangle {
 }
 
 func (c *Config) SetDefaults() {
+	c.ConfirmScoreDelay = 5
 	c.SetDefaultAreas()
 	c.SetDefaultTheme()
 	c.SetDefaultAdvancedSettings()
@@ -277,6 +297,31 @@ func (c *Config) SetProfile(p string) {
 	default:
 		c.setProfilePlayer()
 	}
+}
+
+func (c *Config) Total() (total int) {
+	for k := range c.templates {
+		for _, v := range c.templates[k] {
+			total += len(v)
+		}
+	}
+	return
+}
+
+func (c *Config) Templates(category string) map[string][]*template.Template {
+	return c.templates[category]
+}
+
+func (c *Config) TemplatesByName(category, name string) []*template.Template {
+	return c.templates[category][name]
+}
+
+func (c *Config) TemplateCategories() (categories []string) {
+	for k := range c.templates {
+		categories = append(categories, k)
+	}
+	sort.Strings(categories)
+	return
 }
 
 func (c *Config) TemplatesGame(n string) []*template.Template {
@@ -767,9 +812,13 @@ func validate() {
 		},
 	}
 
+	Current.LoadedAssets.Total = 0
+	Current.LoadedAssets.Categories = map[string]int{}
+
 	for category := range Current.filenames {
 		for subcategory, filters := range Current.filenames[category] {
 			for _, filter := range filters {
+
 				mat := gocv.IMRead(filter.File, gocv.IMReadColor)
 
 				transparent := false
@@ -796,6 +845,8 @@ func validate() {
 					Current.templates[category][filter.Team.Name],
 					template,
 				)
+
+				Current.LoadedAssets.Categories[category]++
 			}
 		}
 	}

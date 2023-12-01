@@ -1,3 +1,5 @@
+//go:build !lite
+
 package gui
 
 import (
@@ -94,7 +96,7 @@ const (
 var UI *GUI
 
 func New() {
-	min := image.Pt(1200, 700)
+	min := image.Pt(1100, 700)
 	max := monitor.MainResolution.Max
 
 	is.Now = is.Loading

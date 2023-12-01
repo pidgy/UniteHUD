@@ -1,6 +1,7 @@
 package projector
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/asticode/go-astikit"
@@ -18,8 +19,8 @@ func New() {
 	a, err := astilectron.New(nil, astilectron.Options{
 		AppName:            title,
 		BaseDirectoryPath:  ".",
-		DataDirectoryPath:  "assets/electron",
-		AppIconDefaultPath: "assets/icon/icon.png",
+		DataDirectoryPath:  fmt.Sprintf("%s/electron", global.AssetsFolder),
+		AppIconDefaultPath: fmt.Sprintf("%s/icon/icon.png", global.AssetsFolder),
 		VersionElectron:    astilectron.DefaultVersionElectron,
 		VersionAstilectron: astilectron.DefaultVersionAstilectron,
 	})
@@ -52,7 +53,7 @@ func New() {
 		return
 	}
 
-	w, err := a.NewWindow(`./assets/html/projector.html`,
+	w, err := a.NewWindow(fmt.Sprintf(`./%s/html/projector.html`, global.AssetsFolder),
 		&astilectron.WindowOptions{
 			Title: astikit.StrPtr("UniteHUD Projector"),
 
@@ -76,7 +77,7 @@ func New() {
 			Focusable:              astikit.BoolPtr(true),
 			Frame:                  astikit.BoolPtr(false),
 			HasShadow:              astikit.BoolPtr(false),
-			Icon:                   astikit.StrPtr("./assets/icon/icon-browser.png"),
+			Icon:                   astikit.StrPtr(fmt.Sprintf("./%s/icon/icon-browser.png", global.AssetsFolder)),
 
 			Show: astikit.BoolPtr(true),
 

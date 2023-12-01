@@ -19,3 +19,24 @@ func VideoCaptureDeviceName(index int) string {
 	n := C.GoStringN(v, len)
 	return strings.ReplaceAll(n, "\x00", "")
 }
+
+func VideoCaptureDevicePath(index int) string {
+	len := C.int(0)
+	v := C.GetVideoCaptureDevicePath(C.int(index), &len)
+	n := C.GoStringN(v, len)
+	return strings.ReplaceAll(n, "\x00", "")
+}
+
+func VideoCaptureDeviceDescription(index int) string {
+	len := C.int(0)
+	v := C.GetVideoCaptureDeviceDescription(C.int(index), &len)
+	n := C.GoStringN(v, len)
+	return strings.ReplaceAll(n, "\x00", "")
+}
+
+func VideoCaptureDeviceWaveInID(index int) string {
+	len := C.int(0)
+	v := C.GetVideoCaptureDeviceWaveInID(C.int(index), &len)
+	n := C.GoStringN(v, len)
+	return strings.ReplaceAll(n, "\x00", "")
+}

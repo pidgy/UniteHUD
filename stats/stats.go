@@ -9,6 +9,7 @@ import (
 	"github.com/guptarohit/asciigraph"
 	"github.com/olekukonko/tablewriter"
 
+	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/nrgba"
@@ -46,6 +47,10 @@ func init() {
 }
 
 func Average(stat string, maxv float32) {
+	if config.Current.Advanced.Stats.Disabled {
+		return
+	}
+
 	if math.IsInf(float64(maxv), 1) {
 		maxv = 1
 	}
@@ -75,6 +80,10 @@ func Clear() {
 }
 
 func Count(stat string) {
+	if config.Current.Advanced.Stats.Disabled {
+		return
+	}
+
 	stat = sanitize(stat)
 
 	statsq <- func() {
@@ -210,6 +219,10 @@ func Data() {
 }
 
 func Frequency(stat string, freq float32) {
+	if config.Current.Advanced.Stats.Disabled {
+		return
+	}
+
 	stat = sanitize(stat)
 
 	if math.IsInf(float64(freq), 1) {

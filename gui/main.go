@@ -1,9 +1,12 @@
+//go:build !lite
+
 package gui
 
 import (
 	"fmt"
 	"image"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -100,6 +103,7 @@ type main struct {
 	}
 
 	menu struct {
+		settings,
 		client,
 		stats,
 		results,
@@ -107,7 +111,8 @@ type main struct {
 		clear,
 		eco,
 		logs,
-		record *button.Widget
+		record,
+		file *button.Widget
 	}
 }
 
@@ -136,6 +141,7 @@ func (g *GUI) main() {
 	defer ui.spinners.run.Stop()
 	defer ui.spinners.stop.Stop()
 
+	defer g.header.Remove(g.header.Add(ui.menu.settings))
 	defer g.header.Remove(g.header.Add(ui.menu.client))
 	defer g.header.Remove(g.header.Add(ui.menu.stats))
 	defer g.header.Remove(g.header.Add(ui.menu.results))
@@ -144,6 +150,7 @@ func (g *GUI) main() {
 	defer g.header.Remove(g.header.Add(ui.menu.eco))
 	defer g.header.Remove(g.header.Add(ui.menu.logs))
 	defer g.header.Remove(g.header.Add(ui.menu.record))
+	defer g.header.Remove(g.header.Add(ui.menu.file))
 
 	g.window.Perform(system.ActionRaise)
 	if !g.firstOpen {
@@ -636,7 +643,7 @@ func (g *GUI) mainUI() *main {
 	}
 
 	ui.buttons.projector = &button.ImageWidget{
-		HintEvent: func() { g.header.Tip("Configure capture settings (Ctrl+c)") },
+		HintEvent: func() { g.header.Tip("Open a projector window") },
 
 		Widget: &screen.Widget{
 			Border:      true,
@@ -808,6 +815,23 @@ func (g *GUI) mainUI() *main {
 
 	ui.spinners.run = spinner.Running()
 	ui.spinners.stop = spinner.Stopped()
+
+	ui.menu.settings = &button.Widget{
+		Text:            "🛠",
+		TextSize:        unit.Sp(18),
+		TextInsetBottom: -2,
+		Font:            g.header.Collection.NishikiTeki(),
+		OnHoverHint:     func() { g.header.Tip("Settings") },
+
+		Pressed:     nrgba.Transparent80,
+		Released:    nrgba.SilverPurple,
+		BorderWidth: unit.Sp(.1),
+		Click: func(this *button.Widget) {
+			defer this.Deactivate()
+
+			ui.buttons.projector.Click(ui.buttons.projector)
+		},
+	}
 
 	ui.menu.client = &button.Widget{
 		Text:        "📺",
@@ -990,6 +1014,33 @@ func (g *GUI) mainUI() *main {
 			}
 
 			g.ToastYesNo(title, description, OnToastYes(yes), OnToastNo(this.Deactivate))
+		},
+	}
+
+	ui.menu.file = &button.Widget{
+		Text:            "📝",
+		Font:            g.header.Collection.NishikiTeki(),
+		Released:        nrgba.CoolBlue,
+		TextSize:        unit.Sp(17),
+		TextInsetBottom: -1,
+		Disabled:        false,
+		OnHoverHint:     func() { g.header.Tip("Open configuration file") },
+		Click: func(this *button.Widget) {
+			defer this.Deactivate()
+
+			exe := "C:\\Windows\\system32\\notepad.exe"
+			err := exec.Command(exe, config.Current.File()).Run()
+			if err != nil {
+				notify.Error("Failed to open \"%s\" (%v)", config.Current.File(), err)
+				return
+			}
+
+			// Called once window is closed.
+			err = config.Load(config.Current.Profile)
+			if err != nil {
+				notify.Error("Failed to reload \"%s\" (%v)", config.Current.File(), err)
+				return
+			}
 		},
 	}
 

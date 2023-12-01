@@ -5,6 +5,7 @@ package main
 import (
 	"os"
 	"os/signal"
+	"strings"
 
 	"github.com/pidgy/unitehud/config"
 	"github.com/pidgy/unitehud/detect"
@@ -104,6 +105,22 @@ func main() {
 
 	go discord.Connect()
 
+	last := ""
+
+	for _, category := range config.Current.TemplateCategories() {
+		cstr := category
+		if cstr == last {
+			cstr = strings.Repeat(" ", len(category))
+		}
+
+		for name := range config.Current.Templates(category) {
+			notify.System(" %-24s %d Assets", cstr+"/"+name+":", len(config.Current.TemplatesByName(category, name)))
+		}
+
+		last = category
+	}
+
+	notify.System("System: Confirm Score Delay: (%ds)", config.Current.ConfirmScoreDelay)
 	notify.System("System: Server Address (%s)", server.Address)
 	notify.System("System: Recording (%t)", config.Current.Record)
 	notify.System("System: Profile (%s)", config.Current.Profile)
