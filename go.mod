@@ -10,8 +10,8 @@ require (
 	gioui.org/x v0.3.0
 	git.sr.ht/~jackmordaunt/go-toast v1.0.0
 	github.com/Microsoft/go-winio v0.6.1
-	github.com/asticode/go-astikit v0.38.0
-	github.com/asticode/go-astilectron v0.29.0
+	github.com/asticode/go-astikit v0.42.0
+	github.com/asticode/go-astilectron v0.30.0
 	github.com/gen2brain/malgo v0.11.10
 	github.com/google/go-cmp v0.5.9
 	github.com/google/uuid v1.3.1

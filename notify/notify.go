@@ -30,6 +30,11 @@ type Post struct {
 	unique bool
 }
 
+type debugger struct {
+	fmt,
+	ftl func(format string, v ...interface{})
+}
+
 type notify struct {
 	logs []Post
 }
@@ -67,6 +72,13 @@ func Debug(format string, a ...interface{}) {
 	}
 
 	feed.log(nrgba.PastelBlue.Alpha(50), true, true, false, format, a...)
+}
+
+func Debugger(prefix string) *debugger {
+	return &debugger{
+		fmt: func(format string, v ...interface{}) { Debug(prefix+" "+format, v...) },
+		ftl: func(format string, v ...interface{}) { Debug(prefix+" [Fatal] "+format, v...) },
+	}
 }
 
 func Dedup(r nrgba.NRGBA, format string, a ...interface{}) {
@@ -140,6 +152,11 @@ func Unique(c nrgba.NRGBA, format string, a ...interface{}) {
 func Warn(format string, a ...interface{}) {
 	feed.log(nrgba.Pinkity, true, false, false, format, a...)
 }
+
+func (d *debugger) Fatal(v ...interface{})                 { d.ftl("%s", fmt.Sprint(v...)) }
+func (d *debugger) Fatalf(format string, v ...interface{}) { d.ftl(format, v...) }
+func (d *debugger) Print(v ...interface{})                 { d.fmt("%s", fmt.Sprint(v...)) }
+func (d *debugger) Printf(format string, v ...interface{}) { d.fmt(format, v...) }
 
 func (n *notify) log(r nrgba.NRGBA, clock, dedup, unique bool, format string, a ...interface{}) {
 	p := Post{

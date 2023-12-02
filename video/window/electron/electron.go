@@ -1,210 +1,232 @@
 package electron
 
 import (
-	"bytes"
 	"fmt"
-	"image"
-	"image/png"
+	"math"
+	"path/filepath"
+	"syscall"
 	"time"
+	"unsafe"
 
 	"github.com/asticode/go-astikit"
 	"github.com/asticode/go-astilectron"
+	"github.com/pkg/errors"
 
-	"github.com/pidgy/unitehud/fps"
 	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/notify"
-	"github.com/pidgy/unitehud/video/monitor"
+	"github.com/pidgy/unitehud/video/wapi"
 )
 
+// Required: assets/electron/vendor/astilelectron/index.js
+//
+// function windowCreate(json) {
+// ...
+//     if (typeof json.windowOptions.proxy !== "undefined") {
+//         elements[json.targetID].webContents.session.setProxy(json.windowOptions.proxy)
+//             .then(() => windowCreateFinish(json))
+//     } else {
+//         elements[json.targetID].setIgnoreMouseEvents(true)  <--- Custom option.
+//         windowCreateFinish(json)
+//     }
+// }
+
 const (
-	Title = "UniteHUD Overlay"
+	title = "UniteHUD Overlay"
 )
 
 var (
-	Captureq = make(chan image.Image)
-
 	app    *astilectron.Astilectron
 	window *astilectron.Window
+	active = struct{ app, window bool }{}
 
-	opened = false
+	html = filepath.Join(global.WorkingDirectory(), "www", "UniteHUD Client.html")
 )
 
+func App() {
+	notify.Debug("Overlay: Opening...")
+
+	var err error
+
+	app, err = astilectron.New(
+		notify.Debugger("Overlay:"),
+		astilectron.Options{
+			AppName:            title,
+			BaseDirectoryPath:  ".",
+			DataDirectoryPath:  filepath.Join(global.WorkingDirectory(), global.AssetDirectory, "electron"),
+			AppIconDefaultPath: filepath.Join(global.WorkingDirectory(), global.AssetDirectory, "icon", "icon.png"),
+			VersionElectron:    astilectron.DefaultVersionElectron,
+			VersionAstilectron: astilectron.DefaultVersionAstilectron,
+			AcceptTCPTimeout:   time.Hour * 24,
+		},
+	)
+	if err != nil {
+		notify.Error("Overlay: Failed to create app (%v)", err)
+		return
+	}
+
+	app.HandleSignals()
+	app.On(astilectron.EventNameAppCrash, onClose)
+	app.On(astilectron.EventNameAppCmdQuit, onClose)
+	app.On(astilectron.EventNameAppClose, onClose)
+	app.On(astilectron.EventNameAppEventReady, func(e astilectron.Event) (deleteListener bool) {
+		notify.Debug("Overlay: event, %s", e.Name)
+		active.app = true
+		return false
+	})
+
+	err = app.Start()
+	if err != nil {
+		notify.Error("Overlay: Failed to start app (%v)", err)
+		return
+	}
+
+	notify.Debug("Overlay: Creating window...")
+	notify.Debug("Overlay: Paths %s", app.Paths().DataDirectory())
+
+	window, err = app.NewWindow(html,
+		&astilectron.WindowOptions{
+			Title: astikit.StrPtr(title),
+			Show:  astikit.BoolPtr(true),
+
+			Width:  astikit.IntPtr(1280),
+			Height: astikit.IntPtr(720),
+
+			// Fullscreen:  astikit.BoolPtr(true),
+			Minimizable: astikit.BoolPtr(true),
+			Resizable:   astikit.BoolPtr(false),
+			Movable:     astikit.BoolPtr(true),
+			// Center:      astikit.BoolPtr(true),
+			Closable: astikit.BoolPtr(true),
+
+			Transparent: astikit.BoolPtr(true),
+			AlwaysOnTop: astikit.BoolPtr(true),
+
+			// EnableLargerThanScreen: astikit.BoolPtr(false),
+			Focusable: astikit.BoolPtr(false),
+			Frame:     astikit.BoolPtr(false),
+			// HasShadow:              astikit.BoolPtr(false),
+
+			Icon: astikit.StrPtr(fmt.Sprintf("%s/icon/icon-browser.png", global.AssetDirectory)),
+
+			WebPreferences: &astilectron.WebPreferences{
+				WebSecurity:             astikit.BoolPtr(false),
+				DevTools:                astikit.BoolPtr(global.DebugMode),
+				Images:                  astikit.BoolPtr(true),
+				Javascript:              astikit.BoolPtr(true),
+				NodeIntegrationInWorker: astikit.BoolPtr(true),
+			},
+
+			Custom: &astilectron.WindowCustomOptions{
+				MinimizeOnClose: astikit.BoolPtr(true),
+			},
+		},
+	)
+	if err != nil {
+		notify.Error("Overlay: Failed to open (%v)", err)
+		return
+	}
+
+	window.On(astilectron.EventNameWindowEventDidFinishLoad, func(e astilectron.Event) (deleteListener bool) {
+		notify.Debug("Overlay: event, %s", e.Name)
+		active.window = true
+		return false
+	})
+
+	app.Wait()
+}
+
 func Close() {
-	defer func() {
-		app, window = nil, nil
-		opened = false
-	}()
+	notify.System("Overlay: Closing app...")
+	app.Close()
 
-	if window != nil {
-		notify.System("Overlay: Closing rendering window")
+	active.window = false
+	active.app = false
+}
 
-		err := window.Destroy()
-		if err != nil {
-			notify.Warn("Overlay: Failed to close (%v)", err)
+func CloseWindow() {
+	notify.System("Overlay: Closing window...")
+
+	err := window.Close()
+	if err != nil {
+		notify.Error("Overlay: Failed to close window (%v)", err)
+	}
+}
+
+var (
+	offscreen = astilectron.RectangleOptions{
+		PositionOptions: astilectron.PositionOptions{
+			X: astikit.IntPtr(-math.MaxInt32),
+			Y: astikit.IntPtr(-math.MaxInt32),
+		},
+		SizeOptions: astilectron.SizeOptions{
+			Height: astikit.IntPtr(0),
+			Width:  astikit.IntPtr(0),
+		},
+	}
+)
+
+func Follow(hwnd uintptr, hidden bool) {
+	b := offscreen
+	if !hidden {
+		r := &wapi.Rect{}
+
+		_, _, err := wapi.GetWindowRect.Call(hwnd, uintptr(unsafe.Pointer(r)))
+		if err != syscall.Errno(0) {
+			notify.Error("Overlay: Failed to follow Client window (%v)", err)
+			return
+		}
+
+		b.PositionOptions = astilectron.PositionOptions{
+			X: astikit.IntPtr(int(r.Left)),
+			Y: astikit.IntPtr(int(r.Top)),
+		}
+		b.SizeOptions = astilectron.SizeOptions{
+			Width:  astikit.IntPtr(int(r.Right - r.Left)),
+			Height: astikit.IntPtr(int(r.Bottom - r.Top)),
 		}
 	}
 
-	if app != nil {
-		notify.Debug("Overlay: Closing rendering app")
-
-		err := app.Quit()
+	for _, err := range []error{
+		window.SetBounds(b),
+		window.MoveTop(),
+		window.Show(),
+	} {
 		if err != nil {
-			notify.Warn("Overlay: Failed to close rendering app(%v)", err)
+			notify.Debug("Overlay: Failed to render (%v)", err)
 		}
 	}
 }
 
-func Open() error {
-	if app != nil && window != nil {
-		return nil
+func OpenWindow() error {
+	if active.window {
+		return window.Show()
 	}
 
 	notify.System("Overlay: Opening...")
 
-	err := openApp()
-	if err != nil {
-		return err
-	}
-
-	return openWindow()
-}
-
-func openApp() error {
-	if opened {
-		return nil
-	}
-	opened = true
-
-	a, err := astilectron.New(nil, astilectron.Options{
-		AppName:            Title,
-		BaseDirectoryPath:  ".",
-		DataDirectoryPath:  fmt.Sprintf("./%s/electron", global.AssetsFolder),
-		AppIconDefaultPath: fmt.Sprintf("./%s/icon/icon.png", global.AssetsFolder),
-		VersionElectron:    astilectron.DefaultVersionElectron,
-		VersionAstilectron: astilectron.DefaultVersionAstilectron,
-	})
-	if err != nil {
-		return fmt.Errorf("Failed to start app for %s (%v)", Title, err)
-	}
-	app = a
-
-	app.HandleSignals()
-
-	app.On(astilectron.EventNameAppCrash, onClose)
-	app.On(astilectron.EventNameAppCmdQuit, onClose)
-	app.On(astilectron.EventNameAppClose, onClose)
-
-	return app.Start()
-}
-
-func openWindow() error {
 	errq := make(chan error)
 
-	app.On(astilectron.EventNameAppEventReady, func(e astilectron.Event) (deleteListener bool) {
-		notify.System("Overlay: Started")
-		return true
-	})
-
 	go func() {
-		area := monitor.MainResolution
-		w, h := area.Max.X, area.Max.Y
-
-		var err error
-
-		window, err = app.NewWindow(fmt.Sprintf(`%s/html/UniteHUD Client.html`, global.AssetsFolder),
-			&astilectron.WindowOptions{
-				Title:     astikit.StrPtr(Title),
-				Width:     astikit.IntPtr(w),
-				Height:    astikit.IntPtr(h),
-				MaxWidth:  astikit.IntPtr(w),
-				MaxHeight: astikit.IntPtr(h),
-				MinWidth:  astikit.IntPtr(w),
-				MinHeight: astikit.IntPtr(h),
-
-				Fullscreen:  astikit.BoolPtr(true),
-				Minimizable: astikit.BoolPtr(false),
-				Resizable:   astikit.BoolPtr(false),
-				Center:      astikit.BoolPtr(true),
-				Closable:    astikit.BoolPtr(false),
-
-				Transparent: astikit.BoolPtr(true),
-				AlwaysOnTop: astikit.BoolPtr(false),
-
-				EnableLargerThanScreen: astikit.BoolPtr(false),
-				Focusable:              astikit.BoolPtr(false),
-				Frame:                  astikit.BoolPtr(false),
-				HasShadow:              astikit.BoolPtr(false),
-				Icon:                   astikit.StrPtr(fmt.Sprintf("%s/icon/icon-browser.png", global.AssetsFolder)),
-
-				Show: astikit.BoolPtr(false),
-
-				WebPreferences: &astilectron.WebPreferences{
-					DevTools:                astikit.BoolPtr(global.DebugMode),
-					Images:                  astikit.BoolPtr(true),
-					Javascript:              astikit.BoolPtr(true),
-					NodeIntegrationInWorker: astikit.BoolPtr(true),
-				},
-			},
-		)
+		err := window.Create()
 		if err != nil {
-			notify.Error("Overlay: Failed to open (%v)", err)
-			errq <- err
+			errq <- errors.Wrap(window.Show(), "Overlay:")
 			return
 		}
 
-		err = window.Create()
-		if err != nil {
-			errq <- fmt.Errorf("Overlay: Failed to start (%v)", err)
-			return
-		}
+		// if global.DebugMode {
+		// 	// err := window.OpenDevTools()
+		// 	// if err != nil {
+		// 	// 	notify.Warn("Overlay: Failed to open dev tools")
+		// 	// }
+		// }
 
-		close(errq)
-
-		defer fps.NewLoop(&fps.LoopOptions{
-			Async: true,
-			FPS:   1,
-			Render: func(min, max, avg time.Duration) (close bool) {
-				if window == nil {
-					return true
-				}
-
-				err = window.SendMessage("screenshot", func(m *astilectron.EventMessage) {
-					var response = struct {
-						Type string `json:"type"`
-						Data []byte `json:"data"`
-					}{}
-
-					err = m.Unmarshal(&response)
-					if err != nil {
-						notify.Error("Overlay: Failed to parse response (%v)", err)
-						return
-					}
-
-					img, err := png.Decode(bytes.NewReader(response.Data))
-					if err != nil {
-						notify.Error("Overlay: Failed to decode response (%v)", err)
-						return
-					}
-
-					Captureq <- img
-
-					notify.Debug("Overlay: Received \"%s\" (%d bytes)", response.Type, len(response.Data))
-				})
-				if err != nil {
-					notify.Error("Overlay: Failed to capture (%v)", err)
-				}
-
-				return err != nil
-			},
-		}).Stop()
-
-		app.Wait()
+		errq <- errors.Wrap(window.Show(), "Overlay:")
 	}()
 
 	return <-errq
 }
 
 func onClose(e astilectron.Event) (deleteListener bool) {
-	notify.Debug("Render: Closed (%s)", e.Name)
-	return true
+	notify.Debug("Overlay: app event %s", e.Name)
+	return false
 }

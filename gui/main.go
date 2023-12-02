@@ -5,7 +5,6 @@ package gui
 import (
 	"fmt"
 	"image"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -900,17 +899,9 @@ func (g *GUI) mainUI() *main {
 
 			g.ToastOK("Overlay", drag,
 				OnToastOK(func() {
-					exe, err := os.Executable()
+					err = open.Run(filepath.Join(global.WorkingDirectory(), "www"))
 					if err != nil {
-						notify.Error("Failed to open www/ directory: %v", err)
-						return
-					}
-
-					dir := filepath.Dir(exe)
-
-					err = open.Run(dir + "/www")
-					if err != nil {
-						notify.Error("Failed to open www/ directory: %v", err)
+						notify.Error("UI: Failed to open www/ directory: %v", err)
 						return
 					}
 				}),

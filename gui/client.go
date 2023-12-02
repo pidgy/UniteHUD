@@ -40,6 +40,11 @@ type client struct {
 		current *app.Window
 	}
 
+	visibility struct {
+		seen,
+		hidden bool
+	}
+
 	dimensions struct {
 		size image.Point
 
@@ -54,28 +59,42 @@ type client struct {
 func (g *GUI) client() {
 	ui := g.clientUI()
 
+	ui.windows.current.Perform(system.ActionCenter)
 	ui.windows.current.Perform(system.ActionRaise)
 
-	err := electron.Open()
+	err := electron.OpenWindow()
 	if err != nil {
 		notify.Warn("Client: Failed to render overlay (%v)", err)
 	}
-	defer electron.Close()
+	defer electron.CloseWindow()
 
 	defer fps.NewLoop(&fps.LoopOptions{
 		Async: true,
-		FPS:   60,
+		FPS:   120,
 		Render: func(min, max, avg time.Duration) (close bool) {
 			var err error
 
-			ui.video, err = video.Capture()
+			img, err := video.Capture()
 			if err != nil {
 				g.ToastError(err)
 				g.next(is.MainMenu)
 				return true
 			}
 
+			ui.video = img
+
 			return false
+		},
+	}).Stop()
+
+	defer fps.NewLoop(&fps.LoopOptions{
+		Async: true,
+		FPS:   1,
+		Render: func(min, max, avg time.Duration) (close bool) {
+			if ui.hwnd != 0 {
+				go electron.Follow(ui.hwnd, ui.visibility.hidden)
+			}
+			return
 		},
 	}).Stop()
 
@@ -85,13 +104,20 @@ func (g *GUI) client() {
 		switch e := event.(type) {
 		case system.DestroyEvent:
 			return
+		case system.StageEvent:
+			if !ui.visibility.seen {
+				ui.visibility.seen = true
+			} else {
+				ui.visibility.hidden = !ui.visibility.hidden
+			}
 		case app.ViewEvent:
 			ui.hwnd = e.HWND
+			ui.visibility.hidden = false
 		case system.FrameEvent:
 			gtx := layout.NewContext(&ops, e)
 
 			if ui.dimensions.fullscreened {
-				ui.bar.Hide = time.Since(ui.hover) > time.Second/2
+				ui.bar.Hide = time.Since(ui.hover) > time.Second*2
 			} else {
 				ui.dimensions.size = e.Size
 			}
@@ -142,6 +168,7 @@ func (g *GUI) client() {
 						gtx,
 						layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
 							return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+
 								return widget.Image{
 									Fit:      fit,
 									Src:      paint.NewImageOp(ui.video),
@@ -157,12 +184,6 @@ func (g *GUI) client() {
 						gtx,
 						layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
 							return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-								select {
-								case img := <-electron.Captureq:
-									ui.overlay = img
-								default:
-								}
-
 								if ui.overlay != nil {
 									return widget.Image{
 										Fit:      fit,
@@ -170,7 +191,6 @@ func (g *GUI) client() {
 										Position: layout.Center,
 									}.Layout(gtx)
 								}
-
 								return layout.Dimensions{Size: gtx.Constraints.Max}
 							})
 						}),
@@ -201,6 +221,8 @@ func (g *GUI) client() {
 			ui.windows.current.Invalidate()
 
 			e.Frame(gtx.Ops)
+		default:
+			notify.Missed(event, "Client")
 		}
 	}
 }
@@ -235,7 +257,7 @@ func (g *GUI) clientUI() *client {
 
 	ui.windows.parent = g
 	ui.windows.current = app.NewWindow(
-		app.Title("UniteHUD"),
+		app.Title("UniteHUD Projector"),
 		app.Size(unit.Dp(ui.dimensions.size.X), unit.Dp(ui.dimensions.size.Y)),
 		app.MinSize(unit.Dp(ui.dimensions.size.X), unit.Dp(ui.dimensions.size.Y)),
 		app.Decorated(false),

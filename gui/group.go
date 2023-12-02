@@ -17,7 +17,6 @@ import (
 	"github.com/pidgy/unitehud/team"
 	"github.com/pidgy/unitehud/video"
 	"github.com/pidgy/unitehud/video/device"
-	"github.com/pidgy/unitehud/video/window/electron"
 )
 
 type areas struct {
@@ -323,7 +322,6 @@ func (g *GUI) videos(text float32) *videos {
 				defer v.onevent()
 
 				device.Close()
-				electron.Close()
 
 				defer v.monitor.populate(true)
 				defer v.window.populate(true)
@@ -380,7 +378,6 @@ func (g *GUI) videos(text float32) *videos {
 				defer v.onevent()
 
 				device.Close()
-				electron.Close()
 
 				defer v.window.populate(true)
 				defer v.monitor.populate(true)
@@ -455,7 +452,6 @@ func (g *GUI) videos(text float32) *videos {
 			Callback: func(i *dropdown.Item, _ *dropdown.Widget) {
 				defer v.onevent()
 
-				electron.Close()
 				video.Close()
 				// Can this be Disabled? Fixes concurrency error in device.go Close.
 				// time.Sleep(time.Second)
@@ -609,8 +605,6 @@ func (g *GUI) videos(text float32) *videos {
 				if config.Current.Profile == strings.ToLower(i.Text) {
 					return
 				}
-
-				electron.Close()
 
 				config.Current.Profile = strings.ToLower(i.Text)
 				err := config.Load(config.Current.Profile)

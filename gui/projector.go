@@ -35,7 +35,6 @@ import (
 	"github.com/pidgy/unitehud/video/device"
 	"github.com/pidgy/unitehud/video/monitor"
 	"github.com/pidgy/unitehud/video/window"
-	"github.com/pidgy/unitehud/video/window/electron"
 )
 
 type footer struct {
@@ -507,8 +506,6 @@ func (g *GUI) projectorUI() *projected {
 					defer server.Clear()
 
 					ui.groups.videos.device.list.Callback(ui.groups.videos.device.list.Items[0], ui.groups.videos.device.list)
-
-					electron.Close()
 
 					err := config.Current.Reset()
 					if err != nil {

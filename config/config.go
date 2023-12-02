@@ -6,7 +6,6 @@ import (
 	"image"
 	"image/color"
 	"os"
-	"path"
 	"path/filepath"
 	"reflect"
 	"sort"
@@ -107,11 +106,6 @@ type Config struct {
 	templates map[string]map[string][]*template.Template `json:"-"`
 
 	load func()
-
-	LoadedAssets struct {
-		Categories map[string]int
-		Total      int
-	} `json:"-"`
 }
 
 type Shift struct {
@@ -145,13 +139,7 @@ func (c *Config) AssetIcon(file string) string {
 }
 
 func (c *Config) Assets() string {
-	e, err := os.Executable()
-	if err != nil {
-		notify.Error("Failed to find profile directory (%v)", err)
-		return ""
-	}
-
-	return fmt.Sprintf(`%s\%s`, filepath.Dir(e), global.AssetsFolder)
+	return filepath.Join(global.WorkingDirectory(), global.AssetDirectory)
 }
 
 func (c Config) Eq(c2 Config) bool {
@@ -160,6 +148,7 @@ func (c Config) Eq(c2 Config) bool {
 			func() {},
 			map[string]map[string][]filter.Filter{},
 			map[string]map[string][]*template.Template{},
+			map[string]int{},
 		),
 	)
 }
@@ -169,13 +158,7 @@ func (c *Config) File() string {
 }
 
 func (c *Config) ProfileAssets() string {
-	e, err := os.Executable()
-	if err != nil {
-		notify.Error("Failed to find profile directory (%v)", err)
-		return ""
-	}
-
-	return path.Join(filepath.Dir(e), global.AssetsFolder, "profiles", c.Profile, c.Platform)
+	return filepath.Join(global.WorkingDirectory(), global.AssetDirectory, "profiles", c.Profile, c.Platform)
 }
 
 func (c *Config) Reload() {
@@ -812,9 +795,6 @@ func validate() {
 		},
 	}
 
-	Current.LoadedAssets.Total = 0
-	Current.LoadedAssets.Categories = map[string]int{}
-
 	for category := range Current.filenames {
 		for subcategory, filters := range Current.filenames[category] {
 			for _, filter := range filters {
@@ -845,8 +825,6 @@ func validate() {
 					Current.templates[category][filter.Team.Name],
 					template,
 				)
-
-				Current.LoadedAssets.Categories[category]++
 			}
 		}
 	}

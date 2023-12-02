@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/pidgy/unitehud/config"
+	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/gui/is"
 	"github.com/pidgy/unitehud/notify"
 	"github.com/pidgy/unitehud/nrgba"
@@ -42,6 +43,10 @@ var (
 )
 
 func Connect() {
+	if global.DebugMode {
+		return
+	}
+
 	update()
 
 	t := time.NewTicker(time.Second * 5)

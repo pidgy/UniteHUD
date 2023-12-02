@@ -305,17 +305,23 @@ func Objectives() {
 	}
 }
 
+var set = false
+
 func PressButtonToScore() {
 	for ; ; sleep(time.Millisecond * 500) {
 		if idle {
 			continue
 		}
 
-		if team.Self.Holding == 0 {
+		if team.Energy.Holding == 0 {
 			continue
 		}
 
 		matrix, img, err := capture(config.Current.ScoringOption())
+		if !set {
+			save.Image(img, matrix, team.Self, image.Point{}, 10, match.Found)
+			set = true
+		}
 		if err != nil {
 			notify.Error("Detect: [%s] [Self] Failed to capture energy area (%v)", server.Clock(), err)
 			continue

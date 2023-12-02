@@ -93,7 +93,7 @@ func (c Collection) load(path, typeface string) *Style {
 
 	notify.Debug("Font: Loading \"%s\"", typeface)
 
-	bytes, err := os.ReadFile(fmt.Sprintf("%s/font/%s", global.AssetsFolder, path))
+	bytes, err := os.ReadFile(fmt.Sprintf("%s/font/%s", global.AssetDirectory, path))
 	if err != nil {
 		notify.Warn("Font: %v", err)
 		return noStyle()

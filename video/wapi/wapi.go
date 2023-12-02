@@ -36,6 +36,10 @@ type Rect struct {
 	Left, Top, Right, Bottom int32
 }
 
+type Rect2 struct {
+	Left, Top, Right, Bottom int
+}
+
 // http://msdn.microsoft.com/en-us/library/windows/desktop/dd162938.aspx
 type RGBQuad struct {
 	RgbBlue     byte

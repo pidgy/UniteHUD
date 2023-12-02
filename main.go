@@ -103,6 +103,7 @@ func main() {
 		notify.Error("System: Failed to start server (%v)", err)
 	}
 
+	go electron.App()
 	go discord.Connect()
 
 	last := ""

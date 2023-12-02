@@ -9,7 +9,6 @@ import (
 	"gocv.io/x/gocv"
 
 	"github.com/pidgy/unitehud/config"
-	"github.com/pidgy/unitehud/fps"
 	"github.com/pidgy/unitehud/img"
 	"github.com/pidgy/unitehud/img/splash"
 	"github.com/pidgy/unitehud/notify"
@@ -212,26 +211,40 @@ func startCaptureDevice() error {
 
 		close(errq)
 
-		defer fps.NewLoop(&fps.LoopOptions{
-			FPS: 20,
-			Render: func(min, max, avg time.Duration) (close bool) {
-				if !running || deviceChanged() {
-					return true
-				}
+		defer Close()
 
-				if deviceNotActive() {
-					go Close()
-					return true
-				}
+		for ; running; time.Sleep(time.Millisecond) {
 
-				if !device.Read(&mat) || mat.Empty() {
-					notify.Warn("Video Capture Device: Failed to capture \"%s\"", name)
-					return true
-				}
+			if deviceNotActive() {
+				return
+			}
 
-				return false
-			},
-		}).Stop()
+			if !device.Read(&mat) || mat.Empty() {
+				notify.Warn("Video Capture Device: Failed to capture \"%s\"", name)
+				return
+			}
+		}
+
+		// defer fps.NewLoop(&fps.LoopOptions{
+		// 	FPS: 20,
+		// 	Render: func(min, max, avg time.Duration) (close bool) {
+		// 		if !running || deviceChanged() {
+		// 			return true
+		// 		}
+
+		// 		if deviceNotActive() {
+		// 			go Close()
+		// 			return true
+		// 		}
+
+		// 		if !device.Read(&mat) || mat.Empty() {
+		// 			notify.Warn("Video Capture Device: Failed to capture \"%s\"", name)
+		// 			return true
+		// 		}
+
+		// 		return false
+		// 	},
+		// }).Stop()
 	}()
 
 	return <-errq
