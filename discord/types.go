@@ -1,26 +1,41 @@
 package discord
 
-const (
-	activityTypeGame      = 0
-	activityTypeStreaming = 1
-	activityTypeListening = 2
-	activityTypeWatching  = 3
-	activityTypeCustom    = 4
-	activityTypeCompeting = 5
+import "github.com/google/uuid"
 
+const (
+	activityInstanceInMatch = true
+	activityInstanceIdle    = false
+)
+
+const (
+	// https://discord.com/developers/docs/topics/gateway-events#activity-object-activity-types
+	activityTypePlaying activityType = iota
+	activityTypeStreaming
+	activityTypeListening
+	activityTypeWatching
+	activityTypeCustom
+	activityTypeCompeting
+)
+
+const (
 	commandSetActivity = "SET_ACTIVITY"
 )
 
 type (
 	// https://discord.com/developers/docs/topics/gateway#activity-object
 	activity struct {
-		State      string     `json:"state"`
-		Details    string     `json:"details,omitempty"`
-		Timestamps timestamps `json:"timestamps,omitempty"`
-		Assets     assets     `json:"assets,omitempty"`
-		Type       int        `json:"type,omitempty"`
-		Buttons    []button   `json:"buttons,omitempty"`
+		State      string           `json:"state"`
+		Details    string           `json:"details,omitempty"`
+		Timestamps timestamps       `json:"timestamps,omitempty"`
+		Assets     assets           `json:"assets,omitempty"`
+		Type       activityType     `json:"type,omitempty"`
+		Buttons    []button         `json:"buttons,omitempty"`
+		Instance   activityInstance `json:"instance"`
+		Party      party            `json:"party,omitempty"`
 	}
+
+	activityType     int
+	activityInstance bool
 
 	// https://github.com/discord/discord-rpc/blob/master/documentation/hard-mode.md
 	args struct {
@@ -41,14 +56,15 @@ type (
 	}
 
 	// Emoji struct holds data related to Emoji's
+	// https://discord.com/developers/docs/topics/gateway-events#activity-object-activity-emoji
 	emoji struct {
-		ID            string   `json:"id"`
-		Name          string   `json:"name"`
-		Roles         []string `json:"roles"`
-		RequireColons bool     `json:"require_colons"`
-		Managed       bool     `json:"managed"`
-		Animated      bool     `json:"animated"`
-		Available     bool     `json:"available"`
+		ID   string `json:"id"`
+		Name string `json:"name"`
+		// Roles         []string `json:"roles"`
+		// RequireColons bool     `json:"require_colons"`
+		// Managed       bool     `json:"managed"`
+		Animated bool `json:"animated"`
+		// Available     bool     `json:"available"`
 	}
 
 	// frame contains the generic outer fields for Discord JSON requests.
@@ -72,6 +88,26 @@ type (
 	timestamps struct {
 		Start int64 `json:"start,omitempty"`
 		End   int64 `json:"end,omitempty"`
+	}
+
+	party struct {
+		ID   string `json:"id,omitempty"`
+		Size size
+	}
+
+	size struct {
+		CurrentSize int `json:"currentsize,omitempty"`
+		MaxSize     int `json:"maxsize,omitempty"`
+	}
+)
+
+var (
+	partyID = uuid.NewString()
+
+	unitehudEmoji = emoji{
+		ID:       "1149174424361238619",
+		Name:     "unitehud",
+		Animated: false,
 	}
 )
 

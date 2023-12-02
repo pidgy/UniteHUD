@@ -842,8 +842,10 @@ func (g *GUI) mainUI() *main {
 		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
-			// go projector.New()
-			go g.client()
+			ui.buttons.start.Click(ui.buttons.start)
+			go g.client(func() {
+				ui.buttons.stop.Click(ui.buttons.stop)
+			})
 		},
 	}
 

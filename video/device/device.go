@@ -214,7 +214,6 @@ func startCaptureDevice() error {
 		defer Close()
 
 		for ; running; time.Sleep(time.Millisecond) {
-
 			if deviceNotActive() {
 				return
 			}

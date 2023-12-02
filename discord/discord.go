@@ -96,6 +96,8 @@ func reconnect() {
 	}
 }
 
+var idle = time.Now().Unix()
+
 func status() activity {
 	if time.Now().Before(wait.Time) {
 		return wait.activity
@@ -114,15 +116,25 @@ func status() activity {
 		},
 
 		Timestamps: timestamps{
-			Start: 0,
+			Start: idle,
 		},
 
-		Type: activityTypeGame,
+		Type: activityTypePlaying,
 
 		Buttons: []button{
 			{
 				Label: "Download UniteHUD",
 				URL:   "https://unitehud.dev",
+			},
+		},
+
+		Instance: activityInstanceIdle,
+
+		Party: party{
+			ID: partyID,
+			Size: size{
+				CurrentSize: 1,
+				MaxSize:     5,
 			},
 		},
 	}
@@ -149,6 +161,8 @@ func status() activity {
 		if !server.Match() && event.EventType != state.MatchEnding {
 			return a
 		}
+
+		a.Instance = activityInstanceInMatch
 
 		score := ""
 		switch {

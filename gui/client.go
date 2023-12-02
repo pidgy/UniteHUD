@@ -32,6 +32,7 @@ type client struct {
 
 	video,
 	overlay image.Image
+	overlayOp paint.ImageOp
 
 	bar *title.Widget
 
@@ -56,7 +57,7 @@ type client struct {
 	clicked time.Time
 }
 
-func (g *GUI) client() {
+func (g *GUI) client(onclose func()) {
 	ui := g.clientUI()
 
 	ui.windows.current.Perform(system.ActionCenter)
@@ -82,6 +83,7 @@ func (g *GUI) client() {
 			}
 
 			ui.video = img
+			ui.overlayOp = paint.NewImageOp(img)
 
 			return false
 		},
@@ -98,11 +100,14 @@ func (g *GUI) client() {
 		},
 	}).Stop()
 
+	defer onclose()
+
 	var ops op.Ops
 
 	for event := range ui.windows.current.Events() {
 		switch e := event.(type) {
 		case system.DestroyEvent:
+			notify.System("Client: Closing...")
 			return
 		case system.StageEvent:
 			if !ui.visibility.seen {
@@ -160,60 +165,61 @@ func (g *GUI) client() {
 
 			fit := widget.Contain
 
-			ui.bar.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-				return decorate.BackgroundAlt(gtx, func(gtx layout.Context) layout.Dimensions {
-					layout.Flex{
-						Axis: layout.Horizontal,
-					}.Layout(
-						gtx,
-						layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-							return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+			ui.bar.Layout(gtx,
+				func(gtx layout.Context) layout.Dimensions {
+					return decorate.BackgroundAlt(gtx, func(gtx layout.Context) layout.Dimensions {
+						layout.Flex{
+							Axis: layout.Horizontal,
+						}.Layout(
+							gtx,
+							layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+								return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 
-								return widget.Image{
-									Fit:      fit,
-									Src:      paint.NewImageOp(ui.video),
-									Position: layout.Center,
-								}.Layout(gtx)
-							})
-						}),
-					)
-
-					layout.Flex{
-						Axis: layout.Horizontal,
-					}.Layout(
-						gtx,
-						layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-							return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-								if ui.overlay != nil {
 									return widget.Image{
 										Fit:      fit,
-										Src:      paint.NewImageOp(ui.overlay),
+										Src:      ui.overlayOp,
 										Position: layout.Center,
 									}.Layout(gtx)
-								}
-								return layout.Dimensions{Size: gtx.Constraints.Max}
-							})
-						}),
-					)
+								})
+							}),
+						)
 
-					area := clip.Rect(gtx.Constraints).Push(gtx.Ops)
+						layout.Flex{
+							Axis: layout.Horizontal,
+						}.Layout(
+							gtx,
+							layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+								return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+									if ui.overlay != nil {
+										return widget.Image{
+											Fit:      fit,
+											Src:      paint.NewImageOp(ui.overlay),
+											Position: layout.Center,
+										}.Layout(gtx)
+									}
+									return layout.Dimensions{Size: gtx.Constraints.Max}
+								})
+							}),
+						)
 
-					pointer.InputOp{
-						Tag:   g,
-						Types: pointer.Enter | pointer.Move | pointer.Release,
-					}.Add(gtx.Ops)
+						area := clip.Rect(gtx.Constraints).Push(gtx.Ops)
 
-					key.InputOp{
-						Tag:  g,
-						Keys: key.Set(key.NameEscape),
-					}.Add(gtx.Ops)
+						pointer.InputOp{
+							Tag:   g,
+							Types: pointer.Enter | pointer.Move | pointer.Release,
+						}.Add(gtx.Ops)
 
-					area.Pop()
+						key.InputOp{
+							Tag:  g,
+							Keys: key.Set(key.NameEscape),
+						}.Add(gtx.Ops)
 
-					return layout.Dimensions{Size: gtx.Constraints.Max}
-				})
-			})
+						area.Pop()
 
+						return layout.Dimensions{Size: gtx.Constraints.Max}
+					})
+				},
+			)
 			if ui.bar.Hide {
 				cursor.Is(pointer.CursorNone)
 			}

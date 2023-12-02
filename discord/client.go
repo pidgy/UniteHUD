@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/Microsoft/go-winio"
+
+	"github.com/pidgy/unitehud/notify"
 )
 
 type client struct {
@@ -121,6 +123,8 @@ func (c *client) send(o opper) {
 		return
 	}
 
+	notify.Debug("Discord: %s", string(p))
+
 	m := message{
 		opcode:  o.opcode(),
 		Payload: p,
@@ -132,13 +136,7 @@ func (c *client) send(o opper) {
 		return
 	}
 
-	for {
-		m, err := c.receive()
-		if err != nil {
-			c.errq <- err
-			return
-		}
-
+	for m, err := c.receive(); err != nil; {
 		switch m.opcode {
 		case o.opreceived():
 			return
@@ -152,8 +150,10 @@ func (c *client) send(o opper) {
 			c.errq <- fmt.Errorf("connection terminated")
 			return
 		default:
-			c.errq <- fmt.Errorf("%s received while waiting for %s", o.opcode(), m.opcode)
+			c.errq <- fmt.Errorf("%s received after %s", o.opcode(), m.opcode)
 			return
 		}
 	}
+
+	c.errq <- err
 }
