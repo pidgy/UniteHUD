@@ -79,15 +79,15 @@ func (g *GUI) ToastCrash(reason string, closed, logs func()) {
 
 		var ops op.Ops
 
-		for event := range w.Events() {
-			switch e := event.(type) {
+		for {
+			switch event := w.NextEvent().(type) {
 			case system.DestroyEvent:
 				if closed != nil {
 					closed()
 				}
 				return
 			case system.FrameEvent:
-				gtx := layout.NewContext(&ops, e)
+				gtx := layout.NewContext(&ops, event)
 
 				bar.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 					return decorate.BackgroundAlt(gtx, func(gtx layout.Context) layout.Dimensions {
@@ -116,7 +116,7 @@ func (g *GUI) ToastCrash(reason string, closed, logs func()) {
 				w.Perform(system.ActionRaise)
 				w.Invalidate()
 
-				e.Frame(gtx.Ops)
+				event.Frame(gtx.Ops)
 
 			default:
 				notify.Missed(event, "ToastCrash")
@@ -193,14 +193,14 @@ func (g *GUI) ToastOK(header, msg string, ok OnToastOK) {
 
 		var ops op.Ops
 
-		for event := range w.Events() {
-			e, ok := event.(system.FrameEvent)
+		for {
+			event, ok := w.NextEvent().(system.FrameEvent)
 			if !ok {
 				notify.Missed(event, "ToastOk")
 				continue
 			}
 
-			gtx := layout.NewContext(&ops, e)
+			gtx := layout.NewContext(&ops, event)
 
 			bar.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				return decorate.BackgroundAlt(gtx, func(gtx layout.Context) layout.Dimensions {
@@ -237,7 +237,7 @@ func (g *GUI) ToastOK(header, msg string, ok OnToastOK) {
 			w.Perform(system.ActionCenter)
 			w.Perform(system.ActionRaise)
 			w.Invalidate()
-			e.Frame(gtx.Ops)
+			event.Frame(gtx.Ops)
 		}
 	}()
 }
@@ -303,14 +303,14 @@ func (g *GUI) ToastYesNo(header, msg string, y OnToastYes, n OnToastNo) {
 
 		var ops op.Ops
 
-		for event := range w.Events() {
-			e, ok := event.(system.FrameEvent)
+		for {
+			event, ok := w.NextEvent().(system.FrameEvent)
 			if !ok {
 				notify.Missed(event, "ToastYesNo")
 				continue
 			}
 
-			gtx := layout.NewContext(&ops, e)
+			gtx := layout.NewContext(&ops, event)
 
 			bar.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				return decorate.BackgroundAlt(gtx, func(gtx layout.Context) layout.Dimensions {
@@ -351,7 +351,7 @@ func (g *GUI) ToastYesNo(header, msg string, y OnToastYes, n OnToastNo) {
 			w.Perform(system.ActionCenter)
 			w.Perform(system.ActionRaise)
 			w.Invalidate()
-			e.Frame(gtx.Ops)
+			event.Frame(gtx.Ops)
 		}
 	}()
 }

@@ -270,7 +270,7 @@ func (b *Widget) Layout(gtx layout.Context, content layout.Widget) layout.Dimens
 			cursor.Is(pointer.CursorDefault)
 		}
 
-		switch e.Type {
+		switch e.Kind {
 		case pointer.Enter, pointer.Move:
 		case pointer.Press:
 			b.dragging.first = e.Position
@@ -432,7 +432,7 @@ func (b *Widget) Layout(gtx layout.Context, content layout.Widget) layout.Dimens
 	defer clip.Rect(bar.Sub(customSizes)).Push(gtx.Ops).Pop()
 	pointer.InputOp{
 		Tag:   b,
-		Types: pointer.Press | pointer.Drag | pointer.Release | pointer.Leave | pointer.Enter | pointer.Move,
+		Kinds: pointer.Press | pointer.Drag | pointer.Release | pointer.Leave | pointer.Enter | pointer.Move,
 		Grab:  true,
 	}.Add(gtx.Ops)
 

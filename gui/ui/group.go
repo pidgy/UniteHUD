@@ -53,7 +53,7 @@ type videos struct {
 	onevent func()
 }
 
-func (g *GUI) audios(text float32, session *audio.Session) *audios {
+func (g *GUI) audios(text float32) *audios {
 	a := &audios{
 		in: capture{
 			list: &dropdown.Widget{
@@ -65,7 +65,7 @@ func (g *GUI) audios(text float32, session *audio.Session) *audios {
 						Text:    audio.Disabled,
 						Checked: widget.Bool{Value: true},
 						Callback: func(i *dropdown.Item) {
-							err := session.Input(audio.Disabled)
+							err := audio.Input(audio.Disabled)
 							if err != nil {
 								g.ToastError(err)
 								return
@@ -76,7 +76,7 @@ func (g *GUI) audios(text float32, session *audio.Session) *audios {
 					{
 						Text: audio.Default,
 						Callback: func(i *dropdown.Item) {
-							err := session.Input(audio.Default)
+							err := audio.Input(audio.Default)
 							if err != nil {
 								g.ToastError(err)
 								return
@@ -105,19 +105,19 @@ func (g *GUI) audios(text float32, session *audio.Session) *audios {
 					{
 						Text: audio.Disabled,
 						Callback: func(i *dropdown.Item) {
-							err := session.Output(audio.Disabled)
+							err := audio.Output(audio.Disabled)
 							if err != nil {
 								g.ToastError(err)
 								return
 							}
-							i.Checked.Value = true
+							i.Checked.Value = false
 						},
 					},
 					{
 						Text:    audio.Default,
 						Checked: widget.Bool{Value: true},
 						Callback: func(i *dropdown.Item) {
-							err := session.Output(audio.Default)
+							err := audio.Output(audio.Default)
 							if err != nil {
 								g.ToastError(err)
 								return
@@ -139,9 +139,9 @@ func (g *GUI) audios(text float32, session *audio.Session) *audios {
 		},
 	}
 
-	for _, d := range session.Inputs() {
+	for _, d := range audio.Inputs() {
 		if d.Is(device.ActiveName()) {
-			err := session.Input(d.Name())
+			err := audio.Input(d.Name())
 			if err != nil {
 				g.ToastError(err)
 			}
@@ -153,41 +153,25 @@ func (g *GUI) audios(text float32, session *audio.Session) *audios {
 			Text:    d.Name(),
 			Checked: widget.Bool{Value: d.Is(device.ActiveName())},
 			Callback: func(i *dropdown.Item) {
-				err := session.Input(i.Text)
+				err := audio.Input(i.Text)
 				if err != nil {
 					g.ToastError(err)
-					return
 				}
-
-				i.Checked.Value = true
-
-				err = session.Start()
-				if err != nil {
-					g.ToastError(err)
-					return
-				}
+				i.Checked.Value = err == nil
 			},
 		})
 	}
 
-	for _, d := range session.Outputs() {
+	for _, d := range audio.Outputs() {
 		a.out.list.Items = append(a.out.list.Items, &dropdown.Item{
 			Text:    d.Name(),
 			Checked: widget.Bool{Value: d.Is(device.ActiveName())},
 			Callback: func(i *dropdown.Item) {
-				err := session.Output(i.Text)
+				err := audio.Output(i.Text)
 				if err != nil {
 					g.ToastError(err)
-					return
 				}
-
-				i.Checked.Value = true
-
-				err = session.Start()
-				if err != nil {
-					g.ToastError(err)
-					return
-				}
+				i.Checked.Value = err == nil
 			},
 		})
 	}

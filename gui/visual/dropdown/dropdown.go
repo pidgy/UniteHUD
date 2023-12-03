@@ -122,7 +122,7 @@ func (l *Widget) Layout(gtx layout.Context) layout.Dimensions {
 
 			decorate.CheckBox(&check)
 
-			if item.Checked.Changed() {
+			if item.Checked.Update(gtx) {
 				if item.Disabled {
 					item.Checked.Value = !item.Checked.Value
 				} else if item.Callback != nil {

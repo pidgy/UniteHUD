@@ -18,14 +18,19 @@ type Widget struct {
 	OnValueChanged func(float32)
 }
 
+const (
+	min = -99
+	max = 99
+)
+
 func (s *Widget) Layout(gtx layout.Context) layout.Dimensions {
-	defer s.event()
+	defer s.event(gtx)
 
 	v := s.Slider.Float.Value
 	if v < 0 {
 		v *= -1
 	}
-	col := int((float32(len(s.TextColors)) * (v / s.Slider.Max)))
+	col := int((float32(len(s.TextColors)) * (v / max)))
 	if col == len(s.TextColors) {
 		col--
 	}
@@ -46,13 +51,13 @@ func (s *Widget) Layout(gtx layout.Context) layout.Dimensions {
 	)
 }
 
-func (s *Widget) event() {
+func (s *Widget) event(gtx layout.Context) {
 	if s.Slider.Float.Dragging() {
 		cursor.Is(pointer.CursorPointer)
 		return
 	}
 
-	if !s.Slider.Float.Changed() {
+	if !s.Slider.Float.Update(gtx) {
 		return
 	}
 

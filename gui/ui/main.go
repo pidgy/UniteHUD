@@ -37,6 +37,7 @@ import (
 	"github.com/pidgy/unitehud/gui/visual/spinner"
 	"github.com/pidgy/unitehud/gui/visual/split"
 	"github.com/pidgy/unitehud/gui/visual/textblock"
+	"github.com/pidgy/unitehud/media/audio"
 	"github.com/pidgy/unitehud/media/video/device"
 	"github.com/pidgy/unitehud/media/video/monitor"
 	"github.com/pidgy/unitehud/media/video/window"
@@ -57,6 +58,7 @@ type main struct {
 	}
 
 	labels struct {
+		audio,
 		warning,
 		discord,
 		profile,
@@ -190,7 +192,7 @@ func (g *GUI) main() {
 			ui.buttons.stop.Click(ui.buttons.stop)
 		}
 
-		switch event := (<-g.window.Events()).(type) {
+		switch event := g.window.NextEvent().(type) {
 		case app.ConfigEvent:
 		case system.DestroyEvent:
 			g.next(is.Closing)
@@ -259,6 +261,14 @@ func (g *GUI) main() {
 									ui.labels.discord.Text = fmt.Sprintf("👾 Discord — %s: \"%s\"", strings.ReplaceAll(discord.Activity.Details, "UniteHUD - ", ""), discord.Activity.State)
 								}
 								return ui.labels.discord.Layout(gtx)
+							})
+
+							layout.Inset{
+								Left: unit.Dp(2),
+								Top:  unit.Dp(17),
+							}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+								ui.labels.audio.Text = audio.Label()
+								return ui.labels.audio.Layout(gtx)
 							})
 
 							ui.labels.profile.Text = fmt.Sprintf("%s // %s", strings.Title(config.Current.Profile), strings.Title(config.Current.Platform))
@@ -657,6 +667,10 @@ func (g *GUI) mainUI() *main {
 		},
 	}
 
+	ui.labels.audio = material.Label(g.header.Collection.NotoSans().Theme, unit.Sp(11), audio.Label())
+	ui.labels.audio.Color = nrgba.PastelGreen.Alpha(200).Color()
+	ui.labels.audio.Font.Weight = 0
+
 	ui.labels.discord = material.Label(g.header.Collection.NotoSans().Theme, unit.Sp(11), "👾 Discord")
 	ui.labels.discord.Color = nrgba.Discord.Alpha(200).Color()
 	ui.labels.discord.Font.Weight = 0
@@ -816,7 +830,7 @@ func (g *GUI) mainUI() *main {
 	ui.spinners.stop = spinner.Stopped()
 
 	ui.menu.settings = &button.Widget{
-		Text:            "🛠",
+		Text:            "⚙",
 		TextSize:        unit.Sp(18),
 		TextInsetBottom: -2,
 		Font:            g.header.Collection.NishikiTeki(),

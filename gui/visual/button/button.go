@@ -97,7 +97,7 @@ func (b *Widget) Layout(gtx layout.Context) layout.Dimensions {
 
 	for _, e := range gtx.Events(b) {
 		if e, ok := e.(pointer.Event); ok {
-			switch e.Type {
+			switch e.Kind {
 			case pointer.Cancel:
 				cursor.Is(pointer.CursorDefault)
 
@@ -162,7 +162,7 @@ func (b *Widget) Layout(gtx layout.Context) layout.Dimensions {
 	area := clip.Rect(image.Rect(0, 0, b.Size.X, b.Size.Y)).Push(gtx.Ops)
 	pointer.InputOp{
 		Tag:   b,
-		Types: pointer.Press | pointer.Release | pointer.Enter | pointer.Leave | pointer.Move | pointer.Cancel,
+		Kinds: pointer.Press | pointer.Release | pointer.Enter | pointer.Leave | pointer.Move | pointer.Cancel,
 		Grab:  true,
 	}.Add(gtx.Ops)
 	area.Pop()

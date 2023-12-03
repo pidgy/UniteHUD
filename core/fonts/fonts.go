@@ -1,8 +1,8 @@
 package fonts
 
 import (
-	"fmt"
 	"os"
+	"path/filepath"
 
 	"gioui.org/font"
 	"gioui.org/font/gofont"
@@ -93,7 +93,7 @@ func (c Collection) load(path, typeface string) *Style {
 
 	notify.Debug("Font: Loading \"%s\"", typeface)
 
-	bytes, err := os.ReadFile(fmt.Sprintf("%s/font/%s", global.AssetDirectory, path))
+	bytes, err := os.ReadFile(filepath.Join(global.AssetDirectory, "font", path))
 	if err != nil {
 		notify.Warn("Font: %v", err)
 		return noStyle()

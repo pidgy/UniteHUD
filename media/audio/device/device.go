@@ -25,7 +25,7 @@ type Device interface {
 	IsDefault() bool
 	IsDisabled() bool
 	Name() string
-	Start(malgo.Context, io.ReadWriter, chan error)
+	Start(malgo.Context, io.ReadWriter) error
 	Type() Type
 }
 

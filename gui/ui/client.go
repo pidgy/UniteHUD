@@ -3,6 +3,7 @@ package ui
 import (
 	"image"
 	"time"
+	"unsafe"
 
 	"gioui.org/app"
 	"gioui.org/io/key"
@@ -24,6 +25,7 @@ import (
 	"github.com/pidgy/unitehud/media/img/splash"
 	"github.com/pidgy/unitehud/media/video"
 	"github.com/pidgy/unitehud/media/video/fps"
+	"github.com/pidgy/unitehud/media/video/wapi"
 	"github.com/pidgy/unitehud/media/video/window/electron"
 )
 
@@ -47,10 +49,14 @@ type client struct {
 	}
 
 	dimensions struct {
-		size image.Point
+		size,
+		shift image.Point
 
 		maximized,
-		fullscreened bool
+		fullscreened,
+		moving bool
+
+		smoothing int
 	}
 
 	hover,
@@ -104,8 +110,8 @@ func (g *GUI) client(onclose func()) {
 
 	var ops op.Ops
 
-	for event := range ui.windows.current.Events() {
-		switch e := event.(type) {
+	for {
+		switch event := ui.windows.current.NextEvent().(type) {
 		case system.DestroyEvent:
 			notify.System("Client: Closing...")
 			return
@@ -116,15 +122,15 @@ func (g *GUI) client(onclose func()) {
 				ui.visibility.hidden = !ui.visibility.hidden
 			}
 		case app.ViewEvent:
-			ui.hwnd = e.HWND
+			ui.hwnd = event.HWND
 			ui.visibility.hidden = false
 		case system.FrameEvent:
-			gtx := layout.NewContext(&ops, e)
+			gtx := layout.NewContext(&ops, event)
 
 			if ui.dimensions.fullscreened {
 				ui.bar.Hide = time.Since(ui.hover) > time.Second*2
 			} else {
-				ui.dimensions.size = e.Size
+				ui.dimensions.size = event.Size
 			}
 
 			for _, e := range gtx.Events(g) {
@@ -147,7 +153,7 @@ func (g *GUI) client(onclose func()) {
 						}
 					}
 				case pointer.Event:
-					switch event.Type {
+					switch event.Kind {
 					case pointer.Release:
 						if time.Since(ui.clicked) < time.Second/2 {
 							ui.fullscreen()
@@ -206,7 +212,7 @@ func (g *GUI) client(onclose func()) {
 
 						pointer.InputOp{
 							Tag:   g,
-							Types: pointer.Enter | pointer.Move | pointer.Release,
+							Kinds: pointer.Enter | pointer.Move | pointer.Release,
 						}.Add(gtx.Ops)
 
 						key.InputOp{
@@ -226,7 +232,12 @@ func (g *GUI) client(onclose func()) {
 
 			ui.windows.current.Invalidate()
 
-			e.Frame(gtx.Ops)
+			event.Frame(gtx.Ops)
+
+			p, ok := ui.bar.Dragging()
+			if ok {
+				ui.setWindowPos(p)
+			}
 		default:
 			notify.Missed(event, "Client")
 		}
@@ -270,4 +281,53 @@ func (g *GUI) clientUI() *client {
 	)
 
 	return ui
+}
+
+func (ui *client) setWindowPos(shift image.Point) {
+	if ui.dimensions.fullscreened || ui.hwnd == 0 || ui.dimensions.moving {
+		return
+	}
+
+	ui.dimensions.smoothing++
+	if ui.dimensions.smoothing < 3 {
+		return
+	}
+	ui.dimensions.smoothing = 0
+
+	go func() {
+		ui.dimensions.moving = true
+		defer func() { ui.dimensions.moving = false }()
+
+		if shift.Eq(ui.dimensions.shift) {
+			return
+		}
+		ui.dimensions.shift = shift
+
+		r := &wapi.Rect{}
+		wapi.GetWindowRect.Call(ui.hwnd, uintptr(unsafe.Pointer(r)))
+		pos := image.Pt(int(r.Left), int(r.Top)).Add(shift)
+
+		wapi.SetWindowPosNoSize(ui.hwnd, pos)
+	}()
+
+	// go func() {
+	// 	defer func() { g.dimensions.resizing = false }()
+
+	// 	if shift.Eq(g.dimensions.shift) {
+	// 		return
+	// 	}
+
+	// 	pos := g.position().Add(shift)
+	// 	if !pos.In(image.Rectangle{Min: image.Pt(0, 0).Sub(g.dimensions.size), Max: g.dimensions.max.Add(g.dimensions.size)}) {
+	// 		return
+	// 	}
+
+	// 	g.dimensions.shift = shift
+
+	// 	if g.dimensions.smoothing == 2 {
+	// 		wapi.SetWindowPosNoSize(g.HWND, pos)
+	// 		g.dimensions.smoothing = 0
+	// 	}
+	// 	g.dimensions.smoothing++
+	// }()
 }

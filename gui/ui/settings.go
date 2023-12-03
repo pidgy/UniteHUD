@@ -98,12 +98,12 @@ func (g *GUI) settings(onclose func()) *settings {
 
 		var ops op.Ops
 
-		for event := range ui.windows.current.Events() {
-			switch e := event.(type) {
+		for {
+			switch event := ui.windows.current.NextEvent().(type) {
 			case system.DestroyEvent:
 				return
 			case app.ViewEvent:
-				ui.hwnd = e.HWND
+				ui.hwnd = event.HWND
 				ui.windows.parent.attachWindowRight(ui.hwnd, ui.dimensions.width)
 			case system.FrameEvent:
 				if !ui.state.open {
@@ -115,7 +115,7 @@ func (g *GUI) settings(onclose func()) *settings {
 					ui.windows.parent.attachWindowRight(ui.hwnd, ui.dimensions.width)
 				}
 
-				gtx := layout.NewContext(&ops, e)
+				gtx := layout.NewContext(&ops, event)
 
 				ui.bar.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 					return decorate.BackgroundAlt(gtx, func(gtx layout.Context) layout.Dimensions {
@@ -129,7 +129,7 @@ func (g *GUI) settings(onclose func()) *settings {
 				})
 
 				ui.windows.current.Invalidate()
-				e.Frame(gtx.Ops)
+				event.Frame(gtx.Ops)
 			default:
 				notify.Missed(event, "Settings")
 			}
@@ -333,7 +333,7 @@ func (g *GUI) settingsUI() *settings {
 		title:       material.Label(ui.bar.Collection.NotoSans().Theme, 14, "🕔  Match Interval"),
 		description: material.Caption(ui.bar.Collection.NotoSans().Theme, "Increase the amount of match attempts per second"),
 		widget: &slider.Widget{
-			Slider:     material.Slider(ui.bar.Collection.NotoSans().Theme, &widget.Float{Value: float32(config.Current.Advanced.IncreasedCaptureRate)}, -99, 99),
+			Slider:     material.Slider(ui.bar.Collection.NotoSans().Theme, &widget.Float{Value: float32(config.Current.Advanced.IncreasedCaptureRate)}),
 			Label:      material.Label(ui.bar.Collection.NotoSans().Theme, unit.Sp(15), ""),
 			TextColors: []nrgba.NRGBA{nrgba.White, nrgba.PastelYellow, nrgba.PastelOrange, nrgba.PastelRed},
 			OnValueChanged: func(f float32) {

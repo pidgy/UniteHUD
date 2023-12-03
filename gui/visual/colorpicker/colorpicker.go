@@ -74,7 +74,7 @@ func (c *Widget) Layout(gtx layout.Context) layout.Dimensions {
 	//c.slider.Editor = material.Editor(c.radio.Theme, &c.slider.Editor, "")
 
 	switch {
-	case c.radio.Changed():
+	case c.radio.Update(gtx):
 		col := *c.radio.Color()
 		c.sliders.SetColor(col)
 		c.sliders.Label = c.radio.Value

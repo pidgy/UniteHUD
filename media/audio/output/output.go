@@ -60,7 +60,7 @@ func (d *Device) Active() bool {
 }
 
 func (d *Device) Close() {
-	defer notify.Debug("Closed %s", d.name)
+	notify.System("Audio: Closing output %s", d.name)
 
 	if !d.Active() {
 		return
@@ -75,11 +75,12 @@ func (d *Device) Close() {
 // provide stream configuration.
 // Playback will commence playing the samples provided from the reader until either the
 // reader returns an error, or the context signals done.
-func (d *Device) Start(mctx malgo.Context, r io.ReadWriter, errq chan error) {
+func (d *Device) Start(mctx malgo.Context, r io.ReadWriter) error {
 	if d.Active() {
-		errq <- errors.Wrap(fmt.Errorf("already active"), d.name)
-		return
+		return errors.Wrap(fmt.Errorf("already active"), d.name)
 	}
+
+	errq := make(chan error)
 
 	go func() {
 		d.closingq = make(chan bool)
@@ -105,8 +106,7 @@ func (d *Device) Start(mctx malgo.Context, r io.ReadWriter, errq chan error) {
 						d.reconnects++
 						return
 					}
-
-					errq <- errors.Wrap(err, d.name)
+					notify.Error("Audio: Playback failed (%v)", errors.Wrap(err, d.name))
 				}
 			},
 		}
@@ -123,16 +123,13 @@ func (d *Device) Start(mctx malgo.Context, r io.ReadWriter, errq chan error) {
 			errq <- errors.Wrap(err, d.name)
 			return
 		}
-		defer func() {
-			err = device.Stop()
-			if err != nil {
-				errq <- errors.Wrap(err, d.name)
-				return
-			}
-		}()
+		defer device.Stop()
 
+		close(errq)
 		<-d.closingq
 	}()
+
+	return <-errq
 }
 
 func (d *Device) String() string {

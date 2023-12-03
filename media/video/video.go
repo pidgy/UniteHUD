@@ -46,7 +46,6 @@ func Open() error {
 	}
 
 	return nil
-	// return window.Open()
 }
 
 func Windows() []string {
@@ -54,7 +53,7 @@ func Windows() []string {
 }
 
 func Devices() []int {
-	return device.Sources
+	return device.Sources()
 }
 
 func Screens() []string {

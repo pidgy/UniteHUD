@@ -117,13 +117,13 @@ func (g *GUI) preview(a *areas, onclose func()) *preview {
 
 		var ops op.Ops
 
-		for event := range ui.windows.current.Events() {
-			switch e := event.(type) {
+		for {
+			switch event := ui.windows.current.NextEvent().(type) {
 			case system.DestroyEvent:
 				ui.state.open = false
 				return
 			case app.ViewEvent:
-				ui.hwnd = e.HWND
+				ui.hwnd = event.HWND
 				ui.windows.parent.attachWindowLeft(ui.hwnd, ui.dimensions.width)
 			case system.FrameEvent:
 				if !ui.state.open {
@@ -135,7 +135,7 @@ func (g *GUI) preview(a *areas, onclose func()) *preview {
 					ui.windows.parent.attachWindowLeft(ui.hwnd, ui.dimensions.width)
 				}
 
-				gtx := layout.NewContext(&ops, e)
+				gtx := layout.NewContext(&ops, event)
 
 				ui.bar.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 					decorate.BackgroundAlt(gtx, func(gtx layout.Context) layout.Dimensions {
@@ -260,7 +260,7 @@ func (g *GUI) preview(a *areas, onclose func()) *preview {
 
 				ui.windows.current.Invalidate()
 
-				e.Frame(gtx.Ops)
+				event.Frame(gtx.Ops)
 			default:
 				notify.Missed(event, "Preview")
 			}

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"gocv.io/x/gocv"
+	"golang.org/x/exp/slices"
 
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/notify"
@@ -27,9 +28,18 @@ type device struct {
 var (
 	active *device
 
-	Sources, names = sources()
-
 	mat = splash.DeviceMat().Clone()
+
+	cached = struct {
+		devices struct {
+			ids   []int
+			names []string
+		}
+		apis struct {
+			names  []string
+			values map[string]int
+		}
+	}{}
 
 	apis = struct {
 		names  []string
@@ -40,44 +50,9 @@ var (
 )
 
 func init() {
-	reset()
-
-	go func() {
-		for i := gocv.VideoCaptureAPI(1); i < 5000; i++ {
-			api := i.String()
-			if api == "" {
-				continue
-			}
-			api = APIName(int(i))
-
-			apis.values[api] = int(i)
-			apis.names = append(apis.names, api)
-		}
-		sort.Strings(apis.names)
-
-		// VideoCaptureAny should always be first.
-		apis.names = append([]string{APIName(0)}, apis.names...)
-	}()
-
-	go func() {
-		for ; ; time.Sleep(time.Second * 5) {
-			s, n := sources()
-			for _, got := range n {
-				found := false
-				for _, have := range names {
-					if have == got {
-						found = true
-						break
-					}
-				}
-				if !found {
-					Sources, names = s, n
-					notify.Debug("Device: Discovered \"%s\"", got)
-					break
-				}
-			}
-		}
-	}()
+	defer reset()
+	go storeAPIs()
+	go storeSources()
 }
 
 func ActiveName() string {
@@ -130,7 +105,7 @@ func Close() {
 
 	active.stop()
 
-	notify.Debug("Device: Closed \"%s\"...", active.name)
+	notify.Debug("Device: Closed \"%s\"", active.name)
 
 	reset()
 }
@@ -158,8 +133,8 @@ func Name(d int) string {
 	if d == config.NoVideoCaptureDevice {
 		return "Disabled"
 	}
-	if d != config.NoVideoCaptureDevice && len(names) > d {
-		return names[d]
+	if d != config.NoVideoCaptureDevice && len(cached.devices.names) > d {
+		return cached.devices.names[d]
 	}
 	return fmt.Sprintf("Device: %d", d)
 }
@@ -191,6 +166,10 @@ func Open() error {
 	}
 
 	return nil
+}
+
+func Sources() []int {
+	return cached.devices.ids
 }
 
 func (d *device) capture() {
@@ -232,7 +211,6 @@ func (d *device) capture() {
 
 	for d.running() {
 		time.Sleep(time.Millisecond)
-
 		if !device.Read(&mat) || mat.Empty() {
 			notify.Warn("Device: Failed to capture from \"%s\"", d.name)
 			return
@@ -249,6 +227,47 @@ func (d *device) running() bool {
 	}
 }
 
+func storeAPIs() {
+	base := []string{APIName(0)}
+	for i := gocv.VideoCaptureAPI(1); i < 5000; i++ {
+		api := i.String()
+		if api == "" {
+			continue
+		}
+		api = APIName(int(i))
+
+		apis.values[api] = int(i)
+		apis.names = append(apis.names, api)
+	}
+	sort.Strings(apis.names)
+
+	apis.names = append(base, apis.names...)
+}
+
+func storeSources() {
+	for ; ; time.Sleep(time.Second * 5) {
+		ids := []int{}
+		names := []string{}
+
+		for i := 0; i < 10; i++ {
+			name := win32.VideoCaptureDeviceName(i)
+			if name == "" {
+				break
+			}
+
+			ids = append(ids, i)
+			names = append(names, name)
+		}
+
+		for _, name := range names {
+			if !slices.Contains(cached.devices.names, name) {
+				cached.devices.ids, cached.devices.names = ids, names
+				break
+			}
+		}
+	}
+}
+
 func reset() {
 	config.Current.VideoCaptureWindow = config.MainDisplay
 	config.Current.VideoCaptureDevice = config.NoVideoCaptureDevice
@@ -260,21 +279,4 @@ func reset() {
 		closedq: make(chan bool),
 		errq:    make(chan error),
 	}
-}
-
-func sources() ([]int, []string) {
-	s := []int{}
-	n := []string{}
-
-	for i := 0; i < 10; i++ {
-		name := win32.VideoCaptureDeviceName(i)
-		if name == "" {
-			break
-		}
-
-		s = append(s, i)
-		n = append(n, name)
-	}
-
-	return s, n
 }

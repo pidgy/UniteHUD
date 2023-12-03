@@ -63,7 +63,7 @@ func (g *GUI) loading() {
 	var ops op.Ops
 
 	for is.Now == is.Loading {
-		switch event := (<-g.window.Events()).(type) {
+		switch event := g.window.NextEvent().(type) {
 		case app.ViewEvent:
 			g.HWND = event.HWND
 		case system.DestroyEvent:

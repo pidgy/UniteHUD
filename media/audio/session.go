@@ -19,9 +19,13 @@ const (
 	Disabled = device.Disabled
 )
 
-var SessionClosed = fmt.Errorf("session closed")
+var (
+	current *session
 
-type Session struct {
+	SessionClosed = fmt.Errorf("session closed")
+)
+
+type session struct {
 	In  device.Device
 	Out device.Device
 
@@ -30,39 +34,40 @@ type Session struct {
 	errorq chan error
 	waitq  chan bool
 
-	closed  bool
 	context *malgo.AllocatedContext
 }
 
-func New(i, o string) (*Session, error) {
+func Open() error {
+	notify.System("Audio: Opening session")
+
 	ctx, err := malgo.InitContext(
 		[]malgo.Backend{
 			malgo.BackendDsound,
 		},
 		malgo.ContextConfig{
 			CoreAudio: malgo.CoreAudioConfig{
-				SessionCategory: malgo.IOSSessionCategoryAmbient,
+				SessionCategory: malgo.IOSSessionCategoryPlayback,
 			},
 		},
-		func(message string) {
-			notify.Debug("Audio Session: %s", strings.Split(message, "\n")[0])
+		func(m string) {
+			// notify.Debug("Audio Session: %s", strings.Split(m, "\n")[0])
 		},
 	)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	in, err := input.New(ctx, i)
+	in, err := input.New(ctx, Disabled)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	out, err := output.New(ctx, o)
+	out, err := output.New(ctx, Default)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	s := &Session{
+	current = &session{
 		In:  in,
 		Out: out,
 
@@ -71,92 +76,107 @@ func New(i, o string) (*Session, error) {
 		errorq: make(chan error),
 		waitq:  make(chan bool),
 
-		closed:  true,
 		context: ctx,
 	}
 
-	return s, nil
+	return Start()
 }
 
-func (s *Session) Inputs() []*input.Device {
-	return input.Devices(s.context)
+func Inputs() []*input.Device {
+	return input.Devices(current.context)
 }
 
-func (s *Session) Outputs() []*output.Device {
-	return output.Devices(s.context)
+func Label() string {
+	if current == nil {
+		return "🔉"
+	}
+
+	mic := "🎤"
+	if current.In.IsDisabled() {
+		mic = "❌"
+	}
+
+	speaker := "🔊"
+	if current.Out.IsDisabled() {
+		speaker = "🔈"
+	}
+
+	return fmt.Sprintf("%s %s / %s %s", mic, strings.Split(current.In.Name(), " (")[0], speaker, strings.Split(current.Out.Name(), " (")[0])
 }
 
-func (s *Session) Close() error {
-	if s.closed {
+func Outputs() []*output.Device {
+	return output.Devices(current.context)
+}
+
+func Close() error {
+	notify.System("Audio: Closing...")
+
+	if current == nil {
 		return nil
 	}
-	s.closed = true
 
-	defer notify.System("%s (Closed)", s.String())
-
-	for err := s.Error(); err != nil && err != SessionClosed; err = s.Error() {
-		notify.Error("Audio session close error (%v)", err)
-	}
-
-	s.In.Close()
-	s.Out.Close()
+	current.In.Close()
+	current.Out.Close()
 
 	return nil
 }
 
-func (s *Session) Error() error {
-	select {
-	case err := <-s.errorq:
-		return err
-	default:
-		if s.closed {
-			return SessionClosed
-		}
+func Input(name string) (err error) {
+	if current == nil {
 		return nil
 	}
-}
 
-func (s *Session) Input(name string) error {
-	s.In.Close()
-	s.Out.Close()
+	notify.System("Audio: Swapping input %s", name)
 
-	in, err := input.New(s.context, name)
+	current.In.Close()
+	current.Out.Close()
+
+	current.In, err = input.New(current.context, name)
 	if err != nil {
 		return err
 	}
-	s.In = in
 
-	return nil
+	return Start()
 }
 
-func (s *Session) Output(name string) error {
-	s.In.Close()
-	s.Out.Close()
-
-	p, err := output.New(s.context, name)
-	if err != nil {
-		return err
-	}
-	s.Out = p
-
-	return nil
-}
-
-func (s *Session) Start() error {
-	if s.In.IsDisabled() || s.Out.IsDisabled() {
+func Output(name string) (err error) {
+	if current == nil {
 		return nil
 	}
 
-	defer notify.System("%s (Started)", s.String())
+	notify.System("Audio: Swapping output %s", name)
 
-	s.In.Start(s.context.Context, s.buffer, s.errorq)
-	s.Out.Start(s.context.Context, s.buffer, s.errorq)
+	current.In.Close()
+	current.Out.Close()
 
-	s.closed = false
+	current.Out, err = output.New(current.context, name)
+	if err != nil {
+		return err
+	}
+
+	return Start()
+}
+
+func Start() error {
+	if current.In.IsDisabled() || current.Out.IsDisabled() {
+		return nil
+	}
+
+	notify.System("Audio: Starting session (%s)", current)
+
+	err := current.In.Start(current.context.Context, current.buffer)
+	if err != nil {
+		return err
+	}
+
+	err = current.Out.Start(current.context.Context, current.buffer)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
 
-func (s *Session) String() string {
-	return fmt.Sprintf("Audio Session: %s -> %s", s.In, s.Out)
+func (s *session) String() string {
+	return fmt.Sprintf("%s -> %s", s.In, s.Out)
 }

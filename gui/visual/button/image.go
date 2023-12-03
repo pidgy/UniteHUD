@@ -55,7 +55,7 @@ func (i *ImageWidget) Layout(th *material.Theme, gtx layout.Context) layout.Dime
 
 	for _, e := range gtx.Events(i) {
 		if e, ok := e.(pointer.Event); ok {
-			switch e.Type {
+			switch e.Kind {
 			case pointer.Enter:
 				i.hover = true
 				i.Widget.BorderColor = nrgba.White
@@ -90,7 +90,7 @@ func (i *ImageWidget) Layout(th *material.Theme, gtx layout.Context) layout.Dime
 	area := clip.Rect(image.Rect(0, 0, dims.Size.X, dims.Size.Y)).Push(gtx.Ops)
 	pointer.InputOp{
 		Tag:   i,
-		Types: pointer.Press | pointer.Release | pointer.Enter | pointer.Leave | pointer.Move,
+		Kinds: pointer.Press | pointer.Release | pointer.Enter | pointer.Leave | pointer.Move,
 	}.Add(gtx.Ops)
 	area.Pop()
 

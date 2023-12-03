@@ -78,7 +78,7 @@ func (h *Horizontal) Layout(gtx layout.Context, top, bottom layout.Widget) layou
 				continue
 			}
 
-			switch e.Type {
+			switch e.Kind {
 			case pointer.Enter:
 				cursor.Is(pointer.CursorGrab)
 			case pointer.Press:
@@ -120,7 +120,7 @@ func (h *Horizontal) Layout(gtx layout.Context, top, bottom layout.Widget) layou
 		area := clip.Rect(barRect).Push(gtx.Ops)
 		pointer.InputOp{
 			Tag:   h,
-			Types: pointer.Press | pointer.Drag | pointer.Release | pointer.Enter,
+			Kinds: pointer.Press | pointer.Drag | pointer.Release | pointer.Enter,
 			Grab:  h.drag,
 		}.Add(gtx.Ops)
 		area.Pop()
@@ -179,7 +179,7 @@ func (v *Vertical) Layout(gtx layout.Context, left, right layout.Widget) layout.
 				continue
 			}
 
-			switch e.Type {
+			switch e.Kind {
 			case pointer.Press:
 				if v.drag {
 					break
@@ -210,7 +210,7 @@ func (v *Vertical) Layout(gtx layout.Context, left, right layout.Widget) layout.
 		barRect := image.Rect(leftsize, 0, rightoffset, gtx.Constraints.Max.X)
 		area := clip.Rect(barRect).Push(gtx.Ops)
 		pointer.InputOp{Tag: v,
-			Types: pointer.Press | pointer.Drag | pointer.Release,
+			Kinds: pointer.Press | pointer.Drag | pointer.Release,
 			Grab:  v.drag,
 		}.Add(gtx.Ops)
 		area.Pop()

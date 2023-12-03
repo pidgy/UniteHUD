@@ -29,7 +29,6 @@ import (
 	"github.com/pidgy/unitehud/gui/visual/button"
 	"github.com/pidgy/unitehud/gui/visual/decorate"
 	"github.com/pidgy/unitehud/gui/visual/title"
-	"github.com/pidgy/unitehud/media/audio"
 	"github.com/pidgy/unitehud/media/img/splash"
 	"github.com/pidgy/unitehud/media/video"
 	"github.com/pidgy/unitehud/media/video/device"
@@ -99,15 +98,11 @@ type projected struct {
 		threshold int
 	}
 
-	audio *audio.Session
-
 	*footer
 }
 
 func (g *GUI) projector() {
 	ui := g.projectorUI()
-
-	defer ui.audio.Close()
 
 	defer g.header.Remove(g.header.Add(ui.buttons.menu.home))
 	defer g.header.Remove(g.header.Add(ui.buttons.menu.save))
@@ -122,6 +117,8 @@ func (g *GUI) projector() {
 
 	var lastpos image.Point
 
+	g.header.Open()
+
 	var ops op.Ops
 
 	for is.Now == is.Projecting {
@@ -133,7 +130,7 @@ func (g *GUI) projector() {
 			ui.groups.ticks = 0
 		}
 
-		switch event := (<-g.window.Events()).(type) {
+		switch event := g.window.NextEvent().(type) {
 		case system.StageEvent:
 		case app.ConfigEvent:
 		case system.DestroyEvent:
@@ -150,13 +147,6 @@ func (g *GUI) projector() {
 				ui.windows.settings.resize()
 
 				ui.windows.preview.resize()
-			}
-
-			err := ui.audio.Error()
-			if err != nil && err != audio.SessionClosed {
-				g.ToastError(err)
-				g.next(is.MainMenu)
-				continue
 			}
 
 			decorate.Background(gtx)
@@ -217,27 +207,27 @@ func (g *GUI) projector() {
 							}.Layout(gtx,
 								ui.spacer(2, 0),
 
-								// layout.Flexed(0.33, func(gtx layout.Context) layout.Dimensions {
-								// 	return layout.Flex{
-								// 		Axis: layout.Vertical,
-								// 	}.Layout(gtx,
-								// 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-								// 			return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-								// 				return layout.Inset{
-								// 					Top: unit.Dp(5),
-								// 				}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-								// 					return ui.labels.audio.in.Layout(gtx)
-								// 				})
-								// 			})
-								// 		}),
+								layout.Flexed(0.33, func(gtx layout.Context) layout.Dimensions {
+									return layout.Flex{
+										Axis: layout.Vertical,
+									}.Layout(gtx,
+										layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+											return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+												return layout.Inset{
+													Top: unit.Dp(5),
+												}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+													return ui.labels.audio.in.Layout(gtx)
+												})
+											})
+										}),
 
-								// 		ui.spacer(0, 1),
+										ui.spacer(0, 1),
 
-								// 		layout.Flexed(.9, func(gtx layout.Context) layout.Dimensions {
-								// 			return ui.groups.audios.in.list.Layout(gtx)
-								// 		}),
-								// 	)
-								// }),
+										layout.Flexed(.9, func(gtx layout.Context) layout.Dimensions {
+											return ui.groups.audios.in.list.Layout(gtx)
+										}),
+									)
+								}),
 
 								ui.spacer(2, 0),
 
@@ -363,6 +353,8 @@ func (g *GUI) projector() {
 			default:
 				ui.img = splash.Default()
 			case device.IsActive(), monitor.IsDisplay(), window.IsOpen():
+				var err error
+
 				ui.img, err = video.Capture()
 				if err != nil {
 					g.ToastError(err)
@@ -403,8 +395,6 @@ func (g *GUI) projector() {
 }
 
 func (g *GUI) projectorUI() *projected {
-	var err error
-
 	ui := &projected{
 		img:   splash.Invalid(),
 		since: time.Now(),
@@ -412,15 +402,8 @@ func (g *GUI) projectorUI() *projected {
 		listTextSize: float32(14),
 	}
 
-	ui.audio, err = audio.New(audio.Disabled, audio.Default)
-	if err != nil {
-		g.ToastErrorf(fmt.Sprintf("Failed to route audio i/o (%v)", err))
-		g.next(is.MainMenu)
-		return nil
-	}
-
 	ui.groups.areas = g.areas(g.header.Collection)
-	ui.groups.audios = g.audios(ui.listTextSize, ui.audio)
+	ui.groups.audios = g.audios(ui.listTextSize)
 	ui.groups.videos = g.videos(ui.listTextSize)
 	ui.groups.videos.onevent = func() {
 		// ...
@@ -685,7 +668,7 @@ func (g *GUI) projectorUI() *projected {
 	ui.buttons.menu.reset = &button.Widget{
 		Text:            "💣",
 		Font:            g.header.Collection.NishikiTeki(),
-		Released:        nrgba.CoolBlue,
+		Released:        nrgba.PaleRed,
 		TextSize:        unit.Sp(17),
 		TextInsetBottom: -1,
 		Disabled:        false,
@@ -801,7 +784,7 @@ func (p *projected) Layout(gtx layout.Context, fullscreen bool) layout.Dimension
 	push := rect.Push(gtx.Ops)
 	pointer.InputOp{
 		Tag:   p,
-		Types: pointer.Move | pointer.Enter | pointer.Leave,
+		Kinds: pointer.Move | pointer.Enter | pointer.Leave,
 	}.Add(gtx.Ops)
 	push.Pop()
 

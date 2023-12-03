@@ -164,7 +164,7 @@ func (a *Widget) Layout(gtx layout.Context, collection fonts.Collection, capture
 			continue
 		}
 
-		switch e.Type {
+		switch e.Kind {
 		case pointer.Enter:
 			a.Focus = true
 			a.NRGBA = Locked
@@ -234,7 +234,7 @@ func (a *Widget) Layout(gtx layout.Context, collection fonts.Collection, capture
 	area := rect.Push(gtx.Ops)
 	pointer.InputOp{
 		Tag:   a,
-		Types: pointer.Press | pointer.Drag | pointer.Release | pointer.Leave | pointer.Enter | pointer.Move,
+		Kinds: pointer.Press | pointer.Drag | pointer.Release | pointer.Leave | pointer.Enter | pointer.Move,
 		Grab:  a.Drag,
 	}.Add(gtx.Ops)
 	area.Pop()

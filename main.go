@@ -5,7 +5,6 @@ package main
 import (
 	"os"
 	"os/signal"
-	"strings"
 
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/detect"
@@ -16,6 +15,7 @@ import (
 	"github.com/pidgy/unitehud/core/stats"
 	"github.com/pidgy/unitehud/core/team"
 	"github.com/pidgy/unitehud/gui/ui"
+	"github.com/pidgy/unitehud/media/audio"
 	"github.com/pidgy/unitehud/media/video"
 	"github.com/pidgy/unitehud/media/video/window/electron"
 	"github.com/pidgy/unitehud/system/discord"
@@ -75,6 +75,7 @@ func signals() {
 	ui.UI.Close()
 	video.Close()
 	electron.Close()
+	audio.Close()
 
 	os.Exit(0)
 }
@@ -98,6 +99,11 @@ func main() {
 		notify.Error("System: Failed to capture video (%v)", err)
 	}
 
+	err = audio.Open()
+	if err != nil {
+		notify.Error("System: Failed to open audio session (%v)", err)
+	}
+
 	err = server.Listen()
 	if err != nil {
 		notify.Error("System: Failed to start server (%v)", err)
@@ -106,27 +112,12 @@ func main() {
 	go electron.App()
 	go discord.Connect()
 
-	last := ""
-
-	for _, category := range config.Current.TemplateCategories() {
-		cstr := category
-		if cstr == last {
-			cstr = strings.Repeat(" ", len(category))
-		}
-
-		for name := range config.Current.Templates(category) {
-			notify.System(" %-24s %d Assets", cstr+"/"+name+":", len(config.Current.TemplatesByName(category, name)))
-		}
-
-		last = category
-	}
-
-	notify.System("System: Confirm Score Delay: (%ds)", config.Current.ConfirmScoreDelay)
-	notify.System("System: Server Address (%s)", server.Address)
-	notify.System("System: Recording (%t)", config.Current.Record)
-	notify.System("System: Profile (%s)", config.Current.Profile)
-	notify.System("System: Assets (%s)", config.Current.Assets())
-	notify.System("System: Match Threshold: (%.0f%%)", config.Current.Acceptance*100)
+	notify.Debug("System: Confirm Score Delay: (%ds)", config.Current.ConfirmScoreDelay)
+	notify.Debug("System: Server Address (%s)", server.Address)
+	notify.Debug("System: Recording (%t)", config.Current.Record)
+	notify.Debug("System: Profile (%s)", config.Current.Profile)
+	notify.Debug("System: Assets (%s)", config.Current.Assets())
+	notify.Debug("System: Match Threshold: (%.0f%%)", config.Current.Acceptance*100)
 
 	go detect.Clock()
 	go detect.Energy()

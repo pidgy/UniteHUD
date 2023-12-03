@@ -96,8 +96,6 @@ func reconnect() {
 	}
 }
 
-var idle = time.Now().Unix()
-
 func status() activity {
 	if time.Now().Before(wait.Time) {
 		return wait.activity
@@ -115,9 +113,7 @@ func status() activity {
 			SmallText:  "unitehud.dev",
 		},
 
-		Timestamps: timestamps{
-			Start: idle,
-		},
+		Timestamps: timestamps{},
 
 		Type: activityTypePlaying,
 

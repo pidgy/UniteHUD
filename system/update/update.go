@@ -64,7 +64,7 @@ func Check() {
 	case v1.Equal(v2):
 		notify.System("Update: Running latest (%s)", global.Version)
 	default:
-		notify.Warn("Update: Failed to validate version %s ", q.Latest)
+		notify.Warn("Update: Unable to validate version %s ", q.Latest)
 	}
 
 	for _, n := range q.News {
