@@ -1,4 +1,4 @@
-# <img src='https://github.com/pidgy/UniteHUD/blob/master/assets/icon/icon.png' width='24'>  UniteHUD
+# <img src='https://github.com/pidgy/UniteHUD/blob/master/assets/icon/icon.png' width='32'>  UniteHUD
 
 Pokémon UNITE scoreboard HUD and extra tools running over captured game feeds.
 
