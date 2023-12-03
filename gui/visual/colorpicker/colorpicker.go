@@ -10,9 +10,9 @@ import (
 	"gioui.org/widget/material"
 	"gioui.org/x/colorpicker"
 
-	"github.com/pidgy/unitehud/fonts"
+	"github.com/pidgy/unitehud/core/fonts"
+	"github.com/pidgy/unitehud/core/nrgba"
 	"github.com/pidgy/unitehud/gui/visual/decorate"
-	"github.com/pidgy/unitehud/nrgba"
 )
 
 type Widget struct {

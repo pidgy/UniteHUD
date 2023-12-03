@@ -14,13 +14,13 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 
-	"github.com/pidgy/unitehud/config"
-	"github.com/pidgy/unitehud/fonts"
+	"github.com/pidgy/unitehud/core/config"
+	"github.com/pidgy/unitehud/core/fonts"
+	"github.com/pidgy/unitehud/core/nrgba"
 	"github.com/pidgy/unitehud/gui/cursor"
 	"github.com/pidgy/unitehud/gui/visual/button"
 	"github.com/pidgy/unitehud/gui/visual/decorate"
-	"github.com/pidgy/unitehud/img"
-	"github.com/pidgy/unitehud/nrgba"
+	"github.com/pidgy/unitehud/media/img"
 )
 
 var (

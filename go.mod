@@ -42,6 +42,7 @@ require (
 	github.com/klauspost/compress v1.15.6 // indirect
 	github.com/lxn/win v0.0.0-20210218163916-a377121e959e // indirect
 	github.com/mattn/go-runewidth v0.0.9 // indirect
+	github.com/moutend/go-wca v0.3.0 // indirect
 	github.com/stretchr/testify v1.8.2 // indirect
 	golang.org/x/exp v0.0.0-20221012211006-4de253d81b95 // indirect
 	golang.org/x/exp/shiny v0.0.0-20220827204233-334a2380cb91 // indirect

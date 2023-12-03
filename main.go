@@ -7,21 +7,21 @@ import (
 	"os/signal"
 	"strings"
 
-	"github.com/pidgy/unitehud/config"
-	"github.com/pidgy/unitehud/detect"
-	"github.com/pidgy/unitehud/discord"
-	"github.com/pidgy/unitehud/global"
-	"github.com/pidgy/unitehud/gui"
-	"github.com/pidgy/unitehud/notify"
-	"github.com/pidgy/unitehud/process"
-	"github.com/pidgy/unitehud/save"
-	"github.com/pidgy/unitehud/server"
-	"github.com/pidgy/unitehud/state"
-	"github.com/pidgy/unitehud/stats"
-	"github.com/pidgy/unitehud/team"
-	"github.com/pidgy/unitehud/update"
-	"github.com/pidgy/unitehud/video"
-	"github.com/pidgy/unitehud/video/window/electron"
+	"github.com/pidgy/unitehud/core/config"
+	"github.com/pidgy/unitehud/core/detect"
+	"github.com/pidgy/unitehud/core/global"
+	"github.com/pidgy/unitehud/core/notify"
+	"github.com/pidgy/unitehud/core/server"
+	"github.com/pidgy/unitehud/core/state"
+	"github.com/pidgy/unitehud/core/stats"
+	"github.com/pidgy/unitehud/core/team"
+	"github.com/pidgy/unitehud/gui/ui"
+	"github.com/pidgy/unitehud/media/video"
+	"github.com/pidgy/unitehud/media/video/window/electron"
+	"github.com/pidgy/unitehud/system/discord"
+	"github.com/pidgy/unitehud/system/process"
+	"github.com/pidgy/unitehud/system/save"
+	"github.com/pidgy/unitehud/system/update"
 )
 
 // windows
@@ -51,7 +51,7 @@ func kill(errs ...error) {
 
 	report := make(chan bool)
 
-	gui.UI.ToastCrash(
+	ui.UI.ToastCrash(
 		"UniteHUD has encountered an unrecoverable error",
 		func() {
 			close(report)
@@ -72,7 +72,7 @@ func signals() {
 	signal.Notify(sigq, os.Interrupt)
 	<-sigq
 
-	gui.UI.Close()
+	ui.UI.Close()
 	video.Close()
 	electron.Close()
 
@@ -80,8 +80,8 @@ func signals() {
 }
 
 func main() {
-	gui.New()
-	defer gui.UI.Open()
+	ui.New()
+	defer ui.UI.Open()
 
 	err := process.Replace()
 	if err != nil {
@@ -143,14 +143,14 @@ func main() {
 	go func() {
 		lastWindow := config.Current.VideoCaptureWindow
 
-		for action := range gui.UI.Actions {
+		for action := range ui.UI.Actions {
 			switch action {
-			case gui.Closing:
+			case ui.Closing:
 				close(sigq)
-			case gui.Config:
+			case ui.Config:
 				server.SetConfig(true)
 				fallthrough
-			case gui.Start:
+			case ui.Start:
 				detect.Resume()
 
 				notify.Announce("System: Starting %s...", global.Title)
@@ -164,7 +164,7 @@ func main() {
 				notify.Announce("System: Started %s", global.Title)
 
 				server.SetStarted()
-			case gui.Stop:
+			case ui.Stop:
 				detect.Pause()
 
 				notify.Announce("System: Stopping %s...", global.Title)
@@ -184,7 +184,7 @@ func main() {
 				}
 
 				fallthrough
-			case gui.Record:
+			case ui.Record:
 				config.Current.Record = !config.Current.Record
 
 				str := "Closing"
@@ -209,21 +209,21 @@ func main() {
 				} else {
 					notify.System("System: Closing open files in %s", save.Directory)
 				}
-			case gui.Log:
+			case ui.Log:
 				save.Logs()
 
 				err := save.Open()
 				if err != nil {
 					notify.Error("System: Failed to open \"%s\" (%v)", save.Directory, err)
 				}
-			case gui.Open:
+			case ui.Open:
 				notify.System("System: Opening \"%s\"", save.Directory)
 
 				err := save.Open()
 				if err != nil {
 					notify.Error("System: Failed to open \"%s\" (%v)", save.Directory, err)
 				}
-			case gui.Refresh:
+			case ui.Refresh:
 				notify.Debug("System: Action received (Refresh)")
 
 				err := video.Open()

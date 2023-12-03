@@ -10,8 +10,8 @@ import (
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
 	"gioui.org/unit"
+	"github.com/pidgy/unitehud/core/nrgba"
 	"github.com/pidgy/unitehud/gui/cursor"
-	"github.com/pidgy/unitehud/nrgba"
 )
 
 type Widget interface {

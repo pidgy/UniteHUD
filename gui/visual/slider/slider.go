@@ -7,8 +7,8 @@ import (
 	"gioui.org/io/pointer"
 	"gioui.org/layout"
 	"gioui.org/widget/material"
+	"github.com/pidgy/unitehud/core/nrgba"
 	"github.com/pidgy/unitehud/gui/cursor"
-	"github.com/pidgy/unitehud/nrgba"
 )
 
 type Widget struct {

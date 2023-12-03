@@ -10,8 +10,8 @@ import (
 	"gioui.org/op/paint"
 	"gioui.org/widget/material"
 
-	"github.com/pidgy/unitehud/config"
-	"github.com/pidgy/unitehud/nrgba"
+	"github.com/pidgy/unitehud/core/config"
+	"github.com/pidgy/unitehud/core/nrgba"
 )
 
 func Background(gtx layout.Context) {

@@ -17,17 +17,18 @@ import (
 	"gioui.org/widget/material"
 	"gocv.io/x/gocv"
 
-	"github.com/pidgy/unitehud/fonts"
+	"github.com/pidgy/unitehud/core/fonts"
+	"github.com/pidgy/unitehud/core/global"
+	"github.com/pidgy/unitehud/core/notify"
+	"github.com/pidgy/unitehud/core/nrgba"
 	"github.com/pidgy/unitehud/gui/visual/button"
 	"github.com/pidgy/unitehud/gui/visual/decorate"
 	"github.com/pidgy/unitehud/gui/visual/title"
-	"github.com/pidgy/unitehud/notify"
-	"github.com/pidgy/unitehud/nrgba"
-	"github.com/pidgy/unitehud/video"
-	"github.com/pidgy/unitehud/video/device"
-	"github.com/pidgy/unitehud/video/monitor"
-	"github.com/pidgy/unitehud/video/wapi"
-	"github.com/pidgy/unitehud/video/window"
+	"github.com/pidgy/unitehud/media/video"
+	"github.com/pidgy/unitehud/media/video/device"
+	"github.com/pidgy/unitehud/media/video/monitor"
+	"github.com/pidgy/unitehud/media/video/wapi"
+	"github.com/pidgy/unitehud/media/video/window"
 )
 
 const alpha = 150
@@ -331,11 +332,6 @@ func (c *Capture) reset() {
 }
 
 func (c *Capture) Open() error {
-	dir, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("Failed to find current directory (%v)", err)
-	}
-
 	img, err := video.CaptureRect(c.Base)
 	if err != nil {
 		return fmt.Errorf("Failed to capture %s (%v)", c.File, err)
@@ -351,7 +347,7 @@ func (c *Capture) Open() error {
 		return fmt.Errorf("Failed to save %s (%v)", c.File, err)
 	}
 
-	argv, err := syscall.UTF16PtrFromString(os.Getenv("windir") + "\\system32\\cmd.exe /C " + fmt.Sprintf("\"%s\\%s\"", dir, c.File))
+	argv, err := syscall.UTF16PtrFromString(os.Getenv("windir") + "\\system32\\cmd.exe /C " + fmt.Sprintf("\"%s\\%s\"", global.WorkingDirectory(), c.File))
 	if err != nil {
 		return fmt.Errorf("Failed to open %s (%v)", c.File, err)
 	}

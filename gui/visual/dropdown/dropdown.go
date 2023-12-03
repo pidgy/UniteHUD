@@ -12,9 +12,9 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 
+	"github.com/pidgy/unitehud/core/nrgba"
 	"github.com/pidgy/unitehud/gui/cursor"
 	"github.com/pidgy/unitehud/gui/visual/decorate"
-	"github.com/pidgy/unitehud/nrgba"
 )
 
 var (
@@ -24,7 +24,7 @@ var (
 
 type Widget struct {
 	Items         []*Item
-	Callback      func(item *Item, this *Widget)
+	Callback      func(item *Item, this *Widget) bool
 	WidthModifier int
 	Radio         bool
 	TextSize      float32
@@ -99,93 +99,98 @@ func (l *Widget) Layout(gtx layout.Context) layout.Dimensions {
 				Alignment: layout.Start,
 			},
 		})
+		l.liststyle.AnchorStrategy = material.Overlay
+		l.liststyle.Track.MajorPadding = unit.Dp(0)
+		l.liststyle.Track.MinorPadding = unit.Dp(0)
 	}
 
 	decorate.Scrollbar(&l.liststyle.ScrollbarStyle)
 	decorate.List(&l.liststyle)
 
-	return l.liststyle.Layout(gtx, len(l.Items), func(gtx layout.Context, index int) layout.Dimensions {
-		item := l.Items[index]
+	return l.liststyle.Layout(gtx, len(l.Items),
+		func(gtx layout.Context, index int) layout.Dimensions {
+			item := l.Items[index]
 
-		check := material.CheckBox(l.Theme, &item.Checked, item.Text)
-		check.Font.Weight = font.Weight(item.Weight)
-		check.Size = unit.Dp(l.TextSize)
-		check.TextSize = unit.Sp(l.TextSize)
-		if l.TextSize == 0 {
-			check.Size = unit.Dp(14)
-			check.TextSize = unit.Sp(14)
-		}
-
-		decorate.CheckBox(&check)
-
-		if item.Checked.Changed() {
-			if item.Disabled {
-				item.Checked.Value = !item.Checked.Value
-			} else if item.Callback != nil {
-				item.Callback(item)
+			check := material.CheckBox(l.Theme, &item.Checked, item.Text)
+			check.Font.Weight = font.Weight(item.Weight)
+			check.Size = unit.Dp(l.TextSize)
+			check.TextSize = unit.Sp(l.TextSize)
+			if l.TextSize == 0 {
+				check.Size = unit.Dp(14)
+				check.TextSize = unit.Sp(14)
 			}
 
-			if l.Radio {
-				for i := range l.Items {
-					if i == index {
-						l.Items[i].Checked.Value = true
-						continue
-					}
+			decorate.CheckBox(&check)
 
-					l.Items[i].Checked.Value = false
+			if item.Checked.Changed() {
+				if item.Disabled {
+					item.Checked.Value = !item.Checked.Value
+				} else if item.Callback != nil {
+					item.Callback(item)
+				}
+
+				if l.Radio {
+					for i := range l.Items {
+						if i == index {
+							l.Items[i].Checked.Value = true
+							continue
+						}
+
+						l.Items[i].Checked.Value = false
+					}
+				}
+
+				if !item.Disabled && l.Callback != nil {
+					l.Callback(item, l)
 				}
 			}
 
-			if !item.Disabled && l.Callback != nil {
-				l.Callback(item, l)
+			if item.Checked.Value {
+				check.Color = Enabled
+				if item.Text == "Disabled" {
+					check.Color = Disabled
+				}
 			}
-		}
-
-		if item.Checked.Value {
-			check.Color = Enabled
-			if item.Text == "Disabled" {
+			if item.Disabled {
 				check.Color = Disabled
 			}
-		}
-		if item.Disabled {
-			check.Color = Disabled
-		}
-		switch {
-		case item.Checked.Hovered(), item.Checked.Focused():
-			hoverItem(gtx, index)
+			switch {
+			case item.Checked.Hovered(), item.Checked.Focused():
+				hoverItem(gtx, index)
 
-			item.hovered = true
-			cursor.Is(pointer.CursorPointer)
-		case item.Checked.Value:
-			selectedItem(gtx, index)
-		case item.hovered:
-			item.hovered = false
-			cursor.Is(pointer.CursorDefault)
-		}
+				item.hovered = true
+				cursor.Is(pointer.CursorPointer)
+			case item.Checked.Value:
+				selectedItem(gtx, index)
+			case item.hovered:
+				item.hovered = false
+				cursor.Is(pointer.CursorDefault)
+			}
 
-		if l.WidthModifier == 0 {
-			l.WidthModifier = 1
-		}
+			if l.WidthModifier == 0 {
+				l.WidthModifier = 1
+			}
 
-		dims := layout.E.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-			dim := check.Layout(gtx)
-			dim.Size.X = gtx.Constraints.Max.X / l.WidthModifier
-			return dim
-		})
+			dims := layout.E.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+				dim := check.Layout(gtx)
+				dim.Size.X = gtx.Constraints.Max.X / l.WidthModifier
+				return dim
+			})
 
-		if item.Hint != "" {
-			label := material.Label(
-				l.Theme,
-				check.TextSize*unit.Sp(.9),
-				item.Hint,
-			)
-			label.Color = nrgba.Transparent80.Color()
+			if item.Hint != "" {
+				label := material.Label(
+					l.Theme,
+					check.TextSize*unit.Sp(.9),
+					item.Hint,
+				)
+				label.Color = nrgba.Transparent80.Color()
 
-			dims = label.Layout(gtx)
-		}
+				dims = label.Layout(gtx)
+			}
 
-		return dims
-	})
+			return dims
+		},
+	)
 }
 
 func selectedItem(gtx layout.Context, index int) {
