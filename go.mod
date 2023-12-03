@@ -28,6 +28,8 @@ require (
 	nhooyr.io/websocket v1.8.7
 )
 
+require github.com/hashicorp/go-version v1.6.0
+
 require (
 	gioui.org/cpu v0.0.0-20210817075930-8d6a761490d2 // indirect
 	gioui.org/shader v1.0.6 // indirect
@@ -37,12 +39,10 @@ require (
 	github.com/gobwas/ws v1.1.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
-	github.com/hashicorp/go-version v1.6.0 // indirect
 	github.com/jezek/xgb v1.1.0 // indirect
 	github.com/klauspost/compress v1.15.6 // indirect
 	github.com/lxn/win v0.0.0-20210218163916-a377121e959e // indirect
 	github.com/mattn/go-runewidth v0.0.9 // indirect
-	github.com/moutend/go-wca v0.3.0 // indirect
 	github.com/stretchr/testify v1.8.2 // indirect
 	golang.org/x/exp v0.0.0-20221012211006-4de253d81b95 // indirect
 	golang.org/x/exp/shiny v0.0.0-20220827204233-334a2380cb91 // indirect
