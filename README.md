@@ -1,4 +1,5 @@
-# UniteHUD
+# <img src='https://github.com/pidgy/UniteHUD/blob/master/assets/icon/icon.png' width='24'>  UniteHUD
+
 Pokémon UNITE scoreboard HUD and extra tools running over captured game feeds.
 
 #### For beta support, message me on [twitter](https://twitter.com/pidgy_)
