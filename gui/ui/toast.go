@@ -33,9 +33,12 @@ const (
 )
 
 func (g *GUI) ToastCrash(reason string, closed, logs func()) {
+	g.previous.toast.active = true
+
 	go func() {
-		g.previous.toast.active = true
-		defer func() { g.previous.toast.active = false }()
+		defer func() {
+			g.previous.toast.active = false
+		}()
 
 		width, height := float32(500), float32(125)
 
@@ -148,10 +151,12 @@ func (g *GUI) ToastOK(header, msg string, ok OnToastOK) {
 	if g.previous.toast.active {
 		return
 	}
+	g.previous.toast.active = true
 
 	go func() {
-		g.previous.toast.active = true
-		defer func() { g.previous.toast.active = false }()
+		defer func() {
+			g.previous.toast.active = false
+		}()
 
 		width, height := float32(400), float32(125)
 
@@ -193,10 +198,15 @@ func (g *GUI) ToastOK(header, msg string, ok OnToastOK) {
 
 		var ops op.Ops
 
-		for {
-			event, ok := w.NextEvent().(system.FrameEvent)
+		for e := w.NextEvent(); ; e = w.NextEvent() {
+			if _, ok := e.(system.DestroyEvent); ok {
+				w.Perform(system.ActionClose)
+				return
+			}
+
+			event, ok := e.(system.FrameEvent)
 			if !ok {
-				notify.Missed(event, "ToastOk")
+				notify.Missed(event, "ToastYesNo")
 				continue
 			}
 
@@ -246,10 +256,12 @@ func (g *GUI) ToastYesNo(header, msg string, y OnToastYes, n OnToastNo) {
 	if g.previous.toast.active {
 		return
 	}
+	g.previous.toast.active = true
 
 	go func() {
-		g.previous.toast.active = true
-		defer func() { g.previous.toast.active = false }()
+		defer func() {
+			g.previous.toast.active = false
+		}()
 
 		width, height := unit.Dp(400), unit.Dp(125)
 
@@ -303,8 +315,13 @@ func (g *GUI) ToastYesNo(header, msg string, y OnToastYes, n OnToastNo) {
 
 		var ops op.Ops
 
-		for {
-			event, ok := w.NextEvent().(system.FrameEvent)
+		for e := w.NextEvent(); ; e = w.NextEvent() {
+			if _, ok := e.(system.DestroyEvent); ok {
+				w.Perform(system.ActionClose)
+				return
+			}
+
+			event, ok := e.(system.FrameEvent)
 			if !ok {
 				notify.Missed(event, "ToastYesNo")
 				continue

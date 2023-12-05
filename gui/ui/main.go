@@ -59,9 +59,8 @@ type main struct {
 
 	labels struct {
 		audio,
-		warning,
 		discord,
-		profile,
+		warning,
 		window,
 		cpu, cpuGraph,
 		ram, ramGraph,
@@ -82,8 +81,8 @@ type main struct {
 	}
 
 	buttons struct {
-		stop,
-		start *button.Widget
+		start,
+		stop *button.Widget
 		projector *button.ImageWidget
 	}
 
@@ -113,7 +112,10 @@ type main struct {
 		eco,
 		logs,
 		record,
-		file *button.Widget
+		file,
+		startstop,
+		hideTop,
+		hideRight *button.Widget
 	}
 }
 
@@ -142,7 +144,10 @@ func (g *GUI) main() {
 	defer ui.spinners.run.Stop()
 	defer ui.spinners.stop.Stop()
 
+	defer g.header.Remove(g.header.Add(ui.menu.startstop))
 	defer g.header.Remove(g.header.Add(ui.menu.settings))
+	defer g.header.Remove(g.header.Add(ui.menu.hideRight))
+	defer g.header.Remove(g.header.Add(ui.menu.hideTop))
 	defer g.header.Remove(g.header.Add(ui.menu.client))
 	defer g.header.Remove(g.header.Add(ui.menu.stats))
 	defer g.header.Remove(g.header.Add(ui.menu.results))
@@ -159,6 +164,8 @@ func (g *GUI) main() {
 		g.window.Perform(system.ActionCenter)
 		g.window.Perform(system.ActionUnmaximize)
 	}
+
+	g.header.Open()
 
 	var ops op.Ops
 
@@ -217,264 +224,254 @@ func (g *GUI) main() {
 			g.header.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				return ui.split.vertical.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 					return decorate.BackgroundAlt(gtx, func(gtx layout.Context) layout.Dimensions {
-						{
-							warnings, nonwarnings := []string{}, []string{}
-							switch {
-							case config.Current.Advanced.IncreasedCaptureRate > 0:
-								warnings = append(warnings, fmt.Sprintf("Match Frequency: %d%%",
-									100+config.Current.Advanced.IncreasedCaptureRate))
-							case config.Current.Advanced.IncreasedCaptureRate < 0:
-								nonwarnings = append(warnings, fmt.Sprintf("Match Frequency: %d%%",
-									100+config.Current.Advanced.IncreasedCaptureRate))
-							}
+						if ui.menu.hideTop.Text == "⇊" {
+							return ui.textblocks.feed.Layout(gtx, notify.Feeds())
+						}
 
-							if len(warnings) > 0 {
-								layout.Inset{
-									Left: unit.Dp(4),
-									Top:  unit.Dp(18),
-								}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-									ui.labels.warning.Text = fmt.Sprintf("⚠ CPU (%s)", strings.Join(warnings, ","))
-									return ui.labels.warning.Layout(gtx)
-								})
-							}
+						warnings, nonwarnings := []string{}, []string{}
+						switch {
+						case config.Current.Advanced.IncreasedCaptureRate > 0:
+							warnings = append(warnings, fmt.Sprintf("Match Frequency: %d%%",
+								100+config.Current.Advanced.IncreasedCaptureRate))
+						case config.Current.Advanced.IncreasedCaptureRate < 0:
+							nonwarnings = append(warnings, fmt.Sprintf("Match Frequency: %d%%",
+								100+config.Current.Advanced.IncreasedCaptureRate))
+						}
 
-							if len(nonwarnings) > 0 {
-								layout.Inset{
-									Left: unit.Dp(4),
-									Top:  unit.Dp(1),
-								}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-									ui.labels.warning.Text = fmt.Sprintf("⚠ CPU (%s)", strings.Join(nonwarnings, ","))
-									ui.labels.warning.Color = nrgba.PastelGreen.Color()
-									return ui.labels.warning.Layout(gtx)
-								})
-							}
+						if len(warnings) > 0 {
+							layout.Inset{
+								Left: unit.Dp(2),
+								Top:  unit.Dp(18),
+							}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+								ui.labels.warning.Text = fmt.Sprintf("⚠ CPU (%s)", strings.Join(warnings, ","))
+								return ui.labels.warning.Layout(gtx)
+							})
+						}
+
+						if len(nonwarnings) > 0 {
+							ui.labels.warning.Text = fmt.Sprintf("⚠ CPU (%s)", strings.Join(nonwarnings, ","))
+							ui.labels.warning.Color = nrgba.PastelGreen.Color()
 
 							layout.Inset{
 								Left: unit.Dp(2),
-								Top:  unit.Dp(1),
-							}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-								if config.Current.Advanced.Discord.Disabled {
-									ui.labels.discord.Color.A = 127
-									ui.labels.discord.Text = "👾 Discord — Disabled"
-								} else {
-									ui.labels.discord.Color.A = 200
-									ui.labels.discord.Text = fmt.Sprintf("👾 Discord — %s: \"%s\"", strings.ReplaceAll(discord.Activity.Details, "UniteHUD - ", ""), discord.Activity.State)
-								}
-								return ui.labels.discord.Layout(gtx)
-							})
-
-							layout.Inset{
-								Left: unit.Dp(2),
-								Top:  unit.Dp(17),
-							}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-								ui.labels.audio.Text = audio.Label()
-								return ui.labels.audio.Layout(gtx)
-							})
-
-							ui.labels.profile.Text = fmt.Sprintf("%s // %s", strings.Title(config.Current.Profile), strings.Title(config.Current.Platform))
-							layout.Inset{
-								Left: unit.Dp(4),
 								Top:  unit.Dp(35),
-							}.Layout(gtx, ui.labels.profile.Layout)
-
-							switch {
-							case device.IsActive():
-								if ui.labels.window.Text == "" || ui.labels.window.Text == config.Current.VideoCaptureWindow {
-									ui.labels.window.Text = device.Name(config.Current.VideoCaptureDevice)
-								}
-							case window.IsOpen():
-								ui.labels.window.Text = config.Current.VideoCaptureWindow
-							case monitor.IsDisplay():
-								ui.labels.window.Text = config.Current.VideoCaptureWindow
-							}
-							if config.Current.LostWindow != "" {
-								ui.labels.window.Text = config.Current.LostWindow
-								ui.labels.window.Color = nrgba.PaleRed.Color()
-							}
-							layout.Inset{
-								Left: unit.Dp(4),
-								Top:  unit.Dp(50),
-							}.Layout(gtx, ui.labels.window.Layout)
+							}.Layout(gtx, ui.labels.warning.Layout)
 						}
-						{
-							layout.Inset{
-								Top:  unit.Dp(28),
-								Left: unit.Dp(float32(gtx.Constraints.Max.X - 408)),
-							}.Layout(gtx, ui.labels.cpu.Layout)
 
-							layout.Inset{
-								Top:  unit.Dp(1),
-								Left: unit.Dp(float32(gtx.Constraints.Max.X - 450)),
-							}.Layout(gtx, ui.labels.cpuGraph.Layout)
-
-							layout.Inset{
-								Top:  unit.Dp(28),
-								Left: unit.Dp(float32(gtx.Constraints.Max.X - 248)),
-							}.Layout(gtx, ui.labels.ram.Layout)
-
-							layout.Inset{
-								Top:  unit.Dp(1),
-								Left: unit.Dp(float32(gtx.Constraints.Max.X - 300)),
-							}.Layout(gtx, ui.labels.ramGraph.Layout)
-
-							ui.labels.holding.Text = fmt.Sprintf("%02d/%02d", team.Energy.Holding, team.Energy.HoldingMax)
-
-							layout.Inset{
-								Top:  unit.Dp(50),
-								Left: unit.Dp(float32(gtx.Constraints.Max.X - 35)),
-							}.Layout(gtx, ui.labels.holding.Layout)
-						}
-						{
-							clients := server.Clients()
-							if clients > 0 {
-								ui.labels.connectedClients.Color = nrgba.Seafoam.Color()
+						layout.Inset{
+							Left: unit.Dp(1),
+							Top:  unit.Dp(.4),
+						}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+							if config.Current.Advanced.Discord.Disabled {
+								ui.labels.discord.Color.A = 127
+								ui.labels.discord.Text = "👾 Discord RPC Disabled"
 							} else {
-								ui.labels.connectedClients.Color = nrgba.PaleRed.Color()
+								ui.labels.discord.Color.A = 200
+								ui.labels.discord.Text = fmt.Sprintf("👾 %s: %s", strings.ReplaceAll(discord.Activity.Details, "UniteHUD - ", ""), discord.Activity.State)
 							}
+							return ui.labels.discord.Layout(gtx)
+						})
 
-							ui.labels.connectedClients.Text = fmt.Sprintf("OBS %d", clients)
-							layout.Inset{
-								Top:  unit.Dp(34),
-								Left: unit.Dp(float32(gtx.Constraints.Max.X - 135)),
-							}.Layout(gtx, ui.labels.connectedClients.Layout)
+						layout.Inset{
+							Left: unit.Dp(2),
+							Top:  unit.Dp(19),
+						}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+							ui.labels.audio.Text = audio.Label()
+							return ui.labels.audio.Layout(gtx)
+						})
+
+						switch {
+						case device.IsActive():
+							if ui.labels.window.Text == "" || ui.labels.window.Text == config.Current.Video.Capture.Window.Name {
+								ui.labels.window.Text = fmt.Sprintf("🕹️ %s", device.Name(config.Current.Video.Capture.Device.Index))
+							}
+						case window.IsOpen(), monitor.IsDisplay():
+							ui.labels.window.Text = fmt.Sprintf("🕹️ %s", config.Current.Video.Capture.Window.Name)
 						}
-						{
-							down := float32(1)
+						if config.Current.Video.Capture.Window.Lost != "" {
+							ui.labels.window.Text = config.Current.Video.Capture.Window.Lost
+							ui.labels.window.Text = fmt.Sprintf("🕹️ %s", config.Current.Video.Capture.Window.Name)
+							ui.labels.window.Color = nrgba.PaleRed.Color()
+						}
+						layout.Inset{
+							Left: unit.Dp(2),
+							Top:  unit.Dp(49),
+						}.Layout(gtx, ui.labels.window.Layout)
 
-							if g.Running {
-								ui.labels.symbol.Text = ui.spinners.run.Next()
-								ui.labels.symbol.Color = nrgba.Green.Color()
+						layout.Inset{
+							Top:  unit.Dp(28),
+							Left: unit.Dp(float32(gtx.Constraints.Max.X - 408)),
+						}.Layout(gtx, ui.labels.cpu.Layout)
 
-								ui.labels.acronym.Text = "RUN"
-								ui.labels.acronym.Color = nrgba.Green.Color()
-								down = .5
-							} else {
-								ui.labels.acronym.Color = nrgba.Slate.Color()
-								ui.labels.symbol.Color = nrgba.Slate.Color()
-								ui.labels.acronym.Text = "IDLE"
+						layout.Inset{
+							Top:  unit.Dp(1),
+							Left: unit.Dp(float32(gtx.Constraints.Max.X - 450)),
+						}.Layout(gtx, ui.labels.cpuGraph.Layout)
+
+						layout.Inset{
+							Top:  unit.Dp(28),
+							Left: unit.Dp(float32(gtx.Constraints.Max.X - 248)),
+						}.Layout(gtx, ui.labels.ram.Layout)
+
+						layout.Inset{
+							Top:  unit.Dp(1),
+							Left: unit.Dp(float32(gtx.Constraints.Max.X - 300)),
+						}.Layout(gtx, ui.labels.ramGraph.Layout)
+
+						ui.labels.holding.Text = fmt.Sprintf("%02d/%02d", team.Energy.Holding, team.Energy.HoldingMax)
+
+						layout.Inset{
+							Top:  unit.Dp(50),
+							Left: unit.Dp(float32(gtx.Constraints.Max.X - 35)),
+						}.Layout(gtx, ui.labels.holding.Layout)
+
+						clients := server.Clients()
+						if clients > 0 {
+							ui.labels.connectedClients.Color = nrgba.Seafoam.Color()
+						} else {
+							ui.labels.connectedClients.Color = nrgba.PaleRed.Color()
+						}
+
+						ui.labels.connectedClients.Text = fmt.Sprintf("OBS %d", clients)
+						layout.Inset{
+							Top:  unit.Dp(34),
+							Left: unit.Dp(float32(gtx.Constraints.Max.X - 135)),
+						}.Layout(gtx, ui.labels.connectedClients.Layout)
+
+						down := float32(1)
+
+						if g.Running {
+							ui.labels.symbol.Text = ui.spinners.run.Next()
+							ui.labels.symbol.Color = nrgba.Green.Color()
+
+							ui.labels.acronym.Text = "RUN"
+							ui.labels.acronym.Color = nrgba.Green.Color()
+							down = .5
+						} else {
+							ui.labels.acronym.Color = nrgba.Slate.Color()
+							ui.labels.symbol.Color = nrgba.Slate.Color()
+							ui.labels.acronym.Text = "IDLE"
+						}
+
+						ui.labels.symbol.Text = ui.spinners.stop.Next()
+						layout.Inset{
+							Top:  unit.Dp(48 + down),
+							Left: unit.Dp(float32(gtx.Constraints.Max.X - 135)),
+						}.Layout(gtx, ui.labels.symbol.Layout)
+
+						layout.Inset{
+							Top:  unit.Dp(50),
+							Left: unit.Dp(float32(gtx.Constraints.Max.X - 124)),
+						}.Layout(gtx, ui.labels.acronym.Layout)
+
+						layout.Inset{
+							Top:  unit.Dp(2),
+							Left: unit.Dp(float32(gtx.Constraints.Max.X - 135)),
+						}.Layout(gtx, ui.labels.version.Layout)
+
+						ui.labels.fps.Color = nrgba.FPS(g.fps.FPS()).Color()
+						ui.labels.fps.Text = fmt.Sprintf("%s FPS", g.fps)
+						layout.Inset{
+							Top:  unit.Dp(18),
+							Left: unit.Dp(float32(gtx.Constraints.Max.X - 135)),
+						}.Layout(gtx, ui.labels.fps.Layout)
+
+						o, p, s := server.Scores()
+
+						ui.labels.purpleScore.Text = fmt.Sprintf("%d", p)
+						layout.Inset{
+							Top:  unit.Dp(2),
+							Left: unit.Dp(float32(gtx.Constraints.Max.X - 35)),
+						}.Layout(gtx, ui.labels.purpleScore.Layout)
+
+						ui.labels.orangeScore.Text = fmt.Sprintf("%d", o)
+						layout.Inset{
+							Top:  unit.Dp(18),
+							Left: unit.Dp(float32(gtx.Constraints.Max.X - 35)),
+						}.Layout(gtx, ui.labels.orangeScore.Layout)
+
+						ui.labels.selfScore.Text = fmt.Sprintf("%d", s)
+						layout.Inset{
+							Top:  unit.Dp(34),
+							Left: unit.Dp(float32(gtx.Constraints.Max.X - 35)),
+						}.Layout(gtx, ui.labels.selfScore.Layout)
+
+						decorate.Label(&ui.labels.clock, server.Clock())
+						layout.Inset{
+							Top:  unit.Dp(2),
+							Left: unit.Dp(float32(gtx.Constraints.Max.X - 90)),
+						}.Layout(gtx, ui.labels.clock.Layout)
+
+						for i, t := range server.Regielekis() {
+							ui.labels.regielekis[i].Color = team.None.Color()
+							if t != team.None.Name {
+								ui.labels.regielekis[i].Color = nrgba.Regieleki.Color()
 							}
 
-							ui.labels.symbol.Text = ui.spinners.stop.Next()
-							layout.Inset{
-								Top:  unit.Dp(48 + down),
-								Left: unit.Dp(float32(gtx.Constraints.Max.X - 135)),
-							}.Layout(gtx, ui.labels.symbol.Layout)
+							ui.labels.regielekiUnderlines[i].Color = team.Color(t).Color()
+						}
 
-							layout.Inset{
-								Top:  unit.Dp(50),
-								Left: unit.Dp(float32(gtx.Constraints.Max.X - 124)),
-							}.Layout(gtx, ui.labels.acronym.Layout)
-
-							layout.Inset{
-								Top:  unit.Dp(2),
-								Left: unit.Dp(float32(gtx.Constraints.Max.X - 135)),
-							}.Layout(gtx, ui.labels.version.Layout)
-
-							ui.labels.fps.Color = nrgba.FPS(g.fps.FPS()).Color()
-							ui.labels.fps.Text = fmt.Sprintf("%s FPS", g.fps)
+						for i := range ui.labels.regielekis {
 							layout.Inset{
 								Top:  unit.Dp(18),
-								Left: unit.Dp(float32(gtx.Constraints.Max.X - 135)),
-							}.Layout(gtx, ui.labels.fps.Layout)
+								Left: unit.Dp(float32(gtx.Constraints.Max.X-90) + float32(i*12)),
+							}.Layout(gtx, ui.labels.regielekis[i].Layout)
+
+							layout.Inset{
+								Top:  unit.Dp(15),
+								Left: unit.Dp(float32(gtx.Constraints.Max.X-90) + float32(i*12)),
+							}.Layout(gtx, ui.labels.regielekiUnderlines[i].Layout)
 						}
-						{
-							o, p, s := server.Scores()
 
-							ui.labels.purpleScore.Text = fmt.Sprintf("%d", p)
-							layout.Inset{
-								Top:  unit.Dp(2),
-								Left: unit.Dp(float32(gtx.Constraints.Max.X - 35)),
-							}.Layout(gtx, ui.labels.purpleScore.Layout)
+						b := server.Bottom()
+						for i := range ui.labels.regiBottoms {
+							ui.labels.regiBottoms[i].Color = team.None.Color()
+							ui.labels.regiBottoms[i].Text = "R"
+							ui.labels.regiBottomUnderlines[i].Color = ui.labels.regiBottoms[i].Color
 
-							ui.labels.orangeScore.Text = fmt.Sprintf("%d", o)
-							layout.Inset{
-								Top:  unit.Dp(18),
-								Left: unit.Dp(float32(gtx.Constraints.Max.X - 35)),
-							}.Layout(gtx, ui.labels.orangeScore.Layout)
+							if i < len(b) {
+								t := b[i]
+								ui.labels.regiBottoms[i].Text = strings.ToUpper(string(t.Name[4]))
+								ui.labels.regiBottoms[i].Color = nrgba.Objective(t.Name).Color()
+								ui.labels.regiBottomUnderlines[i].Color = team.Color(t.Team).Color()
+							}
 
-							ui.labels.selfScore.Text = fmt.Sprintf("%d", s)
 							layout.Inset{
 								Top:  unit.Dp(34),
-								Left: unit.Dp(float32(gtx.Constraints.Max.X - 35)),
-							}.Layout(gtx, ui.labels.selfScore.Layout)
-						}
-						{
-							decorate.Label(&ui.labels.clock, server.Clock())
-							layout.Inset{
-								Top:  unit.Dp(2),
-								Left: unit.Dp(float32(gtx.Constraints.Max.X - 90)),
-							}.Layout(gtx, ui.labels.clock.Layout)
-						}
-						{
-							for i, t := range server.Regielekis() {
-								ui.labels.regielekis[i].Color = team.None.Color()
-								if t != team.None.Name {
-									ui.labels.regielekis[i].Color = nrgba.Regieleki.Color()
-								}
-
-								ui.labels.regielekiUnderlines[i].Color = team.Color(t).Color()
-							}
-
-							for i := range ui.labels.regielekis {
-								layout.Inset{
-									Top:  unit.Dp(18),
-									Left: unit.Dp(float32(gtx.Constraints.Max.X-90) + float32(i*12)),
-								}.Layout(gtx, ui.labels.regielekis[i].Layout)
-
-								layout.Inset{
-									Top:  unit.Dp(15),
-									Left: unit.Dp(float32(gtx.Constraints.Max.X-90) + float32(i*12)),
-								}.Layout(gtx, ui.labels.regielekiUnderlines[i].Layout)
-							}
-						}
-						{
-							b := server.Bottom()
-							for i := range ui.labels.regiBottoms {
-								ui.labels.regiBottoms[i].Color = team.None.Color()
-								ui.labels.regiBottoms[i].Text = "R"
-								ui.labels.regiBottomUnderlines[i].Color = ui.labels.regiBottoms[i].Color
-
-								if i < len(b) {
-									t := b[i]
-									ui.labels.regiBottoms[i].Text = strings.ToUpper(string(t.Name[4]))
-									ui.labels.regiBottoms[i].Color = nrgba.Objective(t.Name).Color()
-									ui.labels.regiBottomUnderlines[i].Color = team.Color(t.Team).Color()
-								}
-
-								layout.Inset{
-									Top:  unit.Dp(34),
-									Left: unit.Dp(float32(gtx.Constraints.Max.X-90) + float32(i*12)),
-								}.Layout(gtx, ui.labels.regiBottoms[i].Layout)
-
-								layout.Inset{
-									Top:  unit.Dp(31),
-									Left: unit.Dp(float32(gtx.Constraints.Max.X-90) + float32(i*12)),
-								}.Layout(gtx, ui.labels.regiBottomUnderlines[i].Layout)
-							}
-						}
-						{
-							ui.labels.uptime.Text = g.performance.uptime
+								Left: unit.Dp(float32(gtx.Constraints.Max.X-90) + float32(i*12)),
+							}.Layout(gtx, ui.labels.regiBottoms[i].Layout)
 
 							layout.Inset{
-								Top:  unit.Dp(50),
-								Left: unit.Dp(float32(gtx.Constraints.Max.X - 90)),
-							}.Layout(gtx, ui.labels.uptime.Layout)
+								Top:  unit.Dp(31),
+								Left: unit.Dp(float32(gtx.Constraints.Max.X-90) + float32(i*12)),
+							}.Layout(gtx, ui.labels.regiBottomUnderlines[i].Layout)
 						}
-						{
-							layout.Inset{
-								Top: unit.Dp(65),
-							}.Layout(
-								gtx,
-								func(gtx layout.Context) layout.Dimensions {
-									return ui.textblocks.feed.Layout(gtx, notify.Feeds())
-								},
-							)
-						}
+
+						ui.labels.uptime.Text = g.performance.uptime
+
+						layout.Inset{
+							Top:  unit.Dp(50),
+							Left: unit.Dp(float32(gtx.Constraints.Max.X - 90)),
+						}.Layout(gtx, ui.labels.uptime.Layout)
+
+						layout.Inset{
+							Top: unit.Dp(65),
+						}.Layout(
+							gtx,
+							func(gtx layout.Context) layout.Dimensions {
+								return ui.textblocks.feed.Layout(gtx, notify.Feeds())
+							},
+						)
+
 						return layout.Dimensions{Size: gtx.Constraints.Max}
 					},
 					)
 				},
 					func(gtx layout.Context) layout.Dimensions {
+						if ui.menu.hideRight.Text == "⇇" {
+							return layout.Dimensions{}
+						}
+
 						return decorate.BackgroundAlt(gtx, func(gtx layout.Context) layout.Dimensions {
 							// Right-side criteria.
 							{
@@ -594,7 +591,7 @@ func (g *GUI) mainUI() *main {
 
 	var err error
 
-	ui.split.vertical = split.NewVertical(.70)
+	ui.split.vertical = split.NewVertical(1)
 
 	ui.buttons.stop = &button.Widget{
 		Text:            "Stop",
@@ -617,6 +614,10 @@ func (g *GUI) mainUI() *main {
 			g.Actions <- Stop
 			g.Running = false
 			g.Preview = true
+
+			ui.menu.startstop.Text = "▶"
+			ui.menu.startstop.OnHoverHint = ui.buttons.start.OnHoverHint
+			ui.menu.startstop.Pressed = nrgba.PastelGreen
 		},
 	}
 
@@ -642,10 +643,14 @@ func (g *GUI) mainUI() *main {
 
 			g.Actions <- Config
 			g.Running = true
+
+			ui.menu.startstop.Text = "⏹"
+			ui.menu.startstop.OnHoverHint = ui.buttons.stop.OnHoverHint
+			ui.menu.startstop.Pressed = nrgba.PastelRed
 		},
 	}
 
-	ui.textblocks.feed, err = textblock.New(g.header.Collection.Cascadia())
+	ui.textblocks.feed, err = textblock.New(g.header.Collection.Cascadia(), notify.MaxPosts)
 	if err != nil {
 		ui.textblocks.feed = &textblock.Widget{}
 		notify.Error("Failed to load font: (%v)", err)
@@ -667,23 +672,20 @@ func (g *GUI) mainUI() *main {
 		},
 	}
 
-	ui.labels.audio = material.Label(g.header.Collection.NotoSans().Theme, unit.Sp(11), audio.Label())
-	ui.labels.audio.Color = nrgba.PastelGreen.Alpha(200).Color()
-	ui.labels.audio.Font.Weight = 0
+	ui.labels.audio = material.Caption(g.header.Collection.NotoSans().Theme, audio.Label())
+	ui.labels.audio.Color = nrgba.Slate.Color()
+	ui.labels.audio.Alignment = text.Middle
+	ui.labels.audio.Font.Weight = font.ExtraBold
 
-	ui.labels.discord = material.Label(g.header.Collection.NotoSans().Theme, unit.Sp(11), "👾 Discord")
-	ui.labels.discord.Color = nrgba.Discord.Alpha(200).Color()
-	ui.labels.discord.Font.Weight = 0
+	ui.labels.discord = material.Caption(g.header.Collection.NotoSans().Theme, "👾 Discord Disabled")
+	ui.labels.discord.Color = nrgba.Discord.Color()
+	ui.labels.audio.Alignment = text.Middle
+	ui.labels.discord.Font.Weight = font.ExtraBold
 
-	ui.labels.warning = material.Label(g.header.Collection.NotoSans().Theme, unit.Sp(11), "⚠ CPU")
+	ui.labels.warning = material.Caption(g.header.Collection.NotoSans().Theme, "⚠ CPU")
 	ui.labels.warning.Color = nrgba.Yellow.Alpha(200).Color()
-	ui.labels.warning.Font.Weight = 0
-
-	ui.labels.profile = material.Caption(g.header.Collection.Calibri().Theme, "")
-	ui.labels.profile.Color = nrgba.DreamyPurple.Color()
-	ui.labels.profile.Alignment = text.Middle
-	ui.labels.profile.Font.Weight = font.ExtraBold
-	ui.labels.profile.TextSize = unit.Sp(14)
+	ui.labels.audio.Alignment = text.Middle
+	ui.labels.warning.Font.Weight = font.ExtraBold
 
 	ui.labels.window = material.Caption(g.header.Collection.Calibri().Theme, "")
 	ui.labels.window.Color = nrgba.DarkSeafoam.Color()
@@ -834,10 +836,10 @@ func (g *GUI) mainUI() *main {
 		TextSize:        unit.Sp(18),
 		TextInsetBottom: -2,
 		Font:            g.header.Collection.NishikiTeki(),
-		OnHoverHint:     func() { g.header.Tip("Settings") },
+		OnHoverHint:     func() { g.header.Tip("Modify capture settings") },
 
-		Pressed:     nrgba.Transparent80,
-		Released:    nrgba.SilverPurple,
+		Released:    nrgba.Transparent80,
+		Pressed:     nrgba.SilverPurple,
 		BorderWidth: unit.Sp(.1),
 		Click: func(this *button.Widget) {
 			defer this.Deactivate()
@@ -850,7 +852,7 @@ func (g *GUI) mainUI() *main {
 		Text:        "📺",
 		Font:        g.header.Collection.NishikiTeki(),
 		OnHoverHint: ui.buttons.projector.HintEvent,
-		Released:    nrgba.Discord.Alpha(100),
+		Pressed:     nrgba.Discord.Alpha(100),
 		TextSize:    unit.Sp(16),
 
 		Click: func(this *button.Widget) {
@@ -867,7 +869,7 @@ func (g *GUI) mainUI() *main {
 		Text:        "¼",
 		Font:        g.header.Collection.NishikiTeki(),
 		OnHoverHint: func() { g.header.Tip("View capture statistics") },
-		Released:    nrgba.Pinkity,
+		Pressed:     nrgba.Pinkity,
 		TextSize:    unit.Sp(15),
 
 		Click: func(this *button.Widget) {
@@ -889,7 +891,7 @@ func (g *GUI) mainUI() *main {
 		TextSize:    unit.Sp(12),
 		Font:        g.header.Collection.Cascadia(),
 		OnHoverHint: func() { g.header.Tip("View win/loss history") },
-		Released:    nrgba.Seafoam,
+		Pressed:     nrgba.Seafoam,
 
 		Click: func(this *button.Widget) {
 			defer this.Deactivate()
@@ -902,7 +904,7 @@ func (g *GUI) mainUI() *main {
 		Text:        "obs",
 		Font:        g.header.Collection.NishikiTeki(),
 		OnHoverHint: func() { g.header.Tip("Open OBS client folder") },
-		Released:    nrgba.Purple,
+		Pressed:     nrgba.Purple,
 		TextSize:    unit.Sp(12),
 
 		Click: func(this *button.Widget) {
@@ -917,7 +919,7 @@ func (g *GUI) mainUI() *main {
 				OnToastOK(func() {
 					err = open.Run(filepath.Join(global.WorkingDirectory(), "www"))
 					if err != nil {
-						notify.Error("UI: Failed to open www/ directory: %v", err)
+						notify.Error("🖥️  Failed to open www/ directory: %v", err)
 						return
 					}
 				}),
@@ -926,17 +928,18 @@ func (g *GUI) mainUI() *main {
 	}
 
 	ui.menu.clear = &button.Widget{
-		Text:        "🗘",
-		Font:        g.header.Collection.NishikiTeki(),
-		OnHoverHint: func() { g.header.Tip("Clear event history") },
-		Released:    nrgba.Orange,
-		TextSize:    unit.Sp(14),
+		Text:            "🧹",
+		Font:            g.header.Collection.NishikiTeki(),
+		OnHoverHint:     func() { g.header.Tip("Clear event history") },
+		TextInsetBottom: -2,
+		Pressed:         nrgba.Orange,
+		TextSize:        unit.Sp(14),
 
 		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
 			notify.CLS()
-			notify.System("Cleared")
+			notify.System("🧹  Cleared")
 		},
 	}
 
@@ -944,8 +947,7 @@ func (g *GUI) mainUI() *main {
 		Text:        "⚶",
 		Font:        g.header.Collection.NishikiTeki(),
 		OnHoverHint: func() { g.header.Tip("Toggle resource saver") },
-		Released:    nrgba.ForestGreen,
-		Pressed:     nrgba.PaleRed.Alpha(50),
+		Pressed:     nrgba.ForestGreen,
 		TextSize:    unit.Sp(16),
 
 		Click: func(this *button.Widget) {
@@ -957,9 +959,9 @@ func (g *GUI) mainUI() *main {
 			}
 
 			if g.performance.eco {
-				notify.System("Resource saver has been enabled")
+				notify.System("⚶  Resource saver has been enabled")
 			} else {
-				notify.System("Resource saver has been disabled")
+				notify.System("⚶  Resource saver has been disabled")
 			}
 		},
 	}
@@ -968,7 +970,7 @@ func (g *GUI) mainUI() *main {
 		Text:        "🗁",
 		Font:        g.header.Collection.NishikiTeki(),
 		OnHoverHint: func() { g.header.Tip("Open log directory") },
-		Released:    nrgba.PastelBabyBlue,
+		Pressed:     nrgba.PastelBabyBlue,
 		TextSize:    unit.Sp(16),
 
 		Click: func(this *button.Widget) {
@@ -978,7 +980,7 @@ func (g *GUI) mainUI() *main {
 
 			err := save.Open()
 			if err != nil {
-				notify.Error("Failed to open \"%s\" (%v)", save.Directory, err)
+				notify.Error("🗁  Failed to open \"%s\" (%v)", save.Directory, err)
 			}
 		},
 	}
@@ -987,8 +989,8 @@ func (g *GUI) mainUI() *main {
 		Text:        "🎬",
 		Font:        g.header.Collection.NishikiTeki(),
 		OnHoverHint: func() { g.header.Tip("Record matched events") },
-		Released:    nrgba.Pinkity.Alpha(100),
-		TextSize:    16,
+		Pressed:     nrgba.Pinkity.Alpha(100),
+		TextSize:    15,
 
 		Click: func(this *button.Widget) {
 			title := "Record"
@@ -997,9 +999,8 @@ func (g *GUI) mainUI() *main {
 				defer save.Logs()
 
 				config.Current.Record = true
-				notify.System("Recording captured events in %s", save.Directory)
+				notify.System("🎬  Recording captured events in %s", save.Directory)
 				this.Text = "■"
-				this.TextSize = 15
 			}
 
 			if config.Current.Record {
@@ -1008,14 +1009,12 @@ func (g *GUI) mainUI() *main {
 				yes = func() {
 					defer save.Logs()
 
-					notify.System("Saved captured events in %s", save.Directory)
+					notify.System("🎬  Saved captured events in %s", save.Directory)
 					this.Text = "🎬"
-					this.TextSize = 16
-					this.TextInsetBottom = 0
 
 					err := save.Open()
 					if err != nil {
-						notify.Error("Failed to open \"%s\" (%v)", save.Directory, err)
+						notify.Error("🎬  Failed to open \"%s\" (%v)", save.Directory, err)
 					}
 				}
 			}
@@ -1027,8 +1026,8 @@ func (g *GUI) mainUI() *main {
 	ui.menu.file = &button.Widget{
 		Text:            "📝",
 		Font:            g.header.Collection.NishikiTeki(),
-		Released:        nrgba.CoolBlue,
-		TextSize:        unit.Sp(17),
+		Pressed:         nrgba.CoolBlue,
+		TextSize:        unit.Sp(16),
 		TextInsetBottom: -1,
 		Disabled:        false,
 		OnHoverHint:     func() { g.header.Tip("Open configuration file") },
@@ -1047,6 +1046,75 @@ func (g *GUI) mainUI() *main {
 			if err != nil {
 				notify.Error("Failed to reload \"%s\" (%v)", config.Current.File(), err)
 				return
+			}
+		},
+	}
+
+	ui.menu.startstop = &button.Widget{
+		Text:            "▶",
+		Font:            g.header.Collection.NishikiTeki(),
+		Pressed:         nrgba.PastelGreen,
+		TextSize:        unit.Sp(16),
+		TextInsetBottom: -1,
+		Disabled:        false,
+		OnHoverHint:     ui.buttons.start.OnHoverHint,
+		Click: func(this *button.Widget) {
+			defer this.Deactivate()
+
+			if this.Text == "▶" {
+				ui.buttons.start.Click(ui.buttons.start)
+				this.Text = "⏸"
+				this.OnHoverHint = ui.buttons.stop.OnHoverHint
+				// this.Pressed = nrgba.PastelRed
+				this.Released = nrgba.PastelRed
+			} else {
+				ui.buttons.stop.Click(ui.buttons.stop)
+				this.Text = "▶"
+				this.OnHoverHint = ui.buttons.start.OnHoverHint
+				this.Pressed = nrgba.PastelGreen
+				this.Released = nrgba.Nothing
+			}
+		},
+	}
+
+	ui.menu.hideRight = &button.Widget{
+		Text:            "⇇",
+		Font:            g.header.Collection.NishikiTeki(),
+		Pressed:         nrgba.PastelGreen,
+		TextSize:        unit.Sp(16),
+		TextInsetBottom: -1,
+		OnHoverHint:     func() { g.header.Tip("Show Main Menu preview area") },
+		Click: func(this *button.Widget) {
+			defer this.Deactivate()
+
+			if this.Text == "⇉" {
+				this.Text = "⇇"
+				ui.split.vertical.Ratio = 1
+				this.OnHoverHint = func() { g.header.Tip("Show Main Menu preview area") }
+			} else {
+				this.Text = "⇉"
+				ui.split.vertical.Ratio = .7
+				this.OnHoverHint = func() { g.header.Tip("Hide Main Menu preview area") }
+			}
+		},
+	}
+
+	ui.menu.hideTop = &button.Widget{
+		Text:            "⇈",
+		Font:            g.header.Collection.NishikiTeki(),
+		Pressed:         nrgba.PastelGreen,
+		TextSize:        unit.Sp(16),
+		TextInsetBottom: -1,
+		OnHoverHint:     func() { g.header.Tip("Show Main Menu configuration area") },
+		Click: func(this *button.Widget) {
+			defer this.Deactivate()
+
+			if this.Text == "⇈" {
+				this.Text = "⇊"
+				this.OnHoverHint = func() { g.header.Tip("Show Main Menu configuration area") }
+			} else {
+				this.Text = "⇈"
+				this.OnHoverHint = func() { g.header.Tip("Hide Main Menu configuration area") }
 			}
 		},
 	}

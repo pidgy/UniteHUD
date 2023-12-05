@@ -85,6 +85,17 @@ type WindowPlacement struct {
 	Device      Rect
 }
 
+// https://learn.microsoft.com/en-us/windows/win32/hidpi/dpi-awareness-context
+type SetProcessDpiAwarenessContext int
+
+const (
+	Unaware SetProcessDpiAwarenessContext = iota
+	SystemAware
+	PerMonitorAware
+	PerMonitorAwareV2
+	UnawareGDIScaled
+)
+
 var (
 	BitBltRasterOperations = struct {
 		SrcCopy,
@@ -268,7 +279,7 @@ var (
 	DwmGetWindowAttribute = dwmapi.MustFindProc("DwmGetWindowAttribute")
 
 	modShcore              = syscall.NewLazyDLL("shcore.dll")
-	SetProcessDpiAwareness = modShcore.NewProc("SetProcessDpiAwareness")
+	setProcessDpiAwareness = modShcore.NewProc("SetProcessDpiAwareness")
 
 	modKernel32  = syscall.NewLazyDLL("kernel32.dll")
 	GetLastError = modKernel32.NewProc("GetLastError")
@@ -288,6 +299,16 @@ func (p Point) String() string {
 
 func (r Rect) String() string {
 	return fmt.Sprintf("[%d,%d,%d,%d]", r.Left, r.Top, r.Right, r.Bottom)
+}
+
+// SetProcessDpiAwareness ensures that Windows API calls will tell us the scale factor for our
+// screen so that our screenshot works on hi-res displays.
+func SetProcessDPIAwareness(ctx SetProcessDpiAwarenessContext) error {
+	_, _, err := setProcessDpiAwareness.Call(uintptr(ctx))
+	if err != syscall.Errno(0) {
+		return err
+	}
+	return nil
 }
 
 func (w *WindowPlacement) String() string {

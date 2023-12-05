@@ -9,7 +9,7 @@ import (
 type RGBA color.RGBA
 
 var (
-	Announce       = RGBA{R: 202, G: 222, B: 212, A: 255}
+	Announce       = RGBA{R: 255, G: 255, B: 225, A: 255}
 	Background     = RGBA{R: 9, G: 8, B: 12, A: 255}
 	BackgroundAlt  = RGBA{R: 18, G: 17, B: 21, A: 255}
 	Black          = RGBA{R: 0, G: 0, B: 0, A: 255}
@@ -18,27 +18,27 @@ var (
 	DarkRed        = RGBA{R: 166, G: 43, B: 53, A: 255}
 	DarkSeafoam    = RGBA{R: 46, G: 204, B: 113, A: 255}
 	DarkYellow     = RGBA{R: 204, G: 204, B: 0, A: 255}
-	DarkBlue       = RGBA{R: 25, G: 25, B: 100, A: 50}
+	DarkBlue       = RGBA{R: 25, G: 25, B: 100, A: 255}
 	DarkGray       = RGBA{R: 25, G: 25, B: 25, A: 255}
-	DarkerYellow   = RGBA{R: 255, G: 255, B: 0, A: 63}
-	DarkerRed      = RGBA{R: 255, G: 15, B: 15, A: 15}
+	DarkerYellow   = RGBA{R: 255, G: 255, B: 0, A: 255}
+	DarkerRed      = RGBA{R: 255, G: 15, B: 15, A: 255}
 	DeepBlue       = RGBA{R: 51, G: 51, B: 255, A: 255}
 	Denounce       = RGBA{R: 222, G: 202, B: 206, A: 255}
 	Disabled       = BackgroundAlt
 	Discord        = RGBA{R: 114, G: 137, B: 218, A: 255}
 	DreamyBlue     = RGBA{R: 115, G: 119, B: 250, A: 255}
 	DreamyPurple   = RGBA{R: 143, G: 152, B: 247, A: 255}
-	ForestGreen    = RGBA{R: 15, G: 255, B: 15, A: 63}
+	ForestGreen    = RGBA{R: 15, G: 255, B: 15, A: 255}
 	FullMoonBlue   = RGBA{R: 20, G: 50, B: 71, A: 255}
 	Gold           = RGBA{R: 255, G: 204, B: 102, A: 255}
 	Gray           = RGBA{R: 75, G: 75, B: 75, A: 255}
 	Green          = RGBA{R: 0, G: 255, B: 0, A: 255}
 	Highlight      = RGBA{R: 255, G: 255, B: 255, A: 255}
 	Lemon          = RGBA{R: 206, G: 242, B: 85, A: 255}
-	LightGray      = RGBA{R: 100, G: 100, B: 100, A: 50}
+	LightGray      = RGBA{R: 100, G: 100, B: 100, A: 255}
 	LightPurple    = RGBA{R: 204, G: 0, B: 204, A: 255}
 	Lilac          = RGBA{R: 121, G: 103, B: 181, A: 255}
-	Night          = RGBA{R: 50, G: 50, B: 255, A: 63}
+	Night          = RGBA{R: 50, G: 50, B: 255, A: 255}
 	Nothing        = RGBA{R: 0, G: 0, B: 0, A: 0}
 	OfficeBlue     = RGBA{R: 51, G: 102, B: 255, A: 255}
 	Orange         = RGBA{R: 255, G: 165, B: 0, A: 255}
@@ -52,7 +52,7 @@ var (
 	PurpleBlue     = RGBA{R: 83, G: 94, B: 255, A: 255}
 	PaleRed        = RGBA{R: 168, G: 49, B: 49, A: 255}
 	Pinkity        = RGBA{R: 255, G: 112, B: 150, A: 255}
-	PolarBlue      = RGBA{R: 64, G: 75, B: 122, A: 50}
+	PolarBlue      = RGBA{R: 64, G: 75, B: 122, A: 255}
 	Red            = RGBA{R: 255, G: 0, B: 0, A: 255}
 	Regice         = SeaBlue
 	Regieleki      = Yellow
@@ -61,7 +61,7 @@ var (
 	SeaBlue        = RGBA{R: 115, G: 165, B: 240, A: 255}
 	Seafoam        = RGBA{R: 46, G: 204, B: 113, A: 255}
 	SilverPurple   = RGBA{R: 102, G: 102, B: 153, A: 255}
-	Slate          = RGBA{R: 255, G: 255, B: 255, A: 63}
+	Slate          = RGBA{R: 255, G: 255, B: 255, A: 255}
 	Splash         = RGBA{R: 10, G: 8, B: 20, A: 255}
 	System         = RGBA{R: 200, G: 200, B: 200, A: 255}
 	Transparent80  = RGBA{R: 0, G: 0, B: 0, A: 80}

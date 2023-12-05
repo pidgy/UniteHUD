@@ -63,7 +63,7 @@ func Screens() []string {
 func StateArea() image.Rectangle {
 	i, err := Capture()
 	if err != nil {
-		notify.Error("Failed to capture area for state events (%v)", err)
+		notify.Error("📽️  Failed to capture area for state events (%v)", err)
 		return image.Rect(0, 0, 0, 0)
 	}
 

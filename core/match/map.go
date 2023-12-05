@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"image"
 
+	"gocv.io/x/gocv"
+
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/rgba"
 	"github.com/pidgy/unitehud/core/state"
 	"github.com/pidgy/unitehud/core/stats"
 	"github.com/pidgy/unitehud/core/team"
-	"gocv.io/x/gocv"
 )
 
 type Tier struct {
@@ -97,7 +98,7 @@ func goals(matrix gocv.Mat, img *image.RGBA) (Goals, bool) {
 
 		for i := range results {
 			if results[i].Empty() {
-				notify.SystemWarn("Empty result for %s", templates[i].Truncated())
+				notify.SystemWarn("🗺️ Empty result for %s", templates[i].Truncated())
 				continue
 			}
 

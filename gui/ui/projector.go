@@ -29,6 +29,7 @@ import (
 	"github.com/pidgy/unitehud/gui/visual/button"
 	"github.com/pidgy/unitehud/gui/visual/decorate"
 	"github.com/pidgy/unitehud/gui/visual/title"
+	"github.com/pidgy/unitehud/media/audio"
 	"github.com/pidgy/unitehud/media/img/splash"
 	"github.com/pidgy/unitehud/media/video"
 	"github.com/pidgy/unitehud/media/video/device"
@@ -150,7 +151,7 @@ func (g *GUI) projector() {
 			}
 
 			decorate.Background(gtx)
-			decorate.Label(&ui.footer.api, "Video Capture API: %s", device.APIName(device.API(config.Current.VideoCaptureAPI)))
+			decorate.Label(&ui.footer.api, "Video Capture API: %s", device.APIName(device.API(config.Current.Video.Capture.Device.API)))
 			decorate.Label(&ui.footer.cpu, g.performance.cpu)
 			decorate.Label(&ui.footer.ram, g.performance.ram)
 			decorate.Label(&ui.footer.fps, "%s FPS", g.fps)
@@ -436,11 +437,11 @@ func (g *GUI) projectorUI() *projected {
 
 	// 				config.Current.Reload()
 
-	// 				ui.groups.areas.energy.Min, ui.groups.areas.energy.Max = config.Current.Energy.Min, config.Current.Energy.Max
-	// 				ui.groups.areas.time.Min, ui.groups.areas.time.Max = config.Current.Time.Min, config.Current.Time.Max
-	// 				ui.groups.areas.score.Min, ui.groups.areas.score.Max = config.Current.Scores.Min, config.Current.Scores.Max
-	// 				ui.groups.areas.objective.Min, ui.groups.areas.objective.Max = config.Current.Objectives.Min, config.Current.Objectives.Max
-	// 				ui.groups.areas.ko.Min, ui.groups.areas.ko.Max = config.Current.KOs.Min, config.Current.KOs.Max
+	// 				ui.groups.areas.energy.Min, ui.groups.areas.energy.Max = config.Current.XY.Energy.Min, config.Current.XY.Energy.Max
+	// 				ui.groups.areas.time.Min, ui.groups.areas.time.Max = config.Current.XY.Time.Min, config.Current.XY.Time.Max
+	// 				ui.groups.areas.score.Min, ui.groups.areas.score.Max = config.Current.XY.Scores.Min, config.Current.XY.Scores.Max
+	// 				ui.groups.areas.objective.Min, ui.groups.areas.objective.Max = config.Current.XY.Objectives.Min, config.Current.XY.Objectives.Max
+	// 				ui.groups.areas.ko.Min, ui.groups.areas.ko.Max = config.Current.XY.KOs.Min, config.Current.XY.KOs.Max
 
 	// 				// ui.groups.videos.window.populate(true)
 	// 				ui.groups.videos.device.populate(true)
@@ -460,7 +461,7 @@ func (g *GUI) projectorUI() *projected {
 	ui.buttons.menu.home = &button.Widget{
 		Text:            "🏠",
 		Font:            g.header.Collection.NishikiTeki(),
-		Released:        nrgba.Discord.Alpha(100),
+		Pressed:         nrgba.Discord.Alpha(100),
 		TextSize:        unit.Sp(16),
 		TextInsetBottom: -1,
 		Disabled:        false,
@@ -468,11 +469,11 @@ func (g *GUI) projectorUI() *projected {
 		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
-			config.Current.Scores = ui.groups.areas.score.Rectangle()
-			config.Current.Time = ui.groups.areas.time.Rectangle()
-			config.Current.Energy = ui.groups.areas.energy.Rectangle()
-			config.Current.Objectives = ui.groups.areas.objective.Rectangle()
-			config.Current.KOs = ui.groups.areas.ko.Rectangle()
+			config.Current.XY.Scores = ui.groups.areas.score.Rectangle()
+			config.Current.XY.Time = ui.groups.areas.time.Rectangle()
+			config.Current.XY.Energy = ui.groups.areas.energy.Rectangle()
+			config.Current.XY.Objectives = ui.groups.areas.objective.Rectangle()
+			config.Current.XY.KOs = ui.groups.areas.ko.Rectangle()
 
 			if config.Cached().Eq(config.Current) {
 				g.Actions <- Refresh
@@ -488,7 +489,7 @@ func (g *GUI) projectorUI() *projected {
 
 					err := config.Current.Save()
 					if err != nil {
-						notify.Error("Failed to save UniteHUD configuration (%v)", err)
+						notify.Error("Projector: Failed to save UniteHUD configuration (%v)", err)
 					}
 
 					g.Actions <- Refresh
@@ -500,6 +501,8 @@ func (g *GUI) projectorUI() *projected {
 					server.Clear()
 
 					config.Current = config.Cached()
+
+					audio.Restart()
 
 					g.Actions <- Refresh
 					g.next(is.MainMenu)
@@ -514,8 +517,7 @@ func (g *GUI) projectorUI() *projected {
 		TextInsetBottom: -2,
 		Font:            g.header.Collection.NishikiTeki(),
 		OnHoverHint:     func() { g.header.Tip("Open advanced settings") },
-		Pressed:         nrgba.Transparent80,
-		Released:        nrgba.Lilac,
+		Pressed:         nrgba.Lilac,
 		BorderWidth:     unit.Sp(.1),
 		Click: func(this *button.Widget) {
 			defer this.Deactivate()
@@ -542,7 +544,7 @@ func (g *GUI) projectorUI() *projected {
 		Font:            g.header.Collection.NishikiTeki(),
 		TextSize:        unit.Sp(17),
 		TextInsetBottom: -1,
-		Released:        nrgba.BloodOrange,
+		Pressed:         nrgba.BloodOrange,
 		OnHoverHint:     func() { g.header.Tip("Preview capture areas") },
 		Click: func(this *button.Widget) {
 			defer this.Deactivate()
@@ -567,7 +569,7 @@ func (g *GUI) projectorUI() *projected {
 	ui.buttons.menu.save = &button.Widget{
 		Text:            "🖫",
 		Font:            g.header.Collection.NishikiTeki(),
-		Released:        nrgba.OfficeBlue,
+		Pressed:         nrgba.OfficeBlue,
 		TextSize:        unit.Sp(16),
 		TextInsetBottom: -1,
 		Disabled:        false,
@@ -579,18 +581,18 @@ func (g *GUI) projectorUI() *projected {
 
 					server.Clear()
 
-					config.Current.Scores = ui.groups.areas.score.Rectangle()
-					config.Current.Time = ui.groups.areas.time.Rectangle()
-					config.Current.Energy = ui.groups.areas.energy.Rectangle()
-					config.Current.Objectives = ui.groups.areas.objective.Rectangle()
-					config.Current.KOs = ui.groups.areas.ko.Rectangle()
+					config.Current.XY.Scores = ui.groups.areas.score.Rectangle()
+					config.Current.XY.Time = ui.groups.areas.time.Rectangle()
+					config.Current.XY.Energy = ui.groups.areas.energy.Rectangle()
+					config.Current.XY.Objectives = ui.groups.areas.objective.Rectangle()
+					config.Current.XY.KOs = ui.groups.areas.ko.Rectangle()
 
 					err := config.Current.Save()
 					if err != nil {
 						notify.Error("Failed to save UniteHUD configuration (%v)", err)
 					}
 
-					notify.System("Configuration saved to " + config.Current.File())
+					notify.System("Projector: Configuration saved to " + config.Current.File())
 				}),
 				OnToastNo(this.Deactivate),
 			)
@@ -602,7 +604,7 @@ func (g *GUI) projectorUI() *projected {
 		Font:            g.header.Collection.NishikiTeki(),
 		TextSize:        unit.Sp(16),
 		TextInsetBottom: -1,
-		Released:        nrgba.Gray,
+		Pressed:         nrgba.Gray,
 		OnHoverHint:     func() { g.header.Tip("Hide sources") },
 		Click: func(this *button.Widget) {
 			defer this.Deactivate()
@@ -623,7 +625,7 @@ func (g *GUI) projectorUI() *projected {
 		Font:            g.header.Collection.NishikiTeki(),
 		TextSize:        unit.Sp(16),
 		TextInsetBottom: -1,
-		Released:        nrgba.DarkSeafoam,
+		Pressed:         nrgba.DarkSeafoam,
 		OnHoverHint:     func() { g.header.Tip("Test capture areas") },
 		Click: func(this *button.Widget) {
 			defer this.Deactivate()
@@ -639,8 +641,8 @@ func (g *GUI) projectorUI() *projected {
 	ui.buttons.menu.file = &button.Widget{
 		Text:            "📝",
 		Font:            g.header.Collection.NishikiTeki(),
-		Released:        nrgba.CoolBlue,
-		TextSize:        unit.Sp(17),
+		Pressed:         nrgba.CoolBlue,
+		TextSize:        unit.Sp(16),
 		TextInsetBottom: -1,
 		Disabled:        false,
 		OnHoverHint:     func() { g.header.Tip("Open configuration file") },
@@ -650,14 +652,14 @@ func (g *GUI) projectorUI() *projected {
 			exe := "C:\\Windows\\system32\\notepad.exe"
 			err := exec.Command(exe, config.Current.File()).Run()
 			if err != nil {
-				notify.Error("Failed to open \"%s\" (%v)", config.Current.File(), err)
+				notify.Error("Projector: Failed to open \"%s\" (%v)", config.Current.File(), err)
 				return
 			}
 
 			// Called once window is closed.
 			err = config.Load(config.Current.Profile)
 			if err != nil {
-				notify.Error("Failed to reload \"%s\" (%v)", config.Current.File(), err)
+				notify.Error("Projector: Failed to reload \"%s\" (%v)", config.Current.File(), err)
 				return
 			}
 
@@ -668,7 +670,7 @@ func (g *GUI) projectorUI() *projected {
 	ui.buttons.menu.reset = &button.Widget{
 		Text:            "💣",
 		Font:            g.header.Collection.NishikiTeki(),
-		Released:        nrgba.PaleRed,
+		Pressed:         nrgba.PaleRed,
 		TextSize:        unit.Sp(17),
 		TextInsetBottom: -1,
 		Disabled:        false,
@@ -683,16 +685,18 @@ func (g *GUI) projectorUI() *projected {
 
 					err := config.Current.Reset()
 					if err != nil {
-						notify.Error("Failed to reset %s configuration (%v)", config.Current.Profile, err)
+						notify.Error("Projector: Failed to reset %s configuration (%v)", config.Current.Profile, err)
 					}
 
 					config.Current.Reload()
 
-					ui.groups.areas.energy.Min, ui.groups.areas.energy.Max = config.Current.Energy.Min, config.Current.Energy.Max
-					ui.groups.areas.time.Min, ui.groups.areas.time.Max = config.Current.Time.Min, config.Current.Time.Max
-					ui.groups.areas.score.Min, ui.groups.areas.score.Max = config.Current.Scores.Min, config.Current.Scores.Max
-					ui.groups.areas.objective.Min, ui.groups.areas.objective.Max = config.Current.Objectives.Min, config.Current.Objectives.Max
-					ui.groups.areas.ko.Min, ui.groups.areas.ko.Max = config.Current.KOs.Min, config.Current.KOs.Max
+					audio.Restart()
+
+					ui.groups.areas.energy.Min, ui.groups.areas.energy.Max = config.Current.XY.Energy.Min, config.Current.XY.Energy.Max
+					ui.groups.areas.time.Min, ui.groups.areas.time.Max = config.Current.XY.Time.Min, config.Current.XY.Time.Max
+					ui.groups.areas.score.Min, ui.groups.areas.score.Max = config.Current.XY.Scores.Min, config.Current.XY.Scores.Max
+					ui.groups.areas.objective.Min, ui.groups.areas.objective.Max = config.Current.XY.Objectives.Min, config.Current.XY.Objectives.Max
+					ui.groups.areas.ko.Min, ui.groups.areas.ko.Max = config.Current.XY.KOs.Min, config.Current.XY.KOs.Max
 
 					// ui.groups.videos.window.populate(true)
 					ui.groups.videos.device.populate(true)
@@ -702,7 +706,7 @@ func (g *GUI) projectorUI() *projected {
 
 					g.next(is.MainMenu)
 
-					notify.Announce("Reset UniteHUD %s configuration", config.Current.Profile)
+					notify.Announce("Projector: Reset UniteHUD %s configuration", config.Current.Profile)
 				}),
 				OnToastNo(this.Deactivate),
 			)

@@ -18,14 +18,13 @@ type Widget struct {
 	Text string
 	font *fonts.Style
 
-	list material.ListStyle
-
+	list  material.ListStyle
 	label material.LabelStyle
 
 	dragged bool
 }
 
-func New(s *fonts.Style) (*Widget, error) {
+func New(s *fonts.Style, max int) (*Widget, error) {
 	t := &Widget{
 		font: s,
 		list: material.List(
@@ -41,11 +40,23 @@ func New(s *fonts.Style) (*Widget, error) {
 		),
 	}
 
-	t.font.Theme.TextSize = unit.Sp(9)
+	t.font.Theme.TextSize = unit.Sp(8)
 	t.label = material.H5(t.font.Theme, "")
 	t.list.Track.MinorPadding = 0
 
 	return t, nil
+}
+
+func (t *Widget) calculateAlpha(index, nposts int) uint8 {
+	ratio := (float32(index) / float32(nposts))
+	if ratio < 0.1 {
+		ratio = 0.1
+	}
+	a := (float32(257) * ratio) + 5
+	if a > 255 {
+		a = 255
+	}
+	return uint8(a)
 }
 
 func (t *Widget) Layout(gtx layout.Context, posts []notify.Post) layout.Dimensions {
@@ -64,8 +75,8 @@ func (t *Widget) Layout(gtx layout.Context, posts []notify.Post) layout.Dimensio
 			func(gtx layout.Context) layout.Dimensions {
 				return t.list.Layout(gtx, len(posts), func(gtx layout.Context, index int) layout.Dimensions {
 					t.label.Text = posts[index].String()
-					t.label.Color = posts[index].Color()
-					t.label.Alignment = text.Alignment(text.Start)
+					t.label.Color = posts[index].Alpha(t.calculateAlpha(index, len(posts))).Color()
+					t.label.Alignment = text.Start
 					dim := t.label.Layout(gtx)
 					dim.Size.X = gtx.Constraints.Max.X
 					return dim

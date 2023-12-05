@@ -27,7 +27,7 @@ var (
 func Bounds() image.Rectangle {
 	mutex.RLock()
 	defer mutex.RUnlock()
-	b := bounds[config.Current.VideoCaptureWindow]
+	b := bounds[config.Current.Video.Capture.Window.Name]
 	return b
 }
 
@@ -135,7 +135,7 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 		)
 	}
 	if ret == 0 {
-		notify.Error("Failed to capture \"%s\"", config.Current.VideoCaptureWindow)
+		notify.Error("🖥️  Failed to capture \"%s\"", config.Current.Video.Capture.Window.Name)
 		return nil, fmt.Errorf("bitblt returned: %d", ret)
 	}
 
@@ -162,7 +162,7 @@ func IsDisplay() bool {
 	mutex.RLock()
 	defer mutex.RUnlock()
 
-	_, ok := displays[config.Current.VideoCaptureWindow]
+	_, ok := displays[config.Current.Video.Capture.Window.Name]
 	return ok
 }
 
@@ -198,7 +198,7 @@ func Open() {
 			bottomDisplays++
 			name = display("Bottom Display", bottomDisplays)
 		default:
-			notify.Error("Failed to locate display #%d [%s] relative to %s [%s]", i, r, config.MainDisplay, m)
+			notify.Error("🖥️  Failed to locate display #%d [%s] relative to %s [%s]", i, r, config.MainDisplay, m)
 			continue
 		}
 
@@ -223,7 +223,7 @@ func dims() image.Rectangle {
 	mutex.RLock()
 	defer mutex.RUnlock()
 
-	b := bounds[config.Current.VideoCaptureWindow]
+	b := bounds[config.Current.Video.Capture.Window.Name]
 	return b
 }
 

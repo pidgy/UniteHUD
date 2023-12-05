@@ -60,17 +60,16 @@ func (g *GUI) audios(text float32) *audios {
 				Theme:         g.header.Collection.Calibri().Theme,
 				WidthModifier: 1,
 				TextSize:      text,
+				Radio:         true,
 				Items: []*dropdown.Item{
 					{
-						Text:    audio.Disabled,
-						Checked: widget.Bool{Value: true},
+						Text: audio.Disabled,
 						Callback: func(i *dropdown.Item) {
 							err := audio.Input(audio.Disabled)
 							if err != nil {
 								g.ToastError(err)
 								return
 							}
-							i.Checked.Value = true
 						},
 					},
 					{
@@ -81,7 +80,6 @@ func (g *GUI) audios(text float32) *audios {
 								g.ToastError(err)
 								return
 							}
-							i.Checked.Value = true
 						},
 					},
 				},
@@ -101,6 +99,7 @@ func (g *GUI) audios(text float32) *audios {
 				Theme:         g.header.Collection.Calibri().Theme,
 				WidthModifier: 1,
 				TextSize:      text,
+				Radio:         true,
 				Items: []*dropdown.Item{
 					{
 						Text: audio.Disabled,
@@ -114,15 +113,14 @@ func (g *GUI) audios(text float32) *audios {
 						},
 					},
 					{
-						Text:    audio.Default,
-						Checked: widget.Bool{Value: true},
+						Text: audio.Default,
 						Callback: func(i *dropdown.Item) {
 							err := audio.Output(audio.Default)
 							if err != nil {
 								g.ToastError(err)
 								return
 							}
-							i.Checked.Value = true
+							i.Checked.Value = false
 						},
 					},
 				},
@@ -140,18 +138,9 @@ func (g *GUI) audios(text float32) *audios {
 	}
 
 	for _, d := range audio.Inputs() {
-		if d.Is(device.ActiveName()) {
-			err := audio.Input(d.Name())
-			if err != nil {
-				g.ToastError(err)
-			}
-
-			a.in.list.Enabled()
-		}
-
-		a.in.list.Items = append(a.in.list.Items, &dropdown.Item{
+		i := &dropdown.Item{
 			Text:    d.Name(),
-			Checked: widget.Bool{Value: d.Is(device.ActiveName())},
+			Checked: widget.Bool{Value: d.Is(config.Current.Audio.Capture.Device.Name)},
 			Callback: func(i *dropdown.Item) {
 				err := audio.Input(i.Text)
 				if err != nil {
@@ -159,13 +148,24 @@ func (g *GUI) audios(text float32) *audios {
 				}
 				i.Checked.Value = err == nil
 			},
-		})
+		}
+		a.in.list.Items = append(a.in.list.Items, i)
+	}
+
+	disabled := true
+	for _, i := range a.in.list.Items {
+		if i.Checked.Value {
+			disabled = false
+		}
+	}
+	if disabled {
+		a.in.list.Items[0].Checked.Value = true
 	}
 
 	for _, d := range audio.Outputs() {
-		a.out.list.Items = append(a.out.list.Items, &dropdown.Item{
+		i := &dropdown.Item{
 			Text:    d.Name(),
-			Checked: widget.Bool{Value: d.Is(device.ActiveName())},
+			Checked: widget.Bool{Value: d.Is(config.Current.Audio.Playback.Device.Name)},
 			Callback: func(i *dropdown.Item) {
 				err := audio.Output(i.Text)
 				if err != nil {
@@ -173,7 +173,17 @@ func (g *GUI) audios(text float32) *audios {
 				}
 				i.Checked.Value = err == nil
 			},
-		})
+		}
+		a.out.list.Items = append(a.out.list.Items, i)
+	}
+	disabled = true
+	for _, i := range a.out.list.Items {
+		if i.Checked.Value {
+			disabled = false
+		}
+	}
+	if disabled {
+		a.out.list.Items[0].Checked.Value = true
 	}
 
 	return a
@@ -188,8 +198,8 @@ func (g *GUI) areas(collection fonts.Collection) *areas {
 		Text:     "KO",
 		TextSize: unit.Sp(13),
 		Theme:    collection.Calibri().Theme,
-		Min:      config.Current.KOs.Min,
-		Max:      config.Current.KOs.Max,
+		Min:      config.Current.XY.KOs.Min,
+		Max:      config.Current.XY.KOs.Max,
 		NRGBA:    area.Locked,
 		Match:    g.matchKOs,
 		Cooldown: time.Millisecond * 1500,
@@ -197,8 +207,8 @@ func (g *GUI) areas(collection fonts.Collection) *areas {
 		Capture: &area.Capture{
 			Option:      "KO",
 			File:        "ko_area.png",
-			Base:        config.Current.KOs,
-			DefaultBase: config.Current.KOs,
+			Base:        config.Current.XY.KOs,
+			DefaultBase: config.Current.XY.KOs,
 		},
 	}
 
@@ -206,8 +216,8 @@ func (g *GUI) areas(collection fonts.Collection) *areas {
 		Text:     "Objectives",
 		TextSize: unit.Sp(13),
 		Theme:    collection.Calibri().Theme,
-		Min:      config.Current.Objectives.Min,
-		Max:      config.Current.Objectives.Max,
+		Min:      config.Current.XY.Objectives.Min,
+		Max:      config.Current.XY.Objectives.Max,
 		NRGBA:    area.Locked,
 		Match:    g.matchObjectives,
 		Cooldown: time.Second,
@@ -215,8 +225,8 @@ func (g *GUI) areas(collection fonts.Collection) *areas {
 		Capture: &area.Capture{
 			Option:      "Objective",
 			File:        "objective_area.png",
-			Base:        config.Current.Objectives,
-			DefaultBase: config.Current.Objectives,
+			Base:        config.Current.XY.Objectives,
+			DefaultBase: config.Current.XY.Objectives,
 		},
 	}
 
@@ -224,8 +234,8 @@ func (g *GUI) areas(collection fonts.Collection) *areas {
 		Text:     "Aeos",
 		TextSize: unit.Sp(13),
 		Theme:    collection.Calibri().Theme,
-		Min:      config.Current.Energy.Min,
-		Max:      config.Current.Energy.Max,
+		Min:      config.Current.XY.Energy.Min,
+		Max:      config.Current.XY.Energy.Max,
 		NRGBA:    area.Locked,
 		Match:    g.matchEnergy,
 		Cooldown: team.Energy.Delay,
@@ -233,8 +243,8 @@ func (g *GUI) areas(collection fonts.Collection) *areas {
 		Capture: &area.Capture{
 			Option:      "Aeos",
 			File:        "aeos_area.png",
-			Base:        config.Current.Energy,
-			DefaultBase: config.Current.Energy,
+			Base:        config.Current.XY.Energy,
+			DefaultBase: config.Current.XY.Energy,
 		},
 	}
 
@@ -242,8 +252,8 @@ func (g *GUI) areas(collection fonts.Collection) *areas {
 		Text:     "Time",
 		TextSize: unit.Sp(12),
 		Theme:    collection.Calibri().Theme,
-		Min:      config.Current.Time.Min,
-		Max:      config.Current.Time.Max,
+		Min:      config.Current.XY.Time.Min,
+		Max:      config.Current.XY.Time.Max,
 		NRGBA:    area.Locked,
 		Match:    g.matchTime,
 		Cooldown: team.Time.Delay,
@@ -251,8 +261,8 @@ func (g *GUI) areas(collection fonts.Collection) *areas {
 		Capture: &area.Capture{
 			Option:      "Time",
 			File:        "time_area.png",
-			Base:        config.Current.Time,
-			DefaultBase: config.Current.Time,
+			Base:        config.Current.XY.Time,
+			DefaultBase: config.Current.XY.Time,
 		},
 	}
 
@@ -260,8 +270,8 @@ func (g *GUI) areas(collection fonts.Collection) *areas {
 		Text:          "Score",
 		TextAlignLeft: true,
 		Theme:         collection.Calibri().Theme,
-		Min:           config.Current.Scores.Min,
-		Max:           config.Current.Scores.Max,
+		Min:           config.Current.XY.Scores.Min,
+		Max:           config.Current.XY.Scores.Max,
 		NRGBA:         area.Locked,
 		Match:         g.matchScore,
 		Cooldown:      team.Purple.Delay,
@@ -269,8 +279,8 @@ func (g *GUI) areas(collection fonts.Collection) *areas {
 		Capture: &area.Capture{
 			Option:      "Score",
 			File:        "score_area.png",
-			Base:        config.Current.Scores,
-			DefaultBase: config.Current.Scores,
+			Base:        config.Current.XY.Scores,
+			DefaultBase: config.Current.XY.Scores,
 		},
 	}
 
@@ -315,9 +325,9 @@ func (g *GUI) videos(text float32) *videos {
 				defer v.window.populate(true)
 				defer v.device.populate(true)
 
-				config.Current.VideoCaptureWindow = i.Text
-				if config.Current.VideoCaptureWindow == "" {
-					config.Current.VideoCaptureWindow = config.MainDisplay
+				config.Current.Video.Capture.Window.Name = i.Text
+				if config.Current.Video.Capture.Window.Name == "" {
+					config.Current.Video.Capture.Window.Name = config.MainDisplay
 				}
 
 				return true
@@ -327,7 +337,7 @@ func (g *GUI) videos(text float32) *videos {
 			if videoCaptureDisabledEvent {
 				for _, item := range v.monitor.list.Items {
 					item.Checked.Value = false
-					if item.Text == config.Current.VideoCaptureWindow {
+					if item.Text == config.Current.Video.Capture.Window.Name {
 						item.Checked.Value = true
 					}
 				}
@@ -341,15 +351,15 @@ func (g *GUI) videos(text float32) *videos {
 
 			items := []*dropdown.Item{}
 
-			if videoCaptureDisabledEvent && config.Current.VideoCaptureWindow == "" {
-				config.Current.VideoCaptureWindow = config.MainDisplay
+			if videoCaptureDisabledEvent && config.Current.Video.Capture.Window.Name == "" {
+				config.Current.Video.Capture.Window.Name = config.MainDisplay
 			}
 
 			for _, screen := range screens {
 				items = append(items,
 					&dropdown.Item{
 						Text:    screen,
-						Checked: widget.Bool{Value: screen == config.Current.VideoCaptureWindow},
+						Checked: widget.Bool{Value: screen == config.Current.Video.Capture.Window.Name},
 					},
 				)
 			}
@@ -372,20 +382,20 @@ func (g *GUI) videos(text float32) *videos {
 				defer v.monitor.populate(true)
 				defer v.device.populate(true)
 
-				config.Current.VideoCaptureWindow = i.Text
-				if config.Current.VideoCaptureWindow == "" {
-					config.Current.VideoCaptureWindow = config.MainDisplay
+				config.Current.Video.Capture.Window.Name = i.Text
+				if config.Current.Video.Capture.Window.Name == "" {
+					config.Current.Video.Capture.Window.Name = config.MainDisplay
 				}
 				return true
 			},
 		},
 		populate: func(videoCaptureDisabledEvent bool) {
-			if videoCaptureDisabledEvent && config.Current.VideoCaptureWindow == "" {
-				config.Current.VideoCaptureWindow = config.MainDisplay
+			if videoCaptureDisabledEvent && config.Current.Video.Capture.Window.Name == "" {
+				config.Current.Video.Capture.Window.Name = config.MainDisplay
 			}
 
 			for _, item := range v.window.list.Items {
-				item.Checked.Value = config.Current.VideoCaptureWindow == item.Text
+				item.Checked.Value = config.Current.Video.Capture.Window.Name == item.Text
 			}
 
 			items := []*dropdown.Item{}
@@ -411,7 +421,7 @@ func (g *GUI) videos(text float32) *videos {
 				for _, win := range windows {
 					item := &dropdown.Item{
 						Text:    win,
-						Checked: widget.Bool{Value: win == config.Current.VideoCaptureWindow},
+						Checked: widget.Bool{Value: win == config.Current.Video.Capture.Window.Name},
 					}
 					if item.Checked.Value {
 						items = append([]*dropdown.Item{item}, items...)
@@ -452,14 +462,14 @@ func (g *GUI) videos(text float32) *videos {
 				defer v.monitor.populate(true)
 
 				go func() {
-					config.Current.VideoCaptureDevice = i.Value
+					config.Current.Video.Capture.Device.Index = i.Value
 
 					err := video.Open()
 					if err != nil {
 						g.ToastError(err)
 
-						config.Current.VideoCaptureWindow = config.MainDisplay
-						config.Current.VideoCaptureDevice = config.NoVideoCaptureDevice
+						config.Current.Video.Capture.Window.Name = config.MainDisplay
+						config.Current.Video.Capture.Device.Index = config.NoVideoCaptureDevice
 					}
 				}()
 
@@ -475,7 +485,7 @@ func (g *GUI) videos(text float32) *videos {
 
 				for _, item := range v.device.list.Items {
 					item.Checked.Value = false
-					if config.Current.VideoCaptureDevice == item.Value {
+					if config.Current.Video.Capture.Device.Index == item.Value {
 						item.Checked.Value = true
 					}
 				}
@@ -502,7 +512,7 @@ func (g *GUI) videos(text float32) *videos {
 
 			for _, i := range v.device.list.Items {
 				i.Checked.Value = false
-				if i.Value == config.Current.VideoCaptureDevice {
+				if i.Value == config.Current.Video.Capture.Device.Index {
 					i.Checked.Value = true
 				}
 			}
@@ -520,7 +530,7 @@ func (g *GUI) videos(text float32) *videos {
 				}
 				i.Checked.Value = true
 
-				config.Current.VideoCaptureAPI = i.Text
+				config.Current.Video.Capture.Device.API = i.Text
 
 				for _, item := range v.device.list.Items {
 					if item.Checked.Value {
@@ -544,7 +554,7 @@ func (g *GUI) videos(text float32) *videos {
 						Text:  api,
 						Value: device.API(api),
 						Checked: widget.Bool{
-							Value: api == config.Current.VideoCaptureAPI || (i == 0 && config.Current.VideoCaptureAPI == ""),
+							Value: api == config.Current.Video.Capture.Device.API || (i == 0 && config.Current.Video.Capture.Device.API == ""),
 						},
 					},
 				)

@@ -7,8 +7,10 @@ import (
 	"github.com/gen2brain/malgo"
 	"github.com/pkg/errors"
 
+	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/media/audio/device"
+	"github.com/pidgy/unitehud/media/video/device/win32"
 )
 
 type Device struct {
@@ -26,14 +28,18 @@ type Device struct {
 	config malgo.DeviceConfig
 }
 
+var (
+	disabled = &Device{name: device.Disabled}
+)
+
 func (d *Device) Is(name string) bool { return device.Is(d, name) }
 func (d *Device) IsDefault() bool     { return d.isDefault }
 func (d *Device) IsDisabled() bool    { return d == nil || d.name == device.Disabled }
 func (d *Device) Name() string        { return d.name }
 
 func New(ctx *malgo.AllocatedContext, name string) (*Device, error) {
-	if name == device.Disabled {
-		return &Device{name: device.Disabled}, nil
+	if name == device.Disabled || name == "" {
+		return disabled, nil
 	}
 
 	for _, d := range Devices(ctx) {
@@ -52,7 +58,47 @@ func New(ctx *malgo.AllocatedContext, name string) (*Device, error) {
 		return d, nil
 	}
 
-	return nil, fmt.Errorf("failed to find capture device with term: %s", name)
+	return disabled, fmt.Errorf("failed to find capture device: %s", name)
+}
+
+func NewFromVideoCaptureDevice(ctx *malgo.AllocatedContext) (*Device, error) {
+	if config.Current.Video.Capture.Device.Index == config.NoVideoCaptureDevice {
+		return disabled, nil
+	}
+
+	d32, err := win32.NewVideoCaptureDevice(config.Current.Video.Capture.Device.Index)
+	if err != nil {
+		return disabled, err
+	}
+
+	dev := [256]byte{}
+	for i, s := range d32.Path {
+		dev[i] = byte(s)
+	}
+
+	info, err := ctx.DeviceInfo(malgo.Capture, malgo.DeviceID(dev), malgo.Shared)
+	if err != nil {
+		return disabled, err
+	}
+
+	d := &Device{
+		ID:      info.ID.String(),
+		Formats: info.Formats,
+
+		name:      info.Name(),
+		isDefault: info.IsDefault != 0,
+
+		config: malgo.DefaultDeviceConfig(malgo.Capture),
+	}
+
+	d.config.Capture.Format = malgo.FormatS16
+	d.config.Capture.Channels = 1
+	d.config.Playback.Format = malgo.FormatS16
+	d.config.Playback.Channels = 1
+	d.config.SampleRate = 44100
+	d.config.Alsa.NoMMap = 1
+
+	return d, nil
 }
 
 func (d *Device) Active() bool {
@@ -60,7 +106,7 @@ func (d *Device) Active() bool {
 }
 
 func (d *Device) Close() {
-	notify.System("Audio: Closing input %s", d.name)
+	notify.System("🔊  Closing %s capture", d.name)
 
 	if !d.Active() {
 		return
@@ -71,19 +117,30 @@ func (d *Device) Close() {
 }
 
 func (d *Device) Start(mctx malgo.Context, w io.ReadWriter) error {
+	notify.System("🔊  Starting %s capture", d.name)
+
+	if d.IsDisabled() {
+		return nil
+	}
+
 	if d.Active() {
 		return errors.Wrap(fmt.Errorf("already active"), d.name)
 	}
 
+	defer notify.Debug("🔊  Started %s capture", d.Name())
+
 	errq := make(chan error)
 	go func() {
+		defer notify.Debug("🔊  Closed %s capture", d.Name())
+
 		d.closingq = make(chan bool)
 		d.closedq = make(chan bool)
-		d.active = true
 
+		d.active = true
 		defer func() {
 			d.active = false
 		}()
+
 		defer close(d.closedq)
 
 		callbacks := malgo.DeviceCallbacks{
@@ -98,7 +155,7 @@ func (d *Device) Start(mctx malgo.Context, w io.ReadWriter) error {
 						d.reconnects++
 						return
 					}
-					notify.Error("Audio: Capture failed (%v)", errors.Wrap(err, d.name))
+					notify.Error("🔊  Capture error (%v)", errors.Wrap(err, d.name))
 				}
 			},
 		}
@@ -135,14 +192,14 @@ func (d *Device) Type() device.Type {
 func Devices(ctx *malgo.AllocatedContext) (captures []*Device) {
 	d, err := ctx.Devices(malgo.Capture)
 	if err != nil {
-		notify.Error("Failed to discover audio capture devices (%v)", err)
+		notify.Error("🔊  Failed to find capture devices (%v)", err)
 		return nil
 	}
 
 	for _, info := range d {
 		full, err := ctx.DeviceInfo(malgo.Capture, info.ID, malgo.Shared)
 		if err != nil {
-			notify.Warn("Failed to poll audio playback device \"%s\" info (%v)", info.ID, err)
+			notify.Warn("🔊  Failed to poll capture device \"%s\" (%v)", info.ID, err)
 		}
 
 		captures = append(captures, &Device{

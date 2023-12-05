@@ -39,22 +39,7 @@ const (
 )
 
 type Config struct {
-	Profile string
-
-	VideoCaptureWindow     string
-	VideoCaptureDevice     int
-	VideoCaptureGenericAPI bool
-	VideoCaptureAPI        string
-
-	ConfirmScoreDelay int
-
-	Scale      float64
-	Shift      Shift
 	Acceptance float32
-	Platform   string
-
-	Theme  Theme
-	Themes map[string]Theme
 
 	Advanced struct {
 		Stats struct {
@@ -90,18 +75,55 @@ type Config struct {
 		}
 	}
 
-	Energy     image.Rectangle
-	Scores     image.Rectangle
-	Time       image.Rectangle
-	Objectives image.Rectangle
-	KOs        image.Rectangle
-
-	LostWindow string `json:"-"`
-	Record     bool   `json:"-"` // Record all matched images and logs.
+	Audio struct {
+		Capture struct {
+			Device struct {
+				Name string
+			}
+		}
+		Playback struct {
+			Device struct {
+				Name string
+			}
+		}
+	}
 
 	Crashed string
 
+	Platform string
+	Profile  string
+
+	Scale float64
+	Shift Shift
+
+	Theme  Theme
+	Themes map[string]Theme
+
+	Video struct {
+		Capture struct {
+			Device struct {
+				Index int
+				API   string
+				Name  string
+			}
+			Window struct {
+				Name string
+				Lost string `json:"-"`
+			}
+		}
+	}
+
+	XY struct {
+		Energy     image.Rectangle
+		Scores     image.Rectangle
+		Time       image.Rectangle
+		Objectives image.Rectangle
+		KOs        image.Rectangle
+	}
+
 	// Unsaved configurations.
+
+	Record bool `json:"-"` // Record all matched images and logs.
 
 	filenames map[string]map[string][]filter.Filter      `json:"-"`
 	templates map[string]map[string][]*template.Template `json:"-"`
@@ -182,19 +204,20 @@ func (c *Config) Reset() error {
 }
 
 func (c *Config) Save() error {
-	notify.System("Configuration: Saving %s profile (%s)", c.Profile, c.File())
+	notify.System("⚙️  Saving %s profile (%s)", c.Profile, c.File())
 
 	f, err := os.Create(c.File())
 	if err != nil {
 		return err
 	}
 
-	b, err := json.MarshalIndent(c, "", "    ")
+	b, err := json.Marshal(c)
 	if err != nil {
 		return err
 	}
 
 	// Remarshal for an alphabetically sorted object.
+	// -------
 	var i interface{}
 	err = json.Unmarshal(b, &i)
 	if err != nil {
@@ -204,6 +227,7 @@ func (c *Config) Save() error {
 	if err != nil {
 		return err
 	}
+	// -------
 
 	_, err = f.Write(b)
 	if err != nil {
@@ -217,23 +241,16 @@ func (c *Config) Save() error {
 
 func (c *Config) Scoring() image.Rectangle {
 	return image.Rectangle{
-		Min: image.Pt(c.Energy.Min.X-50, c.Energy.Min.Y),
-		Max: image.Pt(c.Energy.Max.X+50, c.Energy.Max.Y+100),
+		Min: image.Pt(c.XY.Energy.Min.X-50, c.XY.Energy.Min.Y),
+		Max: image.Pt(c.XY.Energy.Max.X+50, c.XY.Energy.Max.Y+100),
 	}
 }
 
 func (c *Config) ScoringOption() image.Rectangle {
 	return image.Rectangle{
-		Min: image.Pt(c.Energy.Min.X-100, c.Energy.Min.Y-100),
-		Max: image.Pt(c.Energy.Max.X+100, c.Energy.Max.Y-100),
+		Min: image.Pt(c.XY.Energy.Min.X-100, c.XY.Energy.Min.Y-100),
+		Max: image.Pt(c.XY.Energy.Max.X+100, c.XY.Energy.Max.Y-100),
 	}
-}
-
-func (c *Config) SetDefaults() {
-	c.ConfirmScoreDelay = 5
-	c.SetDefaultAreas()
-	c.SetDefaultTheme()
-	c.SetDefaultAdvancedSettings()
 }
 
 func (c *Config) SetDefaultAdvancedSettings() {
@@ -252,9 +269,9 @@ func (c *Config) SetDefaultAreas() {
 	scores := image.Rect(500, 50, 1500, 250)
 	time := image.Rect(846, 0, 1046, 100)
 
-	c.Energy = energy
-	c.Scores = scores
-	c.Time = time
+	c.XY.Energy = energy
+	c.XY.Scores = scores
+	c.XY.Time = time
 	c.setKOArea()
 	c.setObjectiveArea()
 }
@@ -379,11 +396,11 @@ func (c *Config) UnsetHiddenThemes() {
 	}
 
 	if len(failed) > 0 {
-		notify.Error("Configuration: Failed to apply default themes (%s)", strings.Join(failed, ", "))
+		notify.Error("⚙️  Failed to apply default themes (%s)", strings.Join(failed, ", "))
 	}
 
 	if len(applied) > 0 {
-		notify.System("Configuration: Default themes applied to %s", strings.Join(applied, ", "))
+		notify.System("⚙️  Default themes applied to %s", strings.Join(applied, ", "))
 	}
 }
 
@@ -397,7 +414,7 @@ func (c *Config) pointFiles(t *team.Team) []filter.Filter {
 		}
 		if info.IsDir() {
 			if info.Name() != "points" {
-				notify.SystemWarn("Configuration: Skipping templates from %s%s", root, info.Name())
+				notify.SystemWarn("⚙️  Skipping templates from %s%s", root, info.Name())
 				return filepath.SkipDir
 			}
 		}
@@ -407,7 +424,7 @@ func (c *Config) pointFiles(t *team.Team) []filter.Filter {
 		return nil
 	})
 	if err != nil {
-		notify.Error("Configuration: Failed to read from \"point\" directory \"%s\" (%v)", root, err)
+		notify.Error("⚙️  Failed to read from \"point\" directory \"%s\" (%v)", root, err)
 		return nil
 	}
 
@@ -428,7 +445,7 @@ func (c *Config) pointFiles(t *team.Team) []filter.Filter {
 
 		value, err := strconv.Atoi(v)
 		if err != nil {
-			notify.SystemWarn("Configuration: Failed to invalidate \"%s\" file \"%s\" (%v)", root, file, err)
+			notify.SystemWarn("⚙️  Failed to invalidate \"%s\" file \"%s\" (%v)", root, file, err)
 			continue
 		}
 
@@ -450,7 +467,7 @@ func (c *Config) scoreFiles(t *team.Team) []filter.Filter {
 		}
 		if info.IsDir() {
 			if info.Name() != "score" {
-				notify.SystemWarn("Configuration: Skipping \"%s%s\"", root, info.Name())
+				notify.SystemWarn("⚙️  Skipping \"%s%s\"", root, info.Name())
 				return filepath.SkipDir
 			}
 		}
@@ -460,7 +477,7 @@ func (c *Config) scoreFiles(t *team.Team) []filter.Filter {
 		return nil
 	})
 	if err != nil {
-		notify.Error("Configuration: Failed to read from \"score\" directory \"%s\" (%v)", root, err)
+		notify.Error("⚙️  Failed to read from \"score\" directory \"%s\" (%v)", root, err)
 		return nil
 	}
 
@@ -484,18 +501,18 @@ func (c *Config) scoreFiles(t *team.Team) []filter.Filter {
 func (c *Config) setKOArea() {
 	switch c.Profile {
 	case ProfileBroadcaster:
-		c.KOs = image.Rect(730, 130, 1160, 310)
+		c.XY.KOs = image.Rect(730, 130, 1160, 310)
 	case ProfilePlayer:
-		c.KOs = image.Rect(730, 130, 1160, 310)
+		c.XY.KOs = image.Rect(730, 130, 1160, 310)
 	}
 }
 
 func (c *Config) setObjectiveArea() {
 	switch c.Profile {
 	case ProfileBroadcaster:
-		c.Objectives = image.Rect(350, 210, 1200, 310)
+		c.XY.Objectives = image.Rect(350, 210, 1200, 310)
 	case ProfilePlayer:
-		c.Objectives = image.Rect(350, 210, 1200, 310)
+		c.XY.Objectives = image.Rect(350, 210, 1200, 310)
 	}
 }
 
@@ -520,7 +537,7 @@ func Load(profile string) error {
 	defer func() {
 		r := recover()
 		if r != nil {
-			notify.SystemWarn("Configuration: Corrupted .unitehud file (%s)", Current.File())
+			notify.SystemWarn("⚙️  Corrupted .unitehud file (%s)", Current.File())
 			recovered(r)
 		}
 	}()
@@ -532,37 +549,41 @@ func Load(profile string) error {
 
 	defer validate()
 
-	notify.System("Configuration: Loading %s profile (%s)", profile, Current.File())
+	notify.System("⚙️  Loading %s profile (%s)", profile, Current.File())
 
 	ok := open()
 	if !ok {
 		Current = Config{
-			VideoCaptureWindow: MainDisplay,
-			VideoCaptureDevice: NoVideoCaptureDevice,
-			Scale:              1,
-			Shift:              Shift{},
-			Profile:            profile,
-			Acceptance:         .91,
-			Platform:           PlatformSwitch,
+			Scale:      1,
+			Shift:      Shift{},
+			Profile:    profile,
+			Acceptance: .91,
+			Platform:   PlatformSwitch,
 		}
+
+		Current.Video.Capture.Window.Name = MainDisplay
+		Current.Video.Capture.Device.Index = NoVideoCaptureDevice
+
 		Current.SetProfile(profile)
-		Current.SetDefaults()
+
+		Current.SetDefaultAreas()
+		Current.SetDefaultTheme()
+		Current.SetDefaultAdvancedSettings()
+
 		Current.load()
 	}
 
-	//Current.UnsetHiddenThemes()
-
-	if Current.VideoCaptureWindow == "" {
-		Current.VideoCaptureWindow = MainDisplay
-		Current.VideoCaptureDevice = NoVideoCaptureDevice
+	if Current.Video.Capture.Window.Name == "" {
+		Current.Video.Capture.Window.Name = MainDisplay
+		Current.Video.Capture.Device.Index = NoVideoCaptureDevice
 	}
 
 	if Current.Platform == "" {
 		Current.Platform = "Switch"
 	}
 
-	if Current.VideoCaptureGenericAPI {
-		Current.VideoCaptureAPI = ""
+	if Current.Themes == nil {
+		Current.Themes = make(map[string]Theme)
 	}
 
 	return Current.Save()
@@ -756,7 +777,7 @@ func recovered(r interface{}) {
 	case string:
 		s = e
 	}
-	notify.Debug("Configuration: Recovered from %s", s)
+	notify.Debug("⚙️  Recovered from %s", s)
 }
 
 func validate() {
@@ -838,7 +859,7 @@ func validate() {
 		for subcategory, templates := range Current.templates[category] {
 			for _, t := range templates {
 				if t.Empty() {
-					notify.Error("Configuration: Failed to read \"%s/%s\" template from file \"%s\"", category, subcategory, t.File)
+					notify.Error("⚙️  Failed to read \"%s/%s\" template from file \"%s\"", category, subcategory, t.File)
 					continue
 				}
 			}

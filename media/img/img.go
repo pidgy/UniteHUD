@@ -7,9 +7,8 @@ import (
 	"os"
 	"sync"
 
-	"gocv.io/x/gocv"
-
 	"github.com/tc-hib/winres"
+	"gocv.io/x/gocv"
 
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/notify"
@@ -64,14 +63,14 @@ func Icon(name string) image.Image {
 
 	f, err := os.Open(config.Current.AssetIcon(name))
 	if err != nil {
-		notify.Error("Failed to open image %s (%v)", name, err)
+		notify.Error("📸  Failed to open image %s (%v)", name, err)
 		return Empty
 	}
 	defer f.Close()
 
 	img, _, err := image.Decode(f)
 	if err != nil {
-		notify.Error("Failed to decode %s (%v)", name, err)
+		notify.Error("📸  Failed to decode %s (%v)", name, err)
 		return Empty
 	}
 
@@ -93,14 +92,14 @@ func IconBytes(name string) []byte {
 
 	f, err := os.Open(config.Current.AssetIcon(name))
 	if err != nil {
-		notify.Error("Failed to open image %s (%v)", name, err)
+		notify.Error("📸  Failed to open image %s (%v)", name, err)
 		return []byte{}
 	}
 	defer f.Close()
 
 	ico, err := winres.LoadICO(f)
 	if err != nil {
-		notify.Error("Failed to decode %s (%v)", name, err)
+		notify.Error("📸  Failed to decode %s (%v)", name, err)
 		return []byte{}
 	}
 
@@ -108,7 +107,7 @@ func IconBytes(name string) []byte {
 
 	err = ico.SaveICO(b)
 	if err != nil {
-		notify.SystemWarn("Failed to encode %s (%v)", name, err)
+		notify.SystemWarn("📸  Failed to encode %s (%v)", name, err)
 	}
 
 	c := &cached{

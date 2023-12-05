@@ -25,28 +25,32 @@ func Add(purple, orange, self int) {
 
 func Dump() {
 	if len(history) == 0 {
-		notify.Warn("No recent game history to display...")
+		notify.Warn("+/- No recent game history to display...")
 		return
 	}
 
-	notify.System("Match History")
+	notify.System("+/- Match History")
 
 	for _, h := range history {
 		color := nrgba.Green
 		result := ""
+		symbol := "+/-"
 		switch {
 		case h.purple > h.orange:
 			result = "Won"
 			color = nrgba.Green
+			symbol = "+/ "
 		case h.orange > h.purple:
 			result = "Lost"
 			color = nrgba.DarkRed
+			result = " /-"
 		case h.orange == h.purple:
 			result = "Tied"
 			color = nrgba.Yellow
+			result = " / "
 		}
 
-		notify.Append(color, "(%s) %s %d - %d - %d", h.Time.Format(time.Kitchen), result, h.purple, h.orange, h.self)
+		notify.Append(color, "%s (%s) %s %d - %d - %d", symbol, h.Time.Format(time.Kitchen), result, h.purple, h.orange, h.self)
 	}
 }
 

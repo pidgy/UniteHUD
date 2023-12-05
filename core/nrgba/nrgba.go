@@ -3,11 +3,14 @@ package nrgba
 import (
 	"fmt"
 	"image/color"
+	"math"
 
 	"github.com/pidgy/unitehud/core/rgba"
 )
 
 type NRGBA color.NRGBA
+
+const MaxAlpha = math.MaxUint8
 
 var (
 	Announce       = NRGBA(rgba.Announce)

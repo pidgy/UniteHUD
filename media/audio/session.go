@@ -8,6 +8,7 @@ import (
 
 	"github.com/gen2brain/malgo"
 
+	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/media/audio/device"
 	"github.com/pidgy/unitehud/media/audio/input"
@@ -26,8 +27,7 @@ var (
 )
 
 type session struct {
-	In  device.Device
-	Out device.Device
+	input, output device.Device
 
 	buffer io.ReadWriter
 
@@ -38,16 +38,14 @@ type session struct {
 }
 
 func Open() error {
-	notify.System("Audio: Opening session")
-
 	ctx, err := malgo.InitContext(
 		[]malgo.Backend{
 			malgo.BackendDsound,
+			malgo.BackendWasapi,
+			malgo.BackendWinmm,
 		},
 		malgo.ContextConfig{
-			CoreAudio: malgo.CoreAudioConfig{
-				SessionCategory: malgo.IOSSessionCategoryPlayback,
-			},
+			ThreadPriority: malgo.ThreadPriorityHigh,
 		},
 		func(m string) {
 			// notify.Debug("Audio Session: %s", strings.Split(m, "\n")[0])
@@ -57,19 +55,19 @@ func Open() error {
 		return err
 	}
 
-	in, err := input.New(ctx, Disabled)
+	in, err := input.New(ctx, config.Current.Audio.Capture.Device.Name)
 	if err != nil {
-		return err
+		notify.Warn("🔊  Failed to create input (%v)", err)
 	}
 
-	out, err := output.New(ctx, Default)
+	out, err := output.New(ctx, config.Current.Audio.Playback.Device.Name)
 	if err != nil {
-		return err
+		notify.Warn("🔊  Failed to create output (%v)", err)
 	}
 
 	current = &session{
-		In:  in,
-		Out: out,
+		input:  in,
+		output: out,
 
 		buffer: bytes.NewBuffer(make([]byte, 0)),
 
@@ -82,43 +80,38 @@ func Open() error {
 	return Start()
 }
 
+func Close() {
+	notify.System("🔊  Closing...")
+
+	if current == nil {
+		return
+	}
+
+	current.input.Close()
+	current.output.Close()
+
+	current.context.Free()
+}
+
 func Inputs() []*input.Device {
 	return input.Devices(current.context)
 }
 
 func Label() string {
 	if current == nil {
-		return "🔉"
-	}
-
-	mic := "🎤"
-	if current.In.IsDisabled() {
-		mic = "❌"
+		return "🔈"
 	}
 
 	speaker := "🔊"
-	if current.Out.IsDisabled() {
+	if current.output.IsDisabled() {
 		speaker = "🔈"
 	}
 
-	return fmt.Sprintf("%s %s / %s %s", mic, strings.Split(current.In.Name(), " (")[0], speaker, strings.Split(current.Out.Name(), " (")[0])
+	return fmt.Sprintf("🎤 %s - %s %s", strings.Split(current.input.Name(), " (")[0], speaker, strings.Split(current.output.Name(), " (")[0])
 }
 
 func Outputs() []*output.Device {
 	return output.Devices(current.context)
-}
-
-func Close() error {
-	notify.System("Audio: Closing...")
-
-	if current == nil {
-		return nil
-	}
-
-	current.In.Close()
-	current.Out.Close()
-
-	return nil
 }
 
 func Input(name string) (err error) {
@@ -126,15 +119,16 @@ func Input(name string) (err error) {
 		return nil
 	}
 
-	notify.System("Audio: Swapping input %s", name)
-
-	current.In.Close()
-	current.Out.Close()
-
-	current.In, err = input.New(current.context, name)
+	in, err := input.New(current.context, name)
 	if err != nil {
 		return err
 	}
+
+	current.input.Close()
+	current.output.Close()
+
+	current.input = in
+	config.Current.Audio.Capture.Device.Name = in.Name()
 
 	return Start()
 }
@@ -144,32 +138,51 @@ func Output(name string) (err error) {
 		return nil
 	}
 
-	notify.System("Audio: Swapping output %s", name)
-
-	current.In.Close()
-	current.Out.Close()
-
-	current.Out, err = output.New(current.context, name)
+	out, err := output.New(current.context, name)
 	if err != nil {
 		return err
 	}
+
+	current.input.Close()
+	current.output.Close()
+
+	current.output = out
+	config.Current.Audio.Playback.Device.Name = out.Name()
 
 	return Start()
 }
 
+func Restart() {
+	current.input.Close()
+	current.output.Close()
+
+	in, err := input.New(current.context, config.Current.Audio.Capture.Device.Name)
+	if err != nil {
+		notify.Warn("🔊  Failed to create input (%v)", err)
+	}
+
+	out, err := output.New(current.context, config.Current.Audio.Playback.Device.Name)
+	if err != nil {
+		notify.Warn("🔊  Failed to create output (%v)", err)
+	}
+
+	current.input = in
+	current.output = out
+}
+
 func Start() error {
-	if current.In.IsDisabled() || current.Out.IsDisabled() {
+	notify.System("🔊  Starting %s", current)
+
+	if current.input.IsDisabled() || current.output.IsDisabled() {
 		return nil
 	}
 
-	notify.System("Audio: Starting session (%s)", current)
-
-	err := current.In.Start(current.context.Context, current.buffer)
+	err := current.input.Start(current.context.Context, current.buffer)
 	if err != nil {
 		return err
 	}
 
-	err = current.Out.Start(current.context.Context, current.buffer)
+	err = current.output.Start(current.context.Context, current.buffer)
 	if err != nil {
 		return err
 	}
@@ -178,5 +191,5 @@ func Start() error {
 }
 
 func (s *session) String() string {
-	return fmt.Sprintf("%s -> %s", s.In, s.Out)
+	return fmt.Sprintf("%s -> %s", s.input, s.output)
 }

@@ -99,13 +99,13 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 
 func Close() {
 	if active.id == config.NoVideoCaptureDevice {
-		notify.Debug("Device: Ignorning call to close \"%s\" (inactive)", ActiveName())
+		notify.Debug("🎥  Ignorning call to close \"%s\" (inactive)", ActiveName())
 		return
 	}
 
 	active.stop()
 
-	notify.Debug("Device: Closed \"%s\"", active.name)
+	notify.Debug("🎥  Closed \"%s\"", active.name)
 
 	reset()
 }
@@ -120,7 +120,7 @@ func (d *device) stop() {
 			}
 			return
 		case <-t.C:
-			notify.Error("Device: %s failed to stop", d.name)
+			notify.Error("🎥  %s failed to stop", d.name)
 		}
 	}
 }
@@ -136,22 +136,22 @@ func Name(d int) string {
 	if d != config.NoVideoCaptureDevice && len(cached.devices.names) > d {
 		return cached.devices.names[d]
 	}
-	return fmt.Sprintf("Device: %d", d)
+	return fmt.Sprintf("🎥  %d", d)
 }
 
 func Open() error {
-	if config.Current.VideoCaptureDevice == config.NoVideoCaptureDevice {
+	if config.Current.Video.Capture.Device.Index == config.NoVideoCaptureDevice {
 		return nil
 	}
 
 	if active.id != config.NoVideoCaptureDevice {
-		notify.Debug("Device: Ignorning call to open \"%s\" (active)", ActiveName())
+		notify.Debug("🎥  Ignorning call to open \"%s\" (active)", ActiveName())
 		return nil
 	}
 
 	active = &device{
-		id:      config.Current.VideoCaptureDevice,
-		name:    Name(config.Current.VideoCaptureDevice),
+		id:      config.Current.Video.Capture.Device.Index,
+		name:    Name(config.Current.Video.Capture.Device.Index),
 		closeq:  make(chan bool),
 		closedq: make(chan bool),
 		errq:    make(chan error),
@@ -175,23 +175,25 @@ func Sources() []int {
 func (d *device) capture() {
 	defer close(d.closedq)
 
-	api := APIName(API(config.Current.VideoCaptureAPI))
+	api := APIName(API(config.Current.Video.Capture.Device.API))
 
-	notify.System("Device: Opening \"%s\" with API \"%s\"", d.name, api)
-	defer notify.System("Device: Closing \"%s\"...", d.name)
+	notify.System("🎥  Opening \"%s\" with API \"%s\"", d.name, api)
+	defer notify.System("🎥  Closing \"%s\"...", d.name)
 
-	device, err := gocv.OpenVideoCaptureWithAPI(config.Current.VideoCaptureDevice, gocv.VideoCaptureAPI(API(config.Current.VideoCaptureAPI)))
+	device, err := gocv.OpenVideoCaptureWithAPI(config.Current.Video.Capture.Device.Index, gocv.VideoCaptureAPI(API(config.Current.Video.Capture.Device.API)))
 	if err != nil {
 		d.errq <- fmt.Errorf("%s does not support %s encoding", d.name, api)
 		return
 	}
 	defer device.Close()
 
-	notify.System("Device: Applying dimensions (%s)", monitor.MainResolution)
+	notify.System("🎥  Applying %dx%d dimensions for %s", monitor.MainResolution.Max.X, monitor.MainResolution.Max.Y, d.name)
 
 	device.Set(gocv.VideoCaptureFrameWidth, float64(monitor.MainResolution.Dx()))
 	device.Set(gocv.VideoCaptureFrameHeight, float64(monitor.MainResolution.Dy()))
-	capture := image.Rect(0, 0,
+	capture := image.Rect(
+		0,
+		0,
 		int(device.Get(gocv.VideoCaptureFrameWidth)),
 		int(device.Get(gocv.VideoCaptureFrameHeight)),
 	)
@@ -212,7 +214,7 @@ func (d *device) capture() {
 	for d.running() {
 		time.Sleep(time.Millisecond)
 		if !device.Read(&mat) || mat.Empty() {
-			notify.Warn("Device: Failed to capture from \"%s\"", d.name)
+			notify.Warn("🎥  Failed to capture from \"%s\"", d.name)
 			return
 		}
 	}
@@ -250,7 +252,11 @@ func storeSources() {
 		names := []string{}
 
 		for i := 0; i < 10; i++ {
-			name := win32.VideoCaptureDeviceName(i)
+			name, err := win32.VideoCaptureDeviceName(i)
+			if err != nil {
+				notify.Error("🎥  Failed to read properties of device at index %d", i)
+				break
+			}
 			if name == "" {
 				break
 			}
@@ -269,8 +275,8 @@ func storeSources() {
 }
 
 func reset() {
-	config.Current.VideoCaptureWindow = config.MainDisplay
-	config.Current.VideoCaptureDevice = config.NoVideoCaptureDevice
+	config.Current.Video.Capture.Window.Name = config.MainDisplay
+	config.Current.Video.Capture.Device.Index = config.NoVideoCaptureDevice
 
 	active = &device{
 		id:      config.NoVideoCaptureDevice,

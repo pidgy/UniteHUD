@@ -2,7 +2,6 @@ package device
 
 import (
 	"io"
-	"strings"
 
 	"github.com/gen2brain/malgo"
 )
@@ -33,7 +32,7 @@ func Is(d Device, name string) bool {
 	if name == Default {
 		return d.IsDefault()
 	}
-	return strings.Contains(d.Name(), name)
+	return d.Name() == name
 }
 
 func Free(ctx *malgo.AllocatedContext) error {

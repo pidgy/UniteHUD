@@ -47,14 +47,14 @@ func Image(img image.Image, mat gocv.Mat, t *team.Team, p image.Point, value int
 	subdir := filepath.Join(global.WorkingDirectory(), top, Directory, images, t.Name)
 	err := createDirIfNotExist(subdir)
 	if err != nil {
-		notify.Error("[DEBUG] failed to create directory \"%s\" (%v)", subdir, err)
+		notify.Error("💾 failed to create directory \"%s\" (%v)", subdir, err)
 		return ""
 	}
 
 	subdir = filepath.Join(subdir, r.String())
 	err = createDirIfNotExist(subdir)
 	if err != nil {
-		notify.Error("[DEBUG] failed to create directory \"%s\" (%v)", subdir, err)
+		notify.Error("💾 failed to create directory \"%s\" (%v)", subdir, err)
 		return ""
 	}
 
@@ -68,7 +68,7 @@ func Image(img image.Image, mat gocv.Mat, t *team.Team, p image.Point, value int
 func Logs() {
 	_, err := createAllIfNotExist()
 	if err != nil {
-		notify.Error("Failed to create %s directory (%v)", Directory, err)
+		notify.Error("💾 Failed to create %s directory (%v)", Directory, err)
 		return
 	}
 
@@ -76,7 +76,7 @@ func Logs() {
 
 	f, err := os.OpenFile(dir, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		notify.Error("Failed to open log file in %s (%v)", Directory, err)
+		notify.Error("💾 Failed to open log file in %s (%v)", Directory, err)
 		return
 	}
 	defer f.Close()
@@ -84,14 +84,14 @@ func Logs() {
 	for _, p := range notify.Feeds() {
 		_, err := f.WriteString(fmt.Sprintf("%s\n", p.String()))
 		if err != nil {
-			notify.Error("Failed to write event logs in %s (%v)", Directory, err)
+			notify.Error("💾 Failed to write event logs in %s (%v)", Directory, err)
 		}
 	}
 
 	for _, line := range stats.Lines() {
 		_, err := f.WriteString(fmt.Sprintf("%s\n", line))
 		if err != nil {
-			notify.Error("Failed to append statistic logs in %s (%v)", Directory, err)
+			notify.Error("💾 Failed to append statistic logs in %s (%v)", Directory, err)
 		}
 	}
 }
@@ -99,7 +99,7 @@ func Logs() {
 func Open() error {
 	d, err := createAllIfNotExist()
 	if err != nil {
-		notify.Error("Failed to create \"%s/\" (%v)", Directory, err)
+		notify.Error("💾 Failed to create \"%s/\" (%v)", Directory, err)
 		return err
 	}
 
@@ -109,7 +109,7 @@ func Open() error {
 func OpenLogDirectory() error {
 	d, err := createAllIfNotExist()
 	if err != nil {
-		notify.Error("Failed to create \"%s/\" directory (%v)", Directory, err)
+		notify.Error("💾 Failed to create \"%s/\" directory (%v)", Directory, err)
 		return err
 	}
 	return open.Run(fmt.Sprintf("%s/%s/%s", d, Directory, logs))
@@ -120,19 +120,19 @@ func ProfileStart() {
 
 	cpu, err = os.Create("cpu.prof")
 	if err != nil {
-		notify.Error("Failed to create CPU profile (%v)", err)
+		notify.Error("💾 Failed to create CPU profile (%v)", err)
 		return
 	}
 
 	err = pprof.StartCPUProfile(cpu)
 	if err != nil {
-		notify.Error("Failed to start CPU profile (%v)", err)
+		notify.Error("💾 Failed to start CPU profile (%v)", err)
 		return
 	}
 
 	ram, err = os.Create("mem.prof")
 	if err != nil {
-		notify.Error("Failed to create RAM profile (%v)", err)
+		notify.Error("💾 Failed to create RAM profile (%v)", err)
 		return
 	}
 
@@ -140,7 +140,7 @@ func ProfileStart() {
 
 	err = pprof.WriteHeapProfile(ram)
 	if err != nil {
-		notify.Error("Failed to write RAM profile (%v)", err)
+		notify.Error("💾 Failed to write RAM profile (%v)", err)
 		return
 	}
 }

@@ -49,7 +49,7 @@ func Default() image.Image {
 	if defaultImg == nil {
 		i, err := defaultMat.ToImage()
 		if err != nil {
-			notify.Warn("Failed to convert splash image (%v)", err)
+			notify.Warn("📸 Failed to convert splash image (%v)", err)
 			return img.Empty
 		}
 		defaultImg = i
@@ -62,7 +62,7 @@ func Device() image.Image {
 	if deviceImg == nil {
 		i, err := deviceMat.ToImage()
 		if err != nil {
-			notify.Warn("Failed to convert splash image (%v)", err)
+			notify.Warn("📸 Failed to convert splash image (%v)", err)
 			return img.Empty
 		}
 		deviceImg = i
@@ -78,7 +78,7 @@ func Invalid() image.Image {
 	if invalidImg == nil {
 		i, err := invalidMat.ToImage()
 		if err != nil {
-			notify.Warn("Failed to convert splash image (%v)", err)
+			notify.Warn("📸 Failed to convert splash image (%v)", err)
 			return img.Empty
 		}
 		invalidImg = i
@@ -90,7 +90,7 @@ func Loading() image.Image {
 	if loadingImg == nil {
 		i, err := loadingMat.ToImage()
 		if err != nil {
-			notify.Warn("Failed to convert splash image (%v)", err)
+			notify.Warn("📸 Failed to convert splash image (%v)", err)
 			return img.Empty
 		}
 		loadingImg = i

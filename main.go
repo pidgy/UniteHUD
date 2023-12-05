@@ -30,7 +30,7 @@ import (
 var sigq = make(chan os.Signal, 1)
 
 func init() {
-	notify.Announce("System: Initializing...")
+	notify.Announce("🔌  Initializing...")
 }
 
 func kill(errs ...error) {
@@ -41,12 +41,12 @@ func kill(errs ...error) {
 
 		err := config.Current.Save()
 		if err != nil {
-			notify.Error("System: Failed to save crash log (%v)", err)
+			notify.Error("🔌  Failed to save crash log (%v)", err)
 		}
 	}
 
 	for _, err := range errs {
-		notify.Error("System: Force Shutdown (%v)", err)
+		notify.Error("🔌  Force Shutdown (%v)", err)
 	}
 
 	report := make(chan bool)
@@ -86,7 +86,7 @@ func main() {
 
 	err := process.Replace()
 	if err != nil {
-		notify.SystemWarn("System: Failed to stop previous process (%v)", err)
+		notify.SystemWarn("🔌  Failed to stop previous process (%v)", err)
 	}
 
 	err = config.Load(config.Current.Profile)
@@ -96,28 +96,27 @@ func main() {
 
 	err = video.Open()
 	if err != nil {
-		notify.Error("System: Failed to capture video (%v)", err)
+		notify.Error("🔌  Failed to capture video (%v)", err)
 	}
 
 	err = audio.Open()
 	if err != nil {
-		notify.Error("System: Failed to open audio session (%v)", err)
+		notify.Error("🔌  Failed to open audio session (%v)", err)
 	}
 
 	err = server.Listen()
 	if err != nil {
-		notify.Error("System: Failed to start server (%v)", err)
+		notify.Error("🔌  Failed to start server (%v)", err)
 	}
 
 	go electron.App()
 	go discord.Connect()
 
-	notify.Debug("System: Confirm Score Delay: (%ds)", config.Current.ConfirmScoreDelay)
-	notify.Debug("System: Server Address (%s)", server.Address)
-	notify.Debug("System: Recording (%t)", config.Current.Record)
-	notify.Debug("System: Profile (%s)", config.Current.Profile)
-	notify.Debug("System: Assets (%s)", config.Current.Assets())
-	notify.Debug("System: Match Threshold: (%.0f%%)", config.Current.Acceptance*100)
+	notify.Debug("🔌  Server Address (%s)", server.Address)
+	notify.Debug("🔌  Recording (%t)", config.Current.Record)
+	notify.Debug("🔌  Profile (%s)", config.Current.Profile)
+	notify.Debug("🔌  Assets (%s)", config.Current.Assets())
+	notify.Debug("🔌  Match Threshold: (%.0f%%)", config.Current.Acceptance*100)
 
 	go detect.Clock()
 	go detect.Energy()
@@ -132,7 +131,7 @@ func main() {
 	go update.Check()
 
 	go func() {
-		lastWindow := config.Current.VideoCaptureWindow
+		lastWindow := config.Current.Video.Capture.Window.Name
 
 		for action := range ui.UI.Actions {
 			switch action {
@@ -144,7 +143,7 @@ func main() {
 			case ui.Start:
 				detect.Resume()
 
-				notify.Announce("System: Starting %s...", global.Title)
+				notify.Announce("🔌  Starting %s...", global.Title)
 
 				notify.Clear()
 				server.Clear()
@@ -152,18 +151,18 @@ func main() {
 				stats.Clear()
 				state.Clear()
 
-				notify.Announce("System: Started %s", global.Title)
+				notify.Announce("🔌  Started %s", global.Title)
 
 				server.SetStarted()
 			case ui.Stop:
 				detect.Pause()
 
-				notify.Announce("System: Stopping %s...", global.Title)
+				notify.Announce("🔌  Stopping %s...", global.Title)
 
 				// Wait for the capture routines to go idle.
 				// time.Sleep(time.Second * 2)
 
-				notify.Announce("System: Stopped %s", global.Title)
+				notify.Announce("🔌  Stopped %s", global.Title)
 
 				server.Clear()
 				team.Clear()
@@ -183,10 +182,10 @@ func main() {
 					str = "Recording"
 				}
 
-				notify.System("System: %s template match results in %s", str, save.Directory)
+				notify.System("🔌  %s template match results in %s", str, save.Directory)
 
 				if config.Current.Record {
-					notify.System("System: Record directory set to \"%s\"", save.Directory)
+					notify.System("🔌  Record directory set to \"%s\"", save.Directory)
 
 					err = config.Current.Save()
 					if err != nil {
@@ -195,35 +194,35 @@ func main() {
 
 					err := save.Open()
 					if err != nil {
-						notify.Error("System: Failed to open \"%s\" (%v)", save.Directory, err)
+						notify.Error("🔌  Failed to open \"%s\" (%v)", save.Directory, err)
 					}
 				} else {
-					notify.System("System: Closing open files in %s", save.Directory)
+					notify.System("🔌  Closing open files in %s", save.Directory)
 				}
 			case ui.Log:
 				save.Logs()
 
 				err := save.Open()
 				if err != nil {
-					notify.Error("System: Failed to open \"%s\" (%v)", save.Directory, err)
+					notify.Error("🔌  Failed to open \"%s\" (%v)", save.Directory, err)
 				}
 			case ui.Open:
-				notify.System("System: Opening \"%s\"", save.Directory)
+				notify.System("🔌  Opening \"%s\"", save.Directory)
 
 				err := save.Open()
 				if err != nil {
-					notify.Error("System: Failed to open \"%s\" (%v)", save.Directory, err)
+					notify.Error("🔌  Failed to open \"%s\" (%v)", save.Directory, err)
 				}
 			case ui.Refresh:
-				notify.Debug("System: Action received (Refresh)")
+				notify.Debug("🔌  Action received (Refresh)")
 
 				err := video.Open()
 				if err != nil {
-					notify.Error("System: Failed to open Video Capture Device (%v)", err)
+					notify.Error("🔌  Failed to open Video Capture Device (%v)", err)
 				}
 
-				if lastWindow != config.Current.VideoCaptureWindow {
-					notify.System("System: Capture window set to \"%s\"", lastWindow)
+				if lastWindow != config.Current.Video.Capture.Window.Name {
+					notify.System("🔌  Capture window set to \"%s\"", lastWindow)
 				}
 			}
 		}
@@ -231,5 +230,5 @@ func main() {
 
 	go signals()
 
-	notify.Announce("System: Initialized")
+	notify.Announce("🔌  Initialized")
 }

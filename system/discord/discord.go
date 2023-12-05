@@ -57,18 +57,20 @@ func Connect() {
 
 func Disconnect() {
 	rpc.cleanup()
-	notify.Feed(nrgba.Discord, "Discord: Disconnected")
+	notify.Feed(nrgba.Discord, "👾  Disconnected")
 }
 
 func reconnect() {
 	err := rpc.error()
 	if err != nil {
-		notify.Warn("Discord: Disconnected (%v)", err)
+		notify.Warn("👾  Disconnected (%v)", err)
 	}
 
 	if config.Current.Advanced.Discord.Disabled && rpc.conn != nil {
 		rpc.cleanup()
 	}
+
+	retries := 0
 
 	for wait := time.Second; rpc.conn == nil; time.Sleep(wait) {
 		if config.Current.Advanced.Discord.Disabled {
@@ -76,11 +78,18 @@ func reconnect() {
 		}
 		wait = wait << 1
 
-		notify.Feed(nrgba.Discord, "Discord: Connecting...")
+		retries++
+		if retries == 10 {
+			notify.Warn("👾  Failed to connect, rpc disabled")
+			config.Current.Advanced.Discord.Disabled = true
+			continue
+		}
+
+		notify.Feed(nrgba.Discord, "👾  Connecting...")
 
 		rpc, err = connect()
 		if err != nil {
-			notify.Warn("Discord: Failed to connect (%v)", err)
+			notify.Warn("👾  Failed to connect (%v)", err)
 			continue
 		}
 
@@ -88,11 +97,11 @@ func reconnect() {
 
 		err = rpc.error()
 		if err != nil {
-			notify.Warn("Discord: Failed to connect (%v)", err)
+			notify.Warn("👾  Failed to connect (%v)", err)
 			continue
 		}
 
-		notify.Feed(nrgba.Discord, "Discord: Connected")
+		notify.Feed(nrgba.Discord, "👾  Connected")
 	}
 }
 

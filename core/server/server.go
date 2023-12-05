@@ -97,7 +97,7 @@ func Clients() int {
 
 	for c := range current.clients {
 		if time.Since(current.clients[c]) > time.Second*5 {
-			notify.Feed(nrgba.Slate, "Server: Client has disconnected (%s)", c)
+			notify.Feed(nrgba.Slate, "🌐  Client has disconnected (%s)", c)
 			delete(current.clients, c)
 		}
 	}
@@ -156,19 +156,19 @@ func Listen() error {
 
 				img, err := video.Capture()
 				if err != nil {
-					notify.Error("Server: /stream (%v)", err)
+					notify.Error("🌐  /stream (%v)", err)
 					return true
 				}
 
 				n, err := io.WriteString(w, boundary)
 				if err != nil || n != len(boundary) {
-					notify.Error("Server: /stream (%v)", err)
+					notify.Error("🌐  /stream (%v)", err)
 					return true
 				}
 
 				err = enc.Encode(w, img)
 				if err != nil {
-					notify.Error("Server: /stream (%v)", err)
+					notify.Error("🌐  /stream (%v)", err)
 					return true
 				}
 
@@ -190,7 +190,7 @@ func Listen() error {
 			InsecureSkipVerify: true,
 		})
 		if err != nil {
-			notify.Error("Server: Failed to accept websocket connection (%v)", err)
+			notify.Error("🌐  Failed to accept websocket connection (%v)", err)
 			return
 		}
 		defer c.Close(websocket.StatusNormalClosure, "cross origin WebSocket accepted")
@@ -200,14 +200,14 @@ func Listen() error {
 
 		raw, err := json.Marshal(current.game)
 		if err != nil {
-			notify.Error("Server: Failed to create server response (%v)", err)
+			notify.Error("🌐  Failed to create server response (%v)", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
 		err = c.Write(context.Background(), websocket.MessageText, raw)
 		if err != nil {
-			notify.Error("Server: Failed to send server response (%v)", err)
+			notify.Error("🌐  Failed to send server response (%v)", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -224,14 +224,14 @@ func Listen() error {
 
 		raw, err := json.Marshal(current.game)
 		if err != nil {
-			notify.Error("Server: Failed to create server response (%v)", err)
+			notify.Error("🌐  Failed to create server response (%v)", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
 		_, err = w.Write(raw)
 		if err != nil {
-			notify.Error("Server: Failed to send server response (%v)", err)
+			notify.Error("🌐  Failed to send server response (%v)", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -256,7 +256,7 @@ func Listen() error {
 			}
 			last = current.tx / current.requests
 
-			notify.System("Server: Averaging %d bytes per request", last)
+			notify.System("🌐  Averaging %d bytes per request", last)
 		}
 	}()
 
@@ -527,7 +527,7 @@ func SetScore(t *team.Team, value int) {
 		case team.Orange.Name:
 			current.game.Orange.Value += s.Value
 		default:
-			notify.Error("Server: Received first goal from an unknown team")
+			notify.Error("🌐  Received first goal from an unknown team")
 		}
 	}
 }
@@ -568,7 +568,7 @@ func (i *info) client(r *http.Request, route string) {
 
 	_, ok := i.clients[key]
 	if !ok {
-		notify.System("Server: New %s connection (%s)", route, key)
+		notify.System("🌐  New %s connection (%s)", route, key)
 	}
 
 	i.clients[key] = time.Now()

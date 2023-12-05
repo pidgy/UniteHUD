@@ -10,6 +10,23 @@ import (
 	"github.com/pidgy/unitehud/core/nrgba"
 )
 
+type (
+	Post struct {
+		nrgba.NRGBA
+		time.Time
+
+		msg    string
+		orig   string
+		count  int
+		dedup  bool
+		unique bool
+	}
+)
+
+const (
+	MaxPosts = 75
+)
+
 var (
 	Preview     image.Image = image.NewRGBA(image.Rect(0, 0, 0, 0))
 	OrangeScore image.Image = image.NewRGBA(image.Rect(0, 0, 0, 0))
@@ -18,17 +35,6 @@ var (
 	Energy      image.Image = image.NewRGBA(image.Rect(0, 0, 0, 0))
 	Time        image.Image = image.NewRGBA(image.Rect(0, 0, 0, 0))
 )
-
-type Post struct {
-	nrgba.NRGBA
-	time.Time
-
-	msg    string
-	orig   string
-	count  int
-	dedup  bool
-	unique bool
-}
 
 type debugger struct {
 	fmt,
@@ -42,7 +48,6 @@ type notify struct {
 var feed = &notify{}
 
 func Announce(format string, a ...interface{}) {
-	println(fmt.Sprintf(format, a...))
 	feed.log(nrgba.Announce, true, false, false, format, a...)
 }
 
@@ -71,7 +76,7 @@ func Debug(format string, a ...interface{}) {
 		return
 	}
 
-	feed.log(nrgba.PastelBlue.Alpha(50), true, true, false, format, a...)
+	feed.log(nrgba.PastelBlue.Alpha(50), true, true, false, "🐞 "+format, a...)
 }
 
 func Debugger(prefix string) *debugger {
@@ -112,7 +117,7 @@ func Last() Post {
 }
 
 func Missed(event interface{}, window string) {
-	Debug("Window: Missed %T event (%s)", event, window)
+	Debug("🖥️  Missed %T event (%s)", event, window)
 }
 
 func (p *Post) String() string {
@@ -134,7 +139,7 @@ func Remove(r string) {
 }
 
 func System(format string, a ...interface{}) {
-	feed.log(nrgba.System, true, false, true, format, a...)
+	feed.log(nrgba.White, true, false, true, format, a...)
 }
 
 func SystemAppend(format string, a ...interface{}) {
@@ -208,7 +213,7 @@ func (n *notify) log(r nrgba.NRGBA, clock, dedup, unique bool, format string, a 
 	}
 
 	n.logs = append(n.logs, p)
-	if len(n.logs) > 10000 {
+	if len(n.logs) > MaxPosts {
 		n.logs = n.logs[1:]
 	}
 }

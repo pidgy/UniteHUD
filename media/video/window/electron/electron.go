@@ -43,12 +43,12 @@ var (
 )
 
 func App() {
-	notify.Debug("Overlay: Opening...")
+	notify.Debug("🎮  Opening...")
 
 	var err error
 
 	app, err = astilectron.New(
-		notify.Debugger("Overlay:"),
+		notify.Debugger("🎮  "),
 		astilectron.Options{
 			AppName:            title,
 			BaseDirectoryPath:  ".",
@@ -60,7 +60,7 @@ func App() {
 		},
 	)
 	if err != nil {
-		notify.Error("Overlay: Failed to create app (%v)", err)
+		notify.Error("🎮  Failed to create app (%v)", err)
 		return
 	}
 
@@ -69,19 +69,19 @@ func App() {
 	app.On(astilectron.EventNameAppCmdQuit, onClose)
 	app.On(astilectron.EventNameAppClose, onClose)
 	app.On(astilectron.EventNameAppEventReady, func(e astilectron.Event) (deleteListener bool) {
-		notify.Debug("Overlay: event, %s", e.Name)
+		notify.Debug("🎮  event, %s", e.Name)
 		active.app = true
 		return false
 	})
 
 	err = app.Start()
 	if err != nil {
-		notify.Error("Overlay: Failed to start app (%v)", err)
+		notify.Error("🎮  Failed to start app (%v)", err)
 		return
 	}
 
-	notify.Debug("Overlay: Creating window...")
-	notify.Debug("Overlay: Paths %s", app.Paths().DataDirectory())
+	notify.Debug("🎮  Creating window...")
+	notify.Debug("🎮  Paths %s", app.Paths().DataDirectory())
 
 	window, err = app.NewWindow(html,
 		&astilectron.WindowOptions{
@@ -122,12 +122,12 @@ func App() {
 		},
 	)
 	if err != nil {
-		notify.Error("Overlay: Failed to open (%v)", err)
+		notify.Error("🎮  Failed to open (%v)", err)
 		return
 	}
 
 	window.On(astilectron.EventNameWindowEventDidFinishLoad, func(e astilectron.Event) (deleteListener bool) {
-		notify.Debug("Overlay: event, %s", e.Name)
+		notify.Debug("🎮  event, %s", e.Name)
 		active.window = true
 		return false
 	})
@@ -136,7 +136,7 @@ func App() {
 }
 
 func Close() {
-	notify.System("Overlay: Closing app...")
+	notify.System("🎮  Closing app...")
 	app.Close()
 
 	active.window = false
@@ -144,11 +144,11 @@ func Close() {
 }
 
 func CloseWindow() {
-	notify.System("Overlay: Closing window...")
+	notify.System("🎮  Closing window...")
 
 	err := window.Close()
 	if err != nil {
-		notify.Error("Overlay: Failed to close window (%v)", err)
+		notify.Error("🎮  Failed to close window (%v)", err)
 	}
 }
 
@@ -172,7 +172,7 @@ func Follow(hwnd uintptr, hidden bool) {
 
 		_, _, err := wapi.GetWindowRect.Call(hwnd, uintptr(unsafe.Pointer(r)))
 		if err != syscall.Errno(0) {
-			notify.Error("Overlay: Failed to follow Client window (%v)", err)
+			notify.Error("🎮  Failed to follow Client window (%v)", err)
 			return
 		}
 
@@ -192,7 +192,7 @@ func Follow(hwnd uintptr, hidden bool) {
 		window.Show(),
 	} {
 		if err != nil {
-			notify.Debug("Overlay: Failed to render (%v)", err)
+			notify.Debug("🎮  Failed to render (%v)", err)
 		}
 	}
 }
@@ -202,7 +202,7 @@ func OpenWindow() error {
 		return window.Show()
 	}
 
-	notify.System("Overlay: Opening...")
+	notify.System("🎮  Opening...")
 
 	errq := make(chan error)
 
@@ -216,7 +216,7 @@ func OpenWindow() error {
 		// if global.DebugMode {
 		// 	// err := window.OpenDevTools()
 		// 	// if err != nil {
-		// 	// 	notify.Warn("Overlay: Failed to open dev tools")
+		// 	// 	notify.Warn("🎮  Failed to open dev tools")
 		// 	// }
 		// }
 
@@ -227,6 +227,6 @@ func OpenWindow() error {
 }
 
 func onClose(e astilectron.Event) (deleteListener bool) {
-	notify.Debug("Overlay: app event %s", e.Name)
+	notify.Debug("🎮  app event %s", e.Name)
 	return false
 }
