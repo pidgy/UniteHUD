@@ -21,15 +21,15 @@ import (
 	"github.com/pidgy/unitehud/gui/cursor"
 	"github.com/pidgy/unitehud/gui/is"
 	"github.com/pidgy/unitehud/gui/visual/decorate"
+	"github.com/pidgy/unitehud/gui/visual/electron"
 	"github.com/pidgy/unitehud/gui/visual/title"
 	"github.com/pidgy/unitehud/media/img/splash"
 	"github.com/pidgy/unitehud/media/video"
 	"github.com/pidgy/unitehud/media/video/fps"
 	"github.com/pidgy/unitehud/media/video/wapi"
-	"github.com/pidgy/unitehud/media/video/window/electron"
 )
 
-type client struct {
+type overlay struct {
 	hwnd uintptr
 
 	video,
@@ -64,14 +64,16 @@ type client struct {
 }
 
 func (g *GUI) client(onclose func()) {
-	ui := g.clientUI()
+	toast := g.ToastSplash("UniteHUD Overlay", "Loading...", splash.Projector()).wait()
+
+	ui := g.overlayUI()
 
 	ui.windows.current.Perform(system.ActionCenter)
 	ui.windows.current.Perform(system.ActionRaise)
 
 	err := electron.OpenWindow()
 	if err != nil {
-		notify.Warn("Client: Failed to render overlay (%v)", err)
+		notify.Warn("📺 Failed to render overlay (%v)", err)
 	}
 	defer electron.CloseWindow()
 
@@ -79,17 +81,15 @@ func (g *GUI) client(onclose func()) {
 		Async: true,
 		FPS:   120,
 		Render: func(min, max, avg time.Duration) (close bool) {
-			var err error
+			// img, err := video.Capture()
+			// if err != nil {
+			// 	g.ToastError(err)
+			// 	g.next(is.MainMenu)
+			// 	return true
+			// }
 
-			img, err := video.Capture()
-			if err != nil {
-				g.ToastError(err)
-				g.next(is.MainMenu)
-				return true
-			}
-
-			ui.video = img
-			ui.overlayOp = paint.NewImageOp(img)
+			// ui.video = img
+			// ui.overlayOp = paint.NewImageOp(img)
 
 			return false
 		},
@@ -106,6 +106,8 @@ func (g *GUI) client(onclose func()) {
 		},
 	}).Stop()
 
+	toast.close()
+
 	defer onclose()
 
 	var ops op.Ops
@@ -113,7 +115,7 @@ func (g *GUI) client(onclose func()) {
 	for {
 		switch event := ui.windows.current.NextEvent().(type) {
 		case system.DestroyEvent:
-			notify.System("Client: Closing...")
+			notify.System("📺 Closing overlay...")
 			return
 		case system.StageEvent:
 			if !ui.visibility.seen {
@@ -180,10 +182,15 @@ func (g *GUI) client(onclose func()) {
 							gtx,
 							layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
 								return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+									img, err := video.Capture()
+									if err != nil {
+										g.ToastError(err)
+										g.next(is.MainMenu)
+									}
 
 									return widget.Image{
 										Fit:      fit,
-										Src:      ui.overlayOp,
+										Src:      paint.NewImageOp(img),
 										Position: layout.Center,
 									}.Layout(gtx)
 								})
@@ -198,7 +205,7 @@ func (g *GUI) client(onclose func()) {
 								return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 									if ui.overlay != nil {
 										return widget.Image{
-											Fit:      fit,
+											Fit:      widget.Unscaled,
 											Src:      paint.NewImageOp(ui.overlay),
 											Position: layout.Center,
 										}.Layout(gtx)
@@ -244,7 +251,7 @@ func (g *GUI) client(onclose func()) {
 	}
 }
 
-func (ui *client) fullscreen() {
+func (ui *overlay) fullscreen() {
 	ui.dimensions.fullscreened = !ui.dimensions.fullscreened
 	ui.bar.Hide = ui.dimensions.fullscreened
 
@@ -256,8 +263,8 @@ func (ui *client) fullscreen() {
 	}
 }
 
-func (g *GUI) clientUI() *client {
-	ui := &client{
+func (g *GUI) overlayUI() *overlay {
+	ui := &overlay{
 		video: splash.Projector(),
 	}
 
@@ -274,7 +281,7 @@ func (g *GUI) clientUI() *client {
 
 	ui.windows.parent = g
 	ui.windows.current = app.NewWindow(
-		app.Title("UniteHUD Projector"),
+		app.Title("UniteHUD Overlay"),
 		app.Size(unit.Dp(ui.dimensions.size.X), unit.Dp(ui.dimensions.size.Y)),
 		app.MinSize(unit.Dp(ui.dimensions.size.X), unit.Dp(ui.dimensions.size.Y)),
 		app.Decorated(false),
@@ -283,7 +290,7 @@ func (g *GUI) clientUI() *client {
 	return ui
 }
 
-func (ui *client) setWindowPos(shift image.Point) {
+func (ui *overlay) setWindowPos(shift image.Point) {
 	if ui.dimensions.fullscreened || ui.hwnd == 0 || ui.dimensions.moving {
 		return
 	}
@@ -309,25 +316,4 @@ func (ui *client) setWindowPos(shift image.Point) {
 
 		wapi.SetWindowPosNoSize(ui.hwnd, pos)
 	}()
-
-	// go func() {
-	// 	defer func() { g.dimensions.resizing = false }()
-
-	// 	if shift.Eq(g.dimensions.shift) {
-	// 		return
-	// 	}
-
-	// 	pos := g.position().Add(shift)
-	// 	if !pos.In(image.Rectangle{Min: image.Pt(0, 0).Sub(g.dimensions.size), Max: g.dimensions.max.Add(g.dimensions.size)}) {
-	// 		return
-	// 	}
-
-	// 	g.dimensions.shift = shift
-
-	// 	if g.dimensions.smoothing == 2 {
-	// 		wapi.SetWindowPosNoSize(g.HWND, pos)
-	// 		g.dimensions.smoothing = 0
-	// 	}
-	// 	g.dimensions.smoothing++
-	// }()
 }

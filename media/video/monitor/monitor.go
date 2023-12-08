@@ -135,7 +135,7 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 		)
 	}
 	if ret == 0 {
-		notify.Error("🖥️  Failed to capture \"%s\"", config.Current.Video.Capture.Window.Name)
+		notify.Error("🖥️ Failed to capture \"%s\"", config.Current.Video.Capture.Window.Name)
 		return nil, fmt.Errorf("bitblt returned: %d", ret)
 	}
 
@@ -198,7 +198,7 @@ func Open() {
 			bottomDisplays++
 			name = display("Bottom Display", bottomDisplays)
 		default:
-			notify.Error("🖥️  Failed to locate display #%d [%s] relative to %s [%s]", i, r, config.MainDisplay, m)
+			notify.Error("🖥️ Failed to locate display #%d [%s] relative to %s [%s]", i, r, config.MainDisplay, m)
 			continue
 		}
 

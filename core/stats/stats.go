@@ -73,7 +73,7 @@ func Average(stat string, maxv float32) {
 }
 
 func Clear() {
-	notify.System("📊  Clearing matched image template statistics")
+	notify.System("📊 Clearing matched image template statistics")
 	statsq <- func() {
 		clear()
 	}
@@ -116,7 +116,7 @@ func Lines() []string {
 		defer close(lineq)
 
 		if len(averages) == 0 {
-			notify.Warn("📊  No matched image template statistics to display...")
+			notify.Warn("📊 No matched image template statistics to display...")
 			return
 		}
 
@@ -185,7 +185,7 @@ func Lines() []string {
 			table.Render()
 		}
 
-		notify.System("📊  Matched image template statistics")
+		notify.System("📊 Matched image template statistics")
 
 		lineq <- strings.Split(buf.String(), "\n")
 	}

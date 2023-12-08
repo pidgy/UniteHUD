@@ -327,7 +327,7 @@ func (a *Widget) match() error {
 }
 
 func (c *Capture) reset() {
-	notify.Debug("Resetting %s capture area %s", c.Option, c.DefaultBase)
+	notify.Debug("🖥️ Resetting %s capture area %s", c.Option, c.DefaultBase)
 	c.Base = c.DefaultBase
 }
 

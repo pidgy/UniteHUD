@@ -68,7 +68,7 @@ type main struct {
 		connectedClients,
 		symbol,
 		acronym,
-		fps,
+		hz,
 		purpleScore,
 		orangeScore,
 		selfScore,
@@ -146,9 +146,9 @@ func (g *GUI) main() {
 
 	defer g.header.Remove(g.header.Add(ui.menu.startstop))
 	defer g.header.Remove(g.header.Add(ui.menu.settings))
+	defer g.header.Remove(g.header.Add(ui.menu.client))
 	defer g.header.Remove(g.header.Add(ui.menu.hideRight))
 	defer g.header.Remove(g.header.Add(ui.menu.hideTop))
-	defer g.header.Remove(g.header.Add(ui.menu.client))
 	defer g.header.Remove(g.header.Add(ui.menu.stats))
 	defer g.header.Remove(g.header.Add(ui.menu.results))
 	defer g.header.Remove(g.header.Add(ui.menu.obs))
@@ -183,7 +183,7 @@ func (g *GUI) main() {
 
 					err := config.Current.Save()
 					if err != nil {
-						notify.Error("Failed to save configuration (%v)", err)
+						notify.Error("🖥️ Failed to save configuration (%v)", err)
 					}
 				},
 				func() { save.OpenLogDirectory() },
@@ -259,7 +259,7 @@ func (g *GUI) main() {
 						}
 
 						layout.Inset{
-							Left: unit.Dp(1),
+							Left: unit.Dp(2),
 							Top:  unit.Dp(.4),
 						}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 							if config.Current.Advanced.Discord.Disabled {
@@ -283,14 +283,14 @@ func (g *GUI) main() {
 						switch {
 						case device.IsActive():
 							if ui.labels.window.Text == "" || ui.labels.window.Text == config.Current.Video.Capture.Window.Name {
-								ui.labels.window.Text = fmt.Sprintf("🕹️ %s", device.Name(config.Current.Video.Capture.Device.Index))
+								ui.labels.window.Text = fmt.Sprintf("🎥 %s: %d FPS", device.Name(config.Current.Video.Capture.Device.Index), device.FPS())
 							}
 						case window.IsOpen(), monitor.IsDisplay():
-							ui.labels.window.Text = fmt.Sprintf("🕹️ %s", config.Current.Video.Capture.Window.Name)
+							ui.labels.window.Text = fmt.Sprintf("🎥 %s", config.Current.Video.Capture.Window.Name)
 						}
 						if config.Current.Video.Capture.Window.Lost != "" {
 							ui.labels.window.Text = config.Current.Video.Capture.Window.Lost
-							ui.labels.window.Text = fmt.Sprintf("🕹️ %s", config.Current.Video.Capture.Window.Name)
+							ui.labels.window.Text = fmt.Sprintf("🎥 %s", config.Current.Video.Capture.Window.Name)
 							ui.labels.window.Color = nrgba.PaleRed.Color()
 						}
 						layout.Inset{
@@ -369,12 +369,12 @@ func (g *GUI) main() {
 							Left: unit.Dp(float32(gtx.Constraints.Max.X - 135)),
 						}.Layout(gtx, ui.labels.version.Layout)
 
-						ui.labels.fps.Color = nrgba.FPS(g.fps.FPS()).Color()
-						ui.labels.fps.Text = fmt.Sprintf("%s FPS", g.fps)
+						ui.labels.hz.Color = nrgba.FPS(g.hz.PS()).Color()
+						ui.labels.hz.Text = fmt.Sprintf("%sHz", g.hz)
 						layout.Inset{
 							Top:  unit.Dp(18),
 							Left: unit.Dp(float32(gtx.Constraints.Max.X - 135)),
-						}.Layout(gtx, ui.labels.fps.Layout)
+						}.Layout(gtx, ui.labels.hz.Layout)
 
 						o, p, s := server.Scores()
 
@@ -618,6 +618,7 @@ func (g *GUI) mainUI() *main {
 			ui.menu.startstop.Text = "▶"
 			ui.menu.startstop.OnHoverHint = ui.buttons.start.OnHoverHint
 			ui.menu.startstop.Pressed = nrgba.PastelGreen
+			ui.menu.startstop.Released = nrgba.Nothing
 		},
 	}
 
@@ -644,9 +645,10 @@ func (g *GUI) mainUI() *main {
 			g.Actions <- Config
 			g.Running = true
 
-			ui.menu.startstop.Text = "⏹"
+			ui.menu.startstop.Text = "⏸"
 			ui.menu.startstop.OnHoverHint = ui.buttons.stop.OnHoverHint
-			ui.menu.startstop.Pressed = nrgba.PastelRed
+			ui.menu.startstop.Pressed = nrgba.Nothing
+			ui.menu.startstop.Released = nrgba.PastelRed
 		},
 	}
 
@@ -690,7 +692,7 @@ func (g *GUI) mainUI() *main {
 	ui.labels.window = material.Caption(g.header.Collection.Calibri().Theme, "")
 	ui.labels.window.Color = nrgba.DarkSeafoam.Color()
 	ui.labels.window.Alignment = text.Middle
-	ui.labels.window.Font.Weight = font.ExtraBold
+	ui.labels.window.Font.Weight = font.Medium
 	ui.labels.window.TextSize = unit.Sp(14)
 
 	ui.labels.cpu = material.H5(g.header.Collection.Calibri().Theme, "")
@@ -729,9 +731,9 @@ func (g *GUI) mainUI() *main {
 	ui.labels.acronym.TextSize = unit.Sp(14)
 	ui.labels.acronym.Color = nrgba.Slate.Color()
 
-	ui.labels.fps = material.H5(g.header.Collection.Calibri().Theme, "0 FPS")
-	ui.labels.fps.Alignment = text.Middle
-	ui.labels.fps.TextSize = unit.Sp(14)
+	ui.labels.hz = material.H5(g.header.Collection.Calibri().Theme, "0 FPS")
+	ui.labels.hz.Alignment = text.Middle
+	ui.labels.hz.TextSize = unit.Sp(14)
 
 	ui.labels.purpleScore = material.H5(g.header.Collection.Calibri().Theme, "0")
 	ui.labels.purpleScore.Color = team.Purple.NRGBA.Color()
@@ -858,9 +860,9 @@ func (g *GUI) mainUI() *main {
 		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
-			ui.buttons.start.Click(ui.buttons.start)
+			// ui.buttons.start.Click(ui.buttons.start)
 			go g.client(func() {
-				ui.buttons.stop.Click(ui.buttons.stop)
+				// ui.buttons.stop.Click(ui.buttons.stop)
 			})
 		},
 	}
@@ -919,7 +921,7 @@ func (g *GUI) mainUI() *main {
 				OnToastOK(func() {
 					err = open.Run(filepath.Join(global.WorkingDirectory(), "www"))
 					if err != nil {
-						notify.Error("🖥️  Failed to open www/ directory: %v", err)
+						notify.Error("🖥️ Failed to open www/ directory: %v", err)
 						return
 					}
 				}),
@@ -939,15 +941,15 @@ func (g *GUI) mainUI() *main {
 			defer this.Deactivate()
 
 			notify.CLS()
-			notify.System("🧹  Cleared")
+			notify.System("🧹 Cleared")
 		},
 	}
 
 	ui.menu.eco = &button.Widget{
-		Text:        "⚶",
+		Text:        "🌳",
 		Font:        g.header.Collection.NishikiTeki(),
 		OnHoverHint: func() { g.header.Tip("Toggle resource saver") },
-		Pressed:     nrgba.ForestGreen,
+		Pressed:     nrgba.Green,
 		TextSize:    unit.Sp(16),
 
 		Click: func(this *button.Widget) {
@@ -959,9 +961,9 @@ func (g *GUI) mainUI() *main {
 			}
 
 			if g.performance.eco {
-				notify.System("⚶  Resource saver has been enabled")
+				notify.System("🌳 Resource saver has been enabled")
 			} else {
-				notify.System("⚶  Resource saver has been disabled")
+				notify.System("🌳 Resource saver has been disabled")
 			}
 		},
 	}
@@ -980,7 +982,7 @@ func (g *GUI) mainUI() *main {
 
 			err := save.Open()
 			if err != nil {
-				notify.Error("🗁  Failed to open \"%s\" (%v)", save.Directory, err)
+				notify.Error("🗁 Failed to open \"%s\" (%v)", save.Directory, err)
 			}
 		},
 	}
@@ -999,7 +1001,7 @@ func (g *GUI) mainUI() *main {
 				defer save.Logs()
 
 				config.Current.Record = true
-				notify.System("🎬  Recording captured events in %s", save.Directory)
+				notify.System("🎬 Recording captured events in %s", save.Directory)
 				this.Text = "■"
 			}
 
@@ -1009,12 +1011,12 @@ func (g *GUI) mainUI() *main {
 				yes = func() {
 					defer save.Logs()
 
-					notify.System("🎬  Saved captured events in %s", save.Directory)
+					notify.System("🎬 Saved captured events in %s", save.Directory)
 					this.Text = "🎬"
 
 					err := save.Open()
 					if err != nil {
-						notify.Error("🎬  Failed to open \"%s\" (%v)", save.Directory, err)
+						notify.Error("🎬 Failed to open \"%s\" (%v)", save.Directory, err)
 					}
 				}
 			}
@@ -1037,14 +1039,14 @@ func (g *GUI) mainUI() *main {
 			exe := "C:\\Windows\\system32\\notepad.exe"
 			err := exec.Command(exe, config.Current.File()).Run()
 			if err != nil {
-				notify.Error("Failed to open \"%s\" (%v)", config.Current.File(), err)
+				notify.Error("🖥️ Failed to open \"%s\" (%v)", config.Current.File(), err)
 				return
 			}
 
 			// Called once window is closed.
 			err = config.Load(config.Current.Profile)
 			if err != nil {
-				notify.Error("Failed to reload \"%s\" (%v)", config.Current.File(), err)
+				notify.Error("🖥️ Failed to reload \"%s\" (%v)", config.Current.File(), err)
 				return
 			}
 		},
@@ -1065,7 +1067,6 @@ func (g *GUI) mainUI() *main {
 				ui.buttons.start.Click(ui.buttons.start)
 				this.Text = "⏸"
 				this.OnHoverHint = ui.buttons.stop.OnHoverHint
-				// this.Pressed = nrgba.PastelRed
 				this.Released = nrgba.PastelRed
 			} else {
 				ui.buttons.stop.Click(ui.buttons.stop)
@@ -1080,7 +1081,7 @@ func (g *GUI) mainUI() *main {
 	ui.menu.hideRight = &button.Widget{
 		Text:            "⇇",
 		Font:            g.header.Collection.NishikiTeki(),
-		Pressed:         nrgba.PastelGreen,
+		Pressed:         nrgba.Gray,
 		TextSize:        unit.Sp(16),
 		TextInsetBottom: -1,
 		OnHoverHint:     func() { g.header.Tip("Show Main Menu preview area") },
@@ -1102,7 +1103,7 @@ func (g *GUI) mainUI() *main {
 	ui.menu.hideTop = &button.Widget{
 		Text:            "⇈",
 		Font:            g.header.Collection.NishikiTeki(),
-		Pressed:         nrgba.PastelGreen,
+		Pressed:         nrgba.Gray,
 		TextSize:        unit.Sp(16),
 		TextInsetBottom: -1,
 		OnHoverHint:     func() { g.header.Tip("Show Main Menu configuration area") },

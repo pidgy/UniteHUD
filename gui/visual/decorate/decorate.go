@@ -64,6 +64,10 @@ func Label(l *material.LabelStyle, format string, a ...interface{}) {
 	l.Color = config.Current.Theme.Foreground
 }
 
+func LabelAlpha(l *material.LabelStyle, a uint8) {
+	l.Color.A = a
+}
+
 func LabelColor(l *material.LabelStyle, c color.NRGBA) {
 	l.Color = c
 }

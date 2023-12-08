@@ -43,7 +43,7 @@ type footer struct {
 	cpu,
 	ram,
 	fps,
-	tick material.LabelStyle
+	hz material.LabelStyle
 }
 
 type projected struct {
@@ -104,6 +104,7 @@ type projected struct {
 
 func (g *GUI) projector() {
 	ui := g.projectorUI()
+	ui.buttons.menu.settings.Click(ui.buttons.menu.settings)
 
 	defer g.header.Remove(g.header.Add(ui.buttons.menu.home))
 	defer g.header.Remove(g.header.Add(ui.buttons.menu.save))
@@ -151,11 +152,11 @@ func (g *GUI) projector() {
 			}
 
 			decorate.Background(gtx)
-			decorate.Label(&ui.footer.api, "Video Capture API: %s", device.APIName(device.API(config.Current.Video.Capture.Device.API)))
+			decorate.Label(&ui.footer.api, "API: %s", device.APIName(device.API(config.Current.Video.Capture.Device.API)))
 			decorate.Label(&ui.footer.cpu, g.performance.cpu)
 			decorate.Label(&ui.footer.ram, g.performance.ram)
-			decorate.Label(&ui.footer.fps, "%s FPS", g.fps)
-			decorate.Label(&ui.footer.tick, "Tick %02d", g.fps.Frames())
+			decorate.Label(&ui.footer.hz, "%s Hz", g.hz)
+			decorate.Label(&ui.footer.fps, "%d FPS", device.FPS())
 
 			g.header.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				if ui.hideOptions {
@@ -208,7 +209,7 @@ func (g *GUI) projector() {
 							}.Layout(gtx,
 								ui.spacer(2, 0),
 
-								layout.Flexed(0.33, func(gtx layout.Context) layout.Dimensions {
+								layout.Flexed(15, func(gtx layout.Context) layout.Dimensions {
 									return layout.Flex{
 										Axis: layout.Vertical,
 									}.Layout(gtx,
@@ -232,7 +233,7 @@ func (g *GUI) projector() {
 
 								ui.spacer(2, 0),
 
-								layout.Flexed(0.33, func(gtx layout.Context) layout.Dimensions {
+								layout.Flexed(15, func(gtx layout.Context) layout.Dimensions {
 									return layout.Flex{
 										Axis: layout.Vertical,
 									}.Layout(gtx,
@@ -256,7 +257,7 @@ func (g *GUI) projector() {
 
 								ui.spacer(2, 0),
 
-								layout.Flexed(0.33, func(gtx layout.Context) layout.Dimensions {
+								layout.Flexed(15, func(gtx layout.Context) layout.Dimensions {
 									return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
 										layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 											return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
@@ -276,7 +277,7 @@ func (g *GUI) projector() {
 
 								ui.spacer(2, 0),
 
-								layout.Flexed(0.33, func(gtx layout.Context) layout.Dimensions {
+								layout.Flexed(10, func(gtx layout.Context) layout.Dimensions {
 									return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
 										layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 											return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
@@ -296,7 +297,7 @@ func (g *GUI) projector() {
 
 								ui.spacer(2, 0),
 
-								layout.Flexed(0.33, func(gtx layout.Context) layout.Dimensions {
+								layout.Flexed(15, func(gtx layout.Context) layout.Dimensions {
 									return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
 										layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 											return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
@@ -314,7 +315,7 @@ func (g *GUI) projector() {
 									)
 								}),
 
-								ui.spacer(2, 0),
+								ui.spacer(3, 0),
 							)
 						})
 					}),
@@ -361,6 +362,11 @@ func (g *GUI) projector() {
 					g.ToastError(err)
 					g.next(is.MainMenu)
 					return
+				}
+
+				rgba, ok := ui.img.(*image.RGBA)
+				if ok && rgba == nil {
+					ui.img = splash.Device()
 				}
 			}
 
@@ -489,7 +495,7 @@ func (g *GUI) projectorUI() *projected {
 
 					err := config.Current.Save()
 					if err != nil {
-						notify.Error("Projector: Failed to save UniteHUD configuration (%v)", err)
+						notify.Error("📺 Failed to save UniteHUD configuration (%v)", err)
 					}
 
 					g.Actions <- Refresh
@@ -589,10 +595,10 @@ func (g *GUI) projectorUI() *projected {
 
 					err := config.Current.Save()
 					if err != nil {
-						notify.Error("Failed to save UniteHUD configuration (%v)", err)
+						notify.Error("📺 Failed to save UniteHUD configuration (%v)", err)
 					}
 
-					notify.System("Projector: Configuration saved to " + config.Current.File())
+					notify.System("📺 Configuration saved to " + config.Current.File())
 				}),
 				OnToastNo(this.Deactivate),
 			)
@@ -652,14 +658,14 @@ func (g *GUI) projectorUI() *projected {
 			exe := "C:\\Windows\\system32\\notepad.exe"
 			err := exec.Command(exe, config.Current.File()).Run()
 			if err != nil {
-				notify.Error("Projector: Failed to open \"%s\" (%v)", config.Current.File(), err)
+				notify.Error("📺 Failed to open \"%s\" (%v)", config.Current.File(), err)
 				return
 			}
 
 			// Called once window is closed.
 			err = config.Load(config.Current.Profile)
 			if err != nil {
-				notify.Error("Projector: Failed to reload \"%s\" (%v)", config.Current.File(), err)
+				notify.Error("📺 Failed to reload \"%s\" (%v)", config.Current.File(), err)
 				return
 			}
 
@@ -685,7 +691,7 @@ func (g *GUI) projectorUI() *projected {
 
 					err := config.Current.Reset()
 					if err != nil {
-						notify.Error("Projector: Failed to reset %s configuration (%v)", config.Current.Profile, err)
+						notify.Error("📺 Failed to reset %s configuration (%v)", config.Current.Profile, err)
 					}
 
 					config.Current.Reload()
@@ -706,7 +712,7 @@ func (g *GUI) projectorUI() *projected {
 
 					g.next(is.MainMenu)
 
-					notify.Announce("Projector: Reset UniteHUD %s configuration", config.Current.Profile)
+					notify.Announce("📺 Reset UniteHUD %s configuration", config.Current.Profile)
 				}),
 				OnToastNo(this.Deactivate),
 			)
@@ -734,12 +740,12 @@ func (g *GUI) projectorUI() *projected {
 	ui.labels.video.api.Font.Weight = 100
 
 	ui.footer = &footer{
-		api:  material.Label(g.header.Collection.Calibri().Theme, unit.Sp(12), ""),
-		log:  material.Label(g.header.Collection.Calibri().Theme, unit.Sp(12), ""),
-		cpu:  material.Label(g.header.Collection.Calibri().Theme, unit.Sp(12), ""),
-		ram:  material.Label(g.header.Collection.Calibri().Theme, unit.Sp(12), ""),
-		fps:  material.Label(g.header.Collection.Calibri().Theme, unit.Sp(12), ""),
-		tick: material.Label(g.header.Collection.Calibri().Theme, unit.Sp(12), ""),
+		api: material.Label(g.header.Collection.Calibri().Theme, unit.Sp(12), ""),
+		log: material.Label(g.header.Collection.Calibri().Theme, unit.Sp(12), ""),
+		cpu: material.Label(g.header.Collection.Calibri().Theme, unit.Sp(12), ""),
+		ram: material.Label(g.header.Collection.Calibri().Theme, unit.Sp(12), ""),
+		fps: material.Label(g.header.Collection.Calibri().Theme, unit.Sp(12), ""),
+		hz:  material.Label(g.header.Collection.Calibri().Theme, unit.Sp(12), ""),
 	}
 
 	ui.footer.api.Color = nrgba.Highlight.Color()
@@ -750,8 +756,8 @@ func (g *GUI) projectorUI() *projected {
 	ui.footer.ram.Alignment = text.Start
 	ui.footer.fps.Color = nrgba.Highlight.Color()
 	ui.footer.fps.Alignment = text.Start
-	ui.footer.tick.Color = nrgba.Highlight.Color()
-	ui.footer.tick.Alignment = text.Start
+	ui.footer.hz.Color = nrgba.Highlight.Color()
+	ui.footer.hz.Alignment = text.Start
 
 	ui.groups.videos.window.populate(false)
 	ui.groups.videos.device.populate(false)
@@ -882,7 +888,7 @@ func (p *projected) foot(gtx layout.Context, f *footer) layout.FlexChild {
 					p.empty(5, 0),
 
 					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-						return f.tick.Layout(gtx)
+						return f.hz.Layout(gtx)
 					}),
 
 					p.empty(2, 0),

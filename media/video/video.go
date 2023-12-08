@@ -4,6 +4,7 @@ import (
 	"image"
 
 	"github.com/pidgy/unitehud/core/notify"
+	"github.com/pidgy/unitehud/media/img/splash"
 	"github.com/pidgy/unitehud/media/video/device"
 	"github.com/pidgy/unitehud/media/video/monitor"
 	"github.com/pidgy/unitehud/media/video/window"
@@ -61,13 +62,15 @@ func Screens() []string {
 }
 
 func StateArea() image.Rectangle {
-	i, err := Capture()
+	img, err := Capture()
 	if err != nil {
-		notify.Error("📽️  Failed to capture area for state events (%v)", err)
+		notify.Error("📽️ Failed to capture area for state events (%v)", err)
 		return image.Rect(0, 0, 0, 0)
 	}
+	if img == nil {
+		img = splash.DeviceRGBA()
+	}
 
-	b := i.Bounds()
+	b := img.Bounds()
 	return image.Rect(b.Max.X/3, 0, b.Max.X-b.Max.X/3, b.Max.Y)
-	//return i.Bounds()
 }

@@ -7,13 +7,13 @@ import (
 	"github.com/pidgy/unitehud/core/notify"
 )
 
-// FPS handles frames-per-second arithmetic using interval ticks.
-type FPS struct {
+// Hz handles frames-per-second arithmetic using interval ticks.
+type Hz struct {
 	window  time.Duration
 	counter int
 	start   time.Time
 
-	frames struct {
+	ticks struct {
 		start, end time.Time
 		count      int
 		ps         float64
@@ -40,9 +40,9 @@ type LoopOptions struct {
 	syncq    chan bool
 }
 
-// New will return a new FPS tracker.
-func New() *FPS {
-	return &FPS{
+// NewHz will return a new FPS tracker.
+func NewHz() *Hz {
+	return &Hz{
 		window:  time.Second,
 		counter: 0,
 		start:   time.Now(),
@@ -68,44 +68,44 @@ func NewLoop(o *LoopOptions) *Loop {
 	return l
 }
 
-// FPS returns the average number of ticks per-second count.
-func (f *FPS) FPS() float64 {
-	return f.frames.ps
+// PS returns the average number of ticks per-second count.
+func (h *Hz) PS() float64 {
+	return h.ticks.ps
 }
 
-// Frames returns the number of ticks that occured in the active window.
-func (f *FPS) Frames() int {
-	return f.frames.count
+// Ticks returns the number of ticks that occured in the active window.
+func (h *Hz) Ticks() int {
+	return h.ticks.count
 }
 
 // String returns the average number of ticks per-second count as a string.
-func (f *FPS) String() string {
-	return fmt.Sprintf("%d", int(f.frames.ps))
+func (h *Hz) String() string {
+	return fmt.Sprintf("%d", int(h.ticks.ps))
 }
 
 // Increment and adjust the total frame count and per-second count respectively.
-func (f *FPS) Tick(t time.Time) {
-	defer f.count()
+func (h *Hz) Tick(t time.Time) {
+	defer h.count()
 
-	interval := t.Sub(f.start)
-	if interval <= f.window {
+	interval := t.Sub(h.start)
+	if interval <= h.window {
 		return
 	}
-	defer f.restart(t)
+	defer h.restart(t)
 
-	f.frames.start = f.start
-	f.frames.end = t
-	f.frames.count = f.counter
-	f.frames.ps = float64(f.counter) / interval.Seconds()
+	h.ticks.start = h.start
+	h.ticks.end = t
+	h.ticks.count = h.counter
+	h.ticks.ps = float64(h.counter) / interval.Seconds()
 }
 
-func (f *FPS) count() {
-	f.counter++
+func (h *Hz) count() {
+	h.counter++
 }
 
-func (f *FPS) restart(t time.Time) {
-	f.start = t
-	f.counter = 0
+func (h *Hz) restart(t time.Time) {
+	h.start = t
+	h.counter = 0
 }
 
 func (l *Loop) Stop() { l.stop = true }

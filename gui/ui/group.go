@@ -454,7 +454,7 @@ func (g *GUI) videos(text float32) *videos {
 				video.Close()
 
 				if i.Text == "Disabled" {
-					i.Checked = widget.Bool{Value: true}
+					i.Checked.Value = true
 				}
 
 				defer v.device.populate(i.Text == "Disabled")
@@ -467,7 +467,6 @@ func (g *GUI) videos(text float32) *videos {
 					err := video.Open()
 					if err != nil {
 						g.ToastError(err)
-
 						config.Current.Video.Capture.Window.Name = config.MainDisplay
 						config.Current.Video.Capture.Device.Index = config.NoVideoCaptureDevice
 					}
@@ -593,20 +592,20 @@ func (g *GUI) videos(text float32) *videos {
 
 					err := config.Current.Save()
 					if err != nil {
-						notify.Error("Failed to load %s profile configuration", config.Current.Profile)
+						notify.Error("🖥️ Failed to load %s profile configuration", config.Current.Profile)
 						return false
 					}
 
 					err = config.Load(config.Current.Profile)
 					if err != nil {
-						notify.Error("Failed to load %s profile configuration", config.Current.Profile)
+						notify.Error("🖥️ Failed to load %s profile configuration", config.Current.Profile)
 						return false
 					}
 
 					time.AfterFunc(time.Second, func() {
 						err := config.Current.Save()
 						if err != nil {
-							notify.Error("Failed to save %s profile configuration", config.Current.Profile)
+							notify.Error("🖥️ Failed to save %s profile configuration", config.Current.Profile)
 						}
 					})
 				}
@@ -643,7 +642,7 @@ func (g *GUI) videos(text float32) *videos {
 				config.Current.Profile = strings.ToLower(i.Text)
 				err := config.Load(config.Current.Profile)
 				if err != nil {
-					notify.Error("Failed to load %s profile configuration", config.Current.Profile)
+					notify.Error("🖥️ Failed to load %s profile configuration", config.Current.Profile)
 					return false
 				}
 
@@ -651,12 +650,12 @@ func (g *GUI) videos(text float32) *videos {
 				v.device.populate(true)
 				v.monitor.populate(true)
 
-				notify.System("Profile set to %s mode", i.Text)
+				notify.System("🖥️ Profile set to %s mode", i.Text)
 
 				time.AfterFunc(time.Second, func() {
 					err := config.Current.Save()
 					if err != nil {
-						notify.Error("Failed to save %s profile configuration", config.Current.Profile)
+						notify.Error("🖥️ Failed to save %s profile configuration", config.Current.Profile)
 					}
 				})
 				return true

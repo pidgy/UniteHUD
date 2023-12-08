@@ -8,6 +8,7 @@ import (
 	"gioui.org/io/system"
 	"gioui.org/layout"
 	"gioui.org/op"
+	"gioui.org/op/clip"
 	"gioui.org/text"
 	"gioui.org/unit"
 	"gioui.org/widget"
@@ -31,9 +32,9 @@ import (
 )
 
 type section struct {
+	h1                 bool
 	title, description material.LabelStyle
 	warning, widget    visual.Widgeter
-	isTitle            bool
 
 	extras []visual.Widgeter
 }
@@ -118,13 +119,11 @@ func (g *GUI) settings(onclose func()) *settings {
 				gtx := layout.NewContext(&ops, event)
 
 				ui.bar.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-					return decorate.BackgroundAlt(gtx, func(gtx layout.Context) layout.Dimensions {
-						decorate.List(&ui.list)
-						decorate.Scrollbar(&ui.list.ScrollbarStyle)
+					decorate.List(&ui.list)
+					decorate.Scrollbar(&ui.list.ScrollbarStyle)
 
-						return ui.list.Layout(gtx, len(sections), func(gtx layout.Context, index int) layout.Dimensions {
-							return sections[index].section(gtx)
-						})
+					return ui.list.Layout(gtx, len(sections), func(gtx layout.Context, index int) layout.Dimensions {
+						return sections[index].section(gtx)
 					})
 				})
 
@@ -177,13 +176,13 @@ func (g *GUI) settingsUI() *settings {
 	)
 
 	ui.sections.title = &section{
-		description: material.Label(ui.bar.Collection.NotoSans().Theme, 16, "⚙  Advanced Settings"),
-		isTitle:     true,
+		h1:          true,
+		description: material.Label(ui.bar.Collection.NotoSans().Theme, 15, "⚙ Advanced Settings"),
 	}
 	ui.sections.title.description.Alignment = text.Middle
 
 	ui.sections.discord = &section{
-		title:       material.Label(ui.bar.Collection.NotoSans().Theme, 14, "🎮  Discord Activity"),
+		title:       material.Label(ui.bar.Collection.NotoSans().Theme, 14, "🎮 Discord Activity"),
 		description: material.Caption(ui.bar.Collection.NotoSans().Theme, "Enable/Disable Discord activity updates"),
 		widget: &button.Widget{
 			Text:            "Enabled",
@@ -193,8 +192,6 @@ func (g *GUI) settingsUI() *settings {
 			TextInsetBottom: unit.Dp(-2),
 			Size:            image.Pt(80, 20),
 			Font:            ui.bar.Collection.Calibri(),
-
-			OnHoverHint: func() {},
 
 			Click: func(this *button.Widget) {
 				config.Current.Advanced.Discord.Disabled = !config.Current.Advanced.Discord.Disabled
@@ -222,7 +219,7 @@ func (g *GUI) settingsUI() *settings {
 	}
 
 	ui.sections.notifications = &section{
-		title:       material.Label(ui.bar.Collection.NotoSans().Theme, 14, "🔔  Desktop Notifications"),
+		title:       material.Label(ui.bar.Collection.NotoSans().Theme, 14, "🔔 Desktop Notifications"),
 		description: material.Caption(ui.bar.Collection.NotoSans().Theme, "Adjust desktop notifications for UniteHUD"),
 
 		extras: []visual.Widgeter{
@@ -235,9 +232,14 @@ func (g *GUI) settingsUI() *settings {
 				Size:            image.Pt(80, 20),
 				Font:            ui.bar.Collection.NotoSans(),
 
-				OnHoverHint: func() {},
-
 				Click: func(this *button.Widget) {
+					was := config.Current.Advanced.Notifications.Disabled.All
+					defer func() {
+						config.Current.Advanced.Notifications.Disabled.All = was
+					}()
+
+					config.Current.Advanced.Notifications.Disabled.All = false
+
 					desktop.Notification(global.Title).
 						Says("Testing 1..2..3").
 						When(clicked.VisitWebsite).
@@ -330,7 +332,7 @@ func (g *GUI) settingsUI() *settings {
 	}
 
 	ui.sections.frequency = &section{
-		title:       material.Label(ui.bar.Collection.NotoSans().Theme, 14, "🕔  Match Interval"),
+		title:       material.Label(ui.bar.Collection.NotoSans().Theme, 14, "🕔 Match Interval"),
 		description: material.Caption(ui.bar.Collection.NotoSans().Theme, "Increase the amount of match attempts per second"),
 		widget: &slider.Widget{
 			Slider:     material.Slider(ui.bar.Collection.NotoSans().Theme, &widget.Float{Value: float32(config.Current.Advanced.IncreasedCaptureRate)}),
@@ -347,7 +349,7 @@ func (g *GUI) settingsUI() *settings {
 	ui.sections.frequency.warning = frequencyWarning
 
 	ui.sections.theme = &section{
-		title:       material.Label(ui.bar.Collection.NotoSans().Theme, 14, "🎨  Theme"),
+		title:       material.Label(ui.bar.Collection.NotoSans().Theme, 14, "🎨 Theme"),
 		description: material.Caption(ui.bar.Collection.NotoSans().Theme, "Change the color theme of UniteHUD"),
 		widget: colorpicker.New(
 			ui.bar.Collection.NotoSans(),
@@ -403,8 +405,6 @@ func (g *GUI) settingsUI() *settings {
 			Size:            image.Pt(80, 20),
 			Font:            ui.bar.Collection.Calibri(),
 
-			OnHoverHint: func() {},
-
 			Click: func(this *button.Widget) {
 				config.Current.SetDefaultTheme()
 			},
@@ -417,7 +417,7 @@ func (g *GUI) settingsUI() *settings {
 	}
 
 	ui.sections.themes = &section{
-		title:       material.Label(ui.bar.Collection.NotoSans().Theme, 14, "📦  Preset Themes"),
+		title:       material.Label(ui.bar.Collection.NotoSans().Theme, 14, "📦 Preset Themes"),
 		description: material.Caption(ui.bar.Collection.NotoSans().Theme, "Select a theme preset to apply to UniteHUD"),
 		warning:     material.Label(ui.bar.Collection.NotoSans().Theme, 14, ""),
 		widget: &dropdown.Widget{
@@ -450,20 +450,21 @@ func (s *section) section(gtx layout.Context) layout.Dimensions {
 
 	alignment := layout.Baseline
 
-	title := s.warning == nil && s.widget == nil && len(s.extras) == 0
-	if title {
+	if s.h1 {
 		alignment = layout.Middle
-		inset = layout.Inset{}
+		inset.Left = 2
 	}
 
 	s.title.Font.Weight = font.Black
 
 	decorate.Label(&s.title, s.title.Text)
+	decorate.LabelAlpha(&s.title, 150)
+
 	decorate.Label(&s.description, s.description.Text)
 
 	children := []layout.FlexChild{
-		s.spacer(),
-
+		// Title: "Advanced Settings".
+		// Subtitle: "Discord Activity", "Theme Presets".
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 			if s.title.Text == "" {
 				return layout.Dimensions{Size: layout.Exact(image.Pt(0, 0)).Max}
@@ -471,17 +472,23 @@ func (s *section) section(gtx layout.Context) layout.Dimensions {
 			return inset.Layout(gtx, s.title.Layout)
 		}),
 
-		s.spacer(),
-
+		// Widget: Button, Slider, etc.
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 			if s.widget == nil {
 				return layout.Dimensions{Size: layout.Exact(image.Pt(0, 0)).Max}
 			}
+
+			// Draw line here so it only appears under subtitles.
+			decorate.Line(
+				gtx,
+				clip.Rect(image.Rect(8, 0, gtx.Constraints.Max.X-8, 1)),
+				nrgba.NRGBA(config.Current.Theme.Borders),
+			)
+
 			return inset.Layout(gtx, s.widget.Layout)
 		}),
 
-		s.spacer(),
-
+		// Label: "Configure blah".
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 			if s.description.Text == "" {
 				return layout.Dimensions{Size: layout.Exact(image.Pt(0, 0)).Max}
@@ -489,8 +496,7 @@ func (s *section) section(gtx layout.Context) layout.Dimensions {
 			return inset.Layout(gtx, s.description.Layout)
 		}),
 
-		s.spacer(),
-
+		// Label: "This setting will blah".
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 			if s.warning == nil {
 				return layout.Dimensions{Size: layout.Exact(image.Pt(0, 0)).Max}
@@ -499,16 +505,14 @@ func (s *section) section(gtx layout.Context) layout.Dimensions {
 		}),
 	}
 
-	return decorate.Fill(gtx, nrgba.NRGBA(config.Current.Theme.Background), func(gtx layout.Context) layout.Dimensions {
-		return layout.Inset{
-			Top: unit.Dp(5),
-		}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-			return decorate.Fill(gtx, nrgba.NRGBA(config.Current.Theme.BackgroundAlt), func(gtx layout.Context) layout.Dimensions {
-				return layout.Flex{
-					Axis:      layout.Vertical,
-					Alignment: alignment,
-				}.Layout(gtx, append(children, s.footer(inset)...)...)
-			})
+	return layout.Inset{
+		Bottom: 2,
+	}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+		return decorate.BackgroundAlt(gtx, func(gtx layout.Context) layout.Dimensions {
+			return layout.Flex{
+				Axis:      layout.Vertical,
+				Alignment: alignment,
+			}.Layout(gtx, append(children, s.footer(inset)...)...)
 		})
 	})
 }
@@ -524,13 +528,7 @@ func (s *section) footer(inset layout.Inset) []layout.FlexChild {
 		)
 	}
 
-	return append(c, s.spacer(), s.spacer())
-}
-
-func (s *section) spacer() layout.FlexChild {
-	return layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-		return layout.Spacer{Width: unit.Dp(gtx.Constraints.Max.X), Height: 2}.Layout(gtx)
-	})
+	return c
 }
 
 func (s *settings) close() {

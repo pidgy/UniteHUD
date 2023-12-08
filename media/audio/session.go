@@ -57,12 +57,12 @@ func Open() error {
 
 	in, err := input.New(ctx, config.Current.Audio.Capture.Device.Name)
 	if err != nil {
-		notify.Warn("🔊  Failed to create input (%v)", err)
+		notify.Warn("🔊 Failed to create input (%v)", err)
 	}
 
 	out, err := output.New(ctx, config.Current.Audio.Playback.Device.Name)
 	if err != nil {
-		notify.Warn("🔊  Failed to create output (%v)", err)
+		notify.Warn("🔊 Failed to create output (%v)", err)
 	}
 
 	current = &session{
@@ -81,7 +81,7 @@ func Open() error {
 }
 
 func Close() {
-	notify.System("🔊  Closing...")
+	notify.System("🔊 Closing...")
 
 	if current == nil {
 		return
@@ -107,7 +107,7 @@ func Label() string {
 		speaker = "🔈"
 	}
 
-	return fmt.Sprintf("🎤 %s - %s %s", strings.Split(current.input.Name(), " (")[0], speaker, strings.Split(current.output.Name(), " (")[0])
+	return fmt.Sprintf("🎤 %s  %s %s", strings.Split(current.input.Name(), " (")[0], speaker, strings.Split(current.output.Name(), " (")[0])
 }
 
 func Outputs() []*output.Device {
@@ -158,12 +158,12 @@ func Restart() {
 
 	in, err := input.New(current.context, config.Current.Audio.Capture.Device.Name)
 	if err != nil {
-		notify.Warn("🔊  Failed to create input (%v)", err)
+		notify.Warn("🔊 Failed to create input (%v)", err)
 	}
 
 	out, err := output.New(current.context, config.Current.Audio.Playback.Device.Name)
 	if err != nil {
-		notify.Warn("🔊  Failed to create output (%v)", err)
+		notify.Warn("🔊 Failed to create output (%v)", err)
 	}
 
 	current.input = in
@@ -171,7 +171,7 @@ func Restart() {
 }
 
 func Start() error {
-	notify.System("🔊  Starting %s", current)
+	notify.System("🔊 Starting %s", current)
 
 	if current.input.IsDisabled() || current.output.IsDisabled() {
 		return nil

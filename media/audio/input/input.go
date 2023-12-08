@@ -106,7 +106,7 @@ func (d *Device) Active() bool {
 }
 
 func (d *Device) Close() {
-	notify.System("🔊  Closing %s capture", d.name)
+	notify.System("🔊 Closing %s capture", d.name)
 
 	if !d.Active() {
 		return
@@ -117,7 +117,7 @@ func (d *Device) Close() {
 }
 
 func (d *Device) Start(mctx malgo.Context, w io.ReadWriter) error {
-	notify.System("🔊  Starting %s capture", d.name)
+	notify.System("🔊 Starting %s capture", d.name)
 
 	if d.IsDisabled() {
 		return nil
@@ -127,11 +127,11 @@ func (d *Device) Start(mctx malgo.Context, w io.ReadWriter) error {
 		return errors.Wrap(fmt.Errorf("already active"), d.name)
 	}
 
-	defer notify.Debug("🔊  Started %s capture", d.Name())
+	defer notify.Debug("🔊 Started %s capture", d.Name())
 
 	errq := make(chan error)
 	go func() {
-		defer notify.Debug("🔊  Closed %s capture", d.Name())
+		defer notify.Debug("🔊 Closed %s capture", d.Name())
 
 		d.closingq = make(chan bool)
 		d.closedq = make(chan bool)
@@ -155,7 +155,7 @@ func (d *Device) Start(mctx malgo.Context, w io.ReadWriter) error {
 						d.reconnects++
 						return
 					}
-					notify.Error("🔊  Capture error (%v)", errors.Wrap(err, d.name))
+					notify.Error("🔊 Capture error (%v)", errors.Wrap(err, d.name))
 				}
 			},
 		}
@@ -192,14 +192,14 @@ func (d *Device) Type() device.Type {
 func Devices(ctx *malgo.AllocatedContext) (captures []*Device) {
 	d, err := ctx.Devices(malgo.Capture)
 	if err != nil {
-		notify.Error("🔊  Failed to find capture devices (%v)", err)
+		notify.Error("🔊 Failed to find capture devices (%v)", err)
 		return nil
 	}
 
 	for _, info := range d {
 		full, err := ctx.DeviceInfo(malgo.Capture, info.ID, malgo.Shared)
 		if err != nil {
-			notify.Warn("🔊  Failed to poll capture device \"%s\" (%v)", info.ID, err)
+			notify.Warn("🔊 Failed to poll capture device \"%s\" (%v)", info.ID, err)
 		}
 
 		captures = append(captures, &Device{

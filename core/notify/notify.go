@@ -76,7 +76,7 @@ func Debug(format string, a ...interface{}) {
 		return
 	}
 
-	feed.log(nrgba.PastelBlue.Alpha(50), true, true, false, "🐞 "+format, a...)
+	feed.log(nrgba.PastelBlue.Alpha(50), true, true, false, format, a...)
 }
 
 func Debugger(prefix string) *debugger {
@@ -117,7 +117,7 @@ func Last() Post {
 }
 
 func Missed(event interface{}, window string) {
-	Debug("🖥️  Missed %T event (%s)", event, window)
+	Debug("🖥️ Missed %T event (%s)", event, window)
 }
 
 func (p *Post) String() string {
@@ -175,7 +175,7 @@ func (n *notify) log(r nrgba.NRGBA, clock, dedup, unique bool, format string, a 
 	}
 
 	if global.DebugMode {
-		fmt.Printf("[%s] [DebugHUD] %s\n", p.Time.Format(time.TimeOnly), fmt.Sprintf(format, a...))
+		fmt.Printf("🐞 %s\n", fmt.Sprintf(format, a...))
 	}
 
 	if clock {

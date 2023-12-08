@@ -47,18 +47,6 @@ func New(s *fonts.Style, max int) (*Widget, error) {
 	return t, nil
 }
 
-func (t *Widget) calculateAlpha(index, nposts int) uint8 {
-	ratio := (float32(index) / float32(nposts))
-	if ratio < 0.1 {
-		ratio = 0.1
-	}
-	a := (float32(257) * ratio) + 5
-	if a > 255 {
-		a = 255
-	}
-	return uint8(a)
-}
-
 func (t *Widget) Layout(gtx layout.Context, posts []notify.Post) layout.Dimensions {
 	defer t.cursor()
 
@@ -86,6 +74,18 @@ func (t *Widget) Layout(gtx layout.Context, posts []notify.Post) layout.Dimensio
 
 		return layout.Dimensions{Size: gtx.Constraints.Max}
 	})
+}
+
+func (t *Widget) calculateAlpha(index, nposts int) uint8 {
+	ratio := (float32(index) / float32(nposts))
+	if ratio < 0.5 {
+		ratio += 0.2
+	}
+	a := (float32(257) * ratio) + 5
+	if a > 255 {
+		a = 255
+	}
+	return uint8(a)
 }
 
 func (t *Widget) cursor() {

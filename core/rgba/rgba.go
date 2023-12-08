@@ -61,7 +61,7 @@ var (
 	SeaBlue        = RGBA{R: 115, G: 165, B: 240, A: 255}
 	Seafoam        = RGBA{R: 46, G: 204, B: 113, A: 255}
 	SilverPurple   = RGBA{R: 102, G: 102, B: 153, A: 255}
-	Slate          = RGBA{R: 255, G: 255, B: 255, A: 255}
+	Slate          = RGBA{R: 200, G: 200, B: 200, A: 255}
 	Splash         = RGBA{R: 10, G: 8, B: 20, A: 255}
 	System         = RGBA{R: 200, G: 200, B: 200, A: 255}
 	Transparent80  = RGBA{R: 0, G: 0, B: 0, A: 80}

@@ -46,9 +46,9 @@ func defaultWithBytes(b []string) *Widget {
 }
 
 func (s *Widget) spin() {
-	for range s.ticker.C {
-		if s.ready {
-			s.pos = (s.pos + 1) % len(s.bytes)
-		}
-	}
+	// for range s.ticker.C {
+	// 	if s.ready {
+	// 		s.pos = (s.pos + 1) % len(s.bytes)
+	// 	}
+	// }
 }

@@ -122,6 +122,11 @@ func (l *Widget) Layout(gtx layout.Context) layout.Dimensions {
 
 			decorate.CheckBox(&check)
 
+			if l.liststyle.Scrollbar.IndicatorHovered() || l.liststyle.Scrollbar.TrackHovered() {
+				l.liststyle.Scrollbar.AddDrag(gtx.Ops)
+				cursor.Is(pointer.CursorPointer)
+			}
+
 			if item.Checked.Update(gtx) {
 				if item.Disabled {
 					item.Checked.Value = !item.Checked.Value
@@ -156,7 +161,7 @@ func (l *Widget) Layout(gtx layout.Context) layout.Dimensions {
 			}
 			switch {
 			case item.Checked.Hovered(), item.Checked.Focused():
-				hoverItem(gtx, index)
+				l.hovered(gtx, index)
 
 				item.hovered = true
 				cursor.Is(pointer.CursorPointer)
@@ -215,7 +220,7 @@ func selectedItem(gtx layout.Context, index int) {
 	})
 }
 
-func hoverItem(gtx layout.Context, index int) {
+func (l *Widget) hovered(gtx layout.Context, index int) {
 	colorRect(gtx,
 		clip.Rect{
 			Min: image.Pt(
