@@ -98,7 +98,7 @@ func (p Pieces) Sort(hack bool) (int, string) {
 
 			v, err := strconv.Atoi(o)
 			if err != nil {
-				notify.SystemWarn("💭 Failed to convert 3 sortable pieces to an integer")
+				notify.SystemWarn("Sort: Failed to convert 3 sortable pieces to an integer")
 			}
 
 			return v, order
@@ -106,7 +106,7 @@ func (p Pieces) Sort(hack bool) (int, string) {
 			if order[:2] == order[2:] {
 				v, err := strconv.Atoi(order[:2])
 				if err != nil {
-					notify.SystemWarn("💭 Failed to convert 4 sortable pieces to an integer")
+					notify.SystemWarn("Sort: Failed to convert 4 sortable pieces to an integer")
 				}
 
 				return v, order
@@ -116,7 +116,7 @@ func (p Pieces) Sort(hack bool) (int, string) {
 
 	v, err := strconv.Atoi(order)
 	if err != nil {
-		notify.SystemWarn("💭 Failed to convert sortable pieces to an integer")
+		notify.SystemWarn("Sort: Failed to convert sortable pieces to an integer")
 	}
 
 	return v, order

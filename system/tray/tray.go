@@ -54,15 +54,15 @@ type toggle struct {
 }
 
 func Close() {
-	notify.Debug("🖱️ Closing")
+	notify.Debug("Tray: Closing")
 	systray.Quit()
 }
 
 func Open(close func()) {
-	notify.Debug("🖱️ Opening")
+	notify.Debug("Tray: Opening")
 
 	go systray.Run(ready, exit(close), func(se systray.SessionEvent) {
-		notify.System("🖱️ Session Event \"%s\"", se)
+		notify.System("Tray: Session Event \"%s\"", se)
 	})
 }
 
@@ -108,7 +108,7 @@ func ready() {
 }
 
 func (m *menu) addExit() {
-	notify.Debug("🖱️ Adding Exit")
+	notify.Debug("Tray: Adding Exit")
 
 	systray.AddSeparator()
 
@@ -120,12 +120,12 @@ func (m *menu) addExit() {
 }
 
 func (m *menu) addSettings() {
-	notify.Debug("🖱️ Adding Settings")
+	notify.Debug("Tray: Adding Settings")
 
 	systray.AddSeparator()
 
 	m.settings.opens = opens{MenuItem: systray.AddMenuItem("Settings", "Change settings")}
-	m.settings.opens.SetIcon(img.IconBytes("settings.ico"))
+	// m.settings.opens.SetIcon(img.IconBytes("settings.ico"))
 
 	m.settings.discord.opens = opens{MenuItem: m.settings.AddSubMenuItem("Discord", "Change Discord settings")}
 	m.settings.discord.toggle = toggle{
@@ -134,7 +134,7 @@ func (m *menu) addSettings() {
 			config.Current.Advanced.Discord.Disabled = !config.Current.Advanced.Discord.Disabled
 			err := config.Current.Save()
 			if err != nil {
-				notify.Warn("🖱️ Failed to save UniteHUD configuration (%v)", err)
+				notify.Warn("Tray: Failed to save UniteHUD configuration (%v)", err)
 			}
 
 			m.settings.discord.toggle.Check()
@@ -152,10 +152,10 @@ func (m *menu) addSettings() {
 		m.settings.discord.toggle.Check()
 		m.settings.discord.toggle.SetTitle("Enabled")
 	}
-	m.settings.discord.opens.SetIcon(img.IconBytes("discord-f2.ico"))
+	// m.settings.discord.opens.SetIcon(img.IconBytes("discord-f2.ico"))
 
 	m.settings.notifications.opens = opens{m.settings.AddSubMenuItem("Notifications", "Change Desktop notification settings")}
-	m.settings.notifications.opens.SetIcon(img.IconBytes("notifications-bg.ico"))
+	// m.settings.notifications.opens.SetIcon(img.IconBytes("notifications-bg.ico"))
 	m.settings.notifications.all = toggle{
 		MenuItem: m.settings.notifications.AddSubMenuItemCheckbox(
 			"Disabled", "Toggle Desktop notifications", !config.Current.Advanced.Notifications.Disabled.All,
@@ -164,7 +164,7 @@ func (m *menu) addSettings() {
 			config.Current.Advanced.Notifications.Disabled.All = !config.Current.Advanced.Notifications.Disabled.All
 			err := config.Current.Save()
 			if err != nil {
-				notify.Warn("🖱️ Failed to save UniteHUD configuration (%v)", err)
+				notify.Warn("Tray: Failed to save UniteHUD configuration (%v)", err)
 			}
 
 			m.settings.notifications.all.Uncheck()
@@ -185,7 +185,7 @@ func (m *menu) addSettings() {
 			config.Current.Advanced.Notifications.Muted = !config.Current.Advanced.Notifications.Muted
 			err := config.Current.Save()
 			if err != nil {
-				notify.Warn("🖱️ Failed to save UniteHUD configuration (%v)", err)
+				notify.Warn("Tray: Failed to save UniteHUD configuration (%v)", err)
 			}
 
 			m.settings.notifications.muted.Uncheck()
@@ -206,7 +206,7 @@ func (m *menu) addSettings() {
 			config.Current.Advanced.Notifications.Disabled.Updates = !config.Current.Advanced.Notifications.Disabled.Updates
 			err := config.Current.Save()
 			if err != nil {
-				notify.Warn("🖱️ Failed to save UniteHUD configuration (%v)", err)
+				notify.Warn("Tray: Failed to save UniteHUD configuration (%v)", err)
 			}
 
 			m.settings.notifications.updates.Check()
@@ -227,7 +227,7 @@ func (m *menu) addSettings() {
 			config.Current.Advanced.Notifications.Disabled.MatchStarting = !config.Current.Advanced.Notifications.Disabled.MatchStarting
 			err := config.Current.Save()
 			if err != nil {
-				notify.Warn("🖱️ Failed to save UniteHUD configuration (%v)", err)
+				notify.Warn("Tray: Failed to save UniteHUD configuration (%v)", err)
 			}
 
 			m.settings.notifications.matchStarted.Check()
@@ -248,7 +248,7 @@ func (m *menu) addSettings() {
 			config.Current.Advanced.Notifications.Disabled.MatchStopped = !config.Current.Advanced.Notifications.Disabled.MatchStopped
 			err := config.Current.Save()
 			if err != nil {
-				notify.Warn("🖱️ Failed to save UniteHUD configuration (%v)", err)
+				notify.Warn("Tray: Failed to save UniteHUD configuration (%v)", err)
 			}
 
 			m.settings.notifications.matchStopped.Check()
@@ -275,7 +275,7 @@ func (m *menu) addSettings() {
 }
 
 func (m *menu) addTitle() {
-	notify.Debug("🖱️ Adding Title")
+	notify.Debug("Tray: Adding Title")
 
 	systray.SetIcon(img.IconBytes("icon.ico"))
 	systray.SetTitle(global.Title)
@@ -287,7 +287,7 @@ func (m *menu) addTitle() {
 }
 
 func (m *menu) addWebsite() {
-	notify.Debug("🖱️ Adding Website")
+	notify.Debug("Tray: Adding Website")
 
 	systray.AddSeparator()
 
@@ -296,9 +296,9 @@ func (m *menu) addWebsite() {
 		event: func() {
 			err := open.Run("https://unitehud.dev")
 			if err != nil {
-				notify.Error("🖱️ Failed to open unitehud.dev (%v)", err)
+				notify.Error("Tray: Failed to open unitehud.dev (%v)", err)
 			}
 		},
 	}
-	m.website.SetIcon(img.IconBytes("website-bg.ico"))
+	// m.website.SetIcon(img.IconBytes("website-bg.ico"))
 }

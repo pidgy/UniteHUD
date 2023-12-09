@@ -19,7 +19,7 @@ import (
 
 var (
 	Disabled = nrgba.Red.Color()
-	Enabled  = nrgba.DarkSeafoam.Color()
+	Enabled  = nrgba.PastelGreen.Color()
 )
 
 type Widget struct {
@@ -92,16 +92,18 @@ func (l *Widget) Enabled() {
 // Layout handles drawing the letters view.
 func (l *Widget) Layout(gtx layout.Context) layout.Dimensions {
 	if l.liststyle.Scrollbar == nil {
-		l.liststyle = material.List(l.Theme, &widget.List{
-			Scrollbar: widget.Scrollbar{},
-			List: layout.List{
-				Axis:      layout.Vertical,
-				Alignment: layout.Start,
+		l.liststyle = material.List(l.Theme,
+			&widget.List{
+				Scrollbar: widget.Scrollbar{},
+				List: layout.List{
+					Axis:      layout.Vertical,
+					Alignment: layout.Start,
+				},
 			},
-		})
+		)
 		l.liststyle.AnchorStrategy = material.Overlay
-		l.liststyle.Track.MajorPadding = unit.Dp(0)
-		l.liststyle.Track.MinorPadding = unit.Dp(0)
+		l.liststyle.Track.MajorPadding = unit.Dp(1)
+		l.liststyle.Track.MinorPadding = unit.Dp(1)
 	}
 
 	decorate.Scrollbar(&l.liststyle.ScrollbarStyle)
@@ -112,12 +114,12 @@ func (l *Widget) Layout(gtx layout.Context) layout.Dimensions {
 			item := l.Items[index]
 
 			check := material.CheckBox(l.Theme, &item.Checked, item.Text)
-			check.Font.Weight = font.Weight(item.Weight)
 			check.Size = unit.Dp(l.TextSize)
 			check.TextSize = unit.Sp(l.TextSize)
+			check.Font.Weight = font.ExtraBold
 			if l.TextSize == 0 {
-				check.Size = unit.Dp(14)
-				check.TextSize = unit.Sp(14)
+				check.Size = unit.Dp(12)
+				check.TextSize = unit.Sp(12)
 			}
 
 			decorate.CheckBox(&check)
@@ -151,7 +153,7 @@ func (l *Widget) Layout(gtx layout.Context) layout.Dimensions {
 			}
 
 			if item.Checked.Value {
-				check.Color = Enabled
+				check.Color = nrgba.DarkSeafoam.Color()
 				if item.Text == "Disabled" {
 					check.Color = Disabled
 				}

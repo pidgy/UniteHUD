@@ -15,45 +15,37 @@ import (
 	"github.com/pidgy/unitehud/media/img"
 	"github.com/pidgy/unitehud/media/img/splash"
 	"github.com/pidgy/unitehud/media/video/device/win32"
+	"github.com/pidgy/unitehud/media/video/fps"
 	"github.com/pidgy/unitehud/media/video/monitor"
 	"github.com/pkg/errors"
 )
 
-type device struct {
-	id              int
-	name            string
-	closeq, closedq chan bool
-	errq            chan error
-	fps             int
-}
-
 type properties struct {
-	resolution      image.Point
-	fps, buffersize int
-	codec, guid     string
-	backend         string
-	bitrate         float64
-	rgb             bool
+	resolution  image.Point
+	fps         float64
+	buffersize  int
+	codec, guid string
+	backend     string
+	bitrate     float64
+	rgb         bool
 }
 
 var (
-	active *device
+	active = struct {
+		id              int
+		name            string
+		closeq, closedq chan bool
+		fps             float64
+		applied         properties
+	}{}
 
 	required = properties{
 		resolution: image.Pt(1920, 1080),
-	}
-
-	min = properties{
-		resolution: required.resolution,
-		fps:        30,
-	}
-
-	max = properties{
-		resolution: required.resolution,
 		fps:        60,
 	}
 
-	mat = splash.DeviceMat().Clone()
+	mat  = splash.DeviceMat().Clone()
+	size = mat.Size()
 
 	cached = struct {
 		devices struct {
@@ -72,12 +64,38 @@ var (
 	}{
 		values: make(map[string]int),
 	}
+
+	errProperty = errors.New("failed to set property")
 )
 
 func init() {
+	reset()
 	go storeAPIs()
 	go storeSources()
-	reset()
+}
+
+func Open() error {
+	if config.Current.Video.Capture.Device.Index == config.NoVideoCaptureDevice {
+		return nil
+	}
+
+	if active.id != config.NoVideoCaptureDevice {
+		notify.Debug("Device: Ignorning call to open \"%s\" (active)", ActiveName())
+		return nil
+	}
+
+	active.id = config.Current.Video.Capture.Device.Index
+	active.name = Name(config.Current.Video.Capture.Device.Index)
+	active.closeq = make(chan bool)
+	active.closedq = make(chan bool)
+
+	err := capture()
+	if err != nil {
+		reset()
+		return err
+	}
+
+	return nil
 }
 
 func ActiveName() string {
@@ -112,8 +130,7 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 		return nil, fmt.Errorf("illegal boundaries: %s outside %s", rect, monitor.MainResolution)
 	}
 
-	s := mat.Size()
-	mrect := image.Rect(0, 0, s[1], s[0])
+	mrect := image.Rect(0, 0, size[1], size[0])
 
 	if !rect.In(mrect) {
 		return splash.AsRGBA(splash.Invalid()), fmt.Errorf("illegal boundaries: %s outside %s", rect, mrect)
@@ -124,19 +141,20 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 
 func Close() {
 	if active.id == config.NoVideoCaptureDevice {
-		notify.Debug("🎥 %s: Ignorning call to close (inactive)", ActiveName())
+		notify.Debug("Device: Ignoring close")
 		return
 	}
 
-	active.stop()
+	notify.Debug("Device: Closing %s", active.name)
+	defer notify.Debug("Device: Closed %s", active.name)
 
-	notify.Debug("🎥 %s: Closed", active.name)
+	stop()
 
 	reset()
 }
 
-func FPS() int {
-	return active.fps
+func FPS() (current, quota float64) {
+	return active.fps, active.fps / active.applied.fps
 }
 
 func IsActive() bool {
@@ -153,100 +171,73 @@ func Name(d int) string {
 	return fmt.Sprintf("%d", d)
 }
 
-func Open() error {
-	if config.Current.Video.Capture.Device.Index == config.NoVideoCaptureDevice {
-		return nil
-	}
-
-	if active.id != config.NoVideoCaptureDevice {
-		notify.Debug("🎥 Ignorning call to open \"%s\" (active)", ActiveName())
-		return nil
-	}
-
-	active = &device{
-		id:      config.Current.Video.Capture.Device.Index,
-		name:    Name(config.Current.Video.Capture.Device.Index),
-		closeq:  make(chan bool),
-		closedq: make(chan bool),
-		errq:    make(chan error),
-	}
-
-	err := active.capture()
-	if err != nil {
-		reset()
-		return err
-	}
-
-	return nil
-}
-
 func Sources() []int {
 	return cached.devices.ids
 }
 
-func (d *device) capture() error {
-	api := config.Current.Video.Capture.Device.API
+func capture() error {
+	api := API(config.Current.Video.Capture.Device.API)
 
-	notify.System("🎥 %s: Opening with API %s", d.name, api)
+	notify.System("Device: Capturing from %s with %s API", active.name, APIName(api))
 
-	device, err := gocv.OpenVideoCaptureWithAPI(d.id, gocv.VideoCaptureAPI(API(api)))
+	device, err := gocv.OpenVideoCaptureWithAPI(active.id, gocv.VideoCaptureAPI(api))
 	if err != nil {
-		return errors.Wrap(errors.Errorf("this device does not support %s format", api), d.name)
+		return errors.Wrap(errors.Errorf("this device does not support %s format", APIName(api)), active.name)
 	}
 
-	defaults := d.properties(device)
-	defer defaults.diff(d, device)
-
-	err = d.set(max, device)
+	err = set(required, device)
 	if err != nil {
-		notify.Warn("🎥 %s: Failed to apply maximum properties", d.name)
-
-		err = d.set(min, device)
-		if err != nil {
-			return errors.Wrap(err, d.name)
-		}
+		return errors.Wrap(err, active.name)
 	}
 
 	go func() {
-		defer close(d.closedq)
+		defer close(active.closedq)
 
-		ps := time.Now()
-		frames := 0
-		for d.running() {
+		frames := float64(0)
+		tick := time.NewTicker(fps.Sixty)
+		rate := time.Duration(0)
+
+		for running() {
 			if !device.Read(&mat) || mat.Empty() {
 				defer reset()
-				notify.Error("🎥 %s: Failed to capture", d.name)
+				notify.Error("Device: %s failed to capture", active.name)
 				break
 			}
-			frames++
 
-			since := time.Since(ps)
-			if since >= time.Second {
+			size = mat.Size()
+
+			<-tick.C
+			tick.Reset(fps.Sixty)
+
+			rate += fps.Sixty
+
+			frames++
+			if rate >= time.Second {
 				active.fps = frames
-				ps = time.Now()
 				frames = 0
+				rate = 0
 			}
 		}
 
-		notify.System("🎥 %s: Closing...", d.name)
+		notify.System("Device: %s closing...", active.name)
 
 		err := device.Close()
 		if err != nil {
-			notify.Warn("🎥 %s: Failed to close (%v)", d.name, err)
+			notify.Warn("Device: %s failed to close (%v)", active.name, err)
 		}
 	}()
 
 	return nil
 }
 
-func (d *device) properties(device *gocv.VideoCapture) properties {
+func poll(device *gocv.VideoCapture) properties {
 	device.Get(gocv.VideoCaptureGUID)
 	defaults := properties{
 		resolution: image.Pt(
 			int(device.Get(gocv.VideoCaptureFrameWidth)),
 			int(device.Get(gocv.VideoCaptureFrameHeight)),
 		),
-		fps:        int(device.Get(gocv.VideoCaptureFPS)),
+		fps:        device.Get(gocv.VideoCaptureFPS),
 		codec:      device.CodecString(),
 		backend:    APIName(int(device.Get(gocv.VideoCaptureBackend))),
 		bitrate:    device.Get(gocv.VideoCaptureBitrate),
@@ -256,59 +247,63 @@ func (d *device) properties(device *gocv.VideoCapture) properties {
 	return defaults
 }
 
-func (d *device) running() bool {
+func running() bool {
 	select {
-	case <-d.closeq:
+	case <-active.closeq:
 		return false
 	default:
 		return true
 	}
 }
 
-func (d *device) set(requested properties, device *gocv.VideoCapture) error {
+func set(requested properties, device *gocv.VideoCapture) error {
+	p := poll(device)
+
 	device.Set(gocv.VideoCaptureFrameWidth, float64(requested.resolution.X))
 	device.Set(gocv.VideoCaptureFrameHeight, float64(requested.resolution.Y))
 	device.Set(gocv.VideoCaptureFPS, float64(requested.fps))
 	device.Set(gocv.VideoCaptureConvertRGB, 1)
-	device.Set(gocv.VideoCaptureBufferSize, 0)
 	device.Set(gocv.VideoCaptureFOURCC, device.ToCodec("MJPG"))
-	applied := d.properties(device)
+	active.applied = poll(device)
 
-	if !applied.resolution.Eq(requested.resolution) {
-		return errors.Wrap(errors.Errorf("resolution %s, %s required", applied.resolution, requested.resolution), "Invalid property")
+	if !active.applied.resolution.Eq(requested.resolution) {
+		return errors.Wrapf(errProperty, "%s FPS", requested.resolution)
 	}
 
-	if applied.fps != requested.fps {
-		return errors.Wrap(errors.Errorf("%d FPS, %d FPS required", applied.fps, requested.fps), "Invalid property")
+	if active.applied.fps != requested.fps {
+		return errors.Wrapf(errProperty, "%.0f FPS", requested.fps)
 	}
+
+	p.diff()
 
 	return nil
 }
 
-func (d *device) stop() {
+func stop() {
 	for t := time.NewTimer(time.Second * 5); ; {
 		select {
-		case d.closeq <- true:
-		case <-d.closedq:
+		case active.closeq <- true:
+		case <-active.closedq:
 			if !t.Stop() {
 				<-t.C
 			}
 			return
 		case <-t.C:
-			notify.Error("🎥 %s failed to stop", d.name)
+			notify.Error("Device: %s failed to stop", active.name)
+			return
 		}
 	}
 }
 
-func (p properties) diff(d *device, device *gocv.VideoCapture) {
-	applied := d.properties(device)
-	notify.System("🎥 %s: Codec       %s -> %s", d.name, p.codec, applied.codec)
-	notify.System("🎥 %s: FPS         %d FPS -> %d FPS", d.name, p.fps, applied.fps)
-	notify.System("🎥 %s: Resolution  %s -> %s", d.name, p.resolution, applied.resolution)
-	notify.System("🎥 %s: Backend     %s -> %s", d.name, p.backend, applied.backend)
-	notify.System("🎥 %s: Bitrate     %.0f kb/s", d.name, applied.bitrate)
-	notify.System("🎥 %s: BufferSize  %d", d.name, applied.buffersize)
-	notify.System("🎥 %s: RGB         %t -> %t", d.name, p.rgb, applied.rgb)
+func (p properties) diff() {
+	notify.System("Device: %s", active.name)
+	notify.System("Device:  Codec       %s -> %s", p.codec, active.applied.codec)
+	notify.System("Device:  FPS         %.0f FPS -> %.0f FPS", p.fps, active.applied.fps)
+	notify.System("Device:  Resolution  %s -> %s", p.resolution, active.applied.resolution)
+	notify.System("Device:  Backend     %s -> %s", p.backend, active.applied.backend)
+	notify.System("Device:  Bitrate     %.0f kb/s", active.applied.bitrate)
+	notify.System("Device:  BufferSize  %d", active.applied.buffersize)
+	notify.System("Device:  RGB         %t -> %t", p.rgb, active.applied.rgb)
 }
 
 func storeAPIs() {
@@ -336,7 +331,7 @@ func storeSources() {
 		for i := 0; i < 10; i++ {
 			name, err := win32.VideoCaptureDeviceName(i)
 			if err != nil {
-				notify.Warn("🎥 Device %d: Failed to read properties of device", i)
+				notify.Warn("Device: %d, Failed to read properties of device", i)
 				break
 			}
 			if name == "" {
@@ -357,19 +352,16 @@ func storeSources() {
 }
 
 func reset() {
-	notify.Debug("🎥 Resetting")
+	notify.Debug("Device: Resetting %s", active.name)
 
 	mat = splash.DeviceMat().Clone()
 
 	config.Current.Video.Capture.Window.Name = config.MainDisplay
 	config.Current.Video.Capture.Device.Index = config.NoVideoCaptureDevice
 
-	active = &device{
-		id:      config.NoVideoCaptureDevice,
-		name:    "Disabled",
-		closeq:  make(chan bool),
-		closedq: make(chan bool),
-		errq:    make(chan error),
-		fps:     -1,
-	}
+	active.id = config.NoVideoCaptureDevice
+	active.name = "Disabled"
+	active.fps = -1
+	active.closeq = make(chan bool)
+	active.closedq = make(chan bool)
 }

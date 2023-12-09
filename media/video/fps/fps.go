@@ -7,6 +7,8 @@ import (
 	"github.com/pidgy/unitehud/core/notify"
 )
 
+const Sixty = time.Duration(16.7 * float64(time.Millisecond))
+
 // Hz handles frames-per-second arithmetic using interval ticks.
 type Hz struct {
 	window  time.Duration
@@ -114,8 +116,8 @@ func (l *Loop) start() {
 	go func() {
 		defer close(l.syncq)
 
-		notify.Debug("🎥 Loop starting at %d FPS/%dms", l.FPS, l.interval.Milliseconds())
-		defer notify.Debug("🎥 Stopping loop at %d FPS/%dms", l.FPS, l.interval.Milliseconds())
+		notify.Debug("FPS: Loop starting at %d FPS/%dms", l.FPS, l.interval.Milliseconds())
+		defer notify.Debug("FPS: Stopping loop at %d FPS/%dms", l.FPS, l.interval.Milliseconds())
 
 		for ; !l.stop; time.Sleep(l.interval) {
 			close := l.render()

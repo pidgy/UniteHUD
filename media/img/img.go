@@ -2,6 +2,7 @@ package img
 
 import (
 	"bytes"
+	"fmt"
 	"image"
 	"image/png"
 	"os"
@@ -46,12 +47,12 @@ func RGBA(mat gocv.Mat) (*image.RGBA, error) {
 		return nil, err
 	}
 
-	img, ok := i.(*image.RGBA)
-	if !ok {
-		return nil, err
+	switch img := i.(type) {
+	case *image.RGBA:
+		return img, nil
+	default:
+		return nil, fmt.Errorf("failed to convert %T to an rgba image", i)
 	}
-
-	return img, nil
 }
 
 func Icon(name string) image.Image {
@@ -63,14 +64,14 @@ func Icon(name string) image.Image {
 
 	f, err := os.Open(config.Current.AssetIcon(name))
 	if err != nil {
-		notify.Error("📸 Failed to open image %s (%v)", name, err)
+		notify.Error("Image: Failed to open image %s (%v)", name, err)
 		return Empty
 	}
 	defer f.Close()
 
 	img, _, err := image.Decode(f)
 	if err != nil {
-		notify.Error("📸 Failed to decode %s (%v)", name, err)
+		notify.Error("Image: Failed to decode %s (%v)", name, err)
 		return Empty
 	}
 
@@ -92,14 +93,14 @@ func IconBytes(name string) []byte {
 
 	f, err := os.Open(config.Current.AssetIcon(name))
 	if err != nil {
-		notify.Error("📸 Failed to open image %s (%v)", name, err)
+		notify.Error("Image: Failed to open image %s (%v)", name, err)
 		return []byte{}
 	}
 	defer f.Close()
 
 	ico, err := winres.LoadICO(f)
 	if err != nil {
-		notify.Error("📸 Failed to decode %s (%v)", name, err)
+		notify.Error("Image: Failed to decode %s (%v)", name, err)
 		return []byte{}
 	}
 
@@ -107,7 +108,7 @@ func IconBytes(name string) []byte {
 
 	err = ico.SaveICO(b)
 	if err != nil {
-		notify.SystemWarn("📸 Failed to encode %s (%v)", name, err)
+		notify.SystemWarn("Image: Failed to encode %s (%v)", name, err)
 	}
 
 	c := &cached{

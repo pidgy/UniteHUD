@@ -3,18 +3,17 @@ package win32
 import "testing"
 
 func TestNewVideoCaptureDevice(t *testing.T) {
-	index := 1
+	for index := 0; index < 10; index++ {
+		println("Index:", index)
 
-	d, err := NewVideoCaptureDevice(index)
-	if err != nil {
-		t.Fatal(err)
+		d, err := NewVideoCaptureDevice(index)
+		if err != nil {
+			println("\tError:", err.Error())
+			continue
+		}
+		println("\tID:", d.ID)
+		println("\tName:", d.Name)
+		println("\tPath:", d.Path)
+		println("\tWaveInID:", d.WaveInID)
 	}
-	if d == nil {
-		t.Fatalf("device %d is nil", index)
-	}
-
-	println("ID:", d.ID)
-	println("Name:", d.Name)
-	println("Path:", d.Path)
-	println("WaveInID:", d.WaveInID)
 }

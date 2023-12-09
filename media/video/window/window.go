@@ -56,7 +56,7 @@ func init() {
 
 			windows, _, err := list()
 			if err != nil {
-				notify.Error("🗔 Failed to list windows (%v)", err)
+				notify.Error("Window: Failed to list windows (%v)", err)
 			}
 
 			Sources = windows
@@ -68,7 +68,7 @@ func init() {
 func Capture() (*image.RGBA, error) {
 	handle, err := find(config.Current.Video.Capture.Window.Name)
 	if err != nil {
-		notify.Error("🗔 Failed to find %s (%v)", config.Current.Video.Capture.Window.Name, err)
+		notify.Error("Window: Failed to find %s (%v)", config.Current.Video.Capture.Window.Name, err)
 		if config.Current.Video.Capture.Window.Lost == "" {
 			config.Current.Video.Capture.Window.Lost = config.Current.Video.Capture.Window.Name
 		}
@@ -79,7 +79,7 @@ func Capture() (*image.RGBA, error) {
 	// Determine the full width and height of the window.
 	rect, err := windowRect(handle)
 	if err != nil {
-		notify.Error("🗔 Failed to find window dimensions \"%s\" (%v)", config.Current.Video.Capture.Window.Name, err)
+		notify.Error("Window: Failed to find window dimensions \"%s\" (%v)", config.Current.Video.Capture.Window.Name, err)
 		if config.Current.Video.Capture.Window.Lost == "" {
 			config.Current.Video.Capture.Window.Lost = config.Current.Video.Capture.Window.Name
 		}
@@ -89,7 +89,7 @@ func Capture() (*image.RGBA, error) {
 
 	img, err := CaptureRect(rect)
 	if err != nil {
-		notify.Error("🗔 Failed to capture \"%s\" window (%v)", config.Current.Video.Capture.Window.Name, err)
+		notify.Error("Window: Failed to capture \"%s\" window (%v)", config.Current.Video.Capture.Window.Name, err)
 		if config.Current.Video.Capture.Window.Lost == "" {
 			config.Current.Video.Capture.Window.Lost = config.Current.Video.Capture.Window.Name
 		}
@@ -103,7 +103,7 @@ func Capture() (*image.RGBA, error) {
 func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 	handle, err := find(config.Current.Video.Capture.Window.Name)
 	if err != nil {
-		notify.Error("🗔 %v", err)
+		notify.Error("Window: %v", err)
 		return monitor.CaptureRect(rect)
 	}
 
@@ -183,7 +183,7 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 		)
 	}
 	if ret == 0 {
-		notify.Error("🗔 Failed to capture \"%s\" window", config.Current.Video.Capture.Window.Name)
+		notify.Error("Window: Failed to capture \"%s\" window", config.Current.Video.Capture.Window.Name)
 		return nil, fmt.Errorf("bitblt returned: %d", ret)
 	}
 
@@ -252,7 +252,7 @@ func Open() error {
 		return nil
 	}
 
-	notify.Error("🗔 \"%s\" could not be found", config.Current.Video.Capture.Window.Name)
+	notify.Error("Window: \"%s\" could not be found", config.Current.Video.Capture.Window.Name)
 
 	config.Current.Video.Capture.Window.Lost = config.Current.Video.Capture.Window.Name
 	config.Current.Video.Capture.Window.Name = config.MainDisplay
@@ -281,7 +281,7 @@ func Reattach() error {
 		if win == config.Current.Video.Capture.Window.Lost {
 			config.Current.Video.Capture.Window.Name = win
 
-			notify.Announce("🗔 Found \"%s\" window", config.Current.Video.Capture.Window.Name)
+			notify.Announce("Window: Found \"%s\" window", config.Current.Video.Capture.Window.Name)
 			config.Current.Video.Capture.Window.Lost = ""
 			attempts = 0
 

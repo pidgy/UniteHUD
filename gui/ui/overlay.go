@@ -73,27 +73,9 @@ func (g *GUI) client(onclose func()) {
 
 	err := electron.OpenWindow()
 	if err != nil {
-		notify.Warn("📺 Failed to render overlay (%v)", err)
+		notify.Warn("Overlay: Failed to render overlay (%v)", err)
 	}
 	defer electron.CloseWindow()
-
-	defer fps.NewLoop(&fps.LoopOptions{
-		Async: true,
-		FPS:   120,
-		Render: func(min, max, avg time.Duration) (close bool) {
-			// img, err := video.Capture()
-			// if err != nil {
-			// 	g.ToastError(err)
-			// 	g.next(is.MainMenu)
-			// 	return true
-			// }
-
-			// ui.video = img
-			// ui.overlayOp = paint.NewImageOp(img)
-
-			return false
-		},
-	}).Stop()
 
 	defer fps.NewLoop(&fps.LoopOptions{
 		Async: true,
@@ -115,7 +97,7 @@ func (g *GUI) client(onclose func()) {
 	for {
 		switch event := ui.windows.current.NextEvent().(type) {
 		case system.DestroyEvent:
-			notify.System("📺 Closing overlay...")
+			notify.System("Overlay: Closing...")
 			return
 		case system.StageEvent:
 			if !ui.visibility.seen {
@@ -162,11 +144,11 @@ func (g *GUI) client(onclose func()) {
 						}
 						ui.clicked = time.Now()
 					case pointer.Move, pointer.Enter:
-						if !ui.dimensions.fullscreened {
-							break
-						}
-						ui.hover = time.Now()
-						ui.bar.Hide = false
+						// if !ui.dimensions.fullscreened {
+						// 	break
+						// }
+						// ui.hover = time.Now()
+						// ui.bar.Hide = false
 					}
 				}
 			}

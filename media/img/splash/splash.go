@@ -8,7 +8,6 @@ import (
 
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/notify"
-	"github.com/pidgy/unitehud/media/img"
 )
 
 var (
@@ -32,6 +31,14 @@ var (
 
 func init() {
 	notify.Preview = Projector()
+
+	if projectorMat.Empty() {
+		m, err := gocv.ImageToMatRGBA(defaultPNG)
+		if err == nil {
+			_ = projectorMat.Close()
+			projectorMat = m
+		}
+	}
 }
 
 func AsRGBA(i image.Image) *image.RGBA {
@@ -49,10 +56,14 @@ func AsRGBA(i image.Image) *image.RGBA {
 
 func Default() image.Image {
 	if defaultImg == nil {
+		if defaultMat.Empty() {
+			defaultMat = defaultPNGToMat()
+		}
+
 		i, err := defaultMat.ToImage()
 		if err != nil {
-			notify.Warn("📸 Failed to convert splash image (%v)", err)
-			return img.Empty
+			notify.Warn("Splash: Failed to convert splash image (%v)", err)
+			return defaultPNG
 		}
 		defaultImg = i
 	}
@@ -62,10 +73,14 @@ func Default() image.Image {
 
 func Device() image.Image {
 	if deviceImg == nil {
+		if deviceMat.Empty() {
+			deviceMat = defaultPNGToMat()
+		}
+
 		i, err := deviceMat.ToImage()
 		if err != nil {
-			notify.Warn("📸 Failed to convert splash image (%v)", err)
-			return img.Empty
+			notify.Warn("Splash: Failed to convert splash image (%v)", err)
+			return defaultPNG
 		}
 		deviceImg = i
 	}
@@ -73,39 +88,57 @@ func Device() image.Image {
 }
 
 func DeviceMat() *gocv.Mat {
+	if deviceMat.Empty() {
+		deviceMat = defaultPNGToMat()
+	}
+
 	return &deviceMat
 }
 
 func DeviceRGBA() *image.RGBA {
 	if deviceRGBA == nil {
+		if deviceMat.Empty() {
+			deviceMat = defaultPNGToMat()
+		}
+
 		i, err := deviceMat.ToImage()
 		if err != nil {
-			notify.Warn("📸 Failed to convert splash image (%v)", err)
-			return img.Empty
+			notify.Warn("Splash: Failed to convert splash image (%v)", err)
+			return defaultPNG
 		}
 		deviceRGBA = AsRGBA(i)
 	}
+
 	return deviceRGBA
 }
 
 func Invalid() image.Image {
 	if invalidImg == nil {
+		if invalidMat.Empty() {
+			invalidMat = defaultPNGToMat()
+		}
+
 		i, err := invalidMat.ToImage()
 		if err != nil {
-			notify.Warn("📸 Failed to convert splash image (%v)", err)
-			return img.Empty
+			notify.Warn("Splash: Failed to convert splash image (%v)", err)
+			return defaultPNG
 		}
 		invalidImg = i
 	}
+
 	return invalidImg
 }
 
 func InvalidRGBA() *image.RGBA {
 	if invalidRGBA == nil {
+		if invalidMat.Empty() {
+			invalidMat = defaultPNGToMat()
+		}
+
 		i, err := invalidMat.ToImage()
 		if err != nil {
-			notify.Warn("📸 Failed to convert splash image (%v)", err)
-			return img.Empty
+			notify.Warn("Splash: Failed to convert splash image (%v)", err)
+			return defaultPNG
 		}
 		invalidRGBA = AsRGBA(i)
 	}
@@ -114,10 +147,14 @@ func InvalidRGBA() *image.RGBA {
 
 func Loading() image.Image {
 	if loadingImg == nil {
+		if loadingMat.Empty() {
+			loadingMat = defaultPNGToMat()
+		}
+
 		i, err := loadingMat.ToImage()
 		if err != nil {
-			notify.Warn("📸 Failed to convert splash image (%v)", err)
-			return img.Empty
+			notify.Warn("Splash: Failed to convert splash image (%v)", err)
+			return defaultPNG
 		}
 		loadingImg = i
 	}
@@ -127,10 +164,14 @@ func Loading() image.Image {
 
 func Projector() image.Image {
 	if projectorImg == nil {
+		if projectorMat.Empty() {
+			projectorMat = defaultPNGToMat()
+		}
+
 		i, err := projectorMat.ToImage()
 		if err != nil {
 			notify.Warn("Failed to convert splash image (%v)", err)
-			return img.Empty
+			return defaultPNG
 		}
 		projectorImg = i
 	}

@@ -9,7 +9,6 @@ import (
 	"gioui.org/layout"
 	"gioui.org/op"
 	"gioui.org/op/clip"
-	"gioui.org/text"
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
@@ -24,7 +23,6 @@ import (
 	"github.com/pidgy/unitehud/gui/visual/colorpicker"
 	"github.com/pidgy/unitehud/gui/visual/decorate"
 	"github.com/pidgy/unitehud/gui/visual/dropdown"
-	"github.com/pidgy/unitehud/gui/visual/slider"
 	"github.com/pidgy/unitehud/gui/visual/title"
 	"github.com/pidgy/unitehud/system/desktop"
 	"github.com/pidgy/unitehud/system/desktop/clicked"
@@ -63,10 +61,10 @@ type settings struct {
 	list material.ListStyle
 
 	sections struct {
-		title,
+		header,
 		discord,
 		notifications,
-		frequency,
+		factor,
 		theme,
 		themes *section
 	}
@@ -89,10 +87,10 @@ func (g *GUI) settings(onclose func()) *settings {
 		defer ui.windows.parent.unsetInsetRight(ui.dimensions.width)
 
 		sections := []*section{
-			ui.sections.title,
+			ui.sections.header,
 			ui.sections.discord,
 			ui.sections.notifications,
-			ui.sections.frequency,
+			ui.sections.factor,
 			ui.sections.theme,
 			ui.sections.themes,
 		}
@@ -175,19 +173,18 @@ func (g *GUI) settingsUI() *settings {
 		},
 	)
 
-	ui.sections.title = &section{
+	ui.sections.header = &section{
 		h1:          true,
-		description: material.Label(ui.bar.Collection.NotoSans().Theme, 15, "⚙ Advanced Settings"),
+		description: material.H6(ui.bar.Collection.Calibri().Theme, "Advanced Settings"),
 	}
-	ui.sections.title.description.Alignment = text.Middle
 
 	ui.sections.discord = &section{
-		title:       material.Label(ui.bar.Collection.NotoSans().Theme, 14, "🎮 Discord Activity"),
-		description: material.Caption(ui.bar.Collection.NotoSans().Theme, "Enable/Disable Discord activity updates"),
+		title:       material.Label(ui.bar.Collection.Calibri().Theme, 14, "🎮 Discord Activity"),
+		description: material.Caption(ui.bar.Collection.Calibri().Theme, "Enable/Disable Discord activity updates"),
 		widget: &button.Widget{
 			Text:            "Enabled",
 			Pressed:         nrgba.Transparent80,
-			Released:        nrgba.PastelGreen,
+			Released:        nrgba.Discord,
 			TextSize:        unit.Sp(14),
 			TextInsetBottom: unit.Dp(-2),
 			Size:            image.Pt(80, 20),
@@ -201,14 +198,17 @@ func (g *GUI) settingsUI() *settings {
 					this.Text = "Disabled"
 					discord.Disconnect()
 				} else {
-					this.Released = nrgba.PastelGreen
+					this.Released = nrgba.Discord
 					this.Text = "Enabled"
 				}
 			},
 		},
 	}
-	discordWarning := material.Label(ui.bar.Collection.NotoSans().Theme, unit.Sp(11),
-		"🔌 Activity Privacy settings in Discord can prevent this feature from working")
+	discordWarning := material.Label(
+		ui.bar.Collection.Calibri().Theme,
+		unit.Sp(12),
+		"🔌 Activity Privacy settings in Discord can prevent this feature from working",
+	)
 	discordWarning.Color = nrgba.PastelRed.Alpha(127).Color()
 	discordWarning.Font.Weight = 0
 	ui.sections.discord.warning = discordWarning
@@ -219,18 +219,18 @@ func (g *GUI) settingsUI() *settings {
 	}
 
 	ui.sections.notifications = &section{
-		title:       material.Label(ui.bar.Collection.NotoSans().Theme, 14, "🔔 Desktop Notifications"),
-		description: material.Caption(ui.bar.Collection.NotoSans().Theme, "Adjust desktop notifications for UniteHUD"),
+		title:       material.Label(ui.bar.Collection.Calibri().Theme, 14, "🔔 Desktop Notifications"),
+		description: material.Caption(ui.bar.Collection.Calibri().Theme, "Adjust desktop notifications for UniteHUD"),
 
 		extras: []visual.Widgeter{
 			&button.Widget{
 				Text:            "🔔 Test",
 				Pressed:         nrgba.Transparent80,
-				Released:        nrgba.PastelBlue,
+				Released:        nrgba.PastelOrange.Alpha(150),
 				TextSize:        unit.Sp(12),
-				TextInsetBottom: unit.Dp(0),
+				TextInsetBottom: unit.Dp(-2),
 				Size:            image.Pt(80, 20),
-				Font:            ui.bar.Collection.NotoSans(),
+				Font:            ui.bar.Collection.Calibri(),
 
 				Click: func(this *button.Widget) {
 					was := config.Current.Advanced.Notifications.Disabled.All
@@ -248,8 +248,11 @@ func (g *GUI) settingsUI() *settings {
 			},
 		},
 	}
-	notificationsWarning := material.Label(ui.bar.Collection.NotoSans().Theme, unit.Sp(11),
-		"📌 Some settings are automatically applied by the OS")
+	notificationsWarning := material.Label(
+		ui.bar.Collection.Calibri().Theme,
+		unit.Sp(12),
+		"📌 Some settings are automatically applied by your Operating System",
+	)
 	notificationsWarning.Color = nrgba.PastelRed.Alpha(127).Color()
 	notificationsWarning.Font.Weight = 0
 	ui.sections.notifications.warning = notificationsWarning
@@ -331,73 +334,120 @@ func (g *GUI) settingsUI() *settings {
 		}
 	}
 
-	ui.sections.frequency = &section{
-		title:       material.Label(ui.bar.Collection.NotoSans().Theme, 14, "🕔 Match Interval"),
-		description: material.Caption(ui.bar.Collection.NotoSans().Theme, "Increase the amount of match attempts per second"),
-		widget: &slider.Widget{
-			Slider:     material.Slider(ui.bar.Collection.NotoSans().Theme, &widget.Float{Value: float32(config.Current.Advanced.IncreasedCaptureRate)}),
-			Label:      material.Label(ui.bar.Collection.NotoSans().Theme, unit.Sp(15), ""),
-			TextColors: []nrgba.NRGBA{nrgba.White, nrgba.PastelYellow, nrgba.PastelOrange, nrgba.PastelRed},
-			OnValueChanged: func(f float32) {
-				config.Current.Advanced.IncreasedCaptureRate = int64(f)
+	ui.sections.factor = &section{
+		title:       material.Label(ui.bar.Collection.Calibri().Theme, 14, "🕔 Match Frequency Factor"),
+		description: material.Caption(ui.bar.Collection.Calibri().Theme, "Decrease the amount of match attempts per second"),
+		widget: &dropdown.Widget{
+			Theme:    ui.bar.Collection.NotoSans().Theme,
+			Radio:    true,
+			TextSize: 12,
+			Items: []*dropdown.Item{
+				{
+					Text: "Default",
+					Checked: widget.Bool{
+						Value: false,
+					},
+					Callback: func(this *dropdown.Item) {
+						config.Current.Advanced.DecreasedCaptureLevel = 0
+					},
+				},
+				{
+					Text: "Moderate",
+					Checked: widget.Bool{
+						Value: false,
+					},
+					Callback: func(this *dropdown.Item) {
+						config.Current.Advanced.DecreasedCaptureLevel = 1
+					},
+				},
+				{
+					Text: "Mild",
+					Checked: widget.Bool{
+						Value: false,
+					},
+					Callback: func(this *dropdown.Item) {
+						config.Current.Advanced.DecreasedCaptureLevel = 2
+					},
+				},
+				{
+					Text: "Maximum",
+					Checked: widget.Bool{
+						Value: false,
+					},
+					Callback: func(this *dropdown.Item) {
+						config.Current.Advanced.DecreasedCaptureLevel = 3
+					},
+				},
+				{
+					Text: "Unreliable",
+					Checked: widget.Bool{
+						Value: false,
+					},
+					Callback: func(this *dropdown.Item) {
+						config.Current.Advanced.DecreasedCaptureLevel = 4
+					},
+				},
 			},
 		},
 	}
-	frequencyWarning := material.Label(ui.bar.Collection.NotoSans().Theme, unit.Sp(11), "⚠ CPU Increase when ≥ 1")
-	frequencyWarning.Color = nrgba.PastelRed.Alpha(127).Color()
+	for i, item := range ui.sections.factor.widget.(*dropdown.Widget).Items {
+		if i == int(config.Current.Advanced.DecreasedCaptureLevel) {
+			item.Checked.Value = true
+		}
+	}
+	frequencyWarning := material.Label(ui.bar.Collection.Calibri().Theme, unit.Sp(12), "✔ Decreasing the match factor will reduce CPU usage")
+	frequencyWarning.Color = nrgba.PastelGreen.Alpha(127).Color()
 	frequencyWarning.Font.Weight = 0
-	ui.sections.frequency.warning = frequencyWarning
+	ui.sections.factor.warning = frequencyWarning
 
 	ui.sections.theme = &section{
-		title:       material.Label(ui.bar.Collection.NotoSans().Theme, 14, "🎨 Theme"),
-		description: material.Caption(ui.bar.Collection.NotoSans().Theme, "Change the color theme of UniteHUD"),
+		title:       material.Label(ui.bar.Collection.Calibri().Theme, 14, "🎨 Theme"),
+		description: material.Label(ui.bar.Collection.Calibri().Theme, unit.Sp(12), "Adjust the overall color scheme of UniteHUD"),
 		widget: colorpicker.New(
-			ui.bar.Collection.NotoSans(),
-			[]colorpicker.Options{
-				{
-					Label: "Background",
-					Value: &config.Current.Theme.Background,
-				},
-				{
-					Label: "Background Alt.",
-					Value: &config.Current.Theme.BackgroundAlt,
-				},
-				{
-					Label: "Foreground",
-					Value: &config.Current.Theme.Foreground,
-				},
-				{
-					Label: "Foreground Alt.",
-					Value: &config.Current.Theme.ForegroundAlt,
-				},
-				{
-					Label: "Title Bar Foreground",
-					Value: &config.Current.Theme.TitleBarForeground,
-				},
-				{
-					Label: "Title Bar Background",
-					Value: &config.Current.Theme.TitleBarBackground,
-				},
-				{
-					Label: "Splash",
-					Value: &config.Current.Theme.Splash,
-				},
-				{
-					Label: "Borders",
-					Value: &config.Current.Theme.Borders,
-				},
-				{
-					Label: "Scrollbar Background",
-					Value: &config.Current.Theme.ScrollbarBackground,
-				},
-				{
-					Label: "Scrollbar Foreground",
-					Value: &config.Current.Theme.ScrollbarForeground,
-				},
-			}...,
+			ui.bar.Collection.Calibri(),
+			colorpicker.Option{
+				Label: "Background",
+				Value: &config.Current.Theme.Background,
+			},
+			colorpicker.Option{
+				Label: "Background Alt.",
+				Value: &config.Current.Theme.BackgroundAlt,
+			},
+			colorpicker.Option{
+				Label: "Foreground",
+				Value: &config.Current.Theme.Foreground,
+			},
+			colorpicker.Option{
+				Label: "Foreground Alt.",
+				Value: &config.Current.Theme.ForegroundAlt,
+			},
+			colorpicker.Option{
+				Label: "Title Bar Foreground",
+				Value: &config.Current.Theme.TitleBarForeground,
+			},
+			colorpicker.Option{
+				Label: "Title Bar Background",
+				Value: &config.Current.Theme.TitleBarBackground,
+			},
+			colorpicker.Option{
+				Label: "Splash",
+				Value: &config.Current.Theme.Splash,
+			},
+			colorpicker.Option{
+				Label: "Borders",
+				Value: &config.Current.Theme.Borders,
+			},
+			colorpicker.Option{
+				Label: "Scrollbar Background",
+				Value: &config.Current.Theme.ScrollbarBackground,
+			},
+			colorpicker.Option{
+				Label: "Scrollbar Foreground",
+				Value: &config.Current.Theme.ScrollbarForeground,
+			},
 		),
 		warning: &button.Widget{
-			Text:            "Defaults",
+			Text:            "Reset",
 			Pressed:         nrgba.Transparent80,
 			Released:        nrgba.DarkGray,
 			TextSize:        unit.Sp(14),
@@ -417,12 +467,12 @@ func (g *GUI) settingsUI() *settings {
 	}
 
 	ui.sections.themes = &section{
-		title:       material.Label(ui.bar.Collection.NotoSans().Theme, 14, "📦 Preset Themes"),
-		description: material.Caption(ui.bar.Collection.NotoSans().Theme, "Select a theme preset to apply to UniteHUD"),
-		warning:     material.Label(ui.bar.Collection.NotoSans().Theme, 14, ""),
+		title:       material.Label(ui.bar.Collection.Calibri().Theme, 14, "📦 Preset Themes"),
+		description: material.Caption(ui.bar.Collection.Calibri().Theme, "Select a theme preset to apply to UniteHUD"),
+		warning:     material.Label(ui.bar.Collection.Calibri().Theme, 12, ""),
 		widget: &dropdown.Widget{
 			Theme:    ui.bar.Collection.NotoSans().Theme,
-			TextSize: 16,
+			TextSize: 12,
 			Items:    []*dropdown.Item{},
 		},
 	}
@@ -445,15 +495,10 @@ func (s *section) section(gtx layout.Context) layout.Dimensions {
 		Top:    5,
 		Left:   12.5,
 		Right:  2,
-		Bottom: 5,
+		Bottom: 10,
 	}
 
 	alignment := layout.Baseline
-
-	if s.h1 {
-		alignment = layout.Middle
-		inset.Left = 2
-	}
 
 	s.title.Font.Weight = font.Black
 
@@ -469,7 +514,21 @@ func (s *section) section(gtx layout.Context) layout.Dimensions {
 			if s.title.Text == "" {
 				return layout.Dimensions{Size: layout.Exact(image.Pt(0, 0)).Max}
 			}
-			return inset.Layout(gtx, s.title.Layout)
+
+			layout.Inset{Bottom: 5}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+				return decorate.Line(
+					gtx,
+					clip.Rect(image.Rect(8, 0, gtx.Constraints.Max.X-8, 1)),
+					nrgba.NRGBA(config.Current.Theme.Borders),
+				)
+			})
+
+			return layout.Inset{
+				Top:    inset.Top + 10,
+				Left:   inset.Left - 2,
+				Right:  inset.Right - 2,
+				Bottom: inset.Bottom,
+			}.Layout(gtx, s.title.Layout)
 		}),
 
 		// Widget: Button, Slider, etc.
@@ -477,13 +536,6 @@ func (s *section) section(gtx layout.Context) layout.Dimensions {
 			if s.widget == nil {
 				return layout.Dimensions{Size: layout.Exact(image.Pt(0, 0)).Max}
 			}
-
-			// Draw line here so it only appears under subtitles.
-			decorate.Line(
-				gtx,
-				clip.Rect(image.Rect(8, 0, gtx.Constraints.Max.X-8, 1)),
-				nrgba.NRGBA(config.Current.Theme.Borders),
-			)
 
 			return inset.Layout(gtx, s.widget.Layout)
 		}),
@@ -493,6 +545,15 @@ func (s *section) section(gtx layout.Context) layout.Dimensions {
 			if s.description.Text == "" {
 				return layout.Dimensions{Size: layout.Exact(image.Pt(0, 0)).Max}
 			}
+
+			if s.h1 {
+				return layout.Inset{
+					Top:    inset.Bottom,
+					Left:   inset.Left,
+					Bottom: inset.Top,
+				}.Layout(gtx, s.description.Layout)
+			}
+
 			return inset.Layout(gtx, s.description.Layout)
 		}),
 
@@ -505,15 +566,11 @@ func (s *section) section(gtx layout.Context) layout.Dimensions {
 		}),
 	}
 
-	return layout.Inset{
-		Bottom: 2,
-	}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-		return decorate.BackgroundAlt(gtx, func(gtx layout.Context) layout.Dimensions {
-			return layout.Flex{
-				Axis:      layout.Vertical,
-				Alignment: alignment,
-			}.Layout(gtx, append(children, s.footer(inset)...)...)
-		})
+	return decorate.BackgroundAlt(gtx, func(gtx layout.Context) layout.Dimensions {
+		return layout.Flex{
+			Axis:      layout.Vertical,
+			Alignment: alignment,
+		}.Layout(gtx, append(children, s.footer(inset)...)...)
 	})
 }
 

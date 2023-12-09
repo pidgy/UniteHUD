@@ -23,10 +23,6 @@ type (
 	}
 )
 
-const (
-	MaxPosts = 75
-)
-
 var (
 	Preview     image.Image = image.NewRGBA(image.Rect(0, 0, 0, 0))
 	OrangeScore image.Image = image.NewRGBA(image.Rect(0, 0, 0, 0))
@@ -117,7 +113,7 @@ func Last() Post {
 }
 
 func Missed(event interface{}, window string) {
-	Debug("🖥️ Missed %T event (%s)", event, window)
+	Debug("UI: Missed %T event (%s)", event, window)
 }
 
 func (p *Post) String() string {
@@ -175,7 +171,7 @@ func (n *notify) log(r nrgba.NRGBA, clock, dedup, unique bool, format string, a 
 	}
 
 	if global.DebugMode {
-		fmt.Printf("🐞 %s\n", fmt.Sprintf(format, a...))
+		fmt.Printf("🐛 %s\n", fmt.Sprintf(format, a...))
 	}
 
 	if clock {
@@ -213,7 +209,4 @@ func (n *notify) log(r nrgba.NRGBA, clock, dedup, unique bool, format string, a 
 	}
 
 	n.logs = append(n.logs, p)
-	if len(n.logs) > MaxPosts {
-		n.logs = n.logs[1:]
-	}
 }

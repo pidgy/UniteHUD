@@ -57,13 +57,13 @@ func Connect() {
 
 func Disconnect() {
 	rpc.cleanup()
-	notify.Feed(nrgba.Discord, "👾 Disconnected")
+	notify.Feed(nrgba.Discord, "Discord: Disconnected")
 }
 
 func reconnect() {
 	err := rpc.error()
 	if err != nil {
-		notify.Warn("👾 Disconnected (%v)", err)
+		notify.Warn("Discord: Disconnected (%v)", err)
 	}
 
 	if config.Current.Advanced.Discord.Disabled && rpc.conn != nil {
@@ -80,16 +80,16 @@ func reconnect() {
 
 		retries++
 		if retries == 10 {
-			notify.Warn("👾 Failed to connect, rpc disabled")
+			notify.Warn("Discord: Failed to connect, rpc disabled")
 			config.Current.Advanced.Discord.Disabled = true
 			continue
 		}
 
-		notify.Feed(nrgba.Discord, "👾 Connecting...")
+		notify.Feed(nrgba.Discord, "Discord: Connecting...")
 
 		rpc, err = connect()
 		if err != nil {
-			notify.Warn("👾 Failed to connect (%v)", err)
+			notify.Warn("Discord: Failed to connect (%v)", err)
 			continue
 		}
 
@@ -97,11 +97,11 @@ func reconnect() {
 
 		err = rpc.error()
 		if err != nil {
-			notify.Warn("👾 Failed to connect (%v)", err)
+			notify.Warn("Discord: Failed to connect (%v)", err)
 			continue
 		}
 
-		notify.Feed(nrgba.Discord, "👾 Connected")
+		notify.Feed(nrgba.Discord, "Discord: Connected")
 	}
 }
 

@@ -18,6 +18,8 @@ type Widget struct {
 	Text string
 	font *fonts.Style
 
+	max int
+
 	list  material.ListStyle
 	label material.LabelStyle
 
@@ -26,6 +28,7 @@ type Widget struct {
 
 func New(s *fonts.Style, max int) (*Widget, error) {
 	t := &Widget{
+		max:  max,
 		font: s,
 		list: material.List(
 			s.Theme,
@@ -49,6 +52,10 @@ func New(s *fonts.Style, max int) (*Widget, error) {
 
 func (t *Widget) Layout(gtx layout.Context, posts []notify.Post) layout.Dimensions {
 	defer t.cursor()
+
+	if len(posts) > t.max {
+		posts = posts[:t.max]
+	}
 
 	return decorate.BackgroundAlt(gtx, func(gtx layout.Context) layout.Dimensions {
 		decorate.Border(gtx)
@@ -78,9 +85,9 @@ func (t *Widget) Layout(gtx layout.Context, posts []notify.Post) layout.Dimensio
 
 func (t *Widget) calculateAlpha(index, nposts int) uint8 {
 	ratio := (float32(index) / float32(nposts))
-	if ratio < 0.5 {
-		ratio += 0.2
-	}
+	// if ratio < 0.1 {
+	// 	ratio = 0.1
+	// }
 	a := (float32(257) * ratio) + 5
 	if a > 255 {
 		a = 255

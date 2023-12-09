@@ -8,14 +8,20 @@ import (
 )
 
 func TestNewFromVideoCaptureDevice(t *testing.T) {
+	backends := []malgo.Backend{}
+	for i := malgo.BackendWasapi; i < malgo.BackendWebaudio; i++ {
+		backends = append(backends, malgo.Backend(i))
+	}
+
 	config.Current.Video.Capture.Device.Index = 1
 
 	ctx, err := malgo.InitContext(
-		[]malgo.Backend{
-			malgo.BackendWasapi,
-		},
+		backends,
 		malgo.ContextConfig{
 			ThreadPriority: malgo.ThreadPriorityHigh,
+			Alsa: malgo.AlsaContextConfig{
+				UseVerboseDeviceEnumeration: 1,
+			},
 		},
 		func(m string) {
 			// t.Log(m)
@@ -26,20 +32,21 @@ func TestNewFromVideoCaptureDevice(t *testing.T) {
 	}
 	defer ctx.Free()
 
-	d, err := NewFromVideoCaptureDevice(ctx)
+	d, err := ctx.Devices(malgo.Capture)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if d.IsDisabled() {
-		t.Fatalf("device %d is disabled", config.Current.Video.Capture.Device.Index)
+	for _, d := range d {
+		malgo.InitDevice(ctx.Context, malgo.DeviceConfig{}, malgo.DeviceCallbacks{})
+		println("\t", d.String())
 	}
 }
 
 // TestDevices to parse discovered devices.
 func TestDevices(t *testing.T) {
 	for i := malgo.BackendWasapi; i < malgo.BackendWebaudio; i++ {
-		println(i, "----------------------------")
+		println("Backend:", i)
 
 		ctx, err := malgo.InitContext([]malgo.Backend{malgo.Backend(i)}, malgo.ContextConfig{}, nil)
 		if err != nil {

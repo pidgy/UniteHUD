@@ -123,7 +123,7 @@ func (c *client) send(o opper) {
 		return
 	}
 
-	notify.Debug("👾 %s", string(p))
+	notify.Debug("Discord: %s", string(p))
 
 	m := message{
 		opcode:  o.opcode(),

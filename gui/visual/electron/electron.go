@@ -51,18 +51,16 @@ var (
 			Width:  astikit.IntPtr(0),
 		},
 	}
-
-	openq    = make(chan bool)
-	runningq = make(chan bool)
 )
 
 func Open() {
-	notify.Debug("🎮 Opening...")
+	notify.Debug("Electron: Opening...")
+	defer notify.Debug("Electron: Closed")
 
 	var err error
 
 	app, err = astilectron.New(
-		notify.Debugger("🎮 "),
+		notify.Debugger("Electron: "),
 		astilectron.Options{
 			AppName:            title,
 			CustomElectronPath: filepath.Join(global.WorkingDirectory(), global.AssetDirectory, "electron", "vendor", "electron-windows-amd64", "UniteHUD Overlay.exe"),
@@ -75,7 +73,7 @@ func Open() {
 		},
 	)
 	if err != nil {
-		notify.Error("🎮 Failed to create app (%v)", err)
+		notify.Error("Electron: Failed to create app (%v)", err)
 		return
 	}
 
@@ -84,85 +82,24 @@ func Open() {
 	app.On(astilectron.EventNameAppCmdQuit, onClose)
 	app.On(astilectron.EventNameAppClose, onClose)
 	app.On(astilectron.EventNameAppEventReady, func(e astilectron.Event) (deleteListener bool) {
-		notify.Debug("🎮 event, %s", e.Name)
+		notify.Debug("Electron: event, %s", e.Name)
 		active.app = true
 		return false
 	})
 
-	running := false
-	for range openq {
-		if running {
-			runningq <- true
-			continue
-		}
-		running = true
-
-		err = app.Start()
-		if err != nil {
-			notify.Error("🎮 Failed to start app (%v)", err)
-			return
-		}
-
-		notify.Debug("🎮 Creating window...")
-		notify.Debug("🎮 Paths %s", app.Paths().DataDirectory())
-
-		window, err = app.NewWindow(html,
-			&astilectron.WindowOptions{
-				Title: astikit.StrPtr(title),
-				Show:  astikit.BoolPtr(true),
-
-				Width:  astikit.IntPtr(1280),
-				Height: astikit.IntPtr(720),
-
-				// Fullscreen:  astikit.BoolPtr(true),
-				Minimizable: astikit.BoolPtr(true),
-				Resizable:   astikit.BoolPtr(false),
-				Movable:     astikit.BoolPtr(true),
-				// Center:      astikit.BoolPtr(true),
-				Closable: astikit.BoolPtr(true),
-
-				Transparent: astikit.BoolPtr(true),
-				AlwaysOnTop: astikit.BoolPtr(true),
-
-				// EnableLargerThanScreen: astikit.BoolPtr(false),
-				Focusable: astikit.BoolPtr(false),
-				Frame:     astikit.BoolPtr(false),
-				// HasShadow:              astikit.BoolPtr(false),
-
-				Icon: astikit.StrPtr(fmt.Sprintf("%s/icon/icon-browser.png", global.AssetDirectory)),
-
-				WebPreferences: &astilectron.WebPreferences{
-					WebSecurity:             astikit.BoolPtr(false),
-					DevTools:                astikit.BoolPtr(global.DebugMode),
-					Images:                  astikit.BoolPtr(true),
-					Javascript:              astikit.BoolPtr(true),
-					NodeIntegrationInWorker: astikit.BoolPtr(true),
-				},
-
-				Custom: &astilectron.WindowCustomOptions{
-					MinimizeOnClose: astikit.BoolPtr(true),
-				},
-			},
-		)
-		if err != nil {
-			notify.Error("🎮 Failed to open (%v)", err)
-			return
-		}
-
-		window.On(astilectron.EventNameWindowEventDidFinishLoad, func(e astilectron.Event) (deleteListener bool) {
-			notify.Debug("🎮 event, %s", e.Name)
-			active.window = true
-			return false
-		})
-
-		go app.Wait()
-
-		runningq <- true
+	err = app.Start()
+	if err != nil {
+		notify.Error("Electron: Failed to start app (%v)", err)
+		return
 	}
+
+	go app.Wait()
 }
 
 func Close() {
-	notify.System("🎮 Closing app...")
+	notify.Debug("Electron: Closing app...")
+	defer notify.Debug("Electron: Closed app...")
+
 	app.Close()
 
 	active.window = false
@@ -170,11 +107,12 @@ func Close() {
 }
 
 func CloseWindow() {
-	notify.System("🎮 Closing window...")
+	notify.Debug("Electron: Closing window...")
+	defer notify.Debug("Electron: Closed window...")
 
 	err := window.Close()
 	if err != nil {
-		notify.Error("🎮 Failed to close window (%v)", err)
+		notify.Error("Electron: Failed to close window (%v)", err)
 	}
 }
 
@@ -185,7 +123,7 @@ func Follow(hwnd uintptr, hidden bool) {
 
 		_, _, err := wapi.GetWindowRect.Call(hwnd, uintptr(unsafe.Pointer(r)))
 		if err != syscall.Errno(0) {
-			notify.Error("🎮 Failed to follow Client window (%v)", err)
+			notify.Error("Electron: Failed to follow Client window (%v)", err)
 			return
 		}
 
@@ -205,19 +143,67 @@ func Follow(hwnd uintptr, hidden bool) {
 		window.Show(),
 	} {
 		if err != nil {
-			notify.Debug("🎮 Failed to render (%v)", err)
+			notify.Debug("Electron: Failed to render (%v)", err)
 		}
 	}
 }
 
-func OpenWindow() error {
+func OpenWindow() (err error) {
 	if active.window {
 		return window.Show()
 	}
 
-	notify.System("🎮 Opening...")
-	openq <- true
-	<-runningq
+	notify.Debug("Electron: Opening window...")
+	defer notify.Debug("Electron: Opened window")
+
+	window, err = app.NewWindow(html,
+		&astilectron.WindowOptions{
+			Title: astikit.StrPtr(title),
+			Show:  astikit.BoolPtr(true),
+
+			Width:  astikit.IntPtr(1280),
+			Height: astikit.IntPtr(720),
+
+			// Fullscreen:  astikit.BoolPtr(true),
+			Minimizable: astikit.BoolPtr(true),
+			Resizable:   astikit.BoolPtr(false),
+			Movable:     astikit.BoolPtr(true),
+			// Center:      astikit.BoolPtr(true),
+			Closable: astikit.BoolPtr(true),
+
+			Transparent: astikit.BoolPtr(true),
+			AlwaysOnTop: astikit.BoolPtr(true),
+
+			// EnableLargerThanScreen: astikit.BoolPtr(false),
+			Focusable: astikit.BoolPtr(false),
+			Frame:     astikit.BoolPtr(false),
+			// HasShadow:              astikit.BoolPtr(false),
+
+			Icon: astikit.StrPtr(fmt.Sprintf("%s/icon/icon-browser.png", global.AssetDirectory)),
+
+			WebPreferences: &astilectron.WebPreferences{
+				WebSecurity:             astikit.BoolPtr(false),
+				DevTools:                astikit.BoolPtr(global.DebugMode),
+				Images:                  astikit.BoolPtr(true),
+				Javascript:              astikit.BoolPtr(true),
+				NodeIntegrationInWorker: astikit.BoolPtr(true),
+			},
+
+			Custom: &astilectron.WindowCustomOptions{
+				MinimizeOnClose: astikit.BoolPtr(true),
+			},
+		},
+	)
+	if err != nil {
+		notify.Error("Electron: Failed to open (%v)", err)
+		return
+	}
+
+	window.On(astilectron.EventNameWindowEventDidFinishLoad, func(e astilectron.Event) (deleteListener bool) {
+		notify.Debug("Electron: event, %s", e.Name)
+		active.window = true
+		return false
+	})
 
 	errq := make(chan error)
 
@@ -231,7 +217,7 @@ func OpenWindow() error {
 		// if global.DebugMode {
 		// err := window.OpenDevTools()
 		// if err != nil {
-		// 	notify.Warn("🎮 Failed to open dev tools")
+		// 	notify.Warn("Electron: Failed to open dev tools")
 		// }
 		// }
 
@@ -242,6 +228,6 @@ func OpenWindow() error {
 }
 
 func onClose(e astilectron.Event) (deleteListener bool) {
-	notify.Debug("🎮 app event %s", e.Name)
+	notify.Debug("Electron: app event %s", e.Name)
 	return false
 }

@@ -68,7 +68,7 @@ func Time(matrix gocv.Mat, img *image.RGBA) (seconds int, kitchen string) {
 
 		for _, template := range templates {
 			if template.Mat.Cols() > region.Cols() || template.Mat.Rows() > region.Rows() {
-				notify.Error("🕑 Time match is outside the configured selection area")
+				notify.Error("Detect: Time match is outside the configured selection area")
 
 				if config.Current.Record {
 					// dev.Capture(img, region, team.Time.Name, "missed-"+template.Name, false, template.Value)
@@ -87,7 +87,7 @@ func Time(matrix gocv.Mat, img *image.RGBA) (seconds int, kitchen string) {
 
 		for i := range results {
 			if results[i].Empty() {
-				notify.SystemWarn("🕑 Empty result for %s", templates[i].Truncated())
+				notify.SystemWarn("Detect: Empty result for %s", templates[i].Truncated())
 				continue
 			}
 
@@ -128,7 +128,7 @@ func Time(matrix gocv.Mat, img *image.RGBA) (seconds int, kitchen string) {
 	kitchen = fmt.Sprintf("%d%d:%d%d", clock[0], clock[1], clock[2], clock[3])
 
 	if clock[0] != 0 || minutes > 10 || secs > 59 {
-		notify.Error("🕑 Invalid time detected %s", kitchen)
+		notify.Error("Detect: Invalid time detected %s", kitchen)
 		return 0, "00:00"
 	}
 

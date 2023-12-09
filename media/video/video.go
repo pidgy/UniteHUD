@@ -40,13 +40,7 @@ func Close() {
 
 func Open() error {
 	monitor.Open()
-
-	err := device.Open()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return device.Open()
 }
 
 func Windows() []string {
@@ -64,7 +58,7 @@ func Screens() []string {
 func StateArea() image.Rectangle {
 	img, err := Capture()
 	if err != nil {
-		notify.Error("📽️ Failed to capture area for state events (%v)", err)
+		notify.Error("Video: Failed to capture area for state events (%v)", err)
 		return image.Rect(0, 0, 0, 0)
 	}
 	if img == nil {

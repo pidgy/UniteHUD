@@ -97,7 +97,7 @@ func Clients() int {
 
 	for c := range current.clients {
 		if time.Since(current.clients[c]) > time.Second*5 {
-			notify.Feed(nrgba.Slate, "🌐 Client has disconnected (%s)", c)
+			notify.Feed(nrgba.Slate, "Server: Client has disconnected (%s)", c)
 			delete(current.clients, c)
 		}
 	}
@@ -156,19 +156,19 @@ func Listen() error {
 
 				img, err := video.Capture()
 				if err != nil {
-					notify.Error("🌐 /stream (%v)", err)
+					notify.Error("Server: /stream (%v)", err)
 					return true
 				}
 
 				n, err := io.WriteString(w, boundary)
 				if err != nil || n != len(boundary) {
-					notify.Error("🌐 /stream (%v)", err)
+					notify.Error("Server: /stream (%v)", err)
 					return true
 				}
 
 				err = enc.Encode(w, img)
 				if err != nil {
-					notify.Error("🌐 /stream (%v)", err)
+					notify.Error("Server: /stream (%v)", err)
 					return true
 				}
 
@@ -190,7 +190,7 @@ func Listen() error {
 			InsecureSkipVerify: true,
 		})
 		if err != nil {
-			notify.Error("🌐 Failed to accept websocket connection (%v)", err)
+			notify.Error("Server: Failed to accept websocket connection (%v)", err)
 			return
 		}
 		defer c.Close(websocket.StatusNormalClosure, "cross origin WebSocket accepted")
@@ -200,14 +200,14 @@ func Listen() error {
 
 		raw, err := json.Marshal(current.game)
 		if err != nil {
-			notify.Error("🌐 Failed to create server response (%v)", err)
+			notify.Error("Server: Failed to create server response (%v)", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
 		err = c.Write(context.Background(), websocket.MessageText, raw)
 		if err != nil {
-			notify.Error("🌐 Failed to send server response (%v)", err)
+			notify.Error("Server: Failed to send server response (%v)", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -224,14 +224,14 @@ func Listen() error {
 
 		raw, err := json.Marshal(current.game)
 		if err != nil {
-			notify.Error("🌐 Failed to create server response (%v)", err)
+			notify.Error("Server: Failed to create server response (%v)", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
 		_, err = w.Write(raw)
 		if err != nil {
-			notify.Error("🌐 Failed to send server response (%v)", err)
+			notify.Error("Server: Failed to send server response (%v)", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -256,7 +256,7 @@ func Listen() error {
 			}
 			last = current.tx / current.requests
 
-			notify.System("🌐 Averaging %d bytes per request", last)
+			notify.System("Server: Averaging %d bytes per request", last)
 		}
 	}()
 
@@ -388,21 +388,21 @@ func SetBottomObjective(t *team.Team, name string, n int) {
 	switch {
 	// Illegal.
 	case len(current.Bottom) < n:
-		notify.Warn("🌐 %s illegal operation (no index)", op)
+		notify.Warn("Server: %s illegal operation (no index)", op)
 
 	// Remove.
 	case len(current.Bottom) == n+1 && current.Bottom[n].Team == t.Name && current.Bottom[n].Name == o.Name:
 		// Remove last objective.
 		current.Bottom = current.Bottom[:n]
-		notify.Unique(t.NRGBA, "🌐 %s removed", op)
+		notify.Unique(t.NRGBA, "Server: %s removed", op)
 
 	// Add.
 	case len(current.Bottom) == n:
 		current.Bottom = append(current.Bottom, o)
-		notify.Unique(t.NRGBA, "🌐 %s secured", op)
+		notify.Unique(t.NRGBA, "Server: %s secured", op)
 	case len(current.Bottom) > n+1 && current.Bottom[n].Team != t.Name:
 		current.Bottom[n] = o
-		notify.Unique(t.NRGBA, "🌐 %s secure replaced", op)
+		notify.Unique(t.NRGBA, "Server: %s secure replaced", op)
 
 		// Overwrite.
 	case len(current.Bottom) == n+1 && current.Bottom[n].Team == t.Name && current.Bottom[n].Name != o.Name:
@@ -413,7 +413,7 @@ func SetBottomObjective(t *team.Team, name string, n int) {
 	case len(current.Bottom) == n+1 && current.Bottom[n].Team != t.Name:
 		// Overwrite last objective.
 		current.Bottom[n] = o
-		notify.Unique(t.NRGBA, "🌐 %s secure replaced", op)
+		notify.Unique(t.NRGBA, "Server: %s secure replaced", op)
 	}
 }
 
@@ -477,15 +477,15 @@ func SetRegielekiAt(t *team.Team, n int) {
 
 	switch {
 	case n != 0 && current.game.Regilekis[n-1] == team.None.Name:
-		notify.Warn("🌐 %s illegal operation (missing previous)", op)
+		notify.Warn("Server: %s illegal operation (missing previous)", op)
 	case current.game.Regilekis[n] != t.Name:
-		notify.Unique(t.NRGBA, "🌐 %s secure replaced", op)
+		notify.Unique(t.NRGBA, "Server: %s secure replaced", op)
 		current.game.Regilekis[n] = t.Name
 	case n+1 == len(current.game.Regilekis) || current.game.Regilekis[n+1] == team.None.Name:
-		notify.Unique(t.NRGBA, "🌐 %s reset", op)
+		notify.Unique(t.NRGBA, "Server: %s reset", op)
 		current.game.Regilekis[n] = team.None.Name
 	default:
-		notify.Warn("🌐 %s illegal operation", op)
+		notify.Warn("Server: %s illegal operation", op)
 	}
 }
 
@@ -527,7 +527,7 @@ func SetScore(t *team.Team, value int) {
 		case team.Orange.Name:
 			current.game.Orange.Value += s.Value
 		default:
-			notify.Error("🌐 Received first goal from an unknown team")
+			notify.Error("Server: Received first goal from an unknown team")
 		}
 	}
 }
@@ -568,7 +568,7 @@ func (i *info) client(r *http.Request, route string) {
 
 	_, ok := i.clients[key]
 	if !ok {
-		notify.System("🌐 New %s connection (%s)", route, key)
+		notify.System("Server: New %s connection (%s)", route, key)
 	}
 
 	i.clients[key] = time.Now()

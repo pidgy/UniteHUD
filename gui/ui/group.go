@@ -57,7 +57,7 @@ func (g *GUI) audios(text float32) *audios {
 	a := &audios{
 		in: capture{
 			list: &dropdown.Widget{
-				Theme:         g.header.Collection.Calibri().Theme,
+				Theme:         g.header.Collection.NotoSans().Theme,
 				WidthModifier: 1,
 				TextSize:      text,
 				Radio:         true,
@@ -96,7 +96,7 @@ func (g *GUI) audios(text float32) *audios {
 		},
 		out: capture{
 			list: &dropdown.Widget{
-				Theme:         g.header.Collection.Calibri().Theme,
+				Theme:         g.header.Collection.NotoSans().Theme,
 				WidthModifier: 1,
 				TextSize:      text,
 				Radio:         true,
@@ -313,7 +313,7 @@ func (g *GUI) videos(text float32) *videos {
 
 	v.monitor = capture{
 		list: &dropdown.Widget{
-			Theme:    g.header.Collection.Calibri().Theme,
+			Theme:    g.header.Collection.NotoSans().Theme,
 			TextSize: text,
 			Items:    []*dropdown.Item{},
 			Callback: func(i *dropdown.Item, _ *dropdown.Widget) bool {
@@ -370,7 +370,7 @@ func (g *GUI) videos(text float32) *videos {
 
 	v.window = capture{
 		list: &dropdown.Widget{
-			Theme:    g.header.Collection.Calibri().Theme,
+			Theme:    g.header.Collection.NotoSans().Theme,
 			TextSize: text,
 			Items:    []*dropdown.Item{},
 			Callback: func(i *dropdown.Item, _ *dropdown.Widget) bool {
@@ -437,7 +437,7 @@ func (g *GUI) videos(text float32) *videos {
 
 	v.device = capture{
 		list: &dropdown.Widget{
-			Theme:    g.header.Collection.Calibri().Theme,
+			Theme:    g.header.Collection.NotoSans().Theme,
 			TextSize: text,
 			Items: []*dropdown.Item{
 				{
@@ -520,7 +520,7 @@ func (g *GUI) videos(text float32) *videos {
 
 	v.apis = capture{
 		list: &dropdown.Widget{
-			Theme:    g.header.Collection.Calibri().Theme,
+			Theme:    g.header.Collection.NotoSans().Theme,
 			TextSize: text,
 			Items:    []*dropdown.Item{},
 			Callback: func(i *dropdown.Item, this *dropdown.Widget) bool {
@@ -563,7 +563,7 @@ func (g *GUI) videos(text float32) *videos {
 
 	v.platform = capture{
 		list: &dropdown.Widget{
-			Theme: g.header.Collection.Calibri().Theme,
+			Theme: g.header.Collection.NotoSans().Theme,
 			Items: []*dropdown.Item{
 				{
 					Text:    strings.Title(config.PlatformSwitch),
@@ -592,20 +592,20 @@ func (g *GUI) videos(text float32) *videos {
 
 					err := config.Current.Save()
 					if err != nil {
-						notify.Error("🖥️ Failed to load %s profile configuration", config.Current.Profile)
+						notify.Error("UI: Failed to load %s profile configuration", config.Current.Profile)
 						return false
 					}
 
 					err = config.Load(config.Current.Profile)
 					if err != nil {
-						notify.Error("🖥️ Failed to load %s profile configuration", config.Current.Profile)
+						notify.Error("UI: Failed to load %s profile configuration", config.Current.Profile)
 						return false
 					}
 
 					time.AfterFunc(time.Second, func() {
 						err := config.Current.Save()
 						if err != nil {
-							notify.Error("🖥️ Failed to save %s profile configuration", config.Current.Profile)
+							notify.Error("UI: Failed to save %s profile configuration", config.Current.Profile)
 						}
 					})
 				}
@@ -616,7 +616,7 @@ func (g *GUI) videos(text float32) *videos {
 
 	v.profile = capture{
 		list: &dropdown.Widget{
-			Theme: g.header.Collection.Calibri().Theme,
+			Theme: g.header.Collection.NotoSans().Theme,
 			Radio: true,
 			Items: []*dropdown.Item{
 				{
@@ -642,7 +642,7 @@ func (g *GUI) videos(text float32) *videos {
 				config.Current.Profile = strings.ToLower(i.Text)
 				err := config.Load(config.Current.Profile)
 				if err != nil {
-					notify.Error("🖥️ Failed to load %s profile configuration", config.Current.Profile)
+					notify.Error("UI: Failed to load %s profile configuration", config.Current.Profile)
 					return false
 				}
 
@@ -650,12 +650,12 @@ func (g *GUI) videos(text float32) *videos {
 				v.device.populate(true)
 				v.monitor.populate(true)
 
-				notify.System("🖥️ Profile set to %s mode", i.Text)
+				notify.System("UI: Profile set to %s mode", i.Text)
 
 				time.AfterFunc(time.Second, func() {
 					err := config.Current.Save()
 					if err != nil {
-						notify.Error("🖥️ Failed to save %s profile configuration", config.Current.Profile)
+						notify.Error("UI: Failed to save %s profile configuration", config.Current.Profile)
 					}
 				})
 				return true

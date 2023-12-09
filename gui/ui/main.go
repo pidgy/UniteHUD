@@ -183,7 +183,7 @@ func (g *GUI) main() {
 
 					err := config.Current.Save()
 					if err != nil {
-						notify.Error("🖥️ Failed to save configuration (%v)", err)
+						notify.Error("UI: Failed to save configuration (%v)", err)
 					}
 				},
 				func() { save.OpenLogDirectory() },
@@ -230,18 +230,14 @@ func (g *GUI) main() {
 
 						warnings, nonwarnings := []string{}, []string{}
 						switch {
-						case config.Current.Advanced.IncreasedCaptureRate > 0:
-							warnings = append(warnings, fmt.Sprintf("Match Frequency: %d%%",
-								100+config.Current.Advanced.IncreasedCaptureRate))
-						case config.Current.Advanced.IncreasedCaptureRate < 0:
-							nonwarnings = append(warnings, fmt.Sprintf("Match Frequency: %d%%",
-								100+config.Current.Advanced.IncreasedCaptureRate))
+						case config.Current.Advanced.DecreasedCaptureLevel > 0:
+							nonwarnings = append(warnings, fmt.Sprintf("Match Rate Factor: -%d", config.Current.Advanced.DecreasedCaptureLevel))
 						}
 
 						if len(warnings) > 0 {
 							layout.Inset{
-								Left: unit.Dp(2),
-								Top:  unit.Dp(18),
+								Left: unit.Dp(3),
+								Top:  unit.Dp(32),
 							}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 								ui.labels.warning.Text = fmt.Sprintf("⚠ CPU (%s)", strings.Join(warnings, ","))
 								return ui.labels.warning.Layout(gtx)
@@ -249,18 +245,18 @@ func (g *GUI) main() {
 						}
 
 						if len(nonwarnings) > 0 {
-							ui.labels.warning.Text = fmt.Sprintf("⚠ CPU (%s)", strings.Join(nonwarnings, ","))
+							ui.labels.warning.Text = fmt.Sprintf("✔ CPU %s", strings.Join(nonwarnings, ","))
 							ui.labels.warning.Color = nrgba.PastelGreen.Color()
 
 							layout.Inset{
-								Left: unit.Dp(2),
-								Top:  unit.Dp(35),
+								Left: unit.Dp(3),
+								Top:  unit.Dp(32),
 							}.Layout(gtx, ui.labels.warning.Layout)
 						}
 
 						layout.Inset{
 							Left: unit.Dp(2),
-							Top:  unit.Dp(.4),
+							Top:  unit.Dp(.1),
 						}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 							if config.Current.Advanced.Discord.Disabled {
 								ui.labels.discord.Color.A = 127
@@ -274,7 +270,7 @@ func (g *GUI) main() {
 
 						layout.Inset{
 							Left: unit.Dp(2),
-							Top:  unit.Dp(19),
+							Top:  unit.Dp(17),
 						}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 							ui.labels.audio.Text = audio.Label()
 							return ui.labels.audio.Layout(gtx)
@@ -283,19 +279,21 @@ func (g *GUI) main() {
 						switch {
 						case device.IsActive():
 							if ui.labels.window.Text == "" || ui.labels.window.Text == config.Current.Video.Capture.Window.Name {
-								ui.labels.window.Text = fmt.Sprintf("🎥 %s: %d FPS", device.Name(config.Current.Video.Capture.Device.Index), device.FPS())
+								fps, p := device.FPS()
+								ui.labels.window.Color = nrgba.Percent(p).Color()
+								ui.labels.window.Text = fmt.Sprintf("📺 %s: %.0f FPS", device.Name(config.Current.Video.Capture.Device.Index), fps)
 							}
 						case window.IsOpen(), monitor.IsDisplay():
-							ui.labels.window.Text = fmt.Sprintf("🎥 %s", config.Current.Video.Capture.Window.Name)
+							ui.labels.window.Text = fmt.Sprintf("📺 %s", config.Current.Video.Capture.Window.Name)
 						}
 						if config.Current.Video.Capture.Window.Lost != "" {
 							ui.labels.window.Text = config.Current.Video.Capture.Window.Lost
-							ui.labels.window.Text = fmt.Sprintf("🎥 %s", config.Current.Video.Capture.Window.Name)
+							ui.labels.window.Text = fmt.Sprintf("📺 %s", config.Current.Video.Capture.Window.Name)
 							ui.labels.window.Color = nrgba.PaleRed.Color()
 						}
 						layout.Inset{
 							Left: unit.Dp(2),
-							Top:  unit.Dp(49),
+							Top:  unit.Dp(50),
 						}.Layout(gtx, ui.labels.window.Layout)
 
 						layout.Inset{
@@ -369,7 +367,7 @@ func (g *GUI) main() {
 							Left: unit.Dp(float32(gtx.Constraints.Max.X - 135)),
 						}.Layout(gtx, ui.labels.version.Layout)
 
-						ui.labels.hz.Color = nrgba.FPS(g.hz.PS()).Color()
+						ui.labels.hz.Color = nrgba.Status(g.hz.PS()).Color()
 						ui.labels.hz.Text = fmt.Sprintf("%sHz", g.hz)
 						layout.Inset{
 							Top:  unit.Dp(18),
@@ -652,7 +650,7 @@ func (g *GUI) mainUI() *main {
 		},
 	}
 
-	ui.textblocks.feed, err = textblock.New(g.header.Collection.Cascadia(), notify.MaxPosts)
+	ui.textblocks.feed, err = textblock.New(g.header.Collection.Cascadia(), 75)
 	if err != nil {
 		ui.textblocks.feed = &textblock.Widget{}
 		notify.Error("Failed to load font: (%v)", err)
@@ -690,7 +688,7 @@ func (g *GUI) mainUI() *main {
 	ui.labels.warning.Font.Weight = font.ExtraBold
 
 	ui.labels.window = material.Caption(g.header.Collection.Calibri().Theme, "")
-	ui.labels.window.Color = nrgba.DarkSeafoam.Color()
+	ui.labels.window.Color = nrgba.PastelGreen.Color()
 	ui.labels.window.Alignment = text.Middle
 	ui.labels.window.Font.Weight = font.Medium
 	ui.labels.window.TextSize = unit.Sp(14)
@@ -921,7 +919,7 @@ func (g *GUI) mainUI() *main {
 				OnToastOK(func() {
 					err = open.Run(filepath.Join(global.WorkingDirectory(), "www"))
 					if err != nil {
-						notify.Error("🖥️ Failed to open www/ directory: %v", err)
+						notify.Error("UI: Failed to open www/ directory: %v", err)
 						return
 					}
 				}),
@@ -941,7 +939,7 @@ func (g *GUI) mainUI() *main {
 			defer this.Deactivate()
 
 			notify.CLS()
-			notify.System("🧹 Cleared")
+			notify.System("UI: Cleared")
 		},
 	}
 
@@ -949,7 +947,7 @@ func (g *GUI) mainUI() *main {
 		Text:        "🌳",
 		Font:        g.header.Collection.NishikiTeki(),
 		OnHoverHint: func() { g.header.Tip("Toggle resource saver") },
-		Pressed:     nrgba.Green,
+		Pressed:     nrgba.DarkSeafoam,
 		TextSize:    unit.Sp(16),
 
 		Click: func(this *button.Widget) {
@@ -961,9 +959,9 @@ func (g *GUI) mainUI() *main {
 			}
 
 			if g.performance.eco {
-				notify.System("🌳 Resource saver has been enabled")
+				notify.System("UI: Resource saver has been enabled")
 			} else {
-				notify.System("🌳 Resource saver has been disabled")
+				notify.System("UI: Resource saver has been disabled")
 			}
 		},
 	}
@@ -982,7 +980,7 @@ func (g *GUI) mainUI() *main {
 
 			err := save.Open()
 			if err != nil {
-				notify.Error("🗁 Failed to open \"%s\" (%v)", save.Directory, err)
+				notify.Error("UI: Failed to open \"%s\" (%v)", save.Directory, err)
 			}
 		},
 	}
@@ -1001,7 +999,7 @@ func (g *GUI) mainUI() *main {
 				defer save.Logs()
 
 				config.Current.Record = true
-				notify.System("🎬 Recording captured events in %s", save.Directory)
+				notify.System("UI: Recording captured events in %s", save.Directory)
 				this.Text = "■"
 			}
 
@@ -1011,12 +1009,12 @@ func (g *GUI) mainUI() *main {
 				yes = func() {
 					defer save.Logs()
 
-					notify.System("🎬 Saved captured events in %s", save.Directory)
+					notify.System("UI: Saved captured events in %s", save.Directory)
 					this.Text = "🎬"
 
 					err := save.Open()
 					if err != nil {
-						notify.Error("🎬 Failed to open \"%s\" (%v)", save.Directory, err)
+						notify.Error("UI: Failed to open \"%s\" (%v)", save.Directory, err)
 					}
 				}
 			}
@@ -1039,14 +1037,14 @@ func (g *GUI) mainUI() *main {
 			exe := "C:\\Windows\\system32\\notepad.exe"
 			err := exec.Command(exe, config.Current.File()).Run()
 			if err != nil {
-				notify.Error("🖥️ Failed to open \"%s\" (%v)", config.Current.File(), err)
+				notify.Error("UI: Failed to open \"%s\" (%v)", config.Current.File(), err)
 				return
 			}
 
 			// Called once window is closed.
 			err = config.Load(config.Current.Profile)
 			if err != nil {
-				notify.Error("🖥️ Failed to reload \"%s\" (%v)", config.Current.File(), err)
+				notify.Error("UI: Failed to reload \"%s\" (%v)", config.Current.File(), err)
 				return
 			}
 		},
@@ -1092,10 +1090,12 @@ func (g *GUI) mainUI() *main {
 				this.Text = "⇇"
 				ui.split.vertical.Ratio = 1
 				this.OnHoverHint = func() { g.header.Tip("Show Main Menu preview area") }
+				config.Current.Advanced.Matching.Disabled.Previews = true
 			} else {
 				this.Text = "⇉"
 				ui.split.vertical.Ratio = .7
 				this.OnHoverHint = func() { g.header.Tip("Hide Main Menu preview area") }
+				config.Current.Advanced.Matching.Disabled.Previews = false
 			}
 		},
 	}

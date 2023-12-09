@@ -151,12 +151,15 @@ func (g *GUI) projector() {
 				ui.windows.preview.resize()
 			}
 
+			fps, p := device.FPS()
+
 			decorate.Background(gtx)
 			decorate.Label(&ui.footer.api, "API: %s", device.APIName(device.API(config.Current.Video.Capture.Device.API)))
 			decorate.Label(&ui.footer.cpu, g.performance.cpu)
 			decorate.Label(&ui.footer.ram, g.performance.ram)
 			decorate.Label(&ui.footer.hz, "%s Hz", g.hz)
-			decorate.Label(&ui.footer.fps, "%d FPS", device.FPS())
+			decorate.Label(&ui.footer.fps, "%.0f FPS", fps)
+			decorate.LabelColor(&ui.footer.fps, nrgba.Percent(p).Color())
 
 			g.header.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				if ui.hideOptions {
@@ -277,7 +280,7 @@ func (g *GUI) projector() {
 
 								ui.spacer(2, 0),
 
-								layout.Flexed(10, func(gtx layout.Context) layout.Dimensions {
+								layout.Flexed(7.5, func(gtx layout.Context) layout.Dimensions {
 									return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
 										layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 											return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
@@ -297,7 +300,7 @@ func (g *GUI) projector() {
 
 								ui.spacer(2, 0),
 
-								layout.Flexed(15, func(gtx layout.Context) layout.Dimensions {
+								layout.Flexed(7.5, func(gtx layout.Context) layout.Dimensions {
 									return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
 										layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 											return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
@@ -406,63 +409,15 @@ func (g *GUI) projectorUI() *projected {
 		img:   splash.Invalid(),
 		since: time.Now(),
 
-		listTextSize: float32(14),
+		listTextSize: float32(12),
 	}
 
 	ui.groups.areas = g.areas(g.header.Collection)
 	ui.groups.audios = g.audios(ui.listTextSize)
 	ui.groups.videos = g.videos(ui.listTextSize)
-	ui.groups.videos.onevent = func() {
-		// ...
-	}
+	ui.groups.videos.onevent = func() {}
 	ui.groups.threshold = 120
 	ui.groups.ticks = ui.groups.threshold
-
-	// ui.buttons.reset = &button.Widget{
-	// 	Text:            "Reset",
-	// 	Font:            g.header.Collection.Calibri(),
-	// 	Pressed:         nrgba.Transparent80,
-	// 	Released:        nrgba.DarkGray,
-	// 	TextSize:        unit.Sp(ui.listTextSize),
-	// 	TextInsetBottom: unit.Dp(-2),
-	// 	Size:            image.Pt(115, 20),
-	// 	BorderWidth:     unit.Sp(.5),
-	// 	OnHoverHint:     func() { g.header.Tip("Reset configuration") },
-	// 	Click: func(this *button.Widget) {
-	// 		g.ToastYesNo("Reset", fmt.Sprintf("Reset %s configuration?", config.Current.Profile),
-	// 			OnToastYes(func() {
-	// 				defer this.Deactivate()
-	// 				defer server.Clear()
-
-	// 				ui.groups.videos.device.list.Callback(ui.groups.videos.device.list.Items[0], ui.groups.videos.device.list)
-
-	// 				err := config.Current.Reset()
-	// 				if err != nil {
-	// 					notify.Error("Failed to reset %s configuration (%v)", config.Current.Profile, err)
-	// 				}
-
-	// 				config.Current.Reload()
-
-	// 				ui.groups.areas.energy.Min, ui.groups.areas.energy.Max = config.Current.XY.Energy.Min, config.Current.XY.Energy.Max
-	// 				ui.groups.areas.time.Min, ui.groups.areas.time.Max = config.Current.XY.Time.Min, config.Current.XY.Time.Max
-	// 				ui.groups.areas.score.Min, ui.groups.areas.score.Max = config.Current.XY.Scores.Min, config.Current.XY.Scores.Max
-	// 				ui.groups.areas.objective.Min, ui.groups.areas.objective.Max = config.Current.XY.Objectives.Min, config.Current.XY.Objectives.Max
-	// 				ui.groups.areas.ko.Min, ui.groups.areas.ko.Max = config.Current.XY.KOs.Min, config.Current.XY.KOs.Max
-
-	// 				// ui.groups.videos.window.populate(true)
-	// 				ui.groups.videos.device.populate(true)
-	// 				ui.groups.videos.monitor.populate(true)
-
-	// 				g.Actions <- Refresh
-
-	// 				g.next(is.MainMenu)
-
-	// 				notify.Announce("Reset UniteHUD %s configuration", config.Current.Profile)
-	// 			}),
-	// 			OnToastNo(this.Deactivate),
-	// 		)
-	// 	},
-	// }
 
 	ui.buttons.menu.home = &button.Widget{
 		Text:            "🏠",
@@ -495,7 +450,7 @@ func (g *GUI) projectorUI() *projected {
 
 					err := config.Current.Save()
 					if err != nil {
-						notify.Error("📺 Failed to save UniteHUD configuration (%v)", err)
+						notify.Error("UI: Failed to save UniteHUD configuration (%v)", err)
 					}
 
 					g.Actions <- Refresh
@@ -595,10 +550,10 @@ func (g *GUI) projectorUI() *projected {
 
 					err := config.Current.Save()
 					if err != nil {
-						notify.Error("📺 Failed to save UniteHUD configuration (%v)", err)
+						notify.Error("UI: Failed to save UniteHUD configuration (%v)", err)
 					}
 
-					notify.System("📺 Configuration saved to " + config.Current.File())
+					notify.System("UI: Configuration saved to " + config.Current.File())
 				}),
 				OnToastNo(this.Deactivate),
 			)
@@ -658,14 +613,14 @@ func (g *GUI) projectorUI() *projected {
 			exe := "C:\\Windows\\system32\\notepad.exe"
 			err := exec.Command(exe, config.Current.File()).Run()
 			if err != nil {
-				notify.Error("📺 Failed to open \"%s\" (%v)", config.Current.File(), err)
+				notify.Error("UI: Failed to open \"%s\" (%v)", config.Current.File(), err)
 				return
 			}
 
 			// Called once window is closed.
 			err = config.Load(config.Current.Profile)
 			if err != nil {
-				notify.Error("📺 Failed to reload \"%s\" (%v)", config.Current.File(), err)
+				notify.Error("UI: Failed to reload \"%s\" (%v)", config.Current.File(), err)
 				return
 			}
 
@@ -691,7 +646,7 @@ func (g *GUI) projectorUI() *projected {
 
 					err := config.Current.Reset()
 					if err != nil {
-						notify.Error("📺 Failed to reset %s configuration (%v)", config.Current.Profile, err)
+						notify.Error("UI: Failed to reset %s configuration (%v)", config.Current.Profile, err)
 					}
 
 					config.Current.Reload()
@@ -712,7 +667,7 @@ func (g *GUI) projectorUI() *projected {
 
 					g.next(is.MainMenu)
 
-					notify.Announce("📺 Reset UniteHUD %s configuration", config.Current.Profile)
+					notify.Announce("UI: Reset UniteHUD %s configuration", config.Current.Profile)
 				}),
 				OnToastNo(this.Deactivate),
 			)

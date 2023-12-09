@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -46,7 +47,7 @@ type Config struct {
 			Disabled bool
 		}
 
-		IncreasedCaptureRate int64
+		DecreasedCaptureLevel time.Duration
 
 		Notifications struct {
 			Muted    bool
@@ -65,8 +66,9 @@ type Config struct {
 				Objectives,
 				Energy,
 				Defeated,
-				KOs,
-				Previews bool
+				KOs bool
+
+				Previews bool `json:"-"`
 			}
 		}
 
@@ -204,7 +206,7 @@ func (c *Config) Reset() error {
 }
 
 func (c *Config) Save() error {
-	notify.System("⚙️ Saving %s profile (%s)", c.Profile, c.File())
+	notify.System("Config: Saving %s profile (%s)", c.Profile, c.File())
 
 	f, err := os.Create(c.File())
 	if err != nil {
@@ -396,11 +398,11 @@ func (c *Config) UnsetHiddenThemes() {
 	}
 
 	if len(failed) > 0 {
-		notify.Error("⚙️ Failed to apply default themes (%s)", strings.Join(failed, ", "))
+		notify.Error("Config: Failed to apply default themes (%s)", strings.Join(failed, ", "))
 	}
 
 	if len(applied) > 0 {
-		notify.System("⚙️ Default themes applied to %s", strings.Join(applied, ", "))
+		notify.System("Config: Default themes applied to %s", strings.Join(applied, ", "))
 	}
 }
 
@@ -414,7 +416,7 @@ func (c *Config) pointFiles(t *team.Team) []filter.Filter {
 		}
 		if info.IsDir() {
 			if info.Name() != "points" {
-				notify.SystemWarn("⚙️ Skipping templates from %s%s", root, info.Name())
+				notify.SystemWarn("Config: Skipping templates from %s%s", root, info.Name())
 				return filepath.SkipDir
 			}
 		}
@@ -424,7 +426,7 @@ func (c *Config) pointFiles(t *team.Team) []filter.Filter {
 		return nil
 	})
 	if err != nil {
-		notify.Error("⚙️ Failed to read from \"point\" directory \"%s\" (%v)", root, err)
+		notify.Error("Config: Failed to read from \"point\" directory \"%s\" (%v)", root, err)
 		return nil
 	}
 
@@ -445,7 +447,7 @@ func (c *Config) pointFiles(t *team.Team) []filter.Filter {
 
 		value, err := strconv.Atoi(v)
 		if err != nil {
-			notify.SystemWarn("⚙️ Failed to invalidate \"%s\" file \"%s\" (%v)", root, file, err)
+			notify.SystemWarn("Config: Failed to invalidate \"%s\" file \"%s\" (%v)", root, file, err)
 			continue
 		}
 
@@ -467,7 +469,7 @@ func (c *Config) scoreFiles(t *team.Team) []filter.Filter {
 		}
 		if info.IsDir() {
 			if info.Name() != "score" {
-				notify.SystemWarn("⚙️ Skipping \"%s%s\"", root, info.Name())
+				notify.SystemWarn("Config: Skipping \"%s%s\"", root, info.Name())
 				return filepath.SkipDir
 			}
 		}
@@ -477,7 +479,7 @@ func (c *Config) scoreFiles(t *team.Team) []filter.Filter {
 		return nil
 	})
 	if err != nil {
-		notify.Error("⚙️ Failed to read from \"score\" directory \"%s\" (%v)", root, err)
+		notify.Error("Config: Failed to read from \"score\" directory \"%s\" (%v)", root, err)
 		return nil
 	}
 
@@ -537,7 +539,7 @@ func Load(profile string) error {
 	defer func() {
 		r := recover()
 		if r != nil {
-			notify.SystemWarn("⚙️ Corrupted .unitehud file (%s)", Current.File())
+			notify.SystemWarn("Config: Corrupted .unitehud file (%s)", Current.File())
 			recovered(r)
 		}
 	}()
@@ -549,7 +551,7 @@ func Load(profile string) error {
 
 	defer validate()
 
-	notify.System("⚙️ Loading %s profile (%s)", profile, Current.File())
+	notify.System("Config: Loading %s profile (%s)", profile, Current.File())
 
 	ok := open()
 	if !ok {
@@ -777,7 +779,7 @@ func recovered(r interface{}) {
 	case string:
 		s = e
 	}
-	notify.Debug("⚙️ Recovered from %s", s)
+	notify.Debug("Config: Recovered from %s", s)
 }
 
 func validate() {
@@ -859,7 +861,7 @@ func validate() {
 		for subcategory, templates := range Current.templates[category] {
 			for _, t := range templates {
 				if t.Empty() {
-					notify.Error("⚙️ Failed to read \"%s/%s\" template from file \"%s\"", category, subcategory, t.File)
+					notify.Error("Config: Failed to read \"%s/%s\" template from file \"%s\"", category, subcategory, t.File)
 					continue
 				}
 			}

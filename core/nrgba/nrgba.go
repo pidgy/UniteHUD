@@ -83,19 +83,6 @@ func Bool(b bool) NRGBA {
 	return System.Alpha(255 / 2)
 }
 
-func FPS(fps float64) NRGBA {
-	switch {
-	case fps >= 50:
-		return Green
-	case fps >= 30:
-		return Orange
-	case fps >= 15:
-		return Yellow
-	default:
-		return PaleRed
-	}
-}
-
 func (n NRGBA) Alpha(a uint8) NRGBA {
 	n.A = a
 	return n
@@ -103,6 +90,10 @@ func (n NRGBA) Alpha(a uint8) NRGBA {
 
 func (n NRGBA) Color() color.NRGBA {
 	return color.NRGBA(n)
+}
+
+func (n NRGBA) Hex() string {
+	return fmt.Sprintf("%02X%02X%02X%02X", n.R, n.G, n.B, n.A)
 }
 
 func (n NRGBA) Ref() *color.NRGBA {
@@ -116,4 +107,30 @@ func (n NRGBA) String() string {
 
 func Objective(name string) NRGBA {
 	return NRGBA(rgba.Objective(name))
+}
+
+func Percent(p float64) NRGBA {
+	switch {
+	case p >= .9:
+		return PastelGreen
+	case p >= .7:
+		return PastelYellow
+	case p >= .5:
+		return PastelRed
+	default:
+		return PaleRed
+	}
+}
+
+func Status(s float64) NRGBA {
+	switch {
+	case s >= 50:
+		return PastelGreen
+	case s >= 30:
+		return PastelOrange
+	case s >= 15:
+		return PastelYellow
+	default:
+		return PastelRed
+	}
 }

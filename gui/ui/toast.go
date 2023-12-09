@@ -104,8 +104,8 @@ func (t *toast) close() {
 
 func (g *GUI) ToastCrash(reason string, closed, logs func()) {
 	go func() {
-		notify.Debug("🍞 Opening Crash (active: %t)", g.previous.toast.active)
-		defer notify.Debug("🍞 Closing Crash (active: %t)", g.previous.toast.active)
+		notify.Debug("UI: Opening Crash (active: %t)", g.previous.toast.active)
+		defer notify.Debug("UI: Closing Crash (active: %t)", g.previous.toast.active)
 
 		g.previous.toast.active = false
 		t := g.toast("Crashed", reason, float32(400), float32(125))
@@ -209,8 +209,8 @@ func (g *GUI) ToastOK(header, msg string, ok OnToastOK) {
 	}
 
 	go func() {
-		notify.Debug("🍞 Opening Ok (active: %t)", g.previous.toast.active)
-		defer notify.Debug("🍞 Closing Ok (active: %t)", g.previous.toast.active)
+		notify.Debug("UI: Opening Ok (active: %t)", g.previous.toast.active)
+		defer notify.Debug("UI: Closing Ok (active: %t)", g.previous.toast.active)
 		defer t.close()
 
 		okButton := &button.Widget{
@@ -298,8 +298,8 @@ func (g *GUI) ToastSplash(header, msg string, img image.Image) waiter {
 	defer c.ready()
 
 	go func() {
-		notify.Debug("🍞 Opening Splash (active: %t)", g.previous.toast.active)
-		defer notify.Debug("🍞 Closing Splash (active: %t)", g.previous.toast.active)
+		notify.Debug("UI: Opening Splash (active: %t)", g.previous.toast.active)
+		defer notify.Debug("UI: Closing Splash (active: %t)", g.previous.toast.active)
 		defer c.toast.close()
 
 		c.toast.bar.Hide = true
@@ -357,8 +357,8 @@ func (g *GUI) ToastYesNo(header, msg string, y OnToastYes, n OnToastNo) {
 	}
 
 	go func() {
-		notify.Debug("🍞 Opening Yes/No (active: %t)", g.previous.toast.active)
-		defer notify.Debug("🍞 Closing Yes/No (active: %t)", g.previous.toast.active)
+		notify.Debug("UI: Opening Yes/No (active: %t)", g.previous.toast.active)
+		defer notify.Debug("UI: Closing Yes/No (active: %t)", g.previous.toast.active)
 		defer t.close()
 
 		yButton := &button.Widget{

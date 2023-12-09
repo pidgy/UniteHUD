@@ -45,7 +45,7 @@ func Open() error {
 			malgo.BackendWinmm,
 		},
 		malgo.ContextConfig{
-			ThreadPriority: malgo.ThreadPriorityHigh,
+			ThreadPriority: malgo.ThreadPriorityDefault,
 		},
 		func(m string) {
 			// notify.Debug("Audio Session: %s", strings.Split(m, "\n")[0])
@@ -57,12 +57,12 @@ func Open() error {
 
 	in, err := input.New(ctx, config.Current.Audio.Capture.Device.Name)
 	if err != nil {
-		notify.Warn("🔊 Failed to create input (%v)", err)
+		notify.Warn("Audio: Failed to create input (%v)", err)
 	}
 
 	out, err := output.New(ctx, config.Current.Audio.Playback.Device.Name)
 	if err != nil {
-		notify.Warn("🔊 Failed to create output (%v)", err)
+		notify.Warn("Audio: Failed to create output (%v)", err)
 	}
 
 	current = &session{
@@ -81,7 +81,8 @@ func Open() error {
 }
 
 func Close() {
-	notify.System("🔊 Closing...")
+	notify.System("Audio: Closing...")
+	defer notify.Debug("Audio: Closed")
 
 	if current == nil {
 		return
@@ -158,12 +159,12 @@ func Restart() {
 
 	in, err := input.New(current.context, config.Current.Audio.Capture.Device.Name)
 	if err != nil {
-		notify.Warn("🔊 Failed to create input (%v)", err)
+		notify.Warn("Audio: Failed to create input (%v)", err)
 	}
 
 	out, err := output.New(current.context, config.Current.Audio.Playback.Device.Name)
 	if err != nil {
-		notify.Warn("🔊 Failed to create output (%v)", err)
+		notify.Warn("Audio: Failed to create output (%v)", err)
 	}
 
 	current.input = in
@@ -171,7 +172,7 @@ func Restart() {
 }
 
 func Start() error {
-	notify.System("🔊 Starting %s", current)
+	notify.System("Audio: Starting %s", current)
 
 	if current.input.IsDisabled() || current.output.IsDisabled() {
 		return nil

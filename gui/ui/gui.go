@@ -22,7 +22,6 @@ import (
 	"github.com/pidgy/unitehud/media/video/fps"
 	"github.com/pidgy/unitehud/media/video/monitor"
 	"github.com/pidgy/unitehud/media/video/wapi"
-	"github.com/pidgy/unitehud/system/tray"
 )
 
 type Action string
@@ -96,7 +95,7 @@ var UI *GUI
 func New() {
 	err := wapi.SetProcessDPIAwareness(wapi.PerMonitorAware)
 	if err != nil {
-		notify.Warn("🖥️ Failed to set DPI awareness, %v", err)
+		notify.Warn("UI: Failed to set DPI awareness, %v", err)
 	}
 
 	min := image.Pt(1100, 700)
@@ -104,7 +103,7 @@ func New() {
 
 	is.Now = is.Loading
 
-	notify.System("🖥️ Generating")
+	notify.System("UI: Generating")
 
 	UI = &GUI{
 		window: app.NewWindow(app.Title(global.Title), app.Decorated(false)),
@@ -161,7 +160,7 @@ func New() {
 		},
 	)
 
-	notify.System("🖥️ Default resolution %s detected", max.String())
+	notify.System("UI: Using %dx%d resolution", max.X, max.Y)
 
 	go UI.loading()
 
@@ -175,8 +174,8 @@ func (g *GUI) Close() {
 func (g *GUI) Open() {
 	g.next(is.MainMenu)
 
-	tray.Open(g.Close)
-	defer tray.Close()
+	// tray.Open(g.Close)
+	// defer tray.Close()
 
 	go func() {
 		g.open = true
@@ -189,7 +188,7 @@ func (g *GUI) Open() {
 		for is.Now != is.Closing {
 			switch is.Now {
 			case is.Loading:
-				notify.Debug("🖥️ Loading...")
+				notify.Debug("UI: Loading...")
 			case is.MainMenu:
 				g.main()
 			case is.Projecting:
@@ -274,7 +273,7 @@ func (g *GUI) minimize() {
 }
 
 func (g *GUI) next(i is.What) {
-	notify.Debug("🖥️ Next state set to \"%s\"", i)
+	notify.Debug("UI: Next state set to \"%s\"", i)
 	is.Now = i
 }
 
@@ -287,14 +286,14 @@ func (g *GUI) position() image.Point {
 func (g *GUI) proc() {
 	handle, err := syscall.GetCurrentProcess()
 	if err != nil {
-		notify.Error("🖥️ Failed to monitor usage: (%v)", err)
+		notify.Error("UI: Failed to monitor usage: (%v)", err)
 		return
 	}
 
 	var ctime, etime, ktime, utime syscall.Filetime
 	err = syscall.GetProcessTimes(handle, &ctime, &etime, &ktime, &utime)
 	if err != nil {
-		notify.Error("🖥️ Failed to monitor CPU/RAM (%v)", err)
+		notify.Error("UI: Failed to monitor CPU/RAM (%v)", err)
 		return
 	}
 
@@ -311,7 +310,7 @@ func (g *GUI) proc() {
 
 		err := syscall.GetProcessTimes(handle, &ctime, &etime, &ktime, &utime)
 		if err != nil {
-			notify.Error("🖥️ Failed to monitor CPU/RAM (%v)", err)
+			notify.Error("UI: Failed to monitor CPU/RAM (%v)", err)
 			continue
 		}
 
@@ -325,7 +324,7 @@ func (g *GUI) proc() {
 		cpu := (100 * float64(diff2) / float64(diff)) / cpus
 		if cpu > peakCPU*2 {
 			peakCPU = cpu
-			notify.SystemWarn("🖥️ Consumed %.1f%s CPU", peakCPU, "%")
+			notify.SystemWarn("UI: Consumed %.1f%s CPU", peakCPU, "%")
 		}
 
 		g.performance.cpu = fmt.Sprintf("CPU %.1f%s", cpu, "%")
@@ -336,7 +335,7 @@ func (g *GUI) proc() {
 		ram := (float64(m.Sys) / 1024 / 1024)
 		if ram > peakRAM+100 {
 			peakRAM = ram
-			notify.SystemWarn("🖥️ Consumed %.0f%s of RAM", peakRAM, "MB")
+			notify.SystemWarn("UI: Consumed %.0f%s of RAM", peakRAM, "MB")
 		}
 
 		g.performance.ram = fmt.Sprintf("RAM %.0f%s", ram, "MB")

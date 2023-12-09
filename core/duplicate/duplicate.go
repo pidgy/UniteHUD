@@ -41,12 +41,12 @@ func (d *Duplicate) Close() {
 
 	err := d.Mat.Close()
 	if err != nil {
-		notify.SystemWarn("💢 Failed to close duplicate matrix")
+		notify.SystemWarn("Duplicate: Failed to close duplicate matrix")
 	}
 
 	err = d.region.Close()
 	if err != nil {
-		notify.SystemWarn("💢 Failed to close duplicate region")
+		notify.SystemWarn("Duplicate: Failed to close duplicate region")
 	}
 }
 
@@ -101,7 +101,7 @@ func (d *Duplicate) Overrides(prev *Duplicate) bool {
 	default:
 		prev.Replaces = prev.Value
 		d.Replaces = prev.Value
-		notify.Warn("💢 Potential duplicate override detected (-%d)/(+%d)", prev.Value, d.Value)
+		notify.Warn("Duplicate: Potential duplicate override detected (-%d)/(+%d)", prev.Value, d.Value)
 		return true
 	}
 }

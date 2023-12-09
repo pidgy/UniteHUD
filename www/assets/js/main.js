@@ -8,6 +8,8 @@ var loggedError = false;
 var lastShake = 0;
 var testing = false;
 
+const bots = ['assets/img/regice.png', 'assets/img/regirock.png', 'assets/img/registeel.png'];
+
 function clear(err = '') {
     $('.purple').css('opacity', 0);
     $('.orange').css('opacity', 0);
@@ -25,7 +27,9 @@ function clear(err = '') {
     for (var i = 1; i <= 3; i++) {
         $(`.regis-bottom-${i} .regis-bottom-circle-purple`).css('opacity', 0);
         $(`.regis-bottom-${i} .regis-bottom-circle-orange`).css('opacity', 0);
-        $(`.regis-bottom-img-${i}`).attr('src', 'assets/img/objective.png');
+        // $(`.regis-bottom-img-${i}`).attr('src', 'assets/img/objective.png');
+        $(`.regis-bottom-img-${i}`).attr('src', bots[i]);
+        $(`.regis-bottom-img-${i}`).css('opacity', .5);
     }
 }
 
@@ -131,28 +135,28 @@ function success(data) {
     }
 
     for (var i in data.regis) {
-        $(`.regis-${parseInt(i)+1} .regis-circle-${elekis[data.regis[i]][0]}`).css('opacity', 1);
-        $(`.regis-${parseInt(i)+1} .regis-circle-${elekis[data.regis[i]][1]}`).css('opacity', 0);
-        $(`.regis-${parseInt(i)+1} .regis-circle-${elekis[data.regis[i]][2]}`).css('opacity', 0);
+        i = parseInt(i);
+        $(`.regis-${i+1} .regis-circle-${elekis[data.regis[i]][0]}`).css('opacity', 1);
+        $(`.regis-${i+1} .regis-circle-${elekis[data.regis[i]][1]}`).css('opacity', 0);
+        $(`.regis-${i+1} .regis-circle-${elekis[data.regis[i]][2]}`).css('opacity', 0);
     }
 
-    for (var i = 0; i < data.bottom.length; i++) {
+    for (var i = 0; i < 3; i++) {
         $(`.regis-bottom-${i+1} .regis-bottom-circle-purple`).css('opacity', 0);
         $(`.regis-bottom-${i+1} .regis-bottom-circle-orange`).css('opacity', 0);
         $(`.regis-bottom-${i+1} .regis-bottom-circle-none`).css('opacity', 0);
 
-        var obj = data.bottom[i];
-        $(`.regis-bottom-${i+1} .regis-bottom-circle-${obj.team}`).css('opacity', 1);
-        $(`.regis-bottom-img-${i+1}`).attr('src', `assets/img/${obj.name}.png`);
-    }
-
-    if (data.bottom.length < 3) {
-        for (var i = data.bottom.length; i < 3; i++) {
+        if (data.bottom.length > i) {
+            var obj = data.bottom[i];
+            $(`.regis-bottom-${i+1} .regis-bottom-circle-${obj.team}`).css('opacity', 1);
+            $(`.regis-bottom-img-${i+1}`).attr('src', `assets/img/${obj.name}.png`);
+            $(`.regis-bottom-img-${i+1}`).css('opacity', '1');
+        } else {
             $(`.regis-bottom-${i+1} .regis-bottom-circle-purple`).css('opacity', 0);
             $(`.regis-bottom-${i+1} .regis-bottom-circle-orange`).css('opacity', 0);
             $(`.regis-bottom-${i+1} .regis-bottom-circle-none`).css('opacity', 1);
-
-            $(`.regis-bottom-img-${i+1}`).attr('src', 'assets/img/objective.png');
+            $(`.regis-bottom-img-${i+1}`).attr('src', bots[i]);
+            $(`.regis-bottom-img-${i+1}`).css('opacity', .5);
         }
     }
 

@@ -30,7 +30,7 @@ import (
 var sigq = make(chan os.Signal, 1)
 
 func init() {
-	notify.Announce("🔌 Initializing...")
+	notify.Announce("UniteHUD: Initializing...")
 }
 
 func kill(errs ...error) {
@@ -41,12 +41,12 @@ func kill(errs ...error) {
 
 		err := config.Current.Save()
 		if err != nil {
-			notify.Error("🔌 Failed to save crash log (%v)", err)
+			notify.Error("UniteHUD: Failed to save crash log (%v)", err)
 		}
 	}
 
 	for _, err := range errs {
-		notify.Error("🔌 Force Shutdown (%v)", err)
+		notify.Error("UniteHUD: Force Shutdown (%v)", err)
 	}
 
 	report := make(chan bool)
@@ -86,7 +86,7 @@ func main() {
 
 	err := process.Replace()
 	if err != nil {
-		notify.SystemWarn("🔌 Failed to stop previous process (%v)", err)
+		notify.SystemWarn("UniteHUD: Failed to stop previous process (%v)", err)
 	}
 
 	err = config.Load(config.Current.Profile)
@@ -96,27 +96,27 @@ func main() {
 
 	err = video.Open()
 	if err != nil {
-		notify.Error("🔌 Failed to open video (%v)", err)
+		notify.Error("UniteHUD: Failed to open video (%v)", err)
 	}
 
 	err = audio.Open()
 	if err != nil {
-		notify.Error("🔌 Failed to open audio session (%v)", err)
+		notify.Error("UniteHUD: Failed to open audio session (%v)", err)
 	}
 
 	err = server.Listen()
 	if err != nil {
-		notify.Error("🔌 Failed to start server (%v)", err)
+		notify.Error("UniteHUD: Failed to start server (%v)", err)
 	}
 
 	go electron.Open()
 	go discord.Connect()
 
-	notify.Debug("🔌 Server Address (%s)", server.Address)
-	notify.Debug("🔌 Recording (%t)", config.Current.Record)
-	notify.Debug("🔌 Profile (%s)", config.Current.Profile)
-	notify.Debug("🔌 Assets (%s)", config.Current.Assets())
-	notify.Debug("🔌 Match Threshold: (%.0f%%)", config.Current.Acceptance*100)
+	notify.Debug("UniteHUD: Server Address (%s)", server.Address)
+	notify.Debug("UniteHUD: Recording (%t)", config.Current.Record)
+	notify.Debug("UniteHUD: Profile (%s)", config.Current.Profile)
+	notify.Debug("UniteHUD: Assets (%s)", config.Current.Assets())
+	notify.Debug("UniteHUD: Match Threshold: (%.0f%%)", config.Current.Acceptance*100)
 
 	go detect.Clock()
 	go detect.Energy()
@@ -131,11 +131,10 @@ func main() {
 	go update.Check()
 
 	go func() {
-		lastWindow := config.Current.Video.Capture.Window.Name
-
 		for action := range ui.UI.Actions {
 			switch action {
 			case ui.Closing:
+				signal.Reset()
 				close(sigq)
 			case ui.Config:
 				server.SetConfig(true)
@@ -143,7 +142,7 @@ func main() {
 			case ui.Start:
 				detect.Resume()
 
-				notify.Announce("🔌 Starting %s...", global.Title)
+				notify.Announce("UniteHUD: Starting %s...", global.Title)
 
 				notify.Clear()
 				server.Clear()
@@ -151,18 +150,18 @@ func main() {
 				stats.Clear()
 				state.Clear()
 
-				notify.Announce("🔌 Started %s", global.Title)
+				notify.Announce("UniteHUD: Started %s", global.Title)
 
 				server.SetStarted()
 			case ui.Stop:
 				detect.Pause()
 
-				notify.Announce("🔌 Stopping %s...", global.Title)
+				notify.Announce("UniteHUD: Stopping %s...", global.Title)
 
 				// Wait for the capture routines to go idle.
 				// time.Sleep(time.Second * 2)
 
-				notify.Announce("🔌 Stopped %s", global.Title)
+				notify.Announce("UniteHUD: Stopped %s", global.Title)
 
 				server.Clear()
 				team.Clear()
@@ -182,53 +181,44 @@ func main() {
 					str = "Recording"
 				}
 
-				notify.System("🔌 %s template match results in %s", str, save.Directory)
+				notify.System("UniteHUD: %s template match results in %s", str, save.Directory)
 
 				if config.Current.Record {
-					notify.System("🔌 Record directory set to \"%s\"", save.Directory)
+					notify.System("UniteHUD: Record directory set to \"%s\"", save.Directory)
 
 					err = config.Current.Save()
 					if err != nil {
-						kill(err)
+						notify.Error("Failed to save UniteHUD configuration (%v)", err)
 					}
 
 					err := save.Open()
 					if err != nil {
-						notify.Error("🔌 Failed to open \"%s\" (%v)", save.Directory, err)
+						notify.Error("UniteHUD: Failed to open \"%s\" (%v)", save.Directory, err)
 					}
 				} else {
-					notify.System("🔌 Closing open files in %s", save.Directory)
+					notify.System("UniteHUD: Closing open files in %s", save.Directory)
 				}
 			case ui.Log:
 				save.Logs()
 
 				err := save.Open()
 				if err != nil {
-					notify.Error("🔌 Failed to open \"%s\" (%v)", save.Directory, err)
+					notify.Error("UniteHUD: Failed to open \"%s\" (%v)", save.Directory, err)
 				}
 			case ui.Open:
-				notify.System("🔌 Opening \"%s\"", save.Directory)
+				notify.System("UniteHUD: Opening \"%s\"", save.Directory)
 
 				err := save.Open()
 				if err != nil {
-					notify.Error("🔌 Failed to open \"%s\" (%v)", save.Directory, err)
+					notify.Error("UniteHUD: Failed to open \"%s\" (%v)", save.Directory, err)
 				}
 			case ui.Refresh:
-				notify.Debug("🔌 Action received (Refresh)")
-
-				err := video.Open()
-				if err != nil {
-					notify.Error("🔌 Failed to open Video Capture Device (%v)", err)
-				}
-
-				if lastWindow != config.Current.Video.Capture.Window.Name {
-					notify.System("🔌 Capture window set to \"%s\"", lastWindow)
-				}
+				notify.Debug("UniteHUD: Action received (Refresh)")
 			}
 		}
 	}()
 
 	go signals()
 
-	notify.Announce("🔌 Initialized")
+	notify.Announce("UniteHUD: Initialized")
 }
