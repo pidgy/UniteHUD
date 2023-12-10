@@ -339,8 +339,6 @@ func PressButtonToScore() {
 }
 
 func Preview() {
-	config.Current.Advanced.Matching.Disabled.Previews = false
-
 	notify.Preview = splash.Projector()
 
 	tick := time.NewTicker(time.Second * 5)

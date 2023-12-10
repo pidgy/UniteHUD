@@ -106,7 +106,6 @@ type Config struct {
 			Device struct {
 				Index int
 				API   string
-				Name  string
 			}
 			Window struct {
 				Name string

@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"gioui.org/app"
@@ -46,10 +47,6 @@ import (
 	"github.com/pidgy/unitehud/system/discord"
 	"github.com/pidgy/unitehud/system/save"
 	"github.com/skratchdot/open-golang/open"
-)
-
-var (
-	once = true
 )
 
 type main struct {
@@ -120,8 +117,7 @@ type main struct {
 }
 
 func (g *GUI) main() {
-	if once {
-		once = false
+	sync.OnceFunc(func() {
 		g.window.Option(
 			app.Title(global.Title),
 			app.Size(
@@ -137,7 +133,7 @@ func (g *GUI) main() {
 				unit.Dp(g.dimensions.max.Y),
 			),
 		)
-	}
+	})()
 
 	ui := g.mainUI()
 
@@ -188,6 +184,10 @@ func (g *GUI) main() {
 				},
 				func() { save.OpenLogDirectory() },
 			)
+			err := config.Current.Reset()
+			if err != nil {
+				notify.Error("UI: Failed to reset configuration (%v)", err)
+			}
 		}
 
 		if g.performance.eco && state.Idle() > time.Minute*30 && !ui.buttons.stop.Disabled {

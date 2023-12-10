@@ -187,6 +187,7 @@ func capture() error {
 
 	err = set(required, device)
 	if err != nil {
+		device.Close()
 		return errors.Wrap(err, active.name)
 	}
 
@@ -267,11 +268,11 @@ func set(requested properties, device *gocv.VideoCapture) error {
 	active.applied = poll(device)
 
 	if !active.applied.resolution.Eq(requested.resolution) {
-		return errors.Wrapf(errProperty, "%s FPS", requested.resolution)
+		return errors.Wrapf(fmt.Errorf("%s resolution", requested.resolution), "failed to set property")
 	}
 
 	if active.applied.fps != requested.fps {
-		return errors.Wrapf(errProperty, "%.0f FPS", requested.fps)
+		return errors.Wrapf(fmt.Errorf("%.0f FPS", requested.fps), "failed to set property")
 	}
 
 	p.diff()

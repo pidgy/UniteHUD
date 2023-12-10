@@ -16,7 +16,7 @@ func BenchmarkTimeNow(b *testing.B) {
 }
 
 func BenchmarkCapture(b *testing.B) {
-	reset(nil)
+	reset()
 
 	var err error
 
