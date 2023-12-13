@@ -5,7 +5,7 @@ Pokémon UNITE Scoreboard HUD Overlay
 #### For beta support, message me on [twitter](https://twitter.com/pidgy_)
 ----
 ### v2.2.0 Download
-🔗 **[unitehud.dev](https://unitehud.dev)**
+**[unitehud.dev](https://unitehud.dev)**
 
 ----
 
