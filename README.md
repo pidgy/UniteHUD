@@ -1,11 +1,9 @@
 # <img src='https://github.com/pidgy/UniteHUD/blob/master/assets/icon/icon.png' width='32'>  UniteHUD
 
-Pokémon UNITE scoreboard HUD and extra tools running over captured game feeds.
-
-#### For beta support, message me on [twitter](https://twitter.com/pidgy_)
+Pokémon UNITE Scoreboard HUD Overlay
 ----
-### v2.2.0 Download
-🔗 **https://unitehud.dev**
+### v2.2.0 
+Download at **[unitehud.dev](https://unitehud.dev)**
 
 ----
 
