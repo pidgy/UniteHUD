@@ -15,15 +15,15 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 
+	"github.com/pidgy/unitehud/avi/video"
 	"github.com/pidgy/unitehud/core/fonts"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/nrgba"
-	"github.com/pidgy/unitehud/gui/visual/area"
-	"github.com/pidgy/unitehud/gui/visual/button"
-	"github.com/pidgy/unitehud/gui/visual/decorate"
-	"github.com/pidgy/unitehud/gui/visual/screen"
-	"github.com/pidgy/unitehud/gui/visual/title"
-	"github.com/pidgy/unitehud/media/video"
+	"github.com/pidgy/unitehud/gui/ux/area"
+	"github.com/pidgy/unitehud/gui/ux/button"
+	"github.com/pidgy/unitehud/gui/ux/decorate"
+	"github.com/pidgy/unitehud/gui/ux/screen"
+	"github.com/pidgy/unitehud/gui/ux/title"
 )
 
 type preview struct {

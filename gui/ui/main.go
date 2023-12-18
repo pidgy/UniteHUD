@@ -22,6 +22,10 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget/material"
 
+	"github.com/pidgy/unitehud/avi/audio"
+	"github.com/pidgy/unitehud/avi/video/device"
+	"github.com/pidgy/unitehud/avi/video/monitor"
+	"github.com/pidgy/unitehud/avi/video/window"
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/global"
 	"github.com/pidgy/unitehud/core/history"
@@ -32,16 +36,12 @@ import (
 	"github.com/pidgy/unitehud/core/stats"
 	"github.com/pidgy/unitehud/core/team"
 	"github.com/pidgy/unitehud/gui/is"
-	"github.com/pidgy/unitehud/gui/visual/button"
-	"github.com/pidgy/unitehud/gui/visual/decorate"
-	"github.com/pidgy/unitehud/gui/visual/screen"
-	"github.com/pidgy/unitehud/gui/visual/spinner"
-	"github.com/pidgy/unitehud/gui/visual/split"
-	"github.com/pidgy/unitehud/gui/visual/textblock"
-	"github.com/pidgy/unitehud/media/audio"
-	"github.com/pidgy/unitehud/media/video/device"
-	"github.com/pidgy/unitehud/media/video/monitor"
-	"github.com/pidgy/unitehud/media/video/window"
+	"github.com/pidgy/unitehud/gui/ux/button"
+	"github.com/pidgy/unitehud/gui/ux/decorate"
+	"github.com/pidgy/unitehud/gui/ux/screen"
+	"github.com/pidgy/unitehud/gui/ux/spinner"
+	"github.com/pidgy/unitehud/gui/ux/split"
+	"github.com/pidgy/unitehud/gui/ux/textblock"
 	"github.com/pidgy/unitehud/system/desktop"
 	"github.com/pidgy/unitehud/system/desktop/clicked"
 	"github.com/pidgy/unitehud/system/discord"
@@ -145,11 +145,11 @@ func (g *GUI) main() {
 	defer g.header.Remove(g.header.Add(ui.menu.client))
 	defer g.header.Remove(g.header.Add(ui.menu.hideRight))
 	defer g.header.Remove(g.header.Add(ui.menu.hideTop))
-	defer g.header.Remove(g.header.Add(ui.menu.stats))
-	defer g.header.Remove(g.header.Add(ui.menu.results))
+	// defer g.header.Remove(g.header.Add(ui.menu.stats))
+	// defer g.header.Remove(g.header.Add(ui.menu.results))
 	defer g.header.Remove(g.header.Add(ui.menu.obs))
-	defer g.header.Remove(g.header.Add(ui.menu.clear))
-	defer g.header.Remove(g.header.Add(ui.menu.eco))
+	// defer g.header.Remove(g.header.Add(ui.menu.clear))
+	// defer g.header.Remove(g.header.Add(ui.menu.eco))
 	defer g.header.Remove(g.header.Add(ui.menu.logs))
 	defer g.header.Remove(g.header.Add(ui.menu.record))
 	defer g.header.Remove(g.header.Add(ui.menu.file))
@@ -269,7 +269,7 @@ func (g *GUI) main() {
 						})
 
 						layout.Inset{
-							Left: unit.Dp(2),
+							Left: unit.Dp(3),
 							Top:  unit.Dp(17),
 						}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 							ui.labels.audio.Text = audio.Label()
@@ -278,11 +278,9 @@ func (g *GUI) main() {
 
 						switch {
 						case device.IsActive():
-							if ui.labels.window.Text == "" || ui.labels.window.Text == config.Current.Video.Capture.Window.Name {
-								fps, p := device.FPS()
-								ui.labels.window.Color = nrgba.Percent(p).Color()
-								ui.labels.window.Text = fmt.Sprintf("📺 %s: %.0f FPS", device.Name(config.Current.Video.Capture.Device.Index), fps)
-							}
+							fpsn, _, p := device.FPS()
+							ui.labels.window.Color = nrgba.Percent(p).Color()
+							ui.labels.window.Text = fmt.Sprintf("📺 %s %.0fFPS", device.Name(config.Current.Video.Capture.Device.Index), fpsn)
 						case window.IsOpen(), monitor.IsDisplay():
 							ui.labels.window.Text = fmt.Sprintf("📺 %s", config.Current.Video.Capture.Window.Name)
 						}
@@ -859,7 +857,7 @@ func (g *GUI) mainUI() *main {
 			defer this.Deactivate()
 
 			// ui.buttons.start.Click(ui.buttons.start)
-			go g.client(func() {
+			go g.overlay(func() {
 				// ui.buttons.stop.Click(ui.buttons.stop)
 			})
 		},

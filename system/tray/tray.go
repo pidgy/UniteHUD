@@ -4,10 +4,10 @@ import (
 	"github.com/rupor-github/win-gpg-agent/systray"
 	"github.com/skratchdot/open-golang/open"
 
+	"github.com/pidgy/unitehud/avi/img"
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/global"
 	"github.com/pidgy/unitehud/core/notify"
-	"github.com/pidgy/unitehud/media/img"
 	"github.com/pidgy/unitehud/system/discord"
 )
 

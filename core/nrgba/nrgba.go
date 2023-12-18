@@ -93,7 +93,7 @@ func (n NRGBA) Color() color.NRGBA {
 }
 
 func (n NRGBA) Hex() string {
-	return fmt.Sprintf("%02X%02X%02X%02X", n.R, n.G, n.B, n.A)
+	return fmt.Sprintf("%02x%02x%02x%02x", n.R, n.G, n.B, n.A)
 }
 
 func (n NRGBA) Ref() *color.NRGBA {
@@ -113,12 +113,12 @@ func Percent(p float64) NRGBA {
 	switch {
 	case p >= .9:
 		return PastelGreen
-	case p >= .7:
+	case p >= .69:
 		return PastelYellow
-	case p >= .5:
-		return PastelRed
+	case p >= .49:
+		return PastelOrange
 	default:
-		return PaleRed
+		return PastelRed
 	}
 }
 

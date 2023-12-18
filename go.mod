@@ -28,35 +28,28 @@ require (
 	nhooyr.io/websocket v1.8.10
 )
 
-require github.com/hashicorp/go-version v1.6.0
+require (
+	github.com/hajimehoshi/go-mp3 v0.3.4
+	github.com/hajimehoshi/oto/v2 v2.4.2
+	github.com/hashicorp/go-version v1.6.0
+	golang.org/x/exp v0.0.0-20231127185646-65229373498e
+)
 
 require (
 	gioui.org/cpu v0.0.0-20220412190645-f1e9e8c3b1f7 // indirect
 	gioui.org/shader v1.0.8 // indirect
-	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/ebitengine/purego v0.5.1 // indirect
 	github.com/gen2brain/shm v0.1.0 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-text/typesetting v0.0.0-20231202102523-0024ac628562 // indirect
-	github.com/gobwas/httphead v0.1.0 // indirect
-	github.com/gobwas/pool v0.2.1 // indirect
-	github.com/gobwas/ws v1.3.1 // indirect
-	github.com/golang/protobuf v1.5.3 // indirect
-	github.com/gorilla/websocket v1.5.1 // indirect
 	github.com/jezek/xgb v1.1.1 // indirect
-	github.com/klauspost/compress v1.17.4 // indirect
 	github.com/lxn/win v0.0.0-20210218163916-a377121e959e // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
-	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
-	github.com/stretchr/objx v0.5.0 // indirect
 	github.com/stretchr/testify v1.8.4 // indirect
-	golang.org/x/exp v0.0.0-20231127185646-65229373498e // indirect
 	golang.org/x/exp/shiny v0.0.0-20231127185646-65229373498e // indirect
 	golang.org/x/image v0.14.0 // indirect
 	golang.org/x/mod v0.14.0 // indirect
-	golang.org/x/net v0.19.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/tools v0.16.0 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

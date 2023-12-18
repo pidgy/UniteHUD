@@ -1,11 +1,12 @@
 //go:generate go-winres make --product-version=git-tag
-
 package main
 
 import (
 	"os"
 	"os/signal"
 
+	"github.com/pidgy/unitehud/avi/audio"
+	"github.com/pidgy/unitehud/avi/video"
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/detect"
 	"github.com/pidgy/unitehud/core/global"
@@ -15,18 +16,13 @@ import (
 	"github.com/pidgy/unitehud/core/stats"
 	"github.com/pidgy/unitehud/core/team"
 	"github.com/pidgy/unitehud/gui/ui"
-	"github.com/pidgy/unitehud/gui/visual/electron"
-	"github.com/pidgy/unitehud/media/audio"
-	"github.com/pidgy/unitehud/media/video"
+	"github.com/pidgy/unitehud/gui/ux/electron"
 	"github.com/pidgy/unitehud/system/discord"
 	"github.com/pidgy/unitehud/system/process"
 	"github.com/pidgy/unitehud/system/save"
 	"github.com/pidgy/unitehud/system/update"
 )
 
-// windows
-// cls && go build && unitehud.exe
-// go build -ldflags="-H windowsgui"
 var sigq = make(chan os.Signal, 1)
 
 func init() {
@@ -74,7 +70,7 @@ func signals() {
 
 	ui.UI.Close()
 	video.Close()
-	electron.Close()
+	electron.CloseApp()
 	audio.Close()
 
 	os.Exit(0)
@@ -109,7 +105,7 @@ func main() {
 		notify.Error("UniteHUD: Failed to start server (%v)", err)
 	}
 
-	go electron.Open()
+	go electron.OpenApp()
 	go discord.Connect()
 
 	notify.Debug("UniteHUD: Server Address (%s)", server.Address)
@@ -157,9 +153,6 @@ func main() {
 				detect.Pause()
 
 				notify.Announce("UniteHUD: Stopping %s...", global.Title)
-
-				// Wait for the capture routines to go idle.
-				// time.Sleep(time.Second * 2)
 
 				notify.Announce("UniteHUD: Stopped %s", global.Title)
 

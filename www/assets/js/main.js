@@ -23,13 +23,15 @@ function clear(err = '') {
     $(`.rayquaza-1 .rayquaza-circle-purple`).css('opacity', 0);
     $(`.rayquaza-1 .rayquaza-circle-orange`).css('opacity', 0);
     $(`.rayquaza-1 .rayquaza-circle-none`).css('opacity', 1);
+    $(`.rayquaza-img-1`).css('opacity', .75);
 
     for (var i = 1; i <= 3; i++) {
         $(`.regis-bottom-${i} .regis-bottom-circle-purple`).css('opacity', 0);
         $(`.regis-bottom-${i} .regis-bottom-circle-orange`).css('opacity', 0);
-        // $(`.regis-bottom-img-${i}`).attr('src', 'assets/img/objective.png');
         $(`.regis-bottom-img-${i}`).attr('src', bots[i]);
-        $(`.regis-bottom-img-${i}`).css('opacity', .5);
+        $(`.regis-bottom-img-${i}`).css('opacity', .75);
+
+        $(`.regis-img-${i}`).css('opacity', .75);
     }
 }
 
@@ -107,18 +109,27 @@ function success(data) {
         $('.regis-bottom').css('opacity', 1);
         $('.rayquaza').css('opacity', 1);
 
-        var p = '';
-        var o = '';
+        var p = 0;
+        var o = 0;
         for (var i in data.regis) {
             if (data.regis[i] == "purple") {
-                p += '&#128995;';
+                // p += '&#128995;';
+                // p += "+-20";
+                p += 20;
             } else if (data.regis[i] == "orange") {
-                o += '&#128992;';
+                // o += '&#128992;';
+                o += 20;
             }
         }
 
-        $('.purplescore').html(`${data.purple.value} <span>${p}</span>`);
-        $('.orangescore').html(`${data.orange.value} <span>${o}</span>`);
+        $('.purplescore').html(`${data.purple.value}`);
+        if (p > 0) {
+            $('.purplescore').html(`${data.purple.value} <span>+${p}</span>`);
+        }
+        $('.orangescore').html(`${data.orange.value}`);
+        if (o > 0) {
+            $('.orangescore').html(`${data.orange.value} <span>+${o}</span>`);
+        }
         // $('.selfscore').html(data.self.value);
         // $('.purplekos').html(data.purple.kos);
         // $('.orangekos').html(data.orange.kos);
@@ -136,6 +147,14 @@ function success(data) {
 
     for (var i in data.regis) {
         i = parseInt(i);
+
+        if (data.regis[i] == "none") {
+            console.log(data.regis[i])
+
+            $(`.regis-img-${i+1}`).css('opacity', .75);
+        } else {
+            $(`.regis-img-${i+1}`).css('opacity', 1);
+        }
         $(`.regis-${i+1} .regis-circle-${elekis[data.regis[i]][0]}`).css('opacity', 1);
         $(`.regis-${i+1} .regis-circle-${elekis[data.regis[i]][1]}`).css('opacity', 0);
         $(`.regis-${i+1} .regis-circle-${elekis[data.regis[i]][2]}`).css('opacity', 0);
@@ -156,7 +175,7 @@ function success(data) {
             $(`.regis-bottom-${i+1} .regis-bottom-circle-orange`).css('opacity', 0);
             $(`.regis-bottom-${i+1} .regis-bottom-circle-none`).css('opacity', 1);
             $(`.regis-bottom-img-${i+1}`).attr('src', bots[i]);
-            $(`.regis-bottom-img-${i+1}`).css('opacity', .5);
+            $(`.regis-bottom-img-${i+1}`).css('opacity', .75);
         }
     }
 
@@ -167,6 +186,9 @@ function success(data) {
     if (data.rayquaza) {
         $(`.rayquaza-1 .rayquaza-circle-none`).css('opacity', 0);
         $(`.rayquaza-1 .rayquaza-circle-${data.rayquaza}`).css('opacity', 1);
+        $(`.rayquaza-img-1`).css('opacity', 1);
+    } else {
+        $(`.rayquaza-img-1`).css('opacity', .75);
     }
 }
 
@@ -202,6 +224,9 @@ $(document).ready(() => {
 function sendtestdata() {
     return setInterval(() => {
         clear(`Testing${loaders[loaderIndex]}`);
+        if (!testing) {
+            return;
+        }
 
         success({
             "profile": "player",
@@ -213,12 +238,13 @@ function sendtestdata() {
             "orange": { "value": 102, "kos": 1 },
             "self": { "value": 132, "kos": 1 },
             "stacks": 6,
-            "regis": ["purple", "orange", "purple"],
+            "regis": ["purple", "orange", "orange"],
+            // "regis": ["purple", "orange", "purple"],
             "bottom": [
                 { "name": "registeel", "team": "purple" },
                 { "name": "regirock", "team": "orange" },
-                { "name": "registeel", "team": "purple" },
-                { "name": "regice", "team": "orange" },
+                // { "name": "registeel", "team": "purple" },
+                // { "name": "regice", "team": "orange" },
             ],
         });
     }, 1000);

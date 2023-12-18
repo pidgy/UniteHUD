@@ -14,15 +14,15 @@ import (
 
 	"nhooyr.io/websocket"
 
+	"github.com/pidgy/unitehud/avi/img"
+	"github.com/pidgy/unitehud/avi/video"
+	"github.com/pidgy/unitehud/avi/video/fps"
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/global"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/nrgba"
 	"github.com/pidgy/unitehud/core/state"
 	"github.com/pidgy/unitehud/core/team"
-	"github.com/pidgy/unitehud/media/img"
-	"github.com/pidgy/unitehud/media/video"
-	"github.com/pidgy/unitehud/media/video/fps"
 )
 
 const Address = "127.0.0.1:17069"

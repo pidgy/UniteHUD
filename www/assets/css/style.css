@@ -81,9 +81,10 @@ td {
     position: absolute;
     left: -8px;
     bottom: -15px;
-    font-size: 8px;
+    font-size: 10px;
     text-shadow: none;
     opacity: .7;
+    color: rgba(232, 137, 0, 1);
 }
 
 .purple {
@@ -99,9 +100,10 @@ td {
     position: absolute;
     left: 10px;
     bottom: -15px;
-    font-size: 8px;
+    font-size: 10px;
     text-shadow: none;
     opacity: .7;
+    color: rgba(123, 78, 233, 1);
 }
 
 .purplescore-bg {

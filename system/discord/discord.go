@@ -213,7 +213,7 @@ func status() activity {
 			if last.score.orange > last.score.purple {
 				winner = "Orange"
 			}
-			a.State = fmt.Sprintf("%s Team Won", winner)
+			a.State = fmt.Sprintf("%s Team Won %d - %d", winner, last.score.purple, last.score.orange)
 
 			wait.activity = a
 			wait.Time = time.Now().Add(time.Second * 10)

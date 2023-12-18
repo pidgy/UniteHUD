@@ -1,7 +1,9 @@
 package ui
 
 import (
+	"fmt"
 	"image"
+	"strings"
 
 	"gioui.org/app"
 	"gioui.org/font"
@@ -13,17 +15,18 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 
+	"github.com/pidgy/unitehud/avi/video/device"
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/fonts"
 	"github.com/pidgy/unitehud/core/global"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/nrgba"
-	"github.com/pidgy/unitehud/gui/visual"
-	"github.com/pidgy/unitehud/gui/visual/button"
-	"github.com/pidgy/unitehud/gui/visual/colorpicker"
-	"github.com/pidgy/unitehud/gui/visual/decorate"
-	"github.com/pidgy/unitehud/gui/visual/dropdown"
-	"github.com/pidgy/unitehud/gui/visual/title"
+	"github.com/pidgy/unitehud/gui/ux"
+	"github.com/pidgy/unitehud/gui/ux/button"
+	"github.com/pidgy/unitehud/gui/ux/colorpicker"
+	"github.com/pidgy/unitehud/gui/ux/decorate"
+	"github.com/pidgy/unitehud/gui/ux/dropdown"
+	"github.com/pidgy/unitehud/gui/ux/title"
 	"github.com/pidgy/unitehud/system/desktop"
 	"github.com/pidgy/unitehud/system/desktop/clicked"
 	"github.com/pidgy/unitehud/system/discord"
@@ -32,9 +35,9 @@ import (
 type section struct {
 	h1                 bool
 	title, description material.LabelStyle
-	warning, widget    visual.Widgeter
+	warning, widget    ux.Widgeter
 
-	extras []visual.Widgeter
+	extras []ux.Widgeter
 }
 
 type settings struct {
@@ -62,6 +65,7 @@ type settings struct {
 
 	sections struct {
 		header,
+		video,
 		discord,
 		notifications,
 		factor,
@@ -88,6 +92,7 @@ func (g *GUI) settings(onclose func()) *settings {
 
 		sections := []*section{
 			ui.sections.header,
+			ui.sections.video,
 			ui.sections.discord,
 			ui.sections.notifications,
 			ui.sections.factor,
@@ -178,6 +183,76 @@ func (g *GUI) settingsUI() *settings {
 		description: material.H6(ui.bar.Collection.Calibri().Theme, "Advanced Settings"),
 	}
 
+	ui.sections.video = &section{
+		title:       material.Label(ui.bar.Collection.Calibri().Theme, 14, "🎥 Video Capture Device"),
+		description: material.Caption(ui.bar.Collection.Calibri().Theme, "Advanced Video Capture Device settings"),
+		widget: &dropdown.Widget{
+			Theme:    ui.bar.Collection.NotoSans().Theme,
+			Radio:    true,
+			TextSize: 12,
+			Items: []*dropdown.Item{
+				{
+					Text: "60 FPS",
+					Checked: widget.Bool{
+						Value: false,
+					},
+					Callback: func(this *dropdown.Item) {
+						config.Current.Video.Capture.Device.FPS = 60
+					},
+				},
+				{
+					Text: "120 FPS",
+					Checked: widget.Bool{
+						Value: false,
+					},
+					Callback: func(this *dropdown.Item) {
+						config.Current.Video.Capture.Device.FPS = 120
+					},
+				},
+				{
+					Text: "144 FPS",
+					Checked: widget.Bool{
+						Value: false,
+					},
+					Callback: func(this *dropdown.Item) {
+						config.Current.Video.Capture.Device.FPS = 144
+					},
+				},
+				{
+					Text: "240 FPS",
+					Checked: widget.Bool{
+						Value: false,
+					},
+					Callback: func(this *dropdown.Item) {
+						config.Current.Video.Capture.Device.FPS = 240
+					},
+				},
+			},
+			Callback: func(item *dropdown.Item, this *dropdown.Widget) bool {
+				if !device.IsActive() {
+					return true
+				}
+
+				err := device.Restart()
+				if err != nil {
+					g.ToastError(err)
+				}
+
+				return true
+			},
+		},
+	}
+	for _, item := range ui.sections.video.widget.(*dropdown.Widget).Items {
+		if strings.HasPrefix(item.Text, fmt.Sprintf("%d", config.Current.Video.Capture.Device.FPS)) {
+			item.Checked.Value = true
+		}
+	}
+
+	videoWarning := material.Label(ui.bar.Collection.Calibri().Theme, unit.Sp(12), "📌 Increased FPS can reduce input delay but requires more CPU")
+	videoWarning.Color = nrgba.PastelRed.Alpha(127).Color()
+	videoWarning.Font.Weight = 0
+	ui.sections.video.warning = videoWarning
+
 	ui.sections.discord = &section{
 		title:       material.Label(ui.bar.Collection.Calibri().Theme, 14, "🎮 Discord Activity"),
 		description: material.Caption(ui.bar.Collection.Calibri().Theme, "Enable/Disable Discord activity updates"),
@@ -204,11 +279,7 @@ func (g *GUI) settingsUI() *settings {
 			},
 		},
 	}
-	discordWarning := material.Label(
-		ui.bar.Collection.Calibri().Theme,
-		unit.Sp(12),
-		"🔌 Activity Privacy settings in Discord can prevent this feature from working",
-	)
+	discordWarning := material.Label(ui.bar.Collection.Calibri().Theme, unit.Sp(12), "📌 Some activity privacy settings in Discord can prevent this feature from working")
 	discordWarning.Color = nrgba.PastelRed.Alpha(127).Color()
 	discordWarning.Font.Weight = 0
 	ui.sections.discord.warning = discordWarning
@@ -222,11 +293,11 @@ func (g *GUI) settingsUI() *settings {
 		title:       material.Label(ui.bar.Collection.Calibri().Theme, 14, "🔔 Desktop Notifications"),
 		description: material.Caption(ui.bar.Collection.Calibri().Theme, "Adjust desktop notifications for UniteHUD"),
 
-		extras: []visual.Widgeter{
+		extras: []ux.Widgeter{
 			&button.Widget{
-				Text:            "🔔 Test",
+				Text:            "Test",
 				Pressed:         nrgba.Transparent80,
-				Released:        nrgba.PastelOrange.Alpha(150),
+				Released:        nrgba.PastelGreen.Alpha(150),
 				TextSize:        unit.Sp(12),
 				TextInsetBottom: unit.Dp(-2),
 				Size:            image.Pt(80, 20),
@@ -241,7 +312,7 @@ func (g *GUI) settingsUI() *settings {
 					config.Current.Advanced.Notifications.Disabled.All = false
 
 					desktop.Notification(global.Title).
-						Says("Testing 1..2..3").
+						Says("Testing 1, 2, 3").
 						When(clicked.VisitWebsite).
 						Send()
 				},
@@ -395,7 +466,7 @@ func (g *GUI) settingsUI() *settings {
 			item.Checked.Value = true
 		}
 	}
-	frequencyWarning := material.Label(ui.bar.Collection.Calibri().Theme, unit.Sp(12), "✔ Decreasing the match factor will reduce CPU usage")
+	frequencyWarning := material.Label(ui.bar.Collection.Calibri().Theme, unit.Sp(12), "📌 Decreasing the match factor will reduce CPU usage")
 	frequencyWarning.Color = nrgba.PastelGreen.Alpha(127).Color()
 	frequencyWarning.Font.Weight = 0
 	ui.sections.factor.warning = frequencyWarning
@@ -447,21 +518,20 @@ func (g *GUI) settingsUI() *settings {
 			},
 		),
 		warning: &button.Widget{
-			Text:            "Reset",
+			Text:            "Default",
 			Pressed:         nrgba.Transparent80,
 			Released:        nrgba.DarkGray,
 			TextSize:        unit.Sp(14),
 			TextInsetBottom: unit.Dp(-2),
 			Size:            image.Pt(80, 20),
 			Font:            ui.bar.Collection.Calibri(),
-
-			Click: func(this *button.Widget) {
-				config.Current.SetDefaultTheme()
-			},
 		},
 	}
 	ui.sections.theme.warning.(*button.Widget).Click = func(this *button.Widget) {
 		defer this.Deactivate()
+
+		notify.Debug("UI: Setting default theme")
+		config.Current.SetDefaultTheme()
 
 		ui.sections.theme.widget.(*colorpicker.Widget).ApplyDefaults()
 	}

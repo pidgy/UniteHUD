@@ -6,14 +6,14 @@ import (
 
 	"gocv.io/x/gocv"
 
+	"github.com/pidgy/unitehud/avi/video"
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/match"
 	"github.com/pidgy/unitehud/core/nrgba"
 	"github.com/pidgy/unitehud/core/server"
 	"github.com/pidgy/unitehud/core/state"
 	"github.com/pidgy/unitehud/core/team"
-	"github.com/pidgy/unitehud/gui/visual/area"
-	"github.com/pidgy/unitehud/media/video"
+	"github.com/pidgy/unitehud/gui/ux/area"
 )
 
 func (g *GUI) matchEnergy(a *area.Widget) (bool, error) {

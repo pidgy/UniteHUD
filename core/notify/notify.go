@@ -171,7 +171,7 @@ func (n *notify) log(r nrgba.NRGBA, clock, dedup, unique bool, format string, a 
 	}
 
 	if global.DebugMode {
-		fmt.Printf("🐛 %s\n", fmt.Sprintf(format, a...))
+		fmt.Printf(format+"\n", a...)
 	}
 
 	if clock {

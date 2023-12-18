@@ -16,17 +16,17 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget"
 
+	"github.com/pidgy/unitehud/avi/img/splash"
+	"github.com/pidgy/unitehud/avi/video"
+	"github.com/pidgy/unitehud/avi/video/fps"
+	"github.com/pidgy/unitehud/avi/video/wapi"
 	"github.com/pidgy/unitehud/core/fonts"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/gui/cursor"
 	"github.com/pidgy/unitehud/gui/is"
-	"github.com/pidgy/unitehud/gui/visual/decorate"
-	"github.com/pidgy/unitehud/gui/visual/electron"
-	"github.com/pidgy/unitehud/gui/visual/title"
-	"github.com/pidgy/unitehud/media/img/splash"
-	"github.com/pidgy/unitehud/media/video"
-	"github.com/pidgy/unitehud/media/video/fps"
-	"github.com/pidgy/unitehud/media/video/wapi"
+	"github.com/pidgy/unitehud/gui/ux/decorate"
+	"github.com/pidgy/unitehud/gui/ux/electron"
+	"github.com/pidgy/unitehud/gui/ux/title"
 )
 
 type overlay struct {
@@ -63,8 +63,9 @@ type overlay struct {
 	clicked time.Time
 }
 
-func (g *GUI) client(onclose func()) {
+func (g *GUI) overlay(onclose func()) {
 	toast := g.ToastSplash("UniteHUD Overlay", "Loading...", splash.Projector()).wait()
+	defer toast.close()
 
 	ui := g.overlayUI()
 
@@ -74,6 +75,7 @@ func (g *GUI) client(onclose func()) {
 	err := electron.OpenWindow()
 	if err != nil {
 		notify.Warn("Overlay: Failed to render overlay (%v)", err)
+		return
 	}
 	defer electron.CloseWindow()
 
@@ -141,8 +143,10 @@ func (g *GUI) client(onclose func()) {
 					case pointer.Release:
 						if time.Since(ui.clicked) < time.Second/2 {
 							ui.fullscreen()
+							ui.clicked = time.Time{}
+						} else {
+							ui.clicked = time.Now()
 						}
-						ui.clicked = time.Now()
 					case pointer.Move, pointer.Enter:
 						// if !ui.dimensions.fullscreened {
 						// 	break
@@ -228,7 +232,7 @@ func (g *GUI) client(onclose func()) {
 				ui.setWindowPos(p)
 			}
 		default:
-			notify.Missed(event, "Client")
+			notify.Missed(event, "Overlay")
 		}
 	}
 }
@@ -237,11 +241,23 @@ func (ui *overlay) fullscreen() {
 	ui.dimensions.fullscreened = !ui.dimensions.fullscreened
 	ui.bar.Hide = ui.dimensions.fullscreened
 
+	t := wapi.ThreadExecutionState(0)
+
 	if ui.dimensions.fullscreened {
+		t = wapi.ThreadExecutionStateDisplayRequired
+
 		ui.windows.current.Option(app.Fullscreen.Option())
 	} else {
+		t = wapi.ThreadExecutionStateSystemRequired
+
 		ui.windows.current.Perform(system.ActionUnmaximize)
 		ui.windows.current.Option(app.Windowed.Option(), app.Size(unit.Dp(ui.dimensions.size.X), unit.Dp(ui.dimensions.size.Y)))
+		ui.windows.current.Perform(system.ActionCenter)
+	}
+
+	err := wapi.SetThreadExecutionState(t, wapi.ThreadExecutionStateContinuous)
+	if err != nil {
+		notify.Warn("Overlay: Failed to set thread execution state (%v)", err)
 	}
 }
 

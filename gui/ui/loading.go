@@ -14,13 +14,13 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 
+	"github.com/pidgy/unitehud/avi/img/splash"
 	"github.com/pidgy/unitehud/core/global"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/nrgba"
 	"github.com/pidgy/unitehud/gui/cursor"
 	"github.com/pidgy/unitehud/gui/is"
-	"github.com/pidgy/unitehud/gui/visual/decorate"
-	"github.com/pidgy/unitehud/media/img/splash"
+	"github.com/pidgy/unitehud/gui/ux/decorate"
 )
 
 type loading struct {

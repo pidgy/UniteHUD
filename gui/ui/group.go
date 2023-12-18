@@ -8,16 +8,16 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget"
 
+	"github.com/pidgy/unitehud/avi/audio"
+	"github.com/pidgy/unitehud/avi/video"
+	"github.com/pidgy/unitehud/avi/video/device"
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/fonts"
 	"github.com/pidgy/unitehud/core/match"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/team"
-	"github.com/pidgy/unitehud/gui/visual/area"
-	"github.com/pidgy/unitehud/gui/visual/dropdown"
-	"github.com/pidgy/unitehud/media/audio"
-	"github.com/pidgy/unitehud/media/video"
-	"github.com/pidgy/unitehud/media/video/device"
+	"github.com/pidgy/unitehud/gui/ux/area"
+	"github.com/pidgy/unitehud/gui/ux/dropdown"
 )
 
 type areas struct {

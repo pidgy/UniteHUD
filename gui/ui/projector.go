@@ -19,22 +19,22 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 
+	"github.com/pidgy/unitehud/avi/audio"
+	"github.com/pidgy/unitehud/avi/img/splash"
+	"github.com/pidgy/unitehud/avi/video"
+	"github.com/pidgy/unitehud/avi/video/device"
+	"github.com/pidgy/unitehud/avi/video/monitor"
+	"github.com/pidgy/unitehud/avi/video/window"
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/nrgba"
 	"github.com/pidgy/unitehud/core/server"
 	"github.com/pidgy/unitehud/gui/cursor"
 	"github.com/pidgy/unitehud/gui/is"
-	"github.com/pidgy/unitehud/gui/visual/area"
-	"github.com/pidgy/unitehud/gui/visual/button"
-	"github.com/pidgy/unitehud/gui/visual/decorate"
-	"github.com/pidgy/unitehud/gui/visual/title"
-	"github.com/pidgy/unitehud/media/audio"
-	"github.com/pidgy/unitehud/media/img/splash"
-	"github.com/pidgy/unitehud/media/video"
-	"github.com/pidgy/unitehud/media/video/device"
-	"github.com/pidgy/unitehud/media/video/monitor"
-	"github.com/pidgy/unitehud/media/video/window"
+	"github.com/pidgy/unitehud/gui/ux/area"
+	"github.com/pidgy/unitehud/gui/ux/button"
+	"github.com/pidgy/unitehud/gui/ux/decorate"
+	"github.com/pidgy/unitehud/gui/ux/title"
 )
 
 type footer struct {
@@ -151,7 +151,7 @@ func (g *GUI) projector() {
 				ui.windows.preview.resize()
 			}
 
-			fps, p := device.FPS()
+			fps, _, p := device.FPS()
 
 			decorate.Background(gtx)
 			decorate.Label(&ui.footer.api, "API: %s", device.APIName(device.API(config.Current.Video.Capture.Device.API)))
@@ -464,6 +464,11 @@ func (g *GUI) projectorUI() *projected {
 					config.Current = config.Cached()
 
 					audio.Restart()
+
+					err := device.Restart()
+					if err != nil {
+						g.ToastError(err)
+					}
 
 					g.Actions <- Refresh
 					g.next(is.MainMenu)

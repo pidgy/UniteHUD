@@ -13,15 +13,15 @@ import (
 	"gioui.org/io/system"
 	"gioui.org/layout"
 
+	"github.com/pidgy/unitehud/avi/video/fps"
+	"github.com/pidgy/unitehud/avi/video/monitor"
+	"github.com/pidgy/unitehud/avi/video/wapi"
 	"github.com/pidgy/unitehud/core/fonts"
 	"github.com/pidgy/unitehud/core/global"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/stats"
 	"github.com/pidgy/unitehud/gui/is"
-	"github.com/pidgy/unitehud/gui/visual/title"
-	"github.com/pidgy/unitehud/media/video/fps"
-	"github.com/pidgy/unitehud/media/video/monitor"
-	"github.com/pidgy/unitehud/media/video/wapi"
+	"github.com/pidgy/unitehud/gui/ux/title"
 )
 
 type Action string

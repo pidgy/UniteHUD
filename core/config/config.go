@@ -106,6 +106,7 @@ type Config struct {
 			Device struct {
 				Index int
 				API   string
+				FPS   int
 			}
 			Window struct {
 				Name string
@@ -278,18 +279,16 @@ func (c *Config) SetDefaultAreas() {
 }
 
 func (c *Config) SetDefaultTheme() {
-	c.Theme = Theme{
-		Background:          nrgba.Background.Color(),
-		BackgroundAlt:       nrgba.BackgroundAlt.Color(),
-		ForegroundAlt:       nrgba.White.Alpha(100).Color(),
-		Foreground:          nrgba.White.Color(),
-		Splash:              nrgba.Splash.Color(),
-		TitleBarBackground:  nrgba.Background.Color(),
-		TitleBarForeground:  nrgba.White.Color(),
-		Borders:             nrgba.Discord.Color(),
-		ScrollbarBackground: nrgba.Transparent.Color(),
-		ScrollbarForeground: nrgba.White.Alpha(100).Color(),
-	}
+	c.Theme.Background = nrgba.Background.Color()
+	c.Theme.BackgroundAlt = nrgba.BackgroundAlt.Color()
+	c.Theme.ForegroundAlt = nrgba.White.Alpha(100).Color()
+	c.Theme.Foreground = nrgba.White.Color()
+	c.Theme.Splash = nrgba.Splash.Color()
+	c.Theme.TitleBarBackground = nrgba.Background.Color()
+	c.Theme.TitleBarForeground = nrgba.White.Color()
+	c.Theme.Borders = nrgba.Discord.Alpha(100).Color()
+	c.Theme.ScrollbarBackground = nrgba.Transparent.Color()
+	c.Theme.ScrollbarForeground = nrgba.Discord.Alpha(100).Color()
 }
 
 func (c *Config) SetProfile(p string) {
@@ -585,6 +584,10 @@ func Load(profile string) error {
 
 	if Current.Themes == nil {
 		Current.Themes = make(map[string]Theme)
+	}
+
+	if Current.Video.Capture.Device.FPS == 0 {
+		Current.Video.Capture.Device.FPS = 60
 	}
 
 	return Current.Save()

@@ -15,7 +15,7 @@ const (
 )
 
 var (
-	DebugMode = strings.Contains(strings.ToLower(os.Args[0]), "debug")
+	DebugMode = strings.Contains(strings.ToLower(os.Args[0]), "debug") || strings.Contains(strings.ToLower(os.Args[0]), "test")
 	Uptime    = time.Now()
 
 	dir = ""
