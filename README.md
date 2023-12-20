@@ -103,7 +103,7 @@ GET 127.0.0.1:17069/ws
 - Score tracking is ~90% accurate, certain game mechanics (like rotom scoring points) are extremely difficult to process.
 - Users are encouraged to report issues, or contribute where they can to help polish a final product.
 
-# Testing
+### Testing
 - Head into Pokémon UNITE's Practice Mode and verify UniteHUD is capturing time/orbs/enemy score/self score.
 - Use the "Configure" button to verify the selection areas.
 
