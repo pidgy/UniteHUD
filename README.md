@@ -6,6 +6,10 @@ Pokémon UNITE Scoreboard HUD Overlay
 Download at **[unitehud.dev](https://unitehud.dev)**
 
 ----
+### Support UniteHUD
+<a href="https://www.buymeacoffee.com/pidgy" target="_blank"><img src="https://i.imgur.com/TNfrDMT.png" width="100" height="100"></a>
+
+----
 
 ### Client UI
 ![alt text](https://github.com/pidgy/unitehud/blob/master/.github/data/v2-ui.gif "UI")
