@@ -6,6 +6,10 @@ Pokémon UNITE Scoreboard HUD Overlay
 Download at **[unitehud.dev](https://unitehud.dev)**
 
 ----
+### Support UniteHUD
+<a href="https://www.buymeacoffee.com/pidgy" target="_blank"><img src="https://i.imgur.com/TNfrDMT.png" width="100" height="100"></a>
+
+----
 
 ### Client UI
 ![alt text](https://github.com/pidgy/unitehud/blob/master/.github/data/v2-ui.gif "UI")
@@ -98,13 +102,12 @@ GET 127.0.0.1:17069/ws
 ```
 
 ### Note
-- This project is currently in a beta state. 
 - It would be possible for matching techniques to produce duplicated, unaccounted-for, and false postitive matches.
 - Winner/Loser confidence is successful ~99% of the time.
 - Score tracking is ~90% accurate, certain game mechanics (like rotom scoring points) are extremely difficult to process.
 - Users are encouraged to report issues, or contribute where they can to help polish a final product.
 
-# Testing
-- - Head into Pokémon UNITE's Practice Mode and verify UniteHUD is capturing time/orbs/enemy score/self score.
-- - Use the "Configure" button to verify the selection areas.
+### Testing
+- Head into Pokémon UNITE's Practice Mode and verify UniteHUD is capturing time/orbs/enemy score/self score.
+- Use the "Configure" button to verify the selection areas.
 
