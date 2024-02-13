@@ -59,6 +59,7 @@ func (s *Widget) Layout(gtx layout.Context) layout.Dimensions {
 			}
 			return s.slider.Layout(gtx)
 		}),
+
 		layout.Flexed(.1, func(gtx layout.Context) layout.Dimensions {
 			return layout.Center.Layout(gtx, s.Label.Layout)
 		}),

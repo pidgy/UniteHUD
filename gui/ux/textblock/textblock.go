@@ -65,19 +65,16 @@ func (t *Widget) Layout(gtx layout.Context, posts []notify.Post) layout.Dimensio
 		layout.Inset{
 			Bottom: unit.Dp(5),
 			Left:   unit.Dp(5),
-		}.Layout(
-			gtx,
-			func(gtx layout.Context) layout.Dimensions {
-				return t.list.Layout(gtx, len(posts), func(gtx layout.Context, index int) layout.Dimensions {
-					t.label.Text = posts[index].String()
-					t.label.Color = posts[index].Alpha(t.calculateAlpha(index, len(posts))).Color()
-					t.label.Alignment = text.Start
-					dim := t.label.Layout(gtx)
-					dim.Size.X = gtx.Constraints.Max.X
-					return dim
-				})
-			},
-		)
+		}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+			return t.list.Layout(gtx, len(posts), func(gtx layout.Context, index int) layout.Dimensions {
+				t.label.Text = posts[index].String()
+				t.label.Color = posts[index].Alpha(t.calculateAlpha(index, len(posts))).Color()
+				t.label.Alignment = text.Start
+				dim := t.label.Layout(gtx)
+				dim.Size.X = gtx.Constraints.Max.X
+				return dim
+			})
+		})
 
 		return layout.Dimensions{Size: gtx.Constraints.Max}
 	})
@@ -85,9 +82,6 @@ func (t *Widget) Layout(gtx layout.Context, posts []notify.Post) layout.Dimensio
 
 func (t *Widget) calculateAlpha(index, nposts int) uint8 {
 	ratio := (float32(index) / float32(nposts))
-	// if ratio < 0.1 {
-	// 	ratio = 0.1
-	// }
 	a := (float32(257) * ratio) + 5
 	if a > 255 {
 		a = 255

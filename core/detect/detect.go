@@ -26,10 +26,12 @@ import (
 )
 
 var (
-	idle = true
+	idle   = true
+	images = false
 
 	Pause  = func() { idle = true }
 	Resume = func() { idle = false }
+	Images = func(b bool) { images = b }
 )
 
 func Clock() {
@@ -46,16 +48,19 @@ func Clock() {
 
 		rs, kitchen := match.Time(matrix, img)
 		if rs == 0 {
-			// Let's back off and not waste processing power.
-			sleep(time.Second * 5)
+			sleep(time.Second * 5) // Let's back off and save cpu cycles.
 			continue
 		}
 
-		notify.Time, err = match.AsTimeImage(matrix, kitchen)
-		if err != nil {
-			notify.Error("Detect: Failed to identify time (%v)", err)
-			continue
+		if images {
+			notify.Time, err = match.AsTimeImage(matrix, kitchen)
+			if err != nil {
+				notify.Error("Detect: Failed to identify time (%v)", err)
+				continue
+			}
 		}
+
+		matrix.Close()
 	}
 }
 
@@ -176,9 +181,11 @@ func Energy() {
 
 			server.SetEnergy(points)
 
-			notify.Energy, err = match.AsAeosImage(matrix, points)
-			if err != nil {
-				notify.Warn("Detect: [Self] Failed to identify (%v)", err)
+			if images {
+				notify.Energy, err = match.AsAeosImage(matrix, points)
+				if err != nil {
+					notify.Warn("Detect: [Self] Failed to identify (%v)", err)
+				}
 			}
 
 			// Can we assume change from n, where n > 0, to 0 means a goal without being defeated?
@@ -365,7 +372,7 @@ func Preview() {
 	preview()
 
 	for ; ; sleep(time.Second) {
-		if config.Current.Advanced.Matching.Disabled.Previews {
+		if !images || config.Current.Advanced.Matching.Disabled.Previews {
 			continue
 		}
 
@@ -409,9 +416,7 @@ func Scores(name string) {
 		switch r {
 		case match.Override:
 			state.Add(state.ScoreOverride, server.Clock(), p)
-
 			server.SetScore(m.Team, -m.Team.Duplicate.Replaces)
-
 			notify.Feed(m.Team.NRGBA, "Detect: [%s] [%s] -%d (override)", server.Clock(), strings.Title(m.Team.Name), m.Team.Duplicate.Replaces)
 
 			fallthrough
@@ -427,25 +432,29 @@ func Scores(name string) {
 
 			state.Add(state.ScoredBy(m.Team.Name), server.Clock(), p)
 
-			score, err := m.AsImage(matrix, p)
-			if err != nil {
-				notify.Error("Detect: [%s] [%s] Failed to identify score (%v)", server.Clock(), strings.Title(m.Team.Name), err)
-				break
+			if m.Team.Name == team.First.Name {
+				team.First.Counted = true
 			}
 
-			switch m.Team.Name {
-			case team.First.Name:
-				team.First.Counted = true
+			if images {
+				score, err := m.AsImage(matrix, p)
+				if err != nil {
+					notify.Error("Detect: [%s] [%s] Failed to identify score (%v)", server.Clock(), strings.Title(m.Team.Name), err)
+					break
+				}
 
-				if team.First.Alias == team.Purple.Name {
+				switch m.Team.Name {
+				case team.First.Name:
+					if team.First.Alias == team.Purple.Name {
+						notify.PurpleScore = score
+					} else {
+						notify.OrangeScore = score
+					}
+				case team.Purple.Name:
 					notify.PurpleScore = score
-				} else {
+				case team.Orange.Name:
 					notify.OrangeScore = score
 				}
-			case team.Purple.Name:
-				notify.PurpleScore = score
-			case team.Orange.Name:
-				notify.OrangeScore = score
 			}
 		case match.Missed:
 			state.Add(state.ScoreMissedBy(m.Team.Name), server.Clock(), p)
@@ -527,9 +536,8 @@ func States() {
 				// Purple score and objective results.
 				regielekis, regices, regirocks, registeels, rayquazas := server.Objectives(team.Purple)
 				purpleResult := fmt.Sprintf(
-					"Detect: [%s] [+%d KO%s] [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s] [+%d Rayquazas]",
+					"Detect: [%s] [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s] [+%d Rayquazas]",
 					strings.Title(team.Purple.Name),
-					server.KOs(team.Purple), s(server.KOs(team.Purple)),
 					regielekis, s(regielekis),
 					regices, s(regices),
 					regirocks, s(regirocks),
@@ -541,9 +549,8 @@ func States() {
 				// Orange score and objective results.
 				regielekis, regices, regirocks, registeels, rayquazas = server.Objectives(team.Orange)
 				orangeResult := fmt.Sprintf(
-					"Detect: [%s] [+%d KO%s] [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s] [+%d Rayquazas]",
+					"Detect: [%s] [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s] [+%d Rayquazas]",
 					strings.Title(team.Orange.Name),
-					server.KOs(team.Orange), s(server.KOs(team.Orange)),
 					regielekis, s(regielekis),
 					regices, s(regices),
 					regirocks, s(regirocks),
@@ -560,10 +567,9 @@ func States() {
 					// Purple score and objective results.
 					regielekis, regices, regirocks, registeels, rayquazas := server.Objectives(team.Purple)
 					purpleResult := fmt.Sprintf(
-						"Detect: [%s] %d [+%d KO%s] [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s] [+%d Rayquazas]",
+						"Detect: [%s] %d [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s] [+%d Rayquazas]",
 						strings.Title(team.Purple.Name),
 						p,
-						server.KOs(team.Purple), s(server.KOs(team.Purple)),
 						regielekis, s(regielekis),
 						regices, s(regices),
 						regirocks, s(regirocks),
@@ -576,10 +582,9 @@ func States() {
 					// Orange score and objective results.
 					regielekis, regices, regirocks, registeels, rayquazas = server.Objectives(team.Orange)
 					orangeResult := fmt.Sprintf(
-						"Detect: [%s] %d [+%d KO%s] [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s] [+%d Rayquazas]",
+						"Detect: [%s] %d [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s] [+%d Rayquazas]",
 						strings.Title(team.Orange.Name),
 						o,
-						server.KOs(team.Orange), s(server.KOs(team.Orange)),
 						regielekis, s(regielekis),
 						regices, s(regices),
 						regirocks, s(regirocks),
@@ -648,12 +653,12 @@ func capture(area image.Rectangle) (gocv.Mat, *image.RGBA, error) {
 		return gocv.Mat{}, nil, err
 	}
 
-	m, err := gocv.ImageToMatRGB(img)
+	matrix, err := gocv.ImageToMatRGB(img)
 	if err != nil {
 		return gocv.Mat{}, nil, err
 	}
 
-	return m, img, nil
+	return matrix, img, nil
 }
 
 // energyScoredConfirm is another step to confirm a self-score event occured. This function

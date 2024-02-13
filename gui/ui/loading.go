@@ -95,7 +95,6 @@ func (g *GUI) loading() {
 
 			layout.S.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				return layout.Inset{Bottom: unit.Dp(25)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-
 					return inset.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 						messageLabel.Text = l.message
 						return messageLabel.Layout(gtx)

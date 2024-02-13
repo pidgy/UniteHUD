@@ -130,6 +130,20 @@ func (l *Widget) Layout(gtx layout.Context) layout.Dimensions {
 			}
 
 			if item.Checked.Update(gtx) {
+				enabled := !item.Disabled
+				if enabled && l.Callback != nil {
+					enabled = l.Callback(item, l)
+				}
+				if !enabled {
+					item.Checked.Value = false
+
+					return layout.E.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+						dim := check.Layout(gtx)
+						dim.Size.X = gtx.Constraints.Max.X / l.WidthModifier
+						return dim
+					})
+				}
+
 				if item.Disabled {
 					item.Checked.Value = !item.Checked.Value
 				} else if item.Callback != nil {
@@ -145,10 +159,6 @@ func (l *Widget) Layout(gtx layout.Context) layout.Dimensions {
 
 						l.Items[i].Checked.Value = false
 					}
-				}
-
-				if !item.Disabled && l.Callback != nil {
-					l.Callback(item, l)
 				}
 			}
 

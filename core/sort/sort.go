@@ -1,6 +1,7 @@
 package sort
 
 import (
+	"encoding/json"
 	"image"
 	"math"
 	"sort"
@@ -26,6 +27,22 @@ type StringInt struct {
 }
 
 type StringInts []StringInt
+
+var Strings = sort.Strings
+
+func JSON(r json.RawMessage) json.RawMessage {
+	var i interface{}
+	err := json.Unmarshal(r, &i)
+	if err != nil {
+		return r
+	}
+
+	b, err := json.MarshalIndent(i, "", "    ")
+	if err != nil {
+		return r
+	}
+	return b
+}
 
 func (p Piece) Eq(p2 Piece) bool {
 	f := strings.ReplaceAll(strings.ReplaceAll(p.File, "_alt", ""), "_big", "")

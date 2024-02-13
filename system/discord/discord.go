@@ -209,11 +209,20 @@ func status() activity {
 		case state.MatchEnding:
 			a.Details = "UniteHUD - Match Ended"
 
-			winner := "Purple"
-			if last.score.orange > last.score.purple {
+			winner := "Tied"
+			switch {
+			case last.score.orange > last.score.purple:
 				winner = "Orange"
+			case last.score.purple > last.score.orange:
+				winner = "Purple"
 			}
-			a.State = fmt.Sprintf("%s Team Won %d - %d", winner, last.score.purple, last.score.orange)
+
+			switch {
+			case last.score.purple+last.score.orange == 0:
+				a.State = "Viewing battle report"
+			default:
+				a.State = fmt.Sprintf("%s Team Won %d - %d", winner, last.score.purple, last.score.orange)
+			}
 
 			wait.activity = a
 			wait.Time = time.Now().Add(time.Second * 10)

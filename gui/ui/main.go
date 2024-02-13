@@ -27,6 +27,7 @@ import (
 	"github.com/pidgy/unitehud/avi/video/monitor"
 	"github.com/pidgy/unitehud/avi/video/window"
 	"github.com/pidgy/unitehud/core/config"
+	"github.com/pidgy/unitehud/core/detect"
 	"github.com/pidgy/unitehud/core/global"
 	"github.com/pidgy/unitehud/core/history"
 	"github.com/pidgy/unitehud/core/notify"
@@ -163,31 +164,35 @@ func (g *GUI) main() {
 
 	g.header.Open()
 
+	if config.Current.Crashed != "" {
+		notify.Warn("Crash: %s", config.Current.Crashed)
+		save.Logs()
+
+		g.ToastYesNo(
+			"Configuration Reset",
+			fmt.Sprintf("Recent crash detected. View log directory?"),
+			OnToastYes(
+				func() {
+					err := save.Open()
+					if err != nil {
+						notify.Error("UI: Failed to open save directory (%v)", err)
+					}
+				},
+			),
+			nil,
+		)
+		err := config.Current.Reset()
+		if err != nil {
+			notify.Error("UI: Failed to reset configuration (%v)", err)
+		}
+	}
+
 	var ops op.Ops
 
 	for is.Now == is.MainMenu {
 		if !g.open {
 			time.Sleep(time.Millisecond * 10)
 			continue
-		}
-
-		if config.Current.Crashed != "" {
-			g.ToastCrash(
-				fmt.Sprintf("Previous Crash: %s", config.Current.Crashed),
-				func() {
-					config.Current.Report("")
-
-					err := config.Current.Save()
-					if err != nil {
-						notify.Error("UI: Failed to save configuration (%v)", err)
-					}
-				},
-				func() { save.OpenLogDirectory() },
-			)
-			err := config.Current.Reset()
-			if err != nil {
-				notify.Error("UI: Failed to reset configuration (%v)", err)
-			}
 		}
 
 		if g.performance.eco && state.Idle() > time.Minute*30 && !ui.buttons.stop.Disabled {
@@ -278,9 +283,9 @@ func (g *GUI) main() {
 
 						switch {
 						case device.IsActive():
-							fpsn, _, p := device.FPS()
+							fps, p := device.FPS()
 							ui.labels.window.Color = nrgba.Percent(p).Color()
-							ui.labels.window.Text = fmt.Sprintf("📺 %s %.0fFPS", device.Name(config.Current.Video.Capture.Device.Index), fpsn)
+							ui.labels.window.Text = fmt.Sprintf("📺 %s %.0fFPS", device.Name(config.Current.Video.Capture.Device.Index), fps)
 						case window.IsOpen(), monitor.IsDisplay():
 							ui.labels.window.Text = fmt.Sprintf("📺 %s", config.Current.Video.Capture.Window.Name)
 						}
@@ -452,12 +457,9 @@ func (g *GUI) main() {
 
 						layout.Inset{
 							Top: unit.Dp(65),
-						}.Layout(
-							gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								return ui.textblocks.feed.Layout(gtx, notify.Feeds())
-							},
-						)
+						}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+							return ui.textblocks.feed.Layout(gtx, notify.Feeds())
+						})
 
 						return layout.Dimensions{Size: gtx.Constraints.Max}
 					},
@@ -474,17 +476,16 @@ func (g *GUI) main() {
 								layout.Inset{
 									Top: unit.Dp(float32(gtx.Constraints.Max.Y - int(float32(ui.buttons.start.Size.Y)*1.5))),
 								}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-									return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
-										layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-											return layout.Flex{Axis: layout.Horizontal}.Layout(
-												gtx,
-												layout.Flexed(.5, layout.Spacer{Width: unit.Dp(25)}.Layout),
-												layout.Rigid(ui.buttons.start.Layout),
-												layout.Flexed(.5, layout.Spacer{Width: unit.Dp(25)}.Layout),
-												layout.Rigid(ui.buttons.stop.Layout),
-												layout.Flexed(.5, layout.Spacer{Width: unit.Dp(25)}.Layout),
-											)
-										}),
+									return layout.Flex{Axis: layout.Vertical}.Layout(gtx, layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+										return layout.Flex{Axis: layout.Horizontal}.Layout(
+											gtx,
+											layout.Flexed(.5, layout.Spacer{Width: unit.Dp(25)}.Layout),
+											layout.Rigid(ui.buttons.start.Layout),
+											layout.Flexed(.5, layout.Spacer{Width: unit.Dp(25)}.Layout),
+											layout.Rigid(ui.buttons.stop.Layout),
+											layout.Flexed(.5, layout.Spacer{Width: unit.Dp(25)}.Layout),
+										)
+									}),
 									)
 								})
 							}
@@ -1084,7 +1085,9 @@ func (g *GUI) mainUI() *main {
 		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
-			if this.Text == "⇉" {
+			hidden := this.Text != "⇉"
+
+			if !hidden {
 				this.Text = "⇇"
 				ui.split.vertical.Ratio = 1
 				this.OnHoverHint = func() { g.header.Tip("Show Main Menu preview area") }
@@ -1095,6 +1098,8 @@ func (g *GUI) mainUI() *main {
 				this.OnHoverHint = func() { g.header.Tip("Hide Main Menu preview area") }
 				config.Current.Advanced.Matching.Disabled.Previews = false
 			}
+
+			detect.Images(hidden)
 		},
 	}
 

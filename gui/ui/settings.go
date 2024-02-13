@@ -65,6 +65,7 @@ type settings struct {
 
 	sections struct {
 		header,
+		language,
 		video,
 		discord,
 		notifications,
@@ -92,6 +93,7 @@ func (g *GUI) settings(onclose func()) *settings {
 
 		sections := []*section{
 			ui.sections.header,
+			ui.sections.language,
 			ui.sections.video,
 			ui.sections.discord,
 			ui.sections.notifications,
@@ -182,6 +184,63 @@ func (g *GUI) settingsUI() *settings {
 		h1:          true,
 		description: material.H6(ui.bar.Collection.Calibri().Theme, "Advanced Settings"),
 	}
+
+	ui.sections.language = &section{
+		title:       material.Label(ui.bar.Collection.Calibri().Theme, 14, "🗨️ Language"),
+		description: material.Caption(ui.bar.Collection.Calibri().Theme, "Select the language used for image detection"),
+		widget: &dropdown.Widget{
+			Theme:    ui.bar.Collection.NotoSans().Theme,
+			Radio:    true,
+			TextSize: 12,
+			Items: []*dropdown.Item{
+				{
+					Text: "English",
+					Checked: widget.Bool{
+						Value: true,
+					},
+					Callback: func(this *dropdown.Item) {},
+				},
+				{
+					Text: "Español",
+					Checked: widget.Bool{
+						Value: false,
+					},
+					Disabled: true,
+					Callback: func(this *dropdown.Item) {
+						notify.Error("UI: %s language detection is currently not supported", this.Text)
+					},
+				},
+				{
+					Text: "日本語",
+					Checked: widget.Bool{
+						Value: false,
+					},
+					Disabled: true,
+					Callback: func(this *dropdown.Item) {
+						notify.Error("UI: %s language detection is currently not supported", this.Text)
+					},
+				},
+				{
+					Text: "한국어",
+					Checked: widget.Bool{
+						Value: false,
+					},
+					Disabled: true,
+					Callback: func(this *dropdown.Item) {
+					},
+				},
+			},
+			Callback: func(item *dropdown.Item, this *dropdown.Widget) bool {
+				g.ToastErrorf("%s language detection is currently not supported", item.Text)
+				return false
+			},
+		},
+	}
+
+	languageWarning := material.Label(ui.bar.Collection.Calibri().Theme, unit.Sp(12), "📌 Support is required to expand language detection in UniteHUD")
+	languageWarning.Color = nrgba.PastelRed.Alpha(127).Color()
+	languageWarning.Font.Weight = 0
+	ui.sections.language.warning = languageWarning
 
 	ui.sections.video = &section{
 		title:       material.Label(ui.bar.Collection.Calibri().Theme, 14, "🎥 Video Capture Device"),

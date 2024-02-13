@@ -1,4 +1,4 @@
-const version = "v1.1";
+const version = "v3.0.0";
 const urlWS = "ws://127.0.0.1:17069/ws";
 const urlHTTP = "http://127.0.0.1:17069/http";
 
@@ -113,31 +113,23 @@ function success(data) {
         var o = 0;
         for (var i in data.regis) {
             if (data.regis[i] == "purple") {
-                // p += '&#128995;';
-                // p += "+-20";
                 p += 20;
             } else if (data.regis[i] == "orange") {
-                // o += '&#128992;';
                 o += 20;
             }
         }
 
         $('.purplescore').html(`${data.purple.value}`);
         if (p > 0) {
-            $('.purplescore').html(`${data.purple.value} <span>+${p}</span>`);
+            $('.purplescore').html(`${data.purple.value} <span><img class="regis-img-tiny" src="assets/img/regieleki.png">x${p/20}</span>`);
         }
         $('.orangescore').html(`${data.orange.value}`);
         if (o > 0) {
-            $('.orangescore').html(`${data.orange.value} <span>+${o}</span>`);
+            $('.orangescore').html(`${data.orange.value} <span><img class="regis-img-tiny" src="assets/img/regieleki.png">x${o/20}</span>`);
         }
-        // $('.selfscore').html(data.self.value);
-        // $('.purplekos').html(data.purple.kos);
-        // $('.orangekos').html(data.orange.kos);
     } else {
         clear();
     }
-
-    // $('.stacks').html(data.stacks);
 
     var elekis = {
         "none": ["none", "orange", "purple"],

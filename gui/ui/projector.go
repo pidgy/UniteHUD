@@ -104,7 +104,8 @@ type projected struct {
 
 func (g *GUI) projector() {
 	ui := g.projectorUI()
-	ui.buttons.menu.settings.Click(ui.buttons.menu.settings)
+
+	defer g.header.OnClose(ui.buttons.menu.home.Click).Then()
 
 	defer g.header.Remove(g.header.Add(ui.buttons.menu.home))
 	defer g.header.Remove(g.header.Add(ui.buttons.menu.save))
@@ -151,7 +152,7 @@ func (g *GUI) projector() {
 				ui.windows.preview.resize()
 			}
 
-			fps, _, p := device.FPS()
+			fps, p := device.FPS()
 
 			decorate.Background(gtx)
 			decorate.Label(&ui.footer.api, "API: %s", device.APIName(device.API(config.Current.Video.Capture.Device.API)))
@@ -170,14 +171,11 @@ func (g *GUI) projector() {
 						layout.Flexed(0.99, func(gtx layout.Context) layout.Dimensions {
 							return layout.Flex{
 								Axis: layout.Horizontal,
-							}.Layout(
-								gtx,
-								layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-									return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-										return ui.Layout(gtx, g.dimensions.fullscreen)
-									})
-								}),
-							)
+							}.Layout(gtx, layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+								return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+									return ui.Layout(gtx, g.dimensions.fullscreen)
+								})
+							}))
 						}),
 
 						ui.spacer(0, 1),
@@ -193,14 +191,11 @@ func (g *GUI) projector() {
 					layout.Flexed(0.99, func(gtx layout.Context) layout.Dimensions {
 						return layout.Flex{
 							Axis: layout.Horizontal,
-						}.Layout(
-							gtx,
-							layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-								return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-									return ui.Layout(gtx, g.dimensions.fullscreen)
-								})
-							}),
-						)
+						}.Layout(gtx, layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+							return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+								return ui.Layout(gtx, g.dimensions.fullscreen)
+							})
+						}))
 					}),
 
 					ui.spacer(0, 1),
@@ -723,6 +718,8 @@ func (g *GUI) projectorUI() *projected {
 	ui.groups.videos.device.populate(false)
 	ui.groups.videos.monitor.populate(false)
 	ui.groups.videos.apis.populate(false)
+
+	ui.buttons.menu.settings.Click(ui.buttons.menu.settings)
 
 	return ui
 }

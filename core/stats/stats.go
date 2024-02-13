@@ -46,6 +46,28 @@ func init() {
 	}
 }
 
+func AllTemplates() map[string]int {
+	fq := make(chan map[string]int)
+
+	counts := make(map[string]int)
+
+	for f := range config.Current.TemplateMatchMap() {
+		counts[sanitize(f)] = 0
+	}
+
+	statsq <- func() {
+		defer close(fq)
+
+		for f, c := range matches {
+			counts[f] = c
+		}
+
+		fq <- counts
+	}
+
+	return <-fq
+}
+
 func Average(stat string, maxv float32) {
 	if config.Current.Advanced.Stats.Disabled {
 		return
@@ -107,6 +129,57 @@ func CPUGraph() string {
 		asciigraph.Width(20),
 		asciigraph.Precision(0),
 	}...)
+}
+
+func Data() {
+	for _, line := range Lines() {
+		if line == "" {
+			continue
+		}
+
+		switch {
+		case strings.Contains(line, team.Orange.Name):
+			notify.Append(team.Orange.NRGBA, line)
+		case strings.Contains(line, team.Purple.Name):
+			notify.Append(team.Purple.NRGBA, line)
+		case strings.Contains(line, team.First.Name):
+			notify.Append(team.First.NRGBA, line)
+		case strings.Contains(line, team.Energy.Name):
+			notify.Append(nrgba.DarkYellow, line)
+		case strings.Contains(line, team.Time.Name):
+			notify.Append(nrgba.Slate, line)
+		case strings.Contains(line, team.Game.Name):
+			notify.Append(nrgba.Gray, line)
+		default:
+			notify.SystemAppend(line)
+		}
+	}
+}
+
+func Frequency(stat string, freq float32) {
+	if config.Current.Advanced.Stats.Disabled {
+		return
+	}
+
+	stat = sanitize(stat)
+
+	if math.IsInf(float64(freq), 1) {
+		freq = 1
+	}
+
+	statsq <- func() {
+		fsets[stat] = append(fsets[stat], freq)
+
+		sum := float32(0)
+		for _, n := range fsets[stat] {
+			sum += n
+		}
+
+		freq := (sum / float32(len(fsets[stat]))) * 100
+		if freq > 0 {
+			frequencies[stat] = freq
+		}
+	}
 }
 
 func Lines() []string {
@@ -191,57 +264,6 @@ func Lines() []string {
 	}
 
 	return <-lineq
-}
-
-func Data() {
-	for _, line := range Lines() {
-		if line == "" {
-			continue
-		}
-
-		switch {
-		case strings.Contains(line, team.Orange.Name):
-			notify.Append(team.Orange.NRGBA, line)
-		case strings.Contains(line, team.Purple.Name):
-			notify.Append(team.Purple.NRGBA, line)
-		case strings.Contains(line, team.First.Name):
-			notify.Append(team.First.NRGBA, line)
-		case strings.Contains(line, team.Energy.Name):
-			notify.Append(nrgba.DarkYellow, line)
-		case strings.Contains(line, team.Time.Name):
-			notify.Append(nrgba.Slate, line)
-		case strings.Contains(line, team.Game.Name):
-			notify.Append(nrgba.Gray, line)
-		default:
-			notify.SystemAppend(line)
-		}
-	}
-}
-
-func Frequency(stat string, freq float32) {
-	if config.Current.Advanced.Stats.Disabled {
-		return
-	}
-
-	stat = sanitize(stat)
-
-	if math.IsInf(float64(freq), 1) {
-		freq = 1
-	}
-
-	statsq <- func() {
-		fsets[stat] = append(fsets[stat], freq)
-
-		sum := float32(0)
-		for _, n := range fsets[stat] {
-			sum += n
-		}
-
-		freq := (sum / float32(len(fsets[stat]))) * 100
-		if freq > 0 {
-			frequencies[stat] = freq
-		}
-	}
 }
 
 func RAM(v float64) {

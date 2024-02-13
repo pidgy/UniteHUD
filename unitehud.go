@@ -47,20 +47,27 @@ func kill(errs ...error) {
 
 	report := make(chan bool)
 
-	ui.UI.ToastCrash(
-		"UniteHUD has encountered an unrecoverable error",
-		func() {
-			close(report)
-		},
-		func() {
-			save.Logs()
+	ui.UI.ToastYesNo(
+		"Crashed",
+		"UniteHUD has crashed. Open log directory?",
+		ui.OnToastYes(
+			func() {
+				close(report)
+			},
+		),
+		ui.OnToastNo(
+			func() {
+				defer close(report)
 
-			err := save.OpenLogDirectory()
-			if err != nil {
-				println(err.Error())
-			}
-		},
+				save.Logs()
+				err := save.OpenLogDirectory()
+				if err != nil {
+					notify.Error("UniteHUD: Failed to open log directory (%v)", err)
+				}
+			},
+		),
 	)
+
 	<-report
 }
 
@@ -68,10 +75,12 @@ func signals() {
 	signal.Notify(sigq, os.Interrupt)
 	<-sigq
 
-	ui.UI.Close()
 	video.Close()
 	electron.CloseApp()
 	audio.Close()
+	ui.UI.Close()
+
+	save.TemplateStatistics()
 
 	os.Exit(0)
 }
@@ -160,6 +169,8 @@ func main() {
 				team.Clear()
 
 				server.SetStopped()
+
+				save.TemplateStatistics()
 
 				if !config.Current.Record {
 					continue

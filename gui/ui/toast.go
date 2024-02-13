@@ -94,89 +94,12 @@ func (g *GUI) toast(header, msg string, width, height float32) *toast {
 	t.bar.NoDrag = true
 
 	t.label = material.Label(t.bar.Collection.Calibri().Theme, toastTextSize, msg)
-
+	t.label.Alignment = text.Middle
 	return t
 }
 
 func (t *toast) close() {
 	t.g.previous.toast.active = false
-}
-
-func (g *GUI) ToastCrash(reason string, closed, logs func()) {
-	go func() {
-		notify.Debug("UI: Opening Crash (active: %t)", g.previous.toast.active)
-		defer notify.Debug("UI: Closing Crash (active: %t)", g.previous.toast.active)
-
-		g.previous.toast.active = false
-		t := g.toast("Crashed", reason, float32(400), float32(125))
-		defer t.close()
-
-		t.label.Color = nrgba.PastelRed.Color()
-		t.label.Alignment = text.Middle
-
-		btn := &button.Widget{
-			Text:            "View Logs",
-			TextSize:        unit.Sp(16),
-			Font:            t.bar.Collection.Calibri(),
-			Pressed:         nrgba.Transparent80,
-			Released:        nrgba.DarkGray,
-			Size:            image.Pt(96, 32),
-			TextInsetBottom: -2,
-
-			Click: func(this *button.Widget) {
-				defer this.Deactivate()
-
-				if logs != nil {
-					logs()
-				}
-
-				t.window.Perform(system.ActionClose)
-			},
-		}
-
-		for {
-			switch event := t.window.NextEvent().(type) {
-			case system.DestroyEvent:
-				if closed != nil {
-					closed()
-				}
-				return
-			case system.FrameEvent:
-				gtx := layout.NewContext(&t.ops, event)
-
-				t.bar.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-					return decorate.BackgroundAlt(gtx, func(gtx layout.Context) layout.Dimensions {
-						return layout.Flex{
-							Axis:      layout.Vertical,
-							Alignment: layout.Middle,
-						}.Layout(gtx,
-							layout.Flexed(.1, layout.Spacer{Height: 5}.Layout),
-
-							layout.Flexed(.3, func(gtx layout.Context) layout.Dimensions {
-								return t.label.Layout(gtx)
-							}),
-
-							layout.Flexed(.2, layout.Spacer{Height: 1}.Layout),
-
-							layout.Flexed(.3, func(gtx layout.Context) layout.Dimensions {
-								return layout.Center.Layout(gtx, btn.Layout)
-							}),
-
-							layout.Flexed(.1, layout.Spacer{Height: 5}.Layout),
-						)
-					})
-				})
-
-				t.window.Perform(system.ActionCenter)
-				t.window.Perform(system.ActionRaise)
-				t.window.Invalidate()
-
-				event.Frame(gtx.Ops)
-			default:
-				notify.Missed(event, "ToastCrash")
-			}
-		}
-	}()
 }
 
 func (g *GUI) ToastError(err error) {

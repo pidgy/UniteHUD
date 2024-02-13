@@ -164,24 +164,21 @@ func (g *GUI) overlay(onclose func()) {
 					return decorate.BackgroundAlt(gtx, func(gtx layout.Context) layout.Dimensions {
 						layout.Flex{
 							Axis: layout.Horizontal,
-						}.Layout(
-							gtx,
-							layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-								return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-									img, err := video.Capture()
-									if err != nil {
-										g.ToastError(err)
-										g.next(is.MainMenu)
-									}
+						}.Layout(gtx, layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+							return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+								img, err := video.Capture()
+								if err != nil {
+									g.ToastError(err)
+									g.next(is.MainMenu)
+								}
 
-									return widget.Image{
-										Fit:      fit,
-										Src:      paint.NewImageOp(img),
-										Position: layout.Center,
-									}.Layout(gtx)
-								})
-							}),
-						)
+								return widget.Image{
+									Fit:      fit,
+									Src:      paint.NewImageOp(img),
+									Position: layout.Center,
+								}.Layout(gtx)
+							})
+						}))
 
 						layout.Flex{
 							Axis: layout.Horizontal,
@@ -189,14 +186,15 @@ func (g *GUI) overlay(onclose func()) {
 							gtx,
 							layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
 								return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-									if ui.overlay != nil {
-										return widget.Image{
-											Fit:      widget.Unscaled,
-											Src:      paint.NewImageOp(ui.overlay),
-											Position: layout.Center,
-										}.Layout(gtx)
+									if ui.overlay == nil {
+										return layout.Dimensions{Size: gtx.Constraints.Max}
 									}
-									return layout.Dimensions{Size: gtx.Constraints.Max}
+
+									return widget.Image{
+										Fit:      widget.Unscaled,
+										Src:      paint.NewImageOp(ui.overlay),
+										Position: layout.Center,
+									}.Layout(gtx)
 								})
 							}),
 						)

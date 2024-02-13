@@ -158,8 +158,8 @@ func Close() {
 	reset()
 }
 
-func FPS() (current, expected, quota float64) {
-	return active.fps, active.applied.fps, active.fps / active.applied.fps
+func FPS() (current, quota float64) {
+	return active.fps, active.fps / active.applied.fps
 }
 
 func IsActive() bool {

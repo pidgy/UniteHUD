@@ -19,6 +19,7 @@ import (
 	"github.com/pidgy/unitehud/core/fonts"
 	"github.com/pidgy/unitehud/core/nrgba"
 	"github.com/pidgy/unitehud/gui/cursor"
+	"github.com/pidgy/unitehud/gui/ux"
 	"github.com/pidgy/unitehud/gui/ux/button"
 	"github.com/pidgy/unitehud/gui/ux/decorate"
 )
@@ -152,7 +153,6 @@ func New(title string, collection fonts.Collection, minimize, resize, close func
 					Disabled:     resize == nil,
 					Click: func(this *button.Widget) {
 						defer this.Deactivate()
-
 						if resize != nil {
 							resize()
 						}
@@ -437,6 +437,12 @@ func (b *Widget) Layout(gtx layout.Context, content layout.Widget) layout.Dimens
 	}.Add(gtx.Ops)
 
 	return dims
+}
+
+func (b *Widget) OnClose(fn func(*button.Widget)) ux.Thener {
+	tmp := b.buttons.close.Click
+	b.buttons.close.Click = fn
+	return ux.Then{T: func() { b.buttons.close.Click = tmp }}
 }
 
 func (b *Widget) Open() {

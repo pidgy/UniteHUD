@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -21,6 +20,7 @@ import (
 	"github.com/pidgy/unitehud/core/global"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/nrgba"
+	"github.com/pidgy/unitehud/core/sort"
 	"github.com/pidgy/unitehud/core/state"
 	"github.com/pidgy/unitehud/core/team"
 	"github.com/pidgy/unitehud/core/template"
@@ -218,20 +218,7 @@ func (c *Config) Save() error {
 		return err
 	}
 
-	// Remarshal for an alphabetically sorted object.
-	// -------
-	var i interface{}
-	err = json.Unmarshal(b, &i)
-	if err != nil {
-		return err
-	}
-	b, err = json.MarshalIndent(i, "", "    ")
-	if err != nil {
-		return err
-	}
-	// -------
-
-	_, err = f.Write(b)
+	_, err = f.Write(sort.JSON(b))
 	if err != nil {
 		return err
 	}
@@ -307,6 +294,20 @@ func (c *Config) Total() (total int) {
 		}
 	}
 	return
+}
+
+func (c *Config) TemplateMatchMap() map[string]int {
+	m := make(map[string]int)
+
+	for category := range c.templates {
+		for _, templates := range c.templates[category] {
+			for _, t := range templates {
+				m[t.Truncated()] = 0
+			}
+		}
+	}
+
+	return m
 }
 
 func (c *Config) Templates(category string) map[string][]*template.Template {

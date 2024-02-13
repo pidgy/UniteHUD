@@ -1,8 +1,10 @@
 package save
 
 import (
+	"encoding/json"
 	"fmt"
 	"image"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -18,25 +20,30 @@ import (
 	"github.com/pidgy/unitehud/core/match"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/server"
+	"github.com/pidgy/unitehud/core/sort"
 	"github.com/pidgy/unitehud/core/stats"
 	"github.com/pidgy/unitehud/core/team"
+)
+
+const (
+	// Directories.
+	top    = "saved"
+	images = "img"
+	logs   = "log"
+
+	// Files.
+	templates       = "templates.json"
+	templatesLoaded = "templates_loaded.json"
 )
 
 var (
 	Directory = fmt.Sprintf("%d_%02d_%02d_%02d_%02d", now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute())
 
-	top    = "saved"
-	images = "img"
-	logs   = "log"
-
-	now = time.Now()
-
-	logfile = fmt.Sprintf("unitehud_%d.log", time.Now().Unix())
-
-	cpu, ram *os.File
-
+	cpu, ram   *os.File
 	counts     = map[string]int64{}
 	countsLock = &sync.Mutex{}
+	logfile    = fmt.Sprintf("unitehud_%d.log", now.Unix())
+	now        = time.Now()
 )
 
 func Image(img image.Image, mat gocv.Mat, t *team.Team, p image.Point, value int, r match.Result) string {
@@ -149,6 +156,52 @@ func ProfileStop() {
 	pprof.StopCPUProfile()
 	cpu.Close()
 	ram.Close()
+}
+
+func TemplateStatistics() {
+	all := make(map[string]int)
+
+	f, err := os.OpenFile(templates, os.O_APPEND|os.O_CREATE, 0644)
+	if err != nil {
+		notify.Error("Save: Failed to open %s (%v)", templates, err)
+		return
+	}
+	defer f.Close()
+
+	b, err := io.ReadAll(f)
+	if err != nil {
+		if err != io.EOF {
+			notify.Error("Save: Failed to read %s (%v)", templates, err)
+			return
+		}
+	}
+	if len(b) == 0 {
+		b = []byte("{}")
+	}
+
+	err = json.Unmarshal(b, &all)
+	if err != nil {
+		notify.Error("Save: Failed to unpack %s (%v)", templates, err)
+		return
+	}
+
+	current := stats.AllTemplates()
+
+	for k, v := range current {
+		all[k] += v
+	}
+
+	b, err = json.Marshal(all)
+	if err != nil {
+		notify.Error("Save: Failed to pack %s (%v)", templates, err)
+		return
+	}
+
+	err = os.WriteFile(templates, sort.JSON(b), os.ModePerm)
+	if err != nil {
+		notify.Error("Save: Failed to save %s (%v)", templates, err)
+		return
+	}
 }
 
 func createAllIfNotExist() (string, error) {
