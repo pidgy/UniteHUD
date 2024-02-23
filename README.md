@@ -2,7 +2,7 @@
 
 Pokémon UNITE Scoreboard HUD Overlay
 ----
-### v2.2.0 
+### v3.0.0 
 Download at **[unitehud.dev](https://unitehud.dev)**
 
 ----
