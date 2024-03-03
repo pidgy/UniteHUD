@@ -21,14 +21,12 @@ import (
 )
 
 type areas struct {
-	energy    *area.Widget
-	ko        *area.Widget
+	energy *area.Widget
+	// ko        *area.Widget
 	objective *area.Widget
 	score     *area.Widget
 	state     *area.Widget
 	time      *area.Widget
-
-	onevent func()
 }
 
 type audios struct {
@@ -47,7 +45,6 @@ type videos struct {
 	window   capture
 	monitor  capture
 	platform capture
-	profile  capture
 	apis     capture
 
 	onevent func()
@@ -57,7 +54,7 @@ func (g *GUI) audios(text float32) *audios {
 	a := &audios{
 		in: capture{
 			list: &dropdown.Widget{
-				Theme:         g.header.Collection.NotoSans().Theme,
+				Theme:         g.nav.Collection.NotoSans().Theme,
 				WidthModifier: 1,
 				TextSize:      text,
 				Radio:         true,
@@ -96,7 +93,7 @@ func (g *GUI) audios(text float32) *audios {
 		},
 		out: capture{
 			list: &dropdown.Widget{
-				Theme:         g.header.Collection.NotoSans().Theme,
+				Theme:         g.nav.Collection.NotoSans().Theme,
 				WidthModifier: 1,
 				TextSize:      text,
 				Radio:         true,
@@ -190,120 +187,209 @@ func (g *GUI) audios(text float32) *audios {
 }
 
 func (g *GUI) areas(collection fonts.Collection) *areas {
-	a := &areas{
-		onevent: func() { /*No-op.*/ },
-	}
+	return &areas{
+		objective: &area.Widget{
+			Text:     "Objectives",
+			TextSize: unit.Sp(13),
+			Theme:    collection.Calibri().Theme,
+			Min:      config.Current.XY.Objectives.Min,
+			Max:      config.Current.XY.Objectives.Max,
+			NRGBA:    area.Locked,
+			Match:    g.matchObjectives,
+			Cooldown: time.Second,
 
-	a.ko = &area.Widget{
-		Text:     "KO",
-		TextSize: unit.Sp(13),
-		Theme:    collection.Calibri().Theme,
-		Min:      config.Current.XY.KOs.Min,
-		Max:      config.Current.XY.KOs.Max,
-		NRGBA:    area.Locked,
-		Match:    g.matchKOs,
-		Cooldown: time.Millisecond * 1500,
+			Capture: &area.Capture{
+				Option:      "Objective",
+				File:        "objective_area.png",
+				Base:        config.Current.XY.Objectives,
+				DefaultBase: config.Current.XY.Objectives,
+			},
+		},
 
-		Capture: &area.Capture{
-			Option:      "KO",
-			File:        "ko_area.png",
-			Base:        config.Current.XY.KOs,
-			DefaultBase: config.Current.XY.KOs,
+		energy: &area.Widget{
+			Text:     "Aeos",
+			TextSize: unit.Sp(13),
+			Theme:    collection.Calibri().Theme,
+			Min:      config.Current.XY.Energy.Min,
+			Max:      config.Current.XY.Energy.Max,
+			NRGBA:    area.Locked,
+			Match:    g.matchEnergy,
+			Cooldown: team.Energy.Delay,
+
+			Capture: &area.Capture{
+				Option:      "Aeos",
+				File:        "aeos_area.png",
+				Base:        config.Current.XY.Energy,
+				DefaultBase: config.Current.XY.Energy,
+			},
+		},
+
+		time: &area.Widget{
+			Text:     "Time",
+			TextSize: unit.Sp(12),
+			Theme:    collection.Calibri().Theme,
+			Min:      config.Current.XY.Time.Min,
+			Max:      config.Current.XY.Time.Max,
+			NRGBA:    area.Locked,
+			Match:    g.matchTime,
+			Cooldown: team.Time.Delay,
+
+			Capture: &area.Capture{
+				Option:      "Time",
+				File:        "time_area.png",
+				Base:        config.Current.XY.Time,
+				DefaultBase: config.Current.XY.Time,
+			},
+		},
+
+		score: &area.Widget{
+			Text:          "Score",
+			TextAlignLeft: true,
+			Theme:         collection.Calibri().Theme,
+			Min:           config.Current.XY.Scores.Min,
+			Max:           config.Current.XY.Scores.Max,
+			NRGBA:         area.Locked,
+			Match:         g.matchScore,
+			Cooldown:      team.Purple.Delay,
+
+			Capture: &area.Capture{
+				Option:      "Score",
+				File:        "score_area.png",
+				Base:        config.Current.XY.Scores,
+				DefaultBase: config.Current.XY.Scores,
+			},
+		},
+
+		state: &area.Widget{
+			Hidden: true,
+
+			Text:    "State",
+			Subtext: strings.Title(match.NotFound.String()),
+			Theme:   collection.Calibri().Theme,
+			NRGBA:   area.Locked.Alpha(0),
+			Match:   g.matchState,
+			Min:     image.Pt(0, 0),
+			Max:     image.Pt(150, 25),
+
+			Capture: &area.Capture{
+				Option:      "State",
+				File:        "state_area.png",
+				Base:        video.StateArea(),
+				DefaultBase: video.StateArea(),
+			},
 		},
 	}
 
-	a.objective = &area.Widget{
-		Text:     "Objectives",
-		TextSize: unit.Sp(13),
-		Theme:    collection.Calibri().Theme,
-		Min:      config.Current.XY.Objectives.Min,
-		Max:      config.Current.XY.Objectives.Max,
-		NRGBA:    area.Locked,
-		Match:    g.matchObjectives,
-		Cooldown: time.Second,
+	// a.ko = &area.Widget{
+	// 	Text:     "KO",
+	// 	TextSize: unit.Sp(13),
+	// 	Theme:    collection.Calibri().Theme,
+	// 	Min:      config.Current.XY.KOs.Min,
+	// 	Max:      config.Current.XY.KOs.Max,
+	// 	NRGBA:    area.Locked,
+	// 	Match:    g.matchKOs,
+	// 	Cooldown: time.Millisecond * 1500,
 
-		Capture: &area.Capture{
-			Option:      "Objective",
-			File:        "objective_area.png",
-			Base:        config.Current.XY.Objectives,
-			DefaultBase: config.Current.XY.Objectives,
-		},
-	}
+	// 	Capture: &area.Capture{
+	// 		Option:      "KO",
+	// 		File:        "ko_area.png",
+	// 		Base:        config.Current.XY.KOs,
+	// 		DefaultBase: config.Current.XY.KOs,
+	// 	},
+	// }
 
-	a.energy = &area.Widget{
-		Text:     "Aeos",
-		TextSize: unit.Sp(13),
-		Theme:    collection.Calibri().Theme,
-		Min:      config.Current.XY.Energy.Min,
-		Max:      config.Current.XY.Energy.Max,
-		NRGBA:    area.Locked,
-		Match:    g.matchEnergy,
-		Cooldown: team.Energy.Delay,
+	// a.objective = &area.Widget{
+	// 	Text:     "Objectives",
+	// 	TextSize: unit.Sp(13),
+	// 	Theme:    collection.Calibri().Theme,
+	// 	Min:      config.Current.XY.Objectives.Min,
+	// 	Max:      config.Current.XY.Objectives.Max,
+	// 	NRGBA:    area.Locked,
+	// 	Match:    g.matchObjectives,
+	// 	Cooldown: time.Second,
 
-		Capture: &area.Capture{
-			Option:      "Aeos",
-			File:        "aeos_area.png",
-			Base:        config.Current.XY.Energy,
-			DefaultBase: config.Current.XY.Energy,
-		},
-	}
+	// 	Capture: &area.Capture{
+	// 		Option:      "Objective",
+	// 		File:        "objective_area.png",
+	// 		Base:        config.Current.XY.Objectives,
+	// 		DefaultBase: config.Current.XY.Objectives,
+	// 	},
+	// }
 
-	a.time = &area.Widget{
-		Text:     "Time",
-		TextSize: unit.Sp(12),
-		Theme:    collection.Calibri().Theme,
-		Min:      config.Current.XY.Time.Min,
-		Max:      config.Current.XY.Time.Max,
-		NRGBA:    area.Locked,
-		Match:    g.matchTime,
-		Cooldown: team.Time.Delay,
+	// a.energy = &area.Widget{
+	// 	Text:     "Aeos",
+	// 	TextSize: unit.Sp(13),
+	// 	Theme:    collection.Calibri().Theme,
+	// 	Min:      config.Current.XY.Energy.Min,
+	// 	Max:      config.Current.XY.Energy.Max,
+	// 	NRGBA:    area.Locked,
+	// 	Match:    g.matchEnergy,
+	// 	Cooldown: team.Energy.Delay,
 
-		Capture: &area.Capture{
-			Option:      "Time",
-			File:        "time_area.png",
-			Base:        config.Current.XY.Time,
-			DefaultBase: config.Current.XY.Time,
-		},
-	}
+	// 	Capture: &area.Capture{
+	// 		Option:      "Aeos",
+	// 		File:        "aeos_area.png",
+	// 		Base:        config.Current.XY.Energy,
+	// 		DefaultBase: config.Current.XY.Energy,
+	// 	},
+	// }
 
-	a.score = &area.Widget{
-		Text:          "Score",
-		TextAlignLeft: true,
-		Theme:         collection.Calibri().Theme,
-		Min:           config.Current.XY.Scores.Min,
-		Max:           config.Current.XY.Scores.Max,
-		NRGBA:         area.Locked,
-		Match:         g.matchScore,
-		Cooldown:      team.Purple.Delay,
+	// a.time = &area.Widget{
+	// 	Text:     "Time",
+	// 	TextSize: unit.Sp(12),
+	// 	Theme:    collection.Calibri().Theme,
+	// 	Min:      config.Current.XY.Time.Min,
+	// 	Max:      config.Current.XY.Time.Max,
+	// 	NRGBA:    area.Locked,
+	// 	Match:    g.matchTime,
+	// 	Cooldown: team.Time.Delay,
 
-		Capture: &area.Capture{
-			Option:      "Score",
-			File:        "score_area.png",
-			Base:        config.Current.XY.Scores,
-			DefaultBase: config.Current.XY.Scores,
-		},
-	}
+	// 	Capture: &area.Capture{
+	// 		Option:      "Time",
+	// 		File:        "time_area.png",
+	// 		Base:        config.Current.XY.Time,
+	// 		DefaultBase: config.Current.XY.Time,
+	// 	},
+	// }
 
-	a.state = &area.Widget{
-		Hidden: true,
+	// a.score = &area.Widget{
+	// 	Text:          "Score",
+	// 	TextAlignLeft: true,
+	// 	Theme:         collection.Calibri().Theme,
+	// 	Min:           config.Current.XY.Scores.Min,
+	// 	Max:           config.Current.XY.Scores.Max,
+	// 	NRGBA:         area.Locked,
+	// 	Match:         g.matchScore,
+	// 	Cooldown:      team.Purple.Delay,
 
-		Text:    "State",
-		Subtext: strings.Title(match.NotFound.String()),
-		Theme:   collection.Calibri().Theme,
-		NRGBA:   area.Locked.Alpha(0),
-		Match:   g.matchState,
-		Min:     image.Pt(0, 0),
-		Max:     image.Pt(150, 25),
+	// 	Capture: &area.Capture{
+	// 		Option:      "Score",
+	// 		File:        "score_area.png",
+	// 		Base:        config.Current.XY.Scores,
+	// 		DefaultBase: config.Current.XY.Scores,
+	// 	},
+	// }
 
-		Capture: &area.Capture{
-			Option:      "State",
-			File:        "state_area.png",
-			Base:        video.StateArea(),
-			DefaultBase: video.StateArea(),
-		},
-	}
+	// a.state = &area.Widget{
+	// 	Hidden: true,
 
-	return a
+	// 	Text:    "State",
+	// 	Subtext: strings.Title(match.NotFound.String()),
+	// 	Theme:   collection.Calibri().Theme,
+	// 	NRGBA:   area.Locked.Alpha(0),
+	// 	Match:   g.matchState,
+	// 	Min:     image.Pt(0, 0),
+	// 	Max:     image.Pt(150, 25),
+
+	// 	Capture: &area.Capture{
+	// 		Option:      "State",
+	// 		File:        "state_area.png",
+	// 		Base:        video.StateArea(),
+	// 		DefaultBase: video.StateArea(),
+	// 	},
+	// }
+
+	// return a
 }
 
 func (g *GUI) videos(text float32) *videos {
@@ -313,7 +399,7 @@ func (g *GUI) videos(text float32) *videos {
 
 	v.monitor = capture{
 		list: &dropdown.Widget{
-			Theme:    g.header.Collection.NotoSans().Theme,
+			Theme:    g.nav.Collection.NotoSans().Theme,
 			TextSize: text,
 			Items:    []*dropdown.Item{},
 			Callback: func(i *dropdown.Item, _ *dropdown.Widget) bool {
@@ -321,14 +407,14 @@ func (g *GUI) videos(text float32) *videos {
 
 				video.Close()
 
-				defer v.monitor.populate(true)
-				defer v.window.populate(true)
-				defer v.device.populate(true)
-
 				config.Current.Video.Capture.Window.Name = i.Text
 				if config.Current.Video.Capture.Window.Name == "" {
 					config.Current.Video.Capture.Window.Name = config.MainDisplay
 				}
+
+				defer v.monitor.populate(true)
+				defer v.window.populate(true)
+				defer v.device.populate(true)
 
 				return true
 			},
@@ -359,7 +445,7 @@ func (g *GUI) videos(text float32) *videos {
 				items = append(items,
 					&dropdown.Item{
 						Text:    screen,
-						Checked: widget.Bool{Value: screen == config.Current.Video.Capture.Window.Name},
+						Checked: widget.Bool{Value: video.Active(video.Monitor, screen)},
 					},
 				)
 			}
@@ -368,9 +454,19 @@ func (g *GUI) videos(text float32) *videos {
 		},
 	}
 
+	// v.window = capture{
+	// 	list: &dropdown.Widget{
+	// 		Theme:    g.nav.Collection.NotoSans().Theme,
+	// 		TextSize: text,
+	// 		Items:    []*dropdown.Item{},
+	// 		Callback: func(i *dropdown.Item, _ *dropdown.Widget) bool { return true },
+	// 	},
+	// 	populate: func(videoCaptureDisabledEvent bool) {},
+	// }
+
 	v.window = capture{
 		list: &dropdown.Widget{
-			Theme:    g.header.Collection.NotoSans().Theme,
+			Theme:    g.nav.Collection.NotoSans().Theme,
 			TextSize: text,
 			Items:    []*dropdown.Item{},
 			Callback: func(i *dropdown.Item, _ *dropdown.Widget) bool {
@@ -432,12 +528,13 @@ func (g *GUI) videos(text float32) *videos {
 			}
 
 			v.window.list.Items = items
+
 		},
 	}
 
 	v.device = capture{
 		list: &dropdown.Widget{
-			Theme:    g.header.Collection.NotoSans().Theme,
+			Theme:    g.nav.Collection.NotoSans().Theme,
 			TextSize: text,
 			Items: []*dropdown.Item{
 				{
@@ -457,10 +554,6 @@ func (g *GUI) videos(text float32) *videos {
 					i.Checked.Value = true
 				}
 
-				defer v.device.populate(i.Text == "Disabled")
-				defer v.window.populate(true)
-				defer v.monitor.populate(true)
-
 				go func() {
 					config.Current.Video.Capture.Device.Index = i.Value
 
@@ -470,6 +563,10 @@ func (g *GUI) videos(text float32) *videos {
 						config.Current.Video.Capture.Window.Name = config.MainDisplay
 						config.Current.Video.Capture.Device.Index = config.NoVideoCaptureDevice
 					}
+
+					defer v.device.populate(i.Text == "Disabled")
+					defer v.window.populate(true)
+					defer v.monitor.populate(true)
 				}()
 
 				return true
@@ -520,7 +617,7 @@ func (g *GUI) videos(text float32) *videos {
 
 	v.apis = capture{
 		list: &dropdown.Widget{
-			Theme:    g.header.Collection.NotoSans().Theme,
+			Theme:    g.nav.Collection.NotoSans().Theme,
 			TextSize: text,
 			Items:    []*dropdown.Item{},
 			Callback: func(i *dropdown.Item, this *dropdown.Widget) bool {
@@ -563,7 +660,7 @@ func (g *GUI) videos(text float32) *videos {
 
 	v.platform = capture{
 		list: &dropdown.Widget{
-			Theme: g.header.Collection.NotoSans().Theme,
+			Theme: g.nav.Collection.NotoSans().Theme,
 			Items: []*dropdown.Item{
 				{
 					Text:    strings.Title(config.PlatformSwitch),
@@ -609,55 +706,6 @@ func (g *GUI) videos(text float32) *videos {
 						}
 					})
 				}
-				return true
-			},
-		},
-	}
-
-	v.profile = capture{
-		list: &dropdown.Widget{
-			Theme: g.header.Collection.NotoSans().Theme,
-			Radio: true,
-			Items: []*dropdown.Item{
-				{
-					Text: strings.Title(config.ProfilePlayer),
-					Checked: widget.Bool{
-						Value: config.Current.Profile == config.ProfilePlayer,
-					},
-				},
-				{
-					Text: strings.Title(config.ProfileBroadcaster),
-					Checked: widget.Bool{
-						Value: config.Current.Profile == config.ProfileBroadcaster,
-					},
-				},
-			},
-			Callback: func(i *dropdown.Item, _ *dropdown.Widget) bool {
-				defer v.onevent()
-
-				if config.Current.Profile == strings.ToLower(i.Text) {
-					return true
-				}
-
-				config.Current.Profile = strings.ToLower(i.Text)
-				err := config.Load(config.Current.Profile)
-				if err != nil {
-					notify.Error("UI: Failed to load %s profile configuration", config.Current.Profile)
-					return false
-				}
-
-				v.window.populate(true)
-				v.device.populate(true)
-				v.monitor.populate(true)
-
-				notify.System("UI: Profile set to %s mode", i.Text)
-
-				time.AfterFunc(time.Second, func() {
-					err := config.Current.Save()
-					if err != nil {
-						notify.Error("UI: Failed to save %s profile configuration", config.Current.Profile)
-					}
-				})
 				return true
 			},
 		},

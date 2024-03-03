@@ -223,7 +223,7 @@ func (b *Widget) draw(gtx layout.Context) layout.Dimensions {
 		}.Layout(gtx, b.uniform)
 	} else {
 		widget.Border{
-			Color:        nrgba.NRGBA(config.Current.Theme.Borders).Alpha(50).Color(),
+			Color:        nrgba.NRGBA(config.Current.Theme.BordersIdle).Alpha(50).Color(),
 			Width:        unit.Dp(b.BorderWidth),
 			CornerRadius: unit.Dp(2),
 		}.Layout(gtx, b.uniform)

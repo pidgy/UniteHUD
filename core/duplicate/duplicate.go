@@ -8,7 +8,7 @@ import (
 	"github.com/pidgy/unitehud/core/notify"
 )
 
-const delay = time.Second * 3
+const delay = time.Millisecond * 2500
 
 type Duplicate struct {
 	Value int
@@ -50,27 +50,27 @@ func (d *Duplicate) Close() {
 	}
 }
 
-func (d *Duplicate) Of(d2 *Duplicate) bool {
+func (d *Duplicate) Of(d2 *Duplicate) (bool, string) {
 	if d2.Value == 0 {
-		return false
+		return false, "zero-value"
 	}
 
 	if d == nil || d2 == nil {
-		return false
+		return false, "nil-equality"
 	}
 
 	if d.Empty() || d2.Empty() {
-		return false
+		return false, "empty-equality"
 	}
 
-	// Fallacy to think we'll capture the same values everytime... maybe one day.
-	// if d.Value != d2.Value {
-	// 	return false
-	// }
+	// Fallacy to think we'll capture the same values everytime... maybe one day?
+	if d.Value != d2.Value {
+		return false, "inequality"
+	}
 
-	// Cursed, but same scores 3 seconds apart are 99% duplicate.
+	// Dodrio breaks this, but same scores less than <delay> seconds apart are 99% duplicate.
 	if d.Value != -1 && d.Value == d2.Value && d.Counted && d2.Time.Sub(d.Time) < delay {
-		return true
+		return true, "positive-equality,counted,three-second-window"
 	}
 
 	/*
@@ -106,19 +106,21 @@ func (d *Duplicate) Overrides(prev *Duplicate) bool {
 	}
 }
 
-func (d *Duplicate) Pixels(d2 *Duplicate) bool {
+func (d *Duplicate) Pixels(d2 *Duplicate) (bool, string) {
 	if d == nil || d2 == nil {
-		return false
+		return false, "nil-equality"
 	}
+
 	if d.Value == 0 || d2.Value == 0 {
-		return false
+		return false, "zero-equality"
 	}
 
 	mat := gocv.NewMat()
 	defer mat.Close()
 
 	gocv.MatchTemplate(d.region, d2.region, &mat, gocv.TmCcoeffNormed, gocv.NewMat())
+
 	_, maxc, _, _ := gocv.MinMaxLoc(mat)
 
-	return maxc > 0.91
+	return maxc > 0.91, "max-gt-91"
 }

@@ -120,9 +120,9 @@ func Label() string {
 		return "🔈 Audio Disabled"
 	}
 
-	speakers := []string{"🔊", "🔊"}
+	speakers := []string{"🎤", "🔊"}
 	if current.input.IsDisabled() {
-		speakers[0] = "🔈"
+		speakers[0] = "🎤"
 	}
 	if current.output.IsDisabled() {
 		speakers[1] = "🔈"

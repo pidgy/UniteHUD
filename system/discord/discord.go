@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/pidgy/unitehud/core/config"
-	"github.com/pidgy/unitehud/core/global"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/nrgba"
 	"github.com/pidgy/unitehud/core/server"
@@ -43,21 +42,16 @@ var (
 )
 
 func Connect() {
-	if global.DebugMode {
-		return
-	}
-
-	update()
-
 	t := time.NewTicker(time.Second * 5)
+	update()
 	for range t.C {
 		update()
 	}
 }
 
-func Disconnect() {
+func Close() {
 	rpc.cleanup()
-	notify.Feed(nrgba.Discord, "Discord: Disconnected")
+	notify.Feed(nrgba.Discord, "Discord: Connection closed")
 }
 
 func reconnect() {
@@ -78,14 +72,13 @@ func reconnect() {
 		}
 		wait = wait << 1
 
-		retries++
-		if retries == 10 {
-			notify.Warn("Discord: Failed to connect, rpc disabled")
+		notify.Feed(nrgba.Discord, "Discord: Connecting...")
+
+		if retries++; retries == 5 {
+			notify.Warn("Discord: Failed to connect, disabling RPC")
 			config.Current.Advanced.Discord.Disabled = true
 			continue
 		}
-
-		notify.Feed(nrgba.Discord, "Discord: Connecting...")
 
 		rpc, err = connect()
 		if err != nil {

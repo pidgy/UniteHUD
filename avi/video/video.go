@@ -10,6 +10,25 @@ import (
 	"github.com/pidgy/unitehud/core/notify"
 )
 
+type Input string
+
+const (
+	Monitor Input = "monitor"
+	Device  Input = "video-capture-device"
+	Window  Input = "window"
+)
+
+func Active(i Input, name string) bool {
+	switch i {
+	case Device:
+		return device.IsActive() && device.ActiveName() == name
+	case Monitor:
+		return !device.IsActive() && monitor.Active(name)
+	default:
+		return !device.IsActive() && window.IsOpen()
+	}
+}
+
 func Capture() (img *image.RGBA, err error) {
 	if device.IsActive() {
 		return device.Capture()

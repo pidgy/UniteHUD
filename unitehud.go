@@ -2,6 +2,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
 
@@ -16,7 +17,6 @@ import (
 	"github.com/pidgy/unitehud/core/stats"
 	"github.com/pidgy/unitehud/core/team"
 	"github.com/pidgy/unitehud/gui/ui"
-	"github.com/pidgy/unitehud/gui/ux/electron"
 	"github.com/pidgy/unitehud/system/discord"
 	"github.com/pidgy/unitehud/system/process"
 	"github.com/pidgy/unitehud/system/save"
@@ -42,7 +42,7 @@ func kill(errs ...error) {
 	}
 
 	for _, err := range errs {
-		notify.Error("UniteHUD: Force Shutdown (%v)", err)
+		notify.Error("UniteHUD: Crashed (%v)", err)
 	}
 
 	report := make(chan bool)
@@ -76,7 +76,6 @@ func signals() {
 	<-sigq
 
 	video.Close()
-	electron.CloseApp()
 	audio.Close()
 	ui.UI.Close()
 
@@ -89,14 +88,20 @@ func main() {
 	ui.New()
 	defer ui.UI.Open()
 
-	err := process.Replace()
+	defer func() {
+		if r := recover(); r != nil {
+			kill(fmt.Errorf("%v", r))
+		}
+	}()
+
+	err := process.Start()
 	if err != nil {
 		notify.SystemWarn("UniteHUD: Failed to stop previous process (%v)", err)
 	}
 
 	err = config.Load(config.Current.Profile)
 	if err != nil {
-		kill(err)
+		notify.Error("UniteHUD: Failed to load %s (%v)", config.Current.File(), err)
 	}
 
 	err = video.Open()
@@ -114,7 +119,6 @@ func main() {
 		notify.Error("UniteHUD: Failed to start server (%v)", err)
 	}
 
-	go electron.OpenApp()
 	go discord.Connect()
 
 	notify.Debug("UniteHUD: Server Address (%s)", server.Address)
@@ -141,29 +145,22 @@ func main() {
 			case ui.Closing:
 				signal.Reset()
 				close(sigq)
-			case ui.Config:
-				server.SetConfig(true)
-				fallthrough
 			case ui.Start:
-				detect.Resume()
+				server.SetConfig(true)
 
-				notify.Announce("UniteHUD: Starting %s...", global.Title)
+				detect.Resume()
 
 				notify.Clear()
 				server.Clear()
-				team.Clear()
-				stats.Clear()
 				state.Clear()
-
-				notify.Announce("UniteHUD: Started %s", global.Title)
+				stats.Clear()
+				team.Clear()
 
 				server.SetStarted()
+
+				notify.Announce("UniteHUD: Started %s", global.Title)
 			case ui.Stop:
 				detect.Pause()
-
-				notify.Announce("UniteHUD: Stopping %s...", global.Title)
-
-				notify.Announce("UniteHUD: Stopped %s", global.Title)
 
 				server.Clear()
 				team.Clear()
@@ -172,50 +169,7 @@ func main() {
 
 				save.TemplateStatistics()
 
-				if !config.Current.Record {
-					continue
-				}
-
-				fallthrough
-			case ui.Record:
-				config.Current.Record = !config.Current.Record
-
-				str := "Closing"
-				if config.Current.Record {
-					str = "Recording"
-				}
-
-				notify.System("UniteHUD: %s template match results in %s", str, save.Directory)
-
-				if config.Current.Record {
-					notify.System("UniteHUD: Record directory set to \"%s\"", save.Directory)
-
-					err = config.Current.Save()
-					if err != nil {
-						notify.Error("Failed to save UniteHUD configuration (%v)", err)
-					}
-
-					err := save.Open()
-					if err != nil {
-						notify.Error("UniteHUD: Failed to open \"%s\" (%v)", save.Directory, err)
-					}
-				} else {
-					notify.System("UniteHUD: Closing open files in %s", save.Directory)
-				}
-			case ui.Log:
-				save.Logs()
-
-				err := save.Open()
-				if err != nil {
-					notify.Error("UniteHUD: Failed to open \"%s\" (%v)", save.Directory, err)
-				}
-			case ui.Open:
-				notify.System("UniteHUD: Opening \"%s\"", save.Directory)
-
-				err := save.Open()
-				if err != nil {
-					notify.Error("UniteHUD: Failed to open \"%s\" (%v)", save.Directory, err)
-				}
+				notify.Announce("UniteHUD: Stopped %s", global.Title)
 			case ui.Refresh:
 				notify.Debug("UniteHUD: Action received (Refresh)")
 			}

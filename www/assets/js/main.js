@@ -1,37 +1,83 @@
-const version = "v3.0.0";
 const urlWS = "ws://127.0.0.1:17069/ws";
 const urlHTTP = "http://127.0.0.1:17069/http";
 
-var loaders = [".", "..", "..."];
-var loaderIndex = 0;
-var loggedError = false;
-var lastShake = 0;
-var testing = false;
+const cached = {
+    messages: {
+        ready: `UniteHUD`,
+    },
+    images: {
+        regis: ['assets/img/regice.png', 'assets/img/regirock.png', 'assets/img/registeel.png'],
+    }
+}
 
-const bots = ['assets/img/regice.png', 'assets/img/regirock.png', 'assets/img/registeel.png'];
+var intervals = {
+    loading: {
+        _text: ["", ".", "..", "..."],
+        _idx: 0,
+        get next() { this._idx = ++this._idx % this._text.length; return this._text[this._idx]; },
+    },
+    _shake: 0,
+    _spin: 0,
+    should: {
+        get shake() { if (++intervals._shake == 4) { intervals._shake = 0; return true } return false; },
+        get spin() { if (++intervals._spin == 4) { intervals._spin = 0; return true } return false; },
+    },
+};
+
+var prev = {
+    "profile": "player",
+    "version": "debug",
+    "started": true,
+    "seconds": 10 * 60,
+    "purple": { "value": 0, "kos": 0 },
+    "orange": { "value": 0, "kos": 0 },
+    "self": { "value": 0, "kos": 0 },
+    "stacks": 0,
+    "regis": ["none", "none", "none"], // purple, orange, none.
+    "bottom": [], // {"name": "registeel", "team": "purple"}
+};
+
+
+function animate() {
+    if (intervals.should.shake) {
+        $('.error').css('animation', 'shake 1s cubic-bezier(.36,.07,.19,.97) both');
+    } else {
+        $('.error').css('animation', 'none');
+    }
+
+    if (intervals.should.spin) {
+        $('.logo').css('animation', 'rotate-center 1s cubic-bezier(.36,.07,.19,.97) both');
+    } else {
+        $('.logo').css('animation', 'none');
+    }
+}
 
 function clear(err = '') {
+    $('.error').css('opacity', '.9');
+    $('.error').html(err);
+    if (err.includes(cached.messages.ready)) {
+        $('.error').css('opacity', .25);
+    }
+
     $('.purple').css('opacity', 0);
     $('.orange').css('opacity', 0);
     $('.self').css('opacity', 0);
-    $('.regis').css('opacity', 0);
-    $('.regis-bottom').css('opacity', 0);
-    $('.rayquaza').css('opacity', 0);
-    $('.error').css('opacity', '.9');
-    $('.error').html(err);
+    $('.objectives-top').css('opacity', 0);
+    $('.objectives-bottom').css('opacity', 0);
+    $('.objectives-central').css('opacity', 0);
 
-    $(`.rayquaza-1 .rayquaza-circle-purple`).css('opacity', 0);
-    $(`.rayquaza-1 .rayquaza-circle-orange`).css('opacity', 0);
-    $(`.rayquaza-1 .rayquaza-circle-none`).css('opacity', 1);
-    $(`.rayquaza-img-1`).css('opacity', .75);
+    $(`.objectives-central-1 .objectives-central-circle-purple`).css('opacity', 0);
+    $(`.objectives-central-1 .objectives-central-circle-orange`).css('opacity', 0);
+    $(`.objectives-central-1 .objectives-central-circle-none`).css('opacity', 1);
+    $(`.objectives-central-img-1`).css('opacity', .75);
 
     for (var i = 1; i <= 3; i++) {
-        $(`.regis-bottom-${i} .regis-bottom-circle-purple`).css('opacity', 0);
-        $(`.regis-bottom-${i} .regis-bottom-circle-orange`).css('opacity', 0);
-        $(`.regis-bottom-img-${i}`).attr('src', bots[i]);
-        $(`.regis-bottom-img-${i}`).css('opacity', .75);
+        $(`.objectives-bottom-${i} .objectives-bottom-circle-purple`).css('opacity', 0);
+        $(`.objectives-bottom-${i} .objectives-bottom-circle-orange`).css('opacity', 0);
+        $(`.objectives-bottom-img-${i}`).attr('src', cached.images.regis[i]);
+        $(`.objectives-bottom-img-${i}`).css('opacity', .75);
 
-        $(`.regis-img-${i}`).css('opacity', .75);
+        $(`.objectives-img-${i}`).css('opacity', .75);
     }
 }
 
@@ -39,27 +85,16 @@ function error(err) {
     switch (typeof err) {
         case "string":
             clear(`${err}`);
-
-            if (!loggedError) {
-                loggedError = true
-
-                console.error(`${err}`);
-
-                setTimeout(() => {
-                    loggedError = false;
-                }, 3600000);
-            }
-
             break;
         default:
-            clear(`Connecting${loaders[loaderIndex]}`);
+            clear(`Connecting${intervals.loading.next}`);
+            break;
     }
 
-    loaderIndex = (loaderIndex + 1) % loaders.length;
-
-    return shake();
+    return animate();
 }
 
+// HTTP connection handler.
 function http() {
     $.ajax({
         type: 'GET',
@@ -67,127 +102,149 @@ function http() {
         url: urlHTTP,
         timeout: 1000,
         success: function(data, status) {
-            success(data);
+            render(data);
         },
         error: error(),
     });
 };
 
-function shake() {
-    if (++lastShake === 5) {
-        $('.error').css('animation', 'shake 1s cubic-bezier(.36,.07,.19,.97) both');
-        $('.logo').css('animation', 'shake 1s cubic-bezier(.36,.07,.19,.97) both');
-        lastShake = 0;
-    } else {
-        $('.error').css('animation', 'none');
-        $('.logo').css('animation', 'none');
-    }
-}
-
-function success(data) {
-    loggedError = false;
-
-    if (testing) {
-        console.log(JSON.stringify(data))
-    }
-
-    if (data.profile != "player") {
-        error(`Invalid profile (${data.profile})`);
-        return shake();
-    }
-
+// Successfully connected to the UniteHUD application.
+async function render(data) {
+    // User has not pressed "start".
     if (!data.started) {
-        clear(`Press Start`);
-        return shake();
+        return error(`Press Start`);
     }
 
-    if (data.seconds > 0) {
+    // User has presseed "start", awaiting match detection.
+    if (data.seconds == 0) {
+        return clear(`${cached.messages.ready} <span>${data.version}</span>`);
+    }
+
+    // Render HUD.
+    {
+        $('.error').html('');
         $('.purple').css('opacity', 1);
         $('.orange').css('opacity', 1);
-        $('.self').css('opacity', 1);
-        $('.regis').css('opacity', 1);
-        $('.regis-bottom').css('opacity', 1);
-        $('.rayquaza').css('opacity', 1);
+        $('.objectives-top').css('opacity', 1);
+        $('.objectives-bottom').css('opacity', 1);
+        $('.objectives-central').css('opacity', 1);
+    }
 
-        var p = 0;
-        var o = 0;
+    // Render scores.
+    {
+        $('.purplescore').html(`<div class="animated">${data.purple.value}</div> <span><i>~ ${data.purple.value + data.regis.filter(x => x === "purple").length * 20}</i></span>`);
+        $('.orangescore').html(`<div class="animated">${data.orange.value}</div> <span><i>~ ${data.orange.value + data.regis.filter(x => x === "orange").length * 20}</i></span>`);
+
+        // Check if orange team scored.
+        if (prev.orange && prev.orange.value != data.orange.value) {
+            $('.orangescore .animated').css('animation', 'scored 1s cubic-bezier(.36,.07,.19,.97) both');
+            prev.orange.value = data.orange.value;
+        } else {
+            $('.orangescore .animated').css('animation', 'none');
+        }
+
+        // Check if purple team scored. 
+        if (prev.purple && prev.purple.value != data.purple.value) {
+            $('.purplescore .animated').css('animation', 'scored 1s cubic-bezier(.36,.07,.19,.97) both');
+            prev.purple.value = data.purple.value;
+        } else {
+            $('.purplescore .animated').css('animation', 'none');
+        }
+    }
+
+    // Render top objectives.
+    {
+        var elekis = {
+            "none": ["none", "orange", "purple"],
+            "purple": ["purple", "orange", "none"],
+            "orange": ["orange", "purple", "none"],
+        }
+
         for (var i in data.regis) {
-            if (data.regis[i] == "purple") {
-                p += 20;
-            } else if (data.regis[i] == "orange") {
-                o += 20;
+            i = parseInt(i);
+
+            if (data.regis[i] == "none") {
+                $(`.objectives-img-${i+1}`).css('opacity', .75);
+                $(`.objectives-img-${i+1}`).css('animation', 'none');
+            } else {
+                $(`.objectives-img-${i+1}`).css('opacity', 1);
+                $(`.objectives-img-${i+1}`).css('animation', 'secured 1s cubic-bezier(.36,.07,.19,.97) both');
+
+                if (data.regis[i] != prev.regis[i]) {
+                    $(`.${data.regis[i]}score span`).css('animation', 'scored 1s cubic-bezier(.36,.07,.19,.97) both');
+                    prev.regis[i] = data.regis[i];
+                }
+            }
+
+            $(`.objectives-${i+1} .objectives-circle-${elekis[data.regis[i]][0]}`).css('opacity', 1);
+            $(`.objectives-${i+1} .objectives-circle-${elekis[data.regis[i]][1]}`).css('opacity', 0);
+            $(`.objectives-${i+1} .objectives-circle-${elekis[data.regis[i]][2]}`).css('opacity', 0);
+        }
+    }
+
+    // Render central objectives.
+    {
+        $(`.objectives-central-1 .objectives-central-circle-purple`).css('opacity', 0);
+        $(`.objectives-central-1 .objectives-central-circle-orange`).css('opacity', 0);
+        $(`.objectives-central-1 .objectives-central-circle-none`).css('opacity', 1);
+
+        if (data.rayquaza) {
+            $(`.objectives-central-1 .objectives-central-circle-none`).css('opacity', 0);
+            $(`.objectives-central-1 .objectives-central-circle-${data.rayquaza}`).css('opacity', 1);
+            $(`.objectives-central-img-1`).css('opacity', 1);
+            $(`.objectives-central-img-1`).css('animation', 'secured 1s cubic-bezier(.36,.07,.19,.97) both');
+        } else {
+            $(`.objectives-central-img-1`).css('opacity', .75);
+            $(`.objectives-central-img-1`).css('animation', 'none');
+        }
+    }
+
+    // Render bottom objectives.
+    {
+        for (var i = 0; i < 3; i++) {
+            $(`.objectives-bottom-${i+1} .objectives-bottom-circle-purple`).css('opacity', 0);
+            $(`.objectives-bottom-${i+1} .objectives-bottom-circle-orange`).css('opacity', 0);
+            $(`.objectives-bottom-${i+1} .objectives-bottom-circle-none`).css('opacity', 0);
+
+            if (data.bottom.length <= i) {
+                $(`.objectives-bottom-${i+1} .objectives-bottom-circle-purple`).css('opacity', 0);
+                $(`.objectives-bottom-${i+1} .objectives-bottom-circle-orange`).css('opacity', 0);
+                $(`.objectives-bottom-${i+1} .objectives-bottom-circle-none`).css('opacity', 1);
+                $(`.objectives-bottom-img-${i+1}`).attr('src', cached.images.regis[i]);
+                $(`.objectives-bottom-img-${i+1}`).css('opacity', .75);
+                $(`.objectives-bottom-img-${i+1}`).css('animation', 'none');
+            } else {
+                var obj = data.bottom[i];
+                $(`.objectives-bottom-${i+1} .objectives-bottom-circle-${obj.team}`).css('opacity', 1);
+                $(`.objectives-bottom-img-${i+1}`).attr('src', `assets/img/${obj.name}.png`);
+                $(`.objectives-bottom-img-${i+1}`).css('opacity', '1');
+                $(`.objectives-bottom-img-${i+1}`).css('animation', 'secured 1s cubic-bezier(.36,.07,.19,.97) both');
             }
         }
-
-        $('.purplescore').html(`${data.purple.value}`);
-        if (p > 0) {
-            $('.purplescore').html(`${data.purple.value} <span><img class="regis-img-tiny" src="assets/img/regieleki.png">x${p/20}</span>`);
-        }
-        $('.orangescore').html(`${data.orange.value}`);
-        if (o > 0) {
-            $('.orangescore').html(`${data.orange.value} <span><img class="regis-img-tiny" src="assets/img/regieleki.png">x${o/20}</span>`);
-        }
-    } else {
-        clear();
-    }
-
-    var elekis = {
-        "none": ["none", "orange", "purple"],
-        "purple": ["purple", "orange", "none"],
-        "orange": ["orange", "purple", "none"],
-    }
-
-    for (var i in data.regis) {
-        i = parseInt(i);
-
-        if (data.regis[i] == "none") {
-            console.log(data.regis[i])
-
-            $(`.regis-img-${i+1}`).css('opacity', .75);
-        } else {
-            $(`.regis-img-${i+1}`).css('opacity', 1);
-        }
-        $(`.regis-${i+1} .regis-circle-${elekis[data.regis[i]][0]}`).css('opacity', 1);
-        $(`.regis-${i+1} .regis-circle-${elekis[data.regis[i]][1]}`).css('opacity', 0);
-        $(`.regis-${i+1} .regis-circle-${elekis[data.regis[i]][2]}`).css('opacity', 0);
-    }
-
-    for (var i = 0; i < 3; i++) {
-        $(`.regis-bottom-${i+1} .regis-bottom-circle-purple`).css('opacity', 0);
-        $(`.regis-bottom-${i+1} .regis-bottom-circle-orange`).css('opacity', 0);
-        $(`.regis-bottom-${i+1} .regis-bottom-circle-none`).css('opacity', 0);
-
-        if (data.bottom.length > i) {
-            var obj = data.bottom[i];
-            $(`.regis-bottom-${i+1} .regis-bottom-circle-${obj.team}`).css('opacity', 1);
-            $(`.regis-bottom-img-${i+1}`).attr('src', `assets/img/${obj.name}.png`);
-            $(`.regis-bottom-img-${i+1}`).css('opacity', '1');
-        } else {
-            $(`.regis-bottom-${i+1} .regis-bottom-circle-purple`).css('opacity', 0);
-            $(`.regis-bottom-${i+1} .regis-bottom-circle-orange`).css('opacity', 0);
-            $(`.regis-bottom-${i+1} .regis-bottom-circle-none`).css('opacity', 1);
-            $(`.regis-bottom-img-${i+1}`).attr('src', bots[i]);
-            $(`.regis-bottom-img-${i+1}`).css('opacity', .75);
-        }
-    }
-
-    $(`.rayquaza-1 .rayquaza-circle-purple`).css('opacity', 0);
-    $(`.rayquaza-1 .rayquaza-circle-orange`).css('opacity', 0);
-    $(`.rayquaza-1 .rayquaza-circle-none`).css('opacity', 1);
-
-    if (data.rayquaza) {
-        $(`.rayquaza-1 .rayquaza-circle-none`).css('opacity', 0);
-        $(`.rayquaza-1 .rayquaza-circle-${data.rayquaza}`).css('opacity', 1);
-        $(`.rayquaza-img-1`).css('opacity', 1);
-    } else {
-        $(`.rayquaza-img-1`).css('opacity', .75);
     }
 }
 
+const syncInterval = function(func, delay) {
+    var intervalFunction, timeoutId, clear;
+    // Call to clear the interval.
+    clear = function() {
+        clearTimeout(timeoutId);
+    };
+    intervalFunction = function() {
+            func();
+            timeoutId = setTimeout(intervalFunction, delay);
+        }
+        // Delay start.
+    timeoutId = setTimeout(intervalFunction, delay);
+    // You should capture the returned function for clearing.
+    return clear;
+};
+
+// WebSocket connection handler.
 function websocket() {
     let socket = new WebSocket(urlWS);
     socket.onmessage = function(event) {
-        success(JSON.parse(event.data));
+        render(JSON.parse(event.data));
     };
     socket.onerror = error;
 }
@@ -195,49 +252,68 @@ function websocket() {
 $(document).ready(() => {
     clear();
 
-    if (testing) {
-        return sendtestdata();
+    switch (true) {
+        case window.location.search.includes('debug'):
+            syncInterval(debug.start, 1000);
+            break;
+        case window.location.search.includes('http'):
+            console.log(`[UniteHUD] creating http connection to ${urlHTTP}`);
+            syncInterval(http, 1000);
+            break;
+        default:
+            console.info(`[UniteHUD] creating websocket connection to ${urlWS} (add "?http" to connect to the http endpoint)`);
+            syncInterval(websocket, 1000);
+            break;
     }
-
-    const query = window.location.search;
-    var args = query.split("?");
-
-    if (args.length == 2 && args[1] == "http") {
-        console.log(`[UniteHUD] creating http connection to ${urlHTTP}`);
-        setInterval(http, 1000);
-        return;
-    }
-
-    console.info(`[UniteHUD] creating websocket connection to ${urlWS} (add "?http" to connect to the http endpoint)`);
-
-    setInterval(websocket, 1000);
 });
 
-function sendtestdata() {
-    return setInterval(() => {
-        clear(`Testing${loaders[loaderIndex]}`);
-        if (!testing) {
-            return;
-        }
+const debug = {
+    get error() { return error(); },
+    get prev() { return console.info(JSON.stringify(prev, null, 2)); },
+    get start() { return () => { debug.data ? render(debug.data) : debug.reset; }; },
+    get object() { return console.info(debug.data); },
+    get json() { return console.info(JSON.stringify(debug.data, null, 2)); },
+    get reset() {
+        $('body').css('background-image', 'url("assets/img/sample-bg.png")');
 
-        success({
+        return debug.data = {
             "profile": "player",
-            // "profile": "broadcaster",
-            "version": version,
+            "version": debug,
             "started": true,
-            "seconds": 360,
-            "purple": { "value": 195, "kos": 1 },
-            "orange": { "value": 102, "kos": 1 },
-            "self": { "value": 132, "kos": 1 },
-            "stacks": 6,
-            "regis": ["purple", "orange", "orange"],
-            // "regis": ["purple", "orange", "purple"],
-            "bottom": [
-                { "name": "registeel", "team": "purple" },
-                { "name": "regirock", "team": "orange" },
-                // { "name": "registeel", "team": "purple" },
-                // { "name": "regice", "team": "orange" },
-            ],
-        });
-    }, 1000);
-}
+            "seconds": 10 * 60,
+            "purple": { "value": 0, "kos": 0 },
+            "orange": { "value": 0, "kos": 0 },
+            "self": { "value": 0, "kos": 0 },
+            "stacks": 0,
+            "regis": ["none", "none", "none"], // purple, orange, none.
+            "bottom": [], // {"name": "registeel", "team": "purple"}
+        };
+    },
+    started: {
+        get toggle() { return debug.data.started = !debug.data.started; },
+    },
+    time: {
+        get finalstretch() { return debug.data.seconds = 120; },
+    },
+    score: {
+        get purple() { return debug.data.purple.value += Math.floor(Math.random() * 100); },
+        get orange() { return debug.data.orange.value += Math.floor(Math.random() * 100); },
+    },
+    objectives: {
+        top: {
+            get purple() { return debug.data.regis[debug.data.regis.filter(x => x !== "none").length] = "purple"; },
+            get orange() { return debug.data.regis[debug.data.regis.filter(x => x !== "none").length] = "orange"; },
+            get clear() { return debug.data.regis = ["none", "none", "none"]; },
+        },
+        bottom: {
+            get purple() { return debug.data.bottom.push({ "name": ["regirock", "registeel", "regice"][Math.floor(Math.random() * 3)], "team": "purple" }); },
+            get orange() { return debug.data.bottom.push({ "name": ["regirock", "registeel", "regice"][Math.floor(Math.random() * 3)], "team": "orange" }); },
+            get clear() { return debug.data.bottom = []; },
+        },
+        central: {
+            get purple() { return debug.data.rayquaza = "purple"; },
+            get orange() { return debug.data.rayquaza = "orange"; },
+            get clear() { return debug.data.rayquaza = ""; },
+        },
+    },
+};

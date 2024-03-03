@@ -110,21 +110,21 @@ func (e EventType) String() string {
 	case PurpleScoreMissed:
 		return "Purple score missed"
 	case RegielekiSecurePurple:
-		return "Regieleki Secured (Purple)"
+		return "[Purple] Regieleki"
 	case RegielekiSecureOrange:
-		return "Regieleki Secured (Orange)"
+		return "[Orange] Regieleki"
 	case RegiceSecurePurple:
-		return "Regice Secured (Purple)"
+		return "[Purple] Regice"
 	case RegiceSecureOrange:
-		return "Regice Secured (Orange)"
+		return "[Orange] Regice"
 	case RegirockSecurePurple:
-		return "Regirock Secured (Purple)"
+		return "[Purple] Regirock"
 	case RegirockSecureOrange:
-		return "Regirock Secured (Orange)"
+		return "[Orange] Regirock"
 	case RegisteelSecurePurple:
-		return "Registeel Secured (Purple)"
+		return "[Purple] Registeel"
 	case RegisteelSecureOrange:
-		return "Registeel Secured (Orange)"
+		return "[Orange] Registeel"
 	case PressButtonToScore:
 		return "Press button to score"
 	case ScoreOverride:
@@ -140,17 +140,17 @@ func (e EventType) String() string {
 	case ServerStopped:
 		return "Server Stopped"
 	case KOPurple:
-		return "+1 KO (Purple)"
+		return "[Purple] +1 KO"
 	case KOOrange:
-		return "+1 KO (Orange)"
+		return "[Orange] +1 KO"
 	case KOStreakPurple:
-		return "KO Streak (Purple)"
+		return "[Purple] KO Streak"
 	case KOStreakOrange:
-		return "KO Streak (Orange)"
+		return "[Orange] KO Streak"
 	case RayquazaSecurePurple:
-		return "Rayquaza Secured (Purple)"
+		return "[Purple] Rayquaza"
 	case RayquazaSecureOrange:
-		return "Rayquaza Secured (Orange)"
+		return "[Orange] Rayquaza"
 	default:
 		return fmt.Sprintf("Unknown (%d)", e.Int())
 	}
@@ -214,13 +214,26 @@ func (e *Event) Strip() string {
 	return fmt.Sprintf("[%s] %s", e.Clock, e.EventType)
 }
 
-func (e EventType) Occured(since time.Duration) *Event {
+func (this EventType) Before(that EventType) bool {
+	for i := len(Events) - 1; i >= 0; i-- {
+		switch {
+		case Events[i].EventType == this:
+			return true
+		case Events[i].EventType == that:
+			return false
+		}
+	}
+
+	return false
+}
+
+func (this EventType) Occured(since time.Duration) *Event {
 	for _, event := range Events {
 		if time.Since(event.Time) > since {
 			return nil
 		}
 
-		if e == event.EventType {
+		if this == event.EventType {
 			return event
 		}
 	}
@@ -282,19 +295,6 @@ func Recent(e EventType) bool {
 	return false
 }
 
-func (this EventType) Before(that EventType) bool {
-	for i := len(Events) - 1; i >= 0; i-- {
-		switch {
-		case Events[i].EventType == this:
-			return true
-		case Events[i].EventType == that:
-			return false
-		}
-	}
-
-	return false
-}
-
 func ScoredBy(name string) EventType {
 	switch name {
 	case team.Purple.Name:
@@ -351,4 +351,17 @@ func Strings(since time.Duration) []string {
 	}
 
 	return s
+}
+
+func (this EventType) Team() *team.Team {
+	switch this {
+	case PressButtonToScore, PreScore, PostScore, Killed, KilledWithPoints, KilledWithoutPoints, HoldingEnergy:
+		return team.Self
+	case OrangeScore, RegielekiSecureOrange, RegiceSecureOrange, RegirockSecureOrange, RegisteelSecureOrange, RayquazaSecureOrange:
+		return team.Orange
+	case FirstScored, PurpleScore, RegielekiSecurePurple, RegiceSecurePurple, RegirockSecurePurple, RegisteelSecurePurple, RayquazaSecurePurple:
+		return team.Purple
+	default:
+		return team.Game
+	}
 }

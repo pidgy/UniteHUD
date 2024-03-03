@@ -3,14 +3,17 @@ package process
 import (
 	"os"
 	"path"
+	"runtime"
 	"strings"
 	"syscall"
+	"time"
 	"unsafe"
 
+	"github.com/pidgy/unitehud/core/global"
 	"golang.org/x/sys/windows"
 )
 
-const TH32CS_SNAPPROCESS = 0x00000002
+const TH32CSSnapProcess = 0x00000002
 
 type Process struct {
 	ID       int
@@ -18,15 +21,55 @@ type Process struct {
 	Exe      string
 }
 
-func Replace() error {
-	for _, exe := range []string{"UniteHUD.exe", "UniteHUD_Debug.exe"} {
-		err := kill(path.Base(exe))
-		if err != nil {
-			return err
-		}
+var (
+	handle syscall.Handle
+
+	ctime, etime, ktime, utime syscall.Filetime
+	prev, usage                = ctime.Nanoseconds(), ktime.Nanoseconds() + utime.Nanoseconds()
+	cpus                       = float64(runtime.NumCPU()) - 2
+
+	memory runtime.MemStats
+)
+
+func CPU() (float64, error) {
+	err := syscall.GetProcessTimes(handle, &ctime, &etime, &ktime, &utime)
+	if err != nil {
+		return 0.0, err
+	}
+
+	now := time.Now().UnixNano()
+	diff := now - prev
+
+	current := ktime.Nanoseconds() + utime.Nanoseconds()
+	diff2 := current - usage
+
+	prev = now
+	usage = current
+
+	return (100 * float64(diff2) / float64(diff)) / cpus, nil
+}
+
+func RAM() float64 {
+	runtime.ReadMemStats(&memory)
+	return (float64(memory.Sys) / 1024 / 1024)
+}
+
+func Start() error {
+	err := replace()
+	if err != nil {
+		return err
+	}
+
+	handle, err = syscall.GetCurrentProcess()
+	if err != nil {
+		return err
 	}
 
 	return nil
+}
+
+func Uptime() time.Time {
+	return time.Time{}.Add(time.Since(global.Uptime))
 }
 
 func kill(exe string) error {
@@ -52,7 +95,7 @@ func kill(exe string) error {
 }
 
 func all() ([]Process, error) {
-	handle, err := windows.CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0)
+	handle, err := windows.CreateToolhelp32Snapshot(TH32CSSnapProcess, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -96,4 +139,15 @@ func from(e *windows.ProcessEntry32) Process {
 		ParentID: int(e.ParentProcessID),
 		Exe:      syscall.UTF16ToString(e.ExeFile[:end]),
 	}
+}
+
+func replace() error {
+	for _, exe := range []string{"UniteHUD.exe", "UniteHUD_Debug.exe"} {
+		err := kill(path.Base(exe))
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

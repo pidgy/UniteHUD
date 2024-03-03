@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"image"
 	"math"
-	"runtime"
-	"syscall"
 	"time"
 	"unsafe"
 
@@ -22,6 +20,7 @@ import (
 	"github.com/pidgy/unitehud/core/stats"
 	"github.com/pidgy/unitehud/gui/is"
 	"github.com/pidgy/unitehud/gui/ux/title"
+	"github.com/pidgy/unitehud/system/process"
 )
 
 type Action string
@@ -30,7 +29,7 @@ type GUI struct {
 	HWND uintptr
 
 	window *app.Window
-	header *title.Widget
+	nav    *title.Widget
 
 	inset struct {
 		left,
@@ -77,17 +76,14 @@ type GUI struct {
 }
 
 const (
-	Start   = Action("start")
-	Stats   = Action("stats")
-	Stop    = Action("stop")
-	Record  = Action("record")
-	Open    = Action("open")
+	Start = Action("start")
+	Stop  = Action("stop")
+	// Record = Action("record")
+	// Open    = Action("open")
 	Closing = Action("closing")
 	Refresh = Action("refresh")
-	Debug   = Action("debug")
-	Idle    = Action("idle")
-	Config  = Action("Config")
-	Log     = Action("Log")
+	// Config  = Action("Config")
+	// Log     = Action("Log")
 )
 
 var UI *GUI
@@ -150,7 +146,7 @@ func New() {
 		},
 	}
 
-	UI.header = title.New(
+	UI.nav = title.New(
 		global.Title,
 		fonts.NewCollection(),
 		UI.minimize,
@@ -246,7 +242,7 @@ func (g *GUI) attachWindowRight(hwnd uintptr, width int) bool {
 func (g *GUI) frame(gtx layout.Context, e system.FrameEvent) {
 	e.Frame(gtx.Ops)
 
-	p, ok := g.header.Dragging()
+	p, ok := g.nav.Dragging()
 	if ok {
 		g.setWindowPos(p)
 		return
@@ -284,71 +280,31 @@ func (g *GUI) position() image.Point {
 }
 
 func (g *GUI) proc() {
-	handle, err := syscall.GetCurrentProcess()
-	if err != nil {
-		notify.Error("UI: Failed to monitor usage: (%v)", err)
-		return
-	}
+	peak := struct{ cpu, ram float64 }{}
 
-	var ctime, etime, ktime, utime syscall.Filetime
-	err = syscall.GetProcessTimes(handle, &ctime, &etime, &ktime, &utime)
-	if err != nil {
-		notify.Error("UI: Failed to monitor CPU/RAM (%v)", err)
-		return
-	}
+	for ; is.Now != is.Closing; time.Sleep(time.Second) {
+		uptime := process.Uptime()
+		g.performance.uptime = fmt.Sprintf("%02d:%02d:%02d", uptime.Hour(), uptime.Minute(), uptime.Second())
 
-	prev := ctime.Nanoseconds()
-	usage := ktime.Nanoseconds() + utime.Nanoseconds() // Always overflows.
+		ram := process.RAM()
+		if ram > peak.ram+100 {
+			peak.ram = ram
+			notify.SystemWarn("UI: Consumed %.0fMB of RAM", peak.ram)
+		}
+		g.performance.ram = fmt.Sprintf("RAM %.0f%s", ram, "MB")
+		go stats.RAM(ram)
 
-	cpus := float64(runtime.NumCPU()) - 2
-
-	peakCPU := 0.0
-	peakRAM := 0.0
-
-	for is.Now != is.Closing {
-		time.Sleep(time.Second)
-
-		err := syscall.GetProcessTimes(handle, &ctime, &etime, &ktime, &utime)
+		cpu, err := process.CPU()
 		if err != nil {
-			notify.Error("UI: Failed to monitor CPU/RAM (%v)", err)
+			notify.Error("Process: Failed to monitor CPU/RAM (%v)", err)
 			continue
 		}
-
-		now := time.Now().UnixNano()
-		diff := now - prev
-		current := ktime.Nanoseconds() + utime.Nanoseconds()
-		diff2 := current - usage
-		prev = now
-		usage = current
-
-		cpu := (100 * float64(diff2) / float64(diff)) / cpus
-		if cpu > peakCPU*2 {
-			peakCPU = cpu
-			notify.SystemWarn("UI: Consumed %.1f%s CPU", peakCPU, "%")
+		if cpu > peak.cpu*2 {
+			peak.cpu = cpu
+			notify.SystemWarn("UI: Consumed %.1f%s CPU", peak.cpu, "%")
 		}
-
 		g.performance.cpu = fmt.Sprintf("CPU %.1f%s", cpu, "%")
-
-		var m runtime.MemStats
-		runtime.ReadMemStats(&m)
-
-		ram := (float64(m.Sys) / 1024 / 1024)
-		if ram > peakRAM+100 {
-			peakRAM = ram
-			notify.SystemWarn("UI: Consumed %.0f%s of RAM", peakRAM, "MB")
-		}
-
-		g.performance.ram = fmt.Sprintf("RAM %.0f%s", ram, "MB")
-
-		run := time.Time{}.Add(time.Since(global.Uptime))
-		if run.Hour() > 0 {
-			g.performance.uptime = fmt.Sprintf("%1d:%02d:%02d", run.Hour(), run.Minute(), run.Second())
-		} else {
-			g.performance.uptime = fmt.Sprintf("%02d:%02d", run.Minute(), run.Second())
-		}
-
 		go stats.CPU(cpu)
-		go stats.RAM(ram)
 	}
 }
 

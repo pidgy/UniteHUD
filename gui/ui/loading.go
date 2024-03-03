@@ -53,7 +53,7 @@ func (g *GUI) loading() {
 	dims := layout.Dimensions{}
 	inset := layout.Inset{}
 
-	messageLabel := material.Label(g.header.Collection.Calibri().Theme, unit.Sp(18.5), l.message)
+	messageLabel := material.Label(g.nav.Collection.Calibri().Theme, unit.Sp(18.5), l.message)
 	messageLabel.Alignment = text.Middle
 	messageLabel.Font.Weight = 50
 

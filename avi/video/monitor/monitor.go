@@ -24,6 +24,10 @@ var (
 	mutex = &sync.RWMutex{}
 )
 
+func Active(name string) bool {
+	return IsDisplay() && name == config.Current.Video.Capture.Window.Name
+}
+
 func Bounds() image.Rectangle {
 	mutex.RLock()
 	defer mutex.RUnlock()

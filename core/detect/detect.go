@@ -201,11 +201,11 @@ func Energy() {
 }
 
 func Objectives() {
-	top, bottom, middle := time.Time{}, time.Time{}, time.Time{}
+	top, bottom, central := time.Time{}, time.Time{}, time.Time{}
 
 	for ; ; sleep(time.Second) {
 		if idle || config.Current.Advanced.Matching.Disabled.Objectives {
-			top, bottom, middle = time.Time{}, time.Time{}, time.Time{}
+			top, bottom, central = time.Time{}, time.Time{}, time.Time{}
 			continue
 		}
 
@@ -221,94 +221,49 @@ func Objectives() {
 			continue
 		}
 
-		early := false
+		event := state.EventType(e)
+		team := event.Team()
 
-		if time.Since(top) > time.Minute {
-			switch e := state.EventType(e); e {
-			case state.RegielekiSecureOrange:
-				state.Add(e, server.Clock(), 0)
-				notify.Feed(team.Orange.NRGBA, "Detect: [%s] [%s] Regieleki secured", server.Clock(), strings.Title(team.Orange.Name))
-				server.SetRegieleki(team.Orange)
-				top = time.Now()
-
-				early = true
-			case state.RegielekiSecurePurple:
-				state.Add(e, server.Clock(), 0)
-				notify.Feed(team.Purple.NRGBA, "Detect: [%s] [%s] Regieleki secured", server.Clock(), strings.Title(team.Purple.Name))
-				server.SetRegieleki(team.Purple)
-				top = time.Now()
-
-				early = true
+		switch event {
+		case state.RegielekiSecureOrange, state.RegielekiSecurePurple:
+			if time.Since(top) < time.Minute {
+				matrix.Close()
+				continue
 			}
+			server.SetRegieleki(team)
+			top = time.Now()
+		case state.RayquazaSecureOrange, state.RayquazaSecurePurple:
+			if time.Since(central) < time.Minute {
+				matrix.Close()
+				continue
+			}
+			server.SetRayquaza(team)
+			central = time.Now()
+		case state.RegiceSecureOrange, state.RegiceSecurePurple:
+			if time.Since(bottom) < time.Minute {
+				matrix.Close()
+				continue
+			}
+			server.SetRegice(team)
+			bottom = time.Now()
+		case state.RegirockSecureOrange, state.RegirockSecurePurple:
+			if time.Since(bottom) < time.Minute {
+				matrix.Close()
+				continue
+			}
+			server.SetRegirock(team)
+			bottom = time.Now()
+		case state.RegisteelSecureOrange, state.RegisteelSecurePurple:
+			if time.Since(bottom) < time.Minute {
+				matrix.Close()
+				continue
+			}
+			server.SetRegisteel(team)
+			bottom = time.Now()
 		}
 
-		if !early && time.Since(bottom) > time.Minute {
-			switch e := state.EventType(e); e {
-			case state.RegiceSecureOrange:
-				state.Add(e, server.Clock(), 0)
-				notify.Feed(team.Orange.NRGBA, "Detect: [%s] [%s] Regice secured", server.Clock(), strings.Title(team.Orange.Name))
-				server.SetRegice(team.Orange)
-				bottom = time.Now()
-
-				early = true
-			case state.RegiceSecurePurple:
-				state.Add(e, server.Clock(), 0)
-				notify.Feed(team.Purple.NRGBA, "Detect: [%s] [%s] Regice secured", server.Clock(), strings.Title(team.Purple.Name))
-				server.SetRegice(team.Purple)
-				bottom = time.Now()
-
-				early = true
-			case state.RegirockSecureOrange:
-				state.Add(e, server.Clock(), 0)
-				notify.Feed(team.Orange.NRGBA, "Detect: [%s] [%s] Regirock secured", server.Clock(), strings.Title(team.Orange.Name))
-				server.SetRegirock(team.Orange)
-				bottom = time.Now()
-
-				early = true
-			case state.RegirockSecurePurple:
-				state.Add(e, server.Clock(), 0)
-				notify.Feed(team.Purple.NRGBA, "Detect: [%s] [%s] Regirock secured", server.Clock(), strings.Title(team.Purple.Name))
-				server.SetRegirock(team.Purple)
-				bottom = time.Now()
-
-				early = true
-			case state.RegisteelSecureOrange:
-				state.Add(e, server.Clock(), 0)
-				notify.Feed(team.Orange.NRGBA, "Detect: [%s] [%s] Registeel secured", server.Clock(), strings.Title(team.Orange.Name))
-				server.SetRegisteel(team.Orange)
-				bottom = time.Now()
-
-				early = true
-			case state.RegisteelSecurePurple:
-				state.Add(e, server.Clock(), 0)
-				notify.Feed(team.Purple.NRGBA, "Detect: [%s] [%s] Registeel secured", server.Clock(), strings.Title(team.Purple.Name))
-				server.SetRegisteel(team.Purple)
-				bottom = time.Now()
-
-				early = true
-			}
-		}
-
-		if !early && time.Since(middle) > time.Minute {
-			switch e := state.EventType(e); e {
-			case state.RayquazaSecureOrange:
-				state.Add(e, server.Clock(), 0)
-				notify.Feed(team.Orange.NRGBA, "Detect: [%s] [%s] Rayquaza secured", server.Clock(), strings.Title(team.Orange.Name))
-				server.SetRayquaza(team.Orange)
-				middle = time.Now()
-
-				early = true
-			case state.RayquazaSecurePurple:
-				state.Add(e, server.Clock(), 0)
-				notify.Feed(team.Purple.NRGBA, "Detect: [%s] [%s] Rayquaza secured", server.Clock(), strings.Title(team.Purple.Name))
-				server.SetRayquaza(team.Purple)
-				middle = time.Now()
-
-				early = true
-			}
-		}
-
-		matrix.Close()
+		state.Add(event, server.Clock(), 0)
+		notify.Feed(team.NRGBA, "Detect: [%s] %s", server.Clock(), event)
 	}
 }
 
@@ -439,7 +394,7 @@ func Scores(name string) {
 			if images {
 				score, err := m.AsImage(matrix, p)
 				if err != nil {
-					notify.Error("Detect: [%s] [%s] Failed to identify score (%v)", server.Clock(), strings.Title(m.Team.Name), err)
+					notify.Error("Detect: [%s] [%s] Failed to identify score (%v)", server.Clock(), m.Team, err)
 					break
 				}
 
@@ -459,11 +414,11 @@ func Scores(name string) {
 		case match.Missed:
 			state.Add(state.ScoreMissedBy(m.Team.Name), server.Clock(), p)
 
-			notify.Error("Detect: [%s] [%s] +%d (missed)", server.Clock(), strings.Title(m.Team.Name), p)
+			notify.Error("Detect: [%s] [%s] [Missed] +%d", server.Clock(), m.Team, p)
 		case match.Invalid:
-			notify.Error("Detect: [%s] [%s] +%d (invalid)", server.Clock(), strings.Title(m.Team.Name), p)
+			notify.Error("Detect: [%s] [%s] [Invalid] +%d", server.Clock(), m.Team, p)
 		case match.Duplicate:
-			notify.Warn("Detect: [%s] [%s] +%d (duplicate)", server.Clock(), strings.Title(m.Team.Name), p)
+			notify.Warn("Detect: [%s] [%s] [Duplicate] +%d", server.Clock(), m.Team, p)
 		}
 
 		if config.Current.Record {
@@ -527,91 +482,57 @@ func States() {
 			// Also tells javascript to turn on.
 			server.SetTime(10, 0)
 		case state.MatchEnding:
-			switch config.Current.Profile {
-			case config.ProfileBroadcaster:
-				if !server.Match() {
-					break
-				}
+			o, p, self := server.Scores()
+			if o+p+self > 0 {
+				notify.Feed(team.Game.NRGBA, "Detect: [%s] Match ended", team.Game)
 
 				// Purple score and objective results.
 				regielekis, regices, regirocks, registeels, rayquazas := server.Objectives(team.Purple)
 				purpleResult := fmt.Sprintf(
-					"Detect: [%s] [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s] [+%d Rayquazas]",
-					strings.Title(team.Purple.Name),
+					"Detect: [%s] %d [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s] [+%d Rayquazas]",
+					team.Purple,
+					p,
 					regielekis, s(regielekis),
 					regices, s(regices),
 					regirocks, s(regirocks),
 					registeels, s(registeels),
 					rayquazas,
 				)
+
 				notify.Feed(team.Purple.NRGBA, purpleResult)
 
 				// Orange score and objective results.
 				regielekis, regices, regirocks, registeels, rayquazas = server.Objectives(team.Orange)
 				orangeResult := fmt.Sprintf(
-					"Detect: [%s] [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s] [+%d Rayquazas]",
-					strings.Title(team.Orange.Name),
+					"Detect: [%s] %d [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s] [+%d Rayquazas]",
+					team.Orange,
+					o,
 					regielekis, s(regielekis),
 					regices, s(regices),
 					regirocks, s(regirocks),
 					registeels, s(registeels),
 					rayquazas,
 				)
+
 				notify.Feed(team.Orange.NRGBA, orangeResult)
 
-			case config.ProfilePlayer:
-				o, p, self := server.Scores()
-				if o+p+self > 0 {
-					notify.Feed(team.Game.NRGBA, "Detect: [%s] Match ended", strings.Title(team.Game.Name))
+				// Self score and objective results.
+				notify.Feed(team.Self.NRGBA, "Detect: [%s] %d", team.Self, self)
 
-					// Purple score and objective results.
-					regielekis, regices, regirocks, registeels, rayquazas := server.Objectives(team.Purple)
-					purpleResult := fmt.Sprintf(
-						"Detect: [%s] %d [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s] [+%d Rayquazas]",
-						strings.Title(team.Purple.Name),
-						p,
-						regielekis, s(regielekis),
-						regices, s(regices),
-						regirocks, s(regirocks),
-						registeels, s(registeels),
-						rayquazas,
-					)
-
-					notify.Feed(team.Purple.NRGBA, purpleResult)
-
-					// Orange score and objective results.
-					regielekis, regices, regirocks, registeels, rayquazas = server.Objectives(team.Orange)
-					orangeResult := fmt.Sprintf(
-						"Detect: [%s] %d [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s] [+%d Rayquazas]",
-						strings.Title(team.Orange.Name),
-						o,
-						regielekis, s(regielekis),
-						regices, s(regices),
-						regirocks, s(regirocks),
-						registeels, s(registeels),
-						rayquazas,
-					)
-
-					notify.Feed(team.Orange.NRGBA, orangeResult)
-
-					// Self score and objective results.
-					notify.Feed(team.Self.NRGBA, "Detect: [%s] %d", strings.Title(team.Self.Name), self)
-
-					pwin := ""
-					owin := ""
-					if p > o {
-						pwin = "(Won)"
-					} else if o > p {
-						owin = "(Won)"
-					}
-
-					desktop.Notification("Match has ended").
-						Says("Purple: %d %s\nOrange: %d %s\nYou scored %d points", p, pwin, o, owin, self).
-						When(clicked.OpenUniteHUD).
-						Send()
-
-					history.Add(p, o, self)
+				pwin := ""
+				owin := ""
+				if p > o {
+					pwin = "(Won)"
+				} else if o > p {
+					owin = "(Won)"
 				}
+
+				desktop.Notification("Match has ended").
+					Says("Purple: %d %s\nOrange: %d %s\nYou scored %d points", p, pwin, o, owin, self).
+					When(clicked.OpenUniteHUD).
+					Send()
+
+				history.Add(p, o, self)
 			}
 
 			// If time since match started is greater thaaaan 2 mins lets wait for 10 seconds...
@@ -675,7 +596,7 @@ func energyScoredConfirm(before, after int, at time.Time) {
 	}
 
 	notify.Feed(team.Self.NRGBA,
-		"Detect: [%s] [Self] Confirming %d point%s scored %s ago",
+		"Detect: [%s] [Self] +%d Confirming point%s scored %s ago",
 		server.Clock(),
 		before,
 		s(before),
@@ -684,7 +605,7 @@ func energyScoredConfirm(before, after int, at time.Time) {
 
 	// Confirm user was not defeated with points since the goal.
 	if state.KilledWithPoints.Occured(time.Second*2) != nil {
-		notify.Warn("Detect: [%s] Defeated before scoring", server.Clock())
+		notify.Warn("Detect: [%s] [Self] [Missed] +%d Defeated before scoring", server.Clock(), before)
 		return
 	}
 
@@ -692,12 +613,7 @@ func energyScoredConfirm(before, after int, at time.Time) {
 	if p != nil && !p.Verified {
 		p.Verified = true
 	} else {
-		notify.Warn(
-			"Detect: [%s] [Self] Failed to score because the score option was not present within 5s (-%d)",
-			server.Clock(),
-			before,
-		)
-
+		notify.Warn("Detect: [%s] [Self] [Missed] +%d Failed to find \"Help Text\"", server.Clock(), before)
 		return
 	}
 
@@ -705,17 +621,15 @@ func energyScoredConfirm(before, after int, at time.Time) {
 		before *= 2
 	}
 
+	if !team.First.Counted {
+		team.First.Counted = true
+	}
+
 	go server.SetScore(team.Self, before)
 
 	state.Add(state.PostScore, server.Clock(), before)
 
-	notify.Feed(team.Self.NRGBA,
-		"Detect: [%s] [%s] [%s] +%d",
-		server.Clock(),
-		strings.Title(team.Purple.Name),
-		strings.Title(team.Self.Name),
-		before,
-	)
+	notify.Feed(team.Self.NRGBA, "Detect: [%s] [%s] [%s] +%d", server.Clock(), team.Purple, team.Self, before)
 }
 
 func s(size int) string {

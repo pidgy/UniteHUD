@@ -13,6 +13,7 @@ type NRGBA color.NRGBA
 const MaxAlpha = math.MaxUint8
 
 var (
+	Active         = NRGBA(rgba.Active)
 	Announce       = NRGBA(rgba.Announce)
 	Background     = NRGBA(rgba.Background)
 	BackgroundAlt  = NRGBA(rgba.BackgroundAlt)

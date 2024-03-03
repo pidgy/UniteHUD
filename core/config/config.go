@@ -31,8 +31,7 @@ const (
 	ProjectorWindow      = "UniteHUD Projector"
 	NoVideoCaptureDevice = -1
 
-	ProfilePlayer      = "player"
-	ProfileBroadcaster = "broadcaster"
+	ProfilePlayer = "player"
 
 	PlatformSwitch     = "switch"
 	PlatformMobile     = "mobile"
@@ -145,7 +144,8 @@ type Theme struct {
 	Splash,
 	TitleBarBackground,
 	TitleBarForeground,
-	Borders,
+	BordersIdle,
+	BordersActive,
 	ScrollbarBackground,
 	ScrollbarForeground color.NRGBA
 }
@@ -242,29 +242,6 @@ func (c *Config) ScoringOption() image.Rectangle {
 	}
 }
 
-func (c *Config) SetDefaultAdvancedSettings() {
-	c.Advanced.Notifications.Muted = false
-	c.Advanced.Notifications.Disabled.All = true
-	c.Advanced.Notifications.Disabled.Updates = true
-	c.Advanced.Notifications.Disabled.MatchStarting = true
-	c.Advanced.Notifications.Disabled.MatchStopped = true
-	c.Advanced.Notifications.Muted = true
-
-	c.Advanced.Discord.Disabled = false
-}
-
-func (c *Config) SetDefaultAreas() {
-	energy := image.Rect(908, 764, 1008, 864)
-	scores := image.Rect(500, 50, 1500, 250)
-	time := image.Rect(846, 0, 1046, 100)
-
-	c.XY.Energy = energy
-	c.XY.Scores = scores
-	c.XY.Time = time
-	c.setKOArea()
-	c.setObjectiveArea()
-}
-
 func (c *Config) SetDefaultTheme() {
 	c.Theme.Background = nrgba.Background.Color()
 	c.Theme.BackgroundAlt = nrgba.BackgroundAlt.Color()
@@ -273,18 +250,10 @@ func (c *Config) SetDefaultTheme() {
 	c.Theme.Splash = nrgba.Splash.Color()
 	c.Theme.TitleBarBackground = nrgba.Background.Color()
 	c.Theme.TitleBarForeground = nrgba.White.Color()
-	c.Theme.Borders = nrgba.Discord.Alpha(100).Color()
+	c.Theme.BordersIdle = nrgba.Discord.Alpha(100).Color()
+	c.Theme.BordersActive = nrgba.Active.Alpha(100).Color()
 	c.Theme.ScrollbarBackground = nrgba.Transparent.Color()
 	c.Theme.ScrollbarForeground = nrgba.Discord.Alpha(100).Color()
-}
-
-func (c *Config) SetProfile(p string) {
-	switch p {
-	case ProfileBroadcaster:
-		c.setProfileBroadcaster()
-	default:
-		c.setProfilePlayer()
-	}
 }
 
 func (c *Config) Total() (total int) {
@@ -462,6 +431,7 @@ func (c *Config) scoreFiles(t *team.Team) []filter.Filter {
 	var files []string
 
 	root := fmt.Sprintf("%s/%s/score/", c.ProfileAssets(), t.Name)
+
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if info == nil {
 			return fmt.Errorf("directory does not exist")
@@ -483,13 +453,13 @@ func (c *Config) scoreFiles(t *team.Team) []filter.Filter {
 	}
 
 	filters := []filter.Filter{}
+
 	for _, file := range files {
 		if !strings.Contains(file, "score") {
 			continue
 		}
 
-		if !strings.Contains(file, ".png") &&
-			!strings.Contains(file, ".PNG") {
+		if !strings.EqualFold(filepath.Ext(file), ".png") {
 			continue
 		}
 
@@ -499,39 +469,29 @@ func (c *Config) scoreFiles(t *team.Team) []filter.Filter {
 	return filters
 }
 
-func (c *Config) setKOArea() {
-	switch c.Profile {
-	case ProfileBroadcaster:
-		c.XY.KOs = image.Rect(730, 130, 1160, 310)
-	case ProfilePlayer:
-		c.XY.KOs = image.Rect(730, 130, 1160, 310)
-	}
+func (c *Config) setDefaultAdvancedSettings() {
+	c.Advanced.Notifications.Muted = false
+	c.Advanced.Notifications.Disabled.All = true
+	c.Advanced.Notifications.Disabled.Updates = true
+	c.Advanced.Notifications.Disabled.MatchStarting = true
+	c.Advanced.Notifications.Disabled.MatchStopped = true
+	c.Advanced.Notifications.Muted = true
+
+	c.Advanced.Discord.Disabled = false
 }
 
-func (c *Config) setObjectiveArea() {
-	switch c.Profile {
-	case ProfileBroadcaster:
-		c.XY.Objectives = image.Rect(350, 210, 1200, 310)
-	case ProfilePlayer:
-		c.XY.Objectives = image.Rect(350, 210, 1200, 310)
-	}
-}
-
-func (c *Config) setProfileBroadcaster() {
-	c.Profile = ProfileBroadcaster
-
-	c.load = loadProfileAssetsBroadcaster
-
-	c.Advanced.Matching.Disabled.Energy = true
-	c.Advanced.Matching.Disabled.Scoring = true
-	c.Advanced.Matching.Disabled.Defeated = true
+func (c *Config) setDefaultAreas() {
+	c.XY.Energy = image.Rect(908, 764, 1008, 864)
+	c.XY.Scores = image.Rect(500, 50, 1500, 250)
+	c.XY.Time = image.Rect(846, 0, 1046, 100)
+	c.XY.Objectives = image.Rect(350, 200, 1200, 310)
+	c.XY.KOs = image.Rect(730, 130, 1160, 310)
 }
 
 func (c *Config) setProfilePlayer() {
 	c.Profile = ProfilePlayer
 
 	c.load = loadProfileAssetsPlayer
-
 }
 
 func Load(profile string) error {
@@ -545,7 +505,7 @@ func Load(profile string) error {
 
 	if profile == "" {
 		profile = ProfilePlayer
-		Current.SetProfile(profile)
+		Current.setProfilePlayer()
 	}
 
 	defer validate()
@@ -565,11 +525,11 @@ func Load(profile string) error {
 		Current.Video.Capture.Window.Name = MainDisplay
 		Current.Video.Capture.Device.Index = NoVideoCaptureDevice
 
-		Current.SetProfile(profile)
-
-		Current.SetDefaultAreas()
+		Current.setProfilePlayer()
 		Current.SetDefaultTheme()
-		Current.SetDefaultAdvancedSettings()
+
+		Current.setDefaultAreas()
+		Current.setDefaultAdvancedSettings()
 
 		Current.load()
 	}
@@ -591,7 +551,16 @@ func Load(profile string) error {
 		Current.Video.Capture.Device.FPS = 60
 	}
 
-	return Current.Save()
+	err := Current.Save()
+	if err != nil {
+		return err
+	}
+
+	if global.DebugMode {
+		Current.Advanced.Discord.Disabled = true
+	}
+
+	return nil
 }
 
 func TemplatesFirstRound(t1 []*template.Template) []*template.Template {
@@ -603,64 +572,6 @@ func TemplatesFirstRound(t1 []*template.Template) []*template.Template {
 		t2 = append(t2, t)
 	}
 	return t2
-}
-
-func loadProfileAssetsBroadcaster() {
-	Current.filenames = map[string]map[string][]filter.Filter{
-		"goals": {
-			team.Game.Name: {
-				filter.New(team.Game, Current.ProfileAssets()+"/game/purple_base_open.png", state.PurpleBaseOpen.Int(), false),
-				filter.New(team.Game, Current.ProfileAssets()+"/game/orange_base_open.png", state.OrangeBaseOpen.Int(), false),
-				filter.New(team.Game, Current.ProfileAssets()+"/game/purple_base_closed.png", state.PurpleBaseClosed.Int(), false),
-				filter.New(team.Game, Current.ProfileAssets()+"/game/orange_base_closed.png", state.OrangeBaseClosed.Int(), false),
-			},
-		},
-		"killed": {},
-		"secure": {
-			team.Game.Name: {
-				filter.New(team.Game, Current.ProfileAssets()+"/game/rayquaza_ally.png", state.RayquazaSecurePurple.Int(), false),
-				filter.New(team.Game, Current.ProfileAssets()+"/game/rayquaza_enemy.png", state.RayquazaSecureOrange.Int(), false),
-				filter.New(team.Game, Current.ProfileAssets()+"/game/regice_ally.png", state.RegiceSecurePurple.Int(), false),
-				filter.New(team.Game, Current.ProfileAssets()+"/game/regice_enemy.png", state.RegiceSecureOrange.Int(), false),
-				filter.New(team.Game, Current.ProfileAssets()+"/game/regirock_ally.png", state.RegirockSecurePurple.Int(), false),
-				filter.New(team.Game, Current.ProfileAssets()+"/game/regirock_enemy.png", state.RegirockSecureOrange.Int(), false),
-				filter.New(team.Game, Current.ProfileAssets()+"/game/registeel_ally.png", state.RegisteelSecurePurple.Int(), false),
-				filter.New(team.Game, Current.ProfileAssets()+"/game/registeel_enemy.png", state.RegisteelSecureOrange.Int(), false),
-				filter.New(team.Game, Current.ProfileAssets()+"/game/regieleki_ally.png", state.RegielekiSecurePurple.Int(), false),
-				filter.New(team.Game, Current.ProfileAssets()+"/game/regieleki_enemy.png", state.RegielekiSecureOrange.Int(), false),
-			},
-		},
-		"ko": {
-			team.Game.Name: {
-				filter.New(team.Game, Current.ProfileAssets()+"/game/ko_ally.png", state.KOPurple.Int(), false),
-				filter.New(team.Game, Current.ProfileAssets()+"/game/ko_streak_ally.png", state.KOStreakPurple.Int(), false),
-				filter.New(team.Game, Current.ProfileAssets()+"/game/ko_enemy.png", state.KOOrange.Int(), false),
-				filter.New(team.Game, Current.ProfileAssets()+"/game/ko_streak_enemy.png", state.KOStreakOrange.Int(), false),
-			},
-		},
-		"objective": {
-			team.Game.Name: {
-				filter.New(team.Game, Current.ProfileAssets()+"/game/objective.png", state.ObjectivePresent.Int(), false),
-				filter.New(team.Game, Current.ProfileAssets()+"/game/objective_half.png", state.ObjectivePresent.Int(), false),
-				filter.New(team.Game, Current.ProfileAssets()+"/game/objective_orange_base.png", state.ObjectiveReachedOrange.Int(), false),
-			},
-		},
-		"game": {
-			"vs": {
-				filter.New(team.Game, Current.ProfileAssets()+"/game/vs.png", state.MatchStarting.Int(), false),
-				filter.New(team.Game, Current.ProfileAssets()+"/game/vs_alt.png", state.MatchStarting.Int(), false),
-			},
-			"end": {
-				filter.New(team.Game, Current.ProfileAssets()+"/game/end.png", state.MatchEnding.Int(), false),
-			},
-		},
-		"scoring": {},
-		"scored":  {},
-		"points":  {},
-		"time": {
-			team.Time.Name: Current.pointFiles(team.Time),
-		},
-	}
 }
 
 func loadProfileAssetsPlayer() {
@@ -688,6 +599,7 @@ func loadProfileAssetsPlayer() {
 				filter.New(team.Game, Current.ProfileAssets()+"/game/regieleki_enemy.png", state.RegielekiSecureOrange.Int(), false),
 				filter.New(team.Game, Current.ProfileAssets()+"/game/regice_ally.png", state.RegiceSecurePurple.Int(), false),
 				filter.New(team.Game, Current.ProfileAssets()+"/game/regice_enemy.png", state.RegiceSecureOrange.Int(), false),
+				filter.New(team.Game, Current.ProfileAssets()+"/game/regice_enemy_alt.png", state.RegiceSecureOrange.Int(), false),
 				filter.New(team.Game, Current.ProfileAssets()+"/game/regirock_ally.png", state.RegirockSecurePurple.Int(), false),
 				filter.New(team.Game, Current.ProfileAssets()+"/game/regirock_enemy.png", state.RegirockSecureOrange.Int(), false),
 				filter.New(team.Game, Current.ProfileAssets()+"/game/registeel_ally.png", state.RegisteelSecurePurple.Int(), false),
@@ -696,10 +608,10 @@ func loadProfileAssetsPlayer() {
 		},
 		"ko": {
 			team.Game.Name: {
-				filter.New(team.Game, Current.ProfileAssets()+"/game/ko_ally.png", state.KOPurple.Int(), false),
-				filter.New(team.Game, Current.ProfileAssets()+"/game/ko_streak_ally.png", state.KOStreakPurple.Int(), false),
-				filter.New(team.Game, Current.ProfileAssets()+"/game/ko_enemy.png", state.KOOrange.Int(), false),
-				filter.New(team.Game, Current.ProfileAssets()+"/game/ko_streak_enemy.png", state.KOStreakOrange.Int(), false),
+				// filter.New(team.Game, Current.ProfileAssets()+"/game/ko_ally.png", state.KOPurple.Int(), false),
+				// filter.New(team.Game, Current.ProfileAssets()+"/game/ko_streak_ally.png", state.KOStreakPurple.Int(), false),
+				// filter.New(team.Game, Current.ProfileAssets()+"/game/ko_enemy.png", state.KOOrange.Int(), false),
+				// filter.New(team.Game, Current.ProfileAssets()+"/game/ko_streak_enemy.png", state.KOStreakOrange.Int(), false),
 			},
 		},
 		"objective": {
@@ -765,7 +677,7 @@ func open() bool {
 		return false
 	}
 
-	c.SetProfile(Current.Profile)
+	c.setProfilePlayer()
 
 	Current = c
 

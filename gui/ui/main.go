@@ -21,6 +21,7 @@ import (
 	"gioui.org/text"
 	"gioui.org/unit"
 	"gioui.org/widget/material"
+	"github.com/skratchdot/open-golang/open"
 
 	"github.com/pidgy/unitehud/avi/audio"
 	"github.com/pidgy/unitehud/avi/video/device"
@@ -47,10 +48,25 @@ import (
 	"github.com/pidgy/unitehud/system/desktop/clicked"
 	"github.com/pidgy/unitehud/system/discord"
 	"github.com/pidgy/unitehud/system/save"
-	"github.com/skratchdot/open-golang/open"
 )
 
 type main struct {
+	nav struct {
+		settings,
+		client,
+		stats,
+		results,
+		obs,
+		clear,
+		eco,
+		logs,
+		record,
+		file,
+		startstop,
+		hideTop,
+		hideRight *button.Widget
+	}
+
 	split struct {
 		vertical *split.Vertical
 	}
@@ -99,22 +115,6 @@ type main struct {
 		run  *spinner.Widget
 		stop *spinner.Widget
 	}
-
-	menu struct {
-		settings,
-		client,
-		stats,
-		results,
-		obs,
-		clear,
-		eco,
-		logs,
-		record,
-		file,
-		startstop,
-		hideTop,
-		hideRight *button.Widget
-	}
 }
 
 func (g *GUI) main() {
@@ -141,19 +141,19 @@ func (g *GUI) main() {
 	defer ui.spinners.run.Stop()
 	defer ui.spinners.stop.Stop()
 
-	defer g.header.Remove(g.header.Add(ui.menu.startstop))
-	defer g.header.Remove(g.header.Add(ui.menu.settings))
-	defer g.header.Remove(g.header.Add(ui.menu.client))
-	defer g.header.Remove(g.header.Add(ui.menu.hideRight))
-	defer g.header.Remove(g.header.Add(ui.menu.hideTop))
+	defer g.nav.Remove(g.nav.Add(ui.nav.startstop))
+	defer g.nav.Remove(g.nav.Add(ui.nav.settings))
+	defer g.nav.Remove(g.nav.Add(ui.nav.client))
+	defer g.nav.Remove(g.nav.Add(ui.nav.hideRight))
+	defer g.nav.Remove(g.nav.Add(ui.nav.hideTop))
 	// defer g.header.Remove(g.header.Add(ui.menu.stats))
 	// defer g.header.Remove(g.header.Add(ui.menu.results))
-	defer g.header.Remove(g.header.Add(ui.menu.obs))
+	defer g.nav.Remove(g.nav.Add(ui.nav.obs))
 	// defer g.header.Remove(g.header.Add(ui.menu.clear))
 	// defer g.header.Remove(g.header.Add(ui.menu.eco))
-	defer g.header.Remove(g.header.Add(ui.menu.logs))
-	defer g.header.Remove(g.header.Add(ui.menu.record))
-	defer g.header.Remove(g.header.Add(ui.menu.file))
+	defer g.nav.Remove(g.nav.Add(ui.nav.logs))
+	defer g.nav.Remove(g.nav.Add(ui.nav.record))
+	// defer g.nav.Remove(g.nav.Add(ui.nav.file))
 
 	g.window.Perform(system.ActionRaise)
 	if !g.firstOpen {
@@ -162,7 +162,7 @@ func (g *GUI) main() {
 		g.window.Perform(system.ActionUnmaximize)
 	}
 
-	g.header.Open()
+	g.nav.Open()
 
 	if config.Current.Crashed != "" {
 		notify.Warn("Crash: %s", config.Current.Crashed)
@@ -226,10 +226,10 @@ func (g *GUI) main() {
 			decorate.ForegroundAlt(&ui.labels.cpuGraph.Color)
 			decorate.ForegroundAlt(&ui.labels.ramGraph.Color)
 
-			g.header.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+			g.nav.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				return ui.split.vertical.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 					return decorate.BackgroundAlt(gtx, func(gtx layout.Context) layout.Dimensions {
-						if ui.menu.hideTop.Text == "⇊" {
+						if ui.nav.hideTop.Text == "⇊" {
 							return ui.textblocks.feed.Layout(gtx, notify.Feeds())
 						}
 
@@ -466,7 +466,7 @@ func (g *GUI) main() {
 					)
 				},
 					func(gtx layout.Context) layout.Dimensions {
-						if ui.menu.hideRight.Text == "⇇" {
+						if ui.nav.hideRight.Text == "⇇" {
 							return layout.Dimensions{}
 						}
 
@@ -496,7 +496,7 @@ func (g *GUI) main() {
 								}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 									ui.buttons.projector.SetImage(notify.Preview)
 									return layout.UniformInset(unit.Dp(5)).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-										return ui.buttons.projector.Layout(g.header.Collection.Cascadia().Theme, gtx)
+										return ui.buttons.projector.Layout(g.nav.Collection.Cascadia().Theme, gtx)
 									})
 								})
 
@@ -553,7 +553,7 @@ func (g *GUI) main() {
 						case "C":
 							g.next(is.Projecting)
 						case "F":
-							g.header.Resize()
+							g.nav.Resize()
 						case "S":
 							btn := ui.buttons.start
 							if g.Running {
@@ -592,8 +592,8 @@ func (g *GUI) mainUI() *main {
 
 	ui.buttons.stop = &button.Widget{
 		Text:            "Stop",
-		Font:            g.header.Collection.Calibri(),
-		OnHoverHint:     func() { g.header.Tip("Stop capturing events (Ctrl+s)") },
+		Font:            g.nav.Collection.Calibri(),
+		OnHoverHint:     func() { g.nav.Tip("Stop capturing events (Ctrl+s)") },
 		Disabled:        true,
 		Released:        nrgba.Disabled,
 		BorderWidth:     unit.Sp(1.5),
@@ -612,17 +612,17 @@ func (g *GUI) mainUI() *main {
 			g.Running = false
 			g.Preview = true
 
-			ui.menu.startstop.Text = "▶"
-			ui.menu.startstop.OnHoverHint = ui.buttons.start.OnHoverHint
-			ui.menu.startstop.Pressed = nrgba.PastelGreen
-			ui.menu.startstop.Released = nrgba.Nothing
+			ui.nav.startstop.Text = "▶"
+			ui.nav.startstop.OnHoverHint = ui.buttons.start.OnHoverHint
+			ui.nav.startstop.Pressed = nrgba.PastelGreen
+			ui.nav.startstop.Released = nrgba.Nothing
 		},
 	}
 
 	ui.buttons.start = &button.Widget{
 		Text:            "Start",
-		Font:            g.header.Collection.Calibri(),
-		OnHoverHint:     func() { g.header.Tip("Start capturing events (Ctrl+s)") },
+		Font:            g.nav.Collection.Calibri(),
+		OnHoverHint:     func() { g.nav.Tip("Start capturing events (Ctrl+s)") },
 		Released:        nrgba.PastelGreen.Alpha(150),
 		Pressed:         nrgba.Transparent80,
 		BorderWidth:     unit.Sp(1.5),
@@ -639,24 +639,24 @@ func (g *GUI) mainUI() *main {
 			this.Disabled = true
 			this.Released = nrgba.Disabled
 
-			g.Actions <- Config
+			g.Actions <- Start
 			g.Running = true
 
-			ui.menu.startstop.Text = "⏸"
-			ui.menu.startstop.OnHoverHint = ui.buttons.stop.OnHoverHint
-			ui.menu.startstop.Pressed = nrgba.Nothing
-			ui.menu.startstop.Released = nrgba.PastelRed
+			ui.nav.startstop.Text = "⏸"
+			ui.nav.startstop.OnHoverHint = ui.buttons.stop.OnHoverHint
+			ui.nav.startstop.Pressed = nrgba.Nothing
+			ui.nav.startstop.Released = nrgba.PastelRed
 		},
 	}
 
-	ui.textblocks.feed, err = textblock.New(g.header.Collection.Cascadia(), 75)
+	ui.textblocks.feed, err = textblock.New(g.nav.Collection.Cascadia(), 75)
 	if err != nil {
 		ui.textblocks.feed = &textblock.Widget{}
 		notify.Error("Failed to load font: (%v)", err)
 	}
 
 	ui.buttons.projector = &button.ImageWidget{
-		HintEvent: func() { g.header.Tip("Open a projector window") },
+		HintEvent: func() { g.nav.Tip("Open a projector window") },
 
 		Widget: &screen.Widget{
 			Border:      true,
@@ -671,83 +671,83 @@ func (g *GUI) mainUI() *main {
 		},
 	}
 
-	ui.labels.audio = material.Caption(g.header.Collection.NotoSans().Theme, audio.Label())
+	ui.labels.audio = material.Caption(g.nav.Collection.NotoSans().Theme, audio.Label())
 	ui.labels.audio.Color = nrgba.Slate.Color()
 	ui.labels.audio.Alignment = text.Middle
 	ui.labels.audio.Font.Weight = font.ExtraBold
 
-	ui.labels.discord = material.Caption(g.header.Collection.NotoSans().Theme, "👾 Discord Disabled")
+	ui.labels.discord = material.Caption(g.nav.Collection.NotoSans().Theme, "👾 Discord Disabled")
 	ui.labels.discord.Color = nrgba.Discord.Color()
 	ui.labels.audio.Alignment = text.Middle
 	ui.labels.discord.Font.Weight = font.ExtraBold
 
-	ui.labels.warning = material.Caption(g.header.Collection.NotoSans().Theme, "⚠ CPU")
+	ui.labels.warning = material.Caption(g.nav.Collection.NotoSans().Theme, "⚠ CPU")
 	ui.labels.warning.Color = nrgba.Yellow.Alpha(200).Color()
 	ui.labels.audio.Alignment = text.Middle
 	ui.labels.warning.Font.Weight = font.ExtraBold
 
-	ui.labels.window = material.Caption(g.header.Collection.Calibri().Theme, "")
+	ui.labels.window = material.Caption(g.nav.Collection.Calibri().Theme, "")
 	ui.labels.window.Color = nrgba.PastelGreen.Color()
 	ui.labels.window.Alignment = text.Middle
 	ui.labels.window.Font.Weight = font.Medium
 	ui.labels.window.TextSize = unit.Sp(14)
 
-	ui.labels.cpu = material.H5(g.header.Collection.Calibri().Theme, "")
+	ui.labels.cpu = material.H5(g.nav.Collection.Calibri().Theme, "")
 	ui.labels.cpu.Alignment = text.Middle
 	ui.labels.cpu.TextSize = unit.Sp(14)
 
-	ui.labels.cpuGraph = material.H5(g.header.Collection.Cascadia().Theme, "")
+	ui.labels.cpuGraph = material.H5(g.nav.Collection.Cascadia().Theme, "")
 	ui.labels.cpuGraph.Color = nrgba.Gray.Color()
 	ui.labels.cpuGraph.TextSize = unit.Sp(9)
 
-	ui.labels.ram = material.H5(g.header.Collection.Calibri().Theme, "")
+	ui.labels.ram = material.H5(g.nav.Collection.Calibri().Theme, "")
 	ui.labels.ram.Alignment = text.Middle
 	ui.labels.ram.TextSize = unit.Sp(14)
 
-	ui.labels.ramGraph = material.H5(g.header.Collection.Cascadia().Theme, "")
+	ui.labels.ramGraph = material.H5(g.nav.Collection.Cascadia().Theme, "")
 	ui.labels.ramGraph.Color = nrgba.Gray.Color()
 	ui.labels.ramGraph.TextSize = unit.Sp(9)
 
-	ui.labels.holding = material.H5(g.header.Collection.Calibri().Theme, "")
+	ui.labels.holding = material.H5(g.nav.Collection.Calibri().Theme, "")
 	ui.labels.holding.Color = nrgba.Gold.Color()
 	ui.labels.holding.Alignment = text.Middle
 	ui.labels.holding.TextSize = unit.Sp(14)
 
-	ui.labels.connectedClients = material.H5(g.header.Collection.Calibri().Theme, "")
+	ui.labels.connectedClients = material.H5(g.nav.Collection.Calibri().Theme, "")
 	ui.labels.connectedClients.Alignment = text.Middle
 	ui.labels.connectedClients.TextSize = unit.Sp(14)
 
-	ui.labels.symbol = material.H5(g.header.Collection.Calibri().Theme, "")
+	ui.labels.symbol = material.H5(g.nav.Collection.Calibri().Theme, "")
 	ui.labels.symbol.Alignment = text.Middle
 	ui.labels.symbol.TextSize = unit.Sp(16)
 	ui.labels.symbol.Font.Weight = font.ExtraBold
 	ui.labels.symbol.Color = nrgba.Slate.Color()
 
-	ui.labels.acronym = material.H5(g.header.Collection.Calibri().Theme, "IDLE")
+	ui.labels.acronym = material.H5(g.nav.Collection.Calibri().Theme, "IDLE")
 	ui.labels.acronym.Alignment = text.Middle
 	ui.labels.acronym.TextSize = unit.Sp(14)
 	ui.labels.acronym.Color = nrgba.Slate.Color()
 
-	ui.labels.hz = material.H5(g.header.Collection.Calibri().Theme, "0 FPS")
+	ui.labels.hz = material.H5(g.nav.Collection.Calibri().Theme, "0 FPS")
 	ui.labels.hz.Alignment = text.Middle
 	ui.labels.hz.TextSize = unit.Sp(14)
 
-	ui.labels.purpleScore = material.H5(g.header.Collection.Calibri().Theme, "0")
+	ui.labels.purpleScore = material.H5(g.nav.Collection.Calibri().Theme, "0")
 	ui.labels.purpleScore.Color = team.Purple.NRGBA.Color()
 	ui.labels.purpleScore.Alignment = text.Middle
 	ui.labels.purpleScore.TextSize = unit.Sp(14)
 
-	ui.labels.orangeScore = material.H5(g.header.Collection.Calibri().Theme, "0")
+	ui.labels.orangeScore = material.H5(g.nav.Collection.Calibri().Theme, "0")
 	ui.labels.orangeScore.Color = team.Orange.NRGBA.Color()
 	ui.labels.orangeScore.Alignment = text.Middle
 	ui.labels.orangeScore.TextSize = unit.Sp(14)
 
-	ui.labels.selfScore = material.H5(g.header.Collection.Calibri().Theme, "0")
+	ui.labels.selfScore = material.H5(g.nav.Collection.Calibri().Theme, "0")
 	ui.labels.selfScore.Color = team.Self.NRGBA.Color()
 	ui.labels.selfScore.Alignment = text.Middle
 	ui.labels.selfScore.TextSize = unit.Sp(14)
 
-	ui.labels.clock = material.H5(g.header.Collection.Calibri().Theme, "00:00")
+	ui.labels.clock = material.H5(g.nav.Collection.Calibri().Theme, "00:00")
 	ui.labels.clock.Alignment = text.Middle
 	ui.labels.clock.TextSize = unit.Sp(14)
 
@@ -776,13 +776,13 @@ func (g *GUI) mainUI() *main {
 	}
 
 	ui.labels.regielekis, ui.labels.regielekiUnderlines = []material.LabelStyle{
-		material.H5(g.header.Collection.Calibri().Theme, "E"),
-		material.H5(g.header.Collection.Calibri().Theme, "E"),
-		material.H5(g.header.Collection.Calibri().Theme, "E"),
+		material.H5(g.nav.Collection.Calibri().Theme, "E"),
+		material.H5(g.nav.Collection.Calibri().Theme, "E"),
+		material.H5(g.nav.Collection.Calibri().Theme, "E"),
 	}, []material.LabelStyle{
-		material.H5(g.header.Collection.Calibri().Theme, "_"),
-		material.H5(g.header.Collection.Calibri().Theme, "_"),
-		material.H5(g.header.Collection.Calibri().Theme, "_"),
+		material.H5(g.nav.Collection.Calibri().Theme, "_"),
+		material.H5(g.nav.Collection.Calibri().Theme, "_"),
+		material.H5(g.nav.Collection.Calibri().Theme, "_"),
 	}
 
 	for i := range ui.labels.regielekis {
@@ -797,13 +797,13 @@ func (g *GUI) mainUI() *main {
 	}
 
 	ui.labels.regiBottoms, ui.labels.regiBottomUnderlines = []material.LabelStyle{
-		material.H5(g.header.Collection.Calibri().Theme, "R"),
-		material.H5(g.header.Collection.Calibri().Theme, "R"),
-		material.H5(g.header.Collection.Calibri().Theme, "R"),
+		material.H5(g.nav.Collection.Calibri().Theme, "R"),
+		material.H5(g.nav.Collection.Calibri().Theme, "R"),
+		material.H5(g.nav.Collection.Calibri().Theme, "R"),
 	}, []material.LabelStyle{
-		material.H5(g.header.Collection.Calibri().Theme, "_"),
-		material.H5(g.header.Collection.Calibri().Theme, "_"),
-		material.H5(g.header.Collection.Calibri().Theme, "_"),
+		material.H5(g.nav.Collection.Calibri().Theme, "_"),
+		material.H5(g.nav.Collection.Calibri().Theme, "_"),
+		material.H5(g.nav.Collection.Calibri().Theme, "_"),
 	}
 
 	for i := range ui.labels.regiBottoms {
@@ -817,12 +817,12 @@ func (g *GUI) mainUI() *main {
 		ui.labels.regiBottomUnderlines[i].Font.Weight = font.Bold
 	}
 
-	ui.labels.uptime = material.H5(g.header.Collection.Calibri().Theme, g.performance.uptime)
+	ui.labels.uptime = material.H5(g.nav.Collection.Calibri().Theme, g.performance.uptime)
 	ui.labels.uptime.Color = nrgba.DreamyPurple.Color()
 	ui.labels.uptime.Alignment = text.Middle
 	ui.labels.uptime.TextSize = unit.Sp(14)
 
-	ui.labels.version = material.H5(g.header.Collection.Calibri().Theme, global.Version)
+	ui.labels.version = material.H5(g.nav.Collection.Calibri().Theme, global.Version)
 	ui.labels.version.Color = nrgba.Gray.Color()
 	ui.labels.version.Alignment = text.Middle
 	ui.labels.version.TextSize = unit.Sp(14)
@@ -830,12 +830,12 @@ func (g *GUI) mainUI() *main {
 	ui.spinners.run = spinner.Running()
 	ui.spinners.stop = spinner.Stopped()
 
-	ui.menu.settings = &button.Widget{
+	ui.nav.settings = &button.Widget{
 		Text:            "⚙",
 		TextSize:        unit.Sp(18),
 		TextInsetBottom: -2,
-		Font:            g.header.Collection.NishikiTeki(),
-		OnHoverHint:     func() { g.header.Tip("Modify capture settings") },
+		Font:            g.nav.Collection.NishikiTeki(),
+		OnHoverHint:     func() { g.nav.Tip("Modify capture settings") },
 
 		Released:    nrgba.Transparent80,
 		Pressed:     nrgba.SilverPurple,
@@ -847,9 +847,9 @@ func (g *GUI) mainUI() *main {
 		},
 	}
 
-	ui.menu.client = &button.Widget{
+	ui.nav.client = &button.Widget{
 		Text:        "📺",
-		Font:        g.header.Collection.NishikiTeki(),
+		Font:        g.nav.Collection.NishikiTeki(),
 		OnHoverHint: ui.buttons.projector.HintEvent,
 		Pressed:     nrgba.Discord.Alpha(100),
 		TextSize:    unit.Sp(16),
@@ -864,10 +864,10 @@ func (g *GUI) mainUI() *main {
 		},
 	}
 
-	ui.menu.stats = &button.Widget{
+	ui.nav.stats = &button.Widget{
 		Text:        "¼",
-		Font:        g.header.Collection.NishikiTeki(),
-		OnHoverHint: func() { g.header.Tip("View capture statistics") },
+		Font:        g.nav.Collection.NishikiTeki(),
+		OnHoverHint: func() { g.nav.Tip("View capture statistics") },
 		Pressed:     nrgba.Pinkity,
 		TextSize:    unit.Sp(15),
 
@@ -885,11 +885,11 @@ func (g *GUI) mainUI() *main {
 		},
 	}
 
-	ui.menu.results = &button.Widget{
+	ui.nav.results = &button.Widget{
 		Text:        "+/-",
 		TextSize:    unit.Sp(12),
-		Font:        g.header.Collection.Cascadia(),
-		OnHoverHint: func() { g.header.Tip("View win/loss history") },
+		Font:        g.nav.Collection.Cascadia(),
+		OnHoverHint: func() { g.nav.Tip("View win/loss history") },
 		Pressed:     nrgba.Seafoam,
 
 		Click: func(this *button.Widget) {
@@ -899,22 +899,17 @@ func (g *GUI) mainUI() *main {
 		},
 	}
 
-	ui.menu.obs = &button.Widget{
+	ui.nav.obs = &button.Widget{
 		Text:        "obs",
-		Font:        g.header.Collection.NishikiTeki(),
-		OnHoverHint: func() { g.header.Tip("Open OBS client folder") },
+		Font:        g.nav.Collection.NishikiTeki(),
+		OnHoverHint: func() { g.nav.Tip("Open OBS client folder") },
 		Pressed:     nrgba.Purple,
 		TextSize:    unit.Sp(12),
 
 		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
-			drag := "Drag \"UniteHUD Client\" into any OBS scene."
-			if config.Current.Profile == config.ProfileBroadcaster {
-				drag = "Drag \"UniteHUD Broadcaster\" into any OBS scene."
-			}
-
-			g.ToastOK("Overlay", drag,
+			g.ToastOK("Overlay", `Drag "UniteHUD Client.html" into OBS.`,
 				OnToastOK(func() {
 					err = open.Run(filepath.Join(global.WorkingDirectory(), "www"))
 					if err != nil {
@@ -926,10 +921,10 @@ func (g *GUI) mainUI() *main {
 		},
 	}
 
-	ui.menu.clear = &button.Widget{
+	ui.nav.clear = &button.Widget{
 		Text:            "🧹",
-		Font:            g.header.Collection.NishikiTeki(),
-		OnHoverHint:     func() { g.header.Tip("Clear event history") },
+		Font:            g.nav.Collection.NishikiTeki(),
+		OnHoverHint:     func() { g.nav.Tip("Clear event history") },
 		TextInsetBottom: -2,
 		Pressed:         nrgba.Orange,
 		TextSize:        unit.Sp(14),
@@ -942,10 +937,10 @@ func (g *GUI) mainUI() *main {
 		},
 	}
 
-	ui.menu.eco = &button.Widget{
+	ui.nav.eco = &button.Widget{
 		Text:        "🌳",
-		Font:        g.header.Collection.NishikiTeki(),
-		OnHoverHint: func() { g.header.Tip("Toggle resource saver") },
+		Font:        g.nav.Collection.NishikiTeki(),
+		OnHoverHint: func() { g.nav.Tip("Toggle resource saver") },
 		Pressed:     nrgba.DarkSeafoam,
 		TextSize:    unit.Sp(16),
 
@@ -965,10 +960,10 @@ func (g *GUI) mainUI() *main {
 		},
 	}
 
-	ui.menu.logs = &button.Widget{
+	ui.nav.logs = &button.Widget{
 		Text:        "🗁",
-		Font:        g.header.Collection.NishikiTeki(),
-		OnHoverHint: func() { g.header.Tip("Open log directory") },
+		Font:        g.nav.Collection.NishikiTeki(),
+		OnHoverHint: func() { g.nav.Tip("Open log directory") },
 		Pressed:     nrgba.PastelBabyBlue,
 		TextSize:    unit.Sp(16),
 
@@ -984,10 +979,10 @@ func (g *GUI) mainUI() *main {
 		},
 	}
 
-	ui.menu.record = &button.Widget{
+	ui.nav.record = &button.Widget{
 		Text:        "🎬",
-		Font:        g.header.Collection.NishikiTeki(),
-		OnHoverHint: func() { g.header.Tip("Record matched events") },
+		Font:        g.nav.Collection.NishikiTeki(),
+		OnHoverHint: func() { g.nav.Tip("Record matched events") },
 		Pressed:     nrgba.Pinkity.Alpha(100),
 		TextSize:    15,
 
@@ -1015,6 +1010,8 @@ func (g *GUI) mainUI() *main {
 					if err != nil {
 						notify.Error("UI: Failed to open \"%s\" (%v)", save.Directory, err)
 					}
+
+					config.Current.Record = false
 				}
 			}
 
@@ -1022,14 +1019,14 @@ func (g *GUI) mainUI() *main {
 		},
 	}
 
-	ui.menu.file = &button.Widget{
+	ui.nav.file = &button.Widget{
 		Text:            "📝",
-		Font:            g.header.Collection.NishikiTeki(),
+		Font:            g.nav.Collection.NishikiTeki(),
 		Pressed:         nrgba.CoolBlue,
 		TextSize:        unit.Sp(16),
 		TextInsetBottom: -1,
 		Disabled:        false,
-		OnHoverHint:     func() { g.header.Tip("Open configuration file") },
+		OnHoverHint:     func() { g.nav.Tip("Open configuration file") },
 		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
@@ -1049,9 +1046,9 @@ func (g *GUI) mainUI() *main {
 		},
 	}
 
-	ui.menu.startstop = &button.Widget{
+	ui.nav.startstop = &button.Widget{
 		Text:            "▶",
-		Font:            g.header.Collection.NishikiTeki(),
+		Font:            g.nav.Collection.NishikiTeki(),
 		Pressed:         nrgba.PastelGreen,
 		TextSize:        unit.Sp(16),
 		TextInsetBottom: -1,
@@ -1075,13 +1072,13 @@ func (g *GUI) mainUI() *main {
 		},
 	}
 
-	ui.menu.hideRight = &button.Widget{
+	ui.nav.hideRight = &button.Widget{
 		Text:            "⇇",
-		Font:            g.header.Collection.NishikiTeki(),
+		Font:            g.nav.Collection.NishikiTeki(),
 		Pressed:         nrgba.Gray,
 		TextSize:        unit.Sp(16),
 		TextInsetBottom: -1,
-		OnHoverHint:     func() { g.header.Tip("Show Main Menu preview area") },
+		OnHoverHint:     func() { g.nav.Tip("Show Main Menu preview area") },
 		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
@@ -1090,12 +1087,12 @@ func (g *GUI) mainUI() *main {
 			if !hidden {
 				this.Text = "⇇"
 				ui.split.vertical.Ratio = 1
-				this.OnHoverHint = func() { g.header.Tip("Show Main Menu preview area") }
+				this.OnHoverHint = func() { g.nav.Tip("Show Main Menu preview area") }
 				config.Current.Advanced.Matching.Disabled.Previews = true
 			} else {
 				this.Text = "⇉"
 				ui.split.vertical.Ratio = .7
-				this.OnHoverHint = func() { g.header.Tip("Hide Main Menu preview area") }
+				this.OnHoverHint = func() { g.nav.Tip("Hide Main Menu preview area") }
 				config.Current.Advanced.Matching.Disabled.Previews = false
 			}
 
@@ -1103,22 +1100,22 @@ func (g *GUI) mainUI() *main {
 		},
 	}
 
-	ui.menu.hideTop = &button.Widget{
+	ui.nav.hideTop = &button.Widget{
 		Text:            "⇈",
-		Font:            g.header.Collection.NishikiTeki(),
+		Font:            g.nav.Collection.NishikiTeki(),
 		Pressed:         nrgba.Gray,
 		TextSize:        unit.Sp(16),
 		TextInsetBottom: -1,
-		OnHoverHint:     func() { g.header.Tip("Show Main Menu configuration area") },
+		OnHoverHint:     func() { g.nav.Tip("Show Main Menu configuration area") },
 		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
 			if this.Text == "⇈" {
 				this.Text = "⇊"
-				this.OnHoverHint = func() { g.header.Tip("Show Main Menu configuration area") }
+				this.OnHoverHint = func() { g.nav.Tip("Show Main Menu configuration area") }
 			} else {
 				this.Text = "⇈"
-				this.OnHoverHint = func() { g.header.Tip("Hide Main Menu configuration area") }
+				this.OnHoverHint = func() { g.nav.Tip("Hide Main Menu configuration area") }
 			}
 		},
 	}

@@ -74,6 +74,8 @@ type Widget struct {
 		err error
 		ok  bool
 	}
+
+	frameFrequency int
 }
 
 type Capture struct {
@@ -90,7 +92,13 @@ func (a *Widget) Layout(gtx layout.Context, collection fonts.Collection, capture
 	if img == nil || capture.Max.X == 0 || a.Base.Max.X == 0 {
 		return nil
 	}
-	defer func() { err = a.match() }()
+	defer func() {
+		a.frameFrequency++
+		if a.frameFrequency >= 120 {
+			a.frameFrequency = 0
+			err = a.match()
+		}
+	}()
 
 	if a.Widget == nil {
 		a.Widget = &button.Widget{
@@ -110,6 +118,8 @@ func (a *Widget) Layout(gtx layout.Context, collection fonts.Collection, capture
 		a.subtitleLabel = material.Body2(a.Theme, "")
 		a.subtitleLabel.Font.Weight = 1000
 		decorate.Label(&a.subtitleLabel, a.subtitleLabel.Text)
+
+		a.frameFrequency = 120
 	}
 
 	// Scale up or down based on area and image size.
@@ -296,8 +306,8 @@ func (a *Widget) match() error {
 	}
 
 	if a.readyq == nil {
-		a.readyq = make(chan bool)
-		go func() { a.readyq <- true }()
+		a.readyq = make(chan bool, 1)
+		a.readyq <- true
 	}
 
 	if !device.IsActive() && !monitor.IsDisplay() && !window.IsOpen() {
@@ -324,11 +334,6 @@ func (a *Widget) match() error {
 	}
 
 	return a.matched.err
-}
-
-func (c *Capture) reset() {
-	notify.Debug("UI: Resetting %s capture area %s", c.Option, c.DefaultBase)
-	c.Base = c.DefaultBase
 }
 
 func (c *Capture) Open() error {
@@ -365,4 +370,9 @@ func (c *Capture) Open() error {
 
 func (c *Capture) Rectangle() image.Rectangle {
 	return c.Base
+}
+
+func (c *Capture) reset() {
+	notify.Debug("UI: Resetting %s capture area %s", c.Option, c.DefaultBase)
+	c.Base = c.DefaultBase
 }

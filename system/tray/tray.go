@@ -141,7 +141,7 @@ func (m *menu) addSettings() {
 			m.settings.discord.toggle.SetTitle("Enabled")
 
 			if config.Current.Advanced.Discord.Disabled {
-				defer discord.Disconnect()
+				defer discord.Close()
 
 				m.settings.discord.toggle.Uncheck()
 				m.settings.discord.toggle.SetTitle("Disabled")

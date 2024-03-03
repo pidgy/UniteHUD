@@ -2,6 +2,7 @@ package update
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/hashicorp/go-version"
@@ -20,7 +21,7 @@ type query struct {
 func Check() {
 	notify.Debug("Update: Validating %s", global.Version)
 
-	r, err := http.Get("https://unitehud.dev/update.json")
+	r, err := http.Get(fmt.Sprintf("https://unitehud.dev/update.json?v=%s", global.Version))
 	if err != nil {
 		notify.Error("Failed to check for updates (%v)", err)
 		return
@@ -64,7 +65,7 @@ func Check() {
 	case v2.LessThan(v1):
 		notify.System("Update: You are running an unstable %s build", global.Version)
 	case v1.Equal(v2):
-		notify.System("Update: Running latest (%s)", global.Version)
+		notify.System("Update: You are running the latest version of UniteHUD (%s)", global.Version)
 	default:
 		notify.Warn("Update: Unable to validate version %s ", q.Latest)
 	}

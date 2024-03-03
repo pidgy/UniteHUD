@@ -96,7 +96,6 @@ func MatchesWithAcceptance(matrix gocv.Mat, img image.Image, templates []*templa
 	for i, mat := range results {
 		if mat.Empty() {
 			notify.SystemWarn("Detect: Empty result for %s", templates[i].Truncated())
-
 			continue
 		}
 

@@ -68,7 +68,7 @@ func init() {
 func Capture() (*image.RGBA, error) {
 	handle, err := find(config.Current.Video.Capture.Window.Name)
 	if err != nil {
-		notify.Error("Window: Failed to find %s (%v)", config.Current.Video.Capture.Window.Name, err)
+		notify.Error("Window: %v", err)
 		if config.Current.Video.Capture.Window.Lost == "" {
 			config.Current.Video.Capture.Window.Lost = config.Current.Video.Capture.Window.Name
 		}

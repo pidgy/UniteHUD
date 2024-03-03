@@ -405,7 +405,7 @@ func (b *Widget) Layout(gtx layout.Context, content layout.Widget) layout.Dimens
 				return layout.Dimensions{}
 				// return layout.Dimensions{Size: image.Pt(gtx.Constraints.Max.X, Height/3)}
 			}
-			return decorate.Border(gtx)
+			return decorate.BorderIdle(gtx)
 		}),
 
 		layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {

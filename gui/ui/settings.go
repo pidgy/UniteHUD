@@ -330,7 +330,7 @@ func (g *GUI) settingsUI() *settings {
 				if config.Current.Advanced.Discord.Disabled {
 					this.Released = nrgba.PastelRed
 					this.Text = "Disabled"
-					discord.Disconnect()
+					discord.Close()
 				} else {
 					this.Released = nrgba.Discord
 					this.Text = "Enabled"
@@ -564,8 +564,12 @@ func (g *GUI) settingsUI() *settings {
 				Value: &config.Current.Theme.Splash,
 			},
 			colorpicker.Option{
-				Label: "Borders",
-				Value: &config.Current.Theme.Borders,
+				Label: "Borders (Idle)",
+				Value: &config.Current.Theme.BordersIdle,
+			},
+			colorpicker.Option{
+				Label: "Borders (Active)",
+				Value: &config.Current.Theme.BordersActive,
 			},
 			colorpicker.Option{
 				Label: "Scrollbar Background",
@@ -637,8 +641,6 @@ func (s *section) section(gtx layout.Context) layout.Dimensions {
 	decorate.Label(&s.description, s.description.Text)
 
 	children := []layout.FlexChild{
-		// Title: "Advanced Settings".
-		// Subtitle: "Discord Activity", "Theme Presets".
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 			if s.title.Text == "" {
 				return layout.Dimensions{Size: layout.Exact(image.Pt(0, 0)).Max}
@@ -648,19 +650,29 @@ func (s *section) section(gtx layout.Context) layout.Dimensions {
 				return decorate.Line(
 					gtx,
 					clip.Rect(image.Rect(8, 0, gtx.Constraints.Max.X-8, 1)),
-					nrgba.NRGBA(config.Current.Theme.Borders),
+					nrgba.NRGBA(config.Current.Theme.BordersIdle),
 				)
 			})
 
-			return layout.Inset{
+			dim := layout.Inset{
 				Top:    inset.Top + 10,
 				Left:   inset.Left - 2,
 				Right:  inset.Right - 2,
 				Bottom: inset.Bottom,
 			}.Layout(gtx, s.title.Layout)
+
+			layout.Inset{Top: 40, Bottom: 5}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+				return decorate.Line(
+					gtx,
+					clip.Rect(image.Rect(8, 0, gtx.Constraints.Max.X-8, 1)),
+					nrgba.NRGBA(config.Current.Theme.BordersIdle).Alpha(config.Current.Theme.BordersIdle.A/2),
+				)
+			})
+
+			return dim
 		}),
 
-		// Widget: Button, Slider, etc.
+		// Widget, Button, Slider, etc.
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 			if s.widget == nil {
 				return layout.Dimensions{Size: layout.Exact(image.Pt(0, 0)).Max}
@@ -669,7 +681,7 @@ func (s *section) section(gtx layout.Context) layout.Dimensions {
 			return inset.Layout(gtx, s.widget.Layout)
 		}),
 
-		// Label: "Configure blah".
+		// Label, "Configure blah".
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 			if s.description.Text == "" {
 				return layout.Dimensions{Size: layout.Exact(image.Pt(0, 0)).Max}
@@ -686,7 +698,7 @@ func (s *section) section(gtx layout.Context) layout.Dimensions {
 			return inset.Layout(gtx, s.description.Layout)
 		}),
 
-		// Label: "This setting will blah".
+		// Label, "This setting will blah".
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 			if s.warning == nil {
 				return layout.Dimensions{Size: layout.Exact(image.Pt(0, 0)).Max}

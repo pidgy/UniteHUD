@@ -74,7 +74,7 @@ func (g *GUI) preview(a *areas, onclose func()) *preview {
 		ui.capture.images = []*button.ImageWidget{}
 		ui.capture.areas = []*area.Capture{
 			a.energy.Capture,
-			a.ko.Capture,
+			// a.ko.Capture,
 			a.objective.Capture,
 			a.score.Capture,
 			a.state.Capture,

@@ -12,6 +12,7 @@ import (
 
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/nrgba"
+	"github.com/pidgy/unitehud/core/server"
 )
 
 func Background(gtx layout.Context) {
@@ -28,7 +29,14 @@ func BackgroundTitleBar(gtx layout.Context, size image.Point) {
 }
 
 func Border(gtx layout.Context) layout.Dimensions {
-	return ColorBox(gtx, image.Pt(gtx.Constraints.Max.X, 1), nrgba.NRGBA(config.Current.Theme.Borders).Alpha(255))
+	if server.Started() {
+		return ColorBox(gtx, image.Pt(gtx.Constraints.Max.X, 1), nrgba.NRGBA(config.Current.Theme.BordersActive).Alpha(255))
+	}
+	return ColorBox(gtx, image.Pt(gtx.Constraints.Max.X, 1), nrgba.NRGBA(config.Current.Theme.BordersIdle).Alpha(255))
+}
+
+func BorderIdle(gtx layout.Context) layout.Dimensions {
+	return ColorBox(gtx, image.Pt(gtx.Constraints.Max.X, 1), nrgba.NRGBA(config.Current.Theme.BordersIdle).Alpha(255))
 }
 
 func CheckBox(c *material.CheckBoxStyle) {
@@ -90,7 +98,7 @@ func Scrollbar(s *material.ScrollbarStyle) {
 }
 
 func Spacer(gtx layout.Context, size image.Point) layout.Dimensions {
-	return ColorBox(gtx, size, nrgba.NRGBA(config.Current.Theme.Borders).Alpha(25))
+	return ColorBox(gtx, size, nrgba.NRGBA(config.Current.Theme.BordersIdle).Alpha(25))
 }
 
 func Underline(gtx layout.Context, w layout.Widget) layout.Dimensions {

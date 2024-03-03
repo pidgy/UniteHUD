@@ -68,7 +68,7 @@ func (t *Widget) Layout(gtx layout.Context, posts []notify.Post) layout.Dimensio
 		}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 			return t.list.Layout(gtx, len(posts), func(gtx layout.Context, index int) layout.Dimensions {
 				t.label.Text = posts[index].String()
-				t.label.Color = posts[index].Alpha(t.calculateAlpha(index, len(posts))).Color()
+				t.label.Color = posts[index].Alpha(alpha(index+1, len(posts))).Color()
 				t.label.Alignment = text.Start
 				dim := t.label.Layout(gtx)
 				dim.Size.X = gtx.Constraints.Max.X
@@ -78,15 +78,6 @@ func (t *Widget) Layout(gtx layout.Context, posts []notify.Post) layout.Dimensio
 
 		return layout.Dimensions{Size: gtx.Constraints.Max}
 	})
-}
-
-func (t *Widget) calculateAlpha(index, nposts int) uint8 {
-	ratio := (float32(index) / float32(nposts))
-	a := (float32(257) * ratio) + 5
-	if a > 255 {
-		a = 255
-	}
-	return uint8(a)
 }
 
 func (t *Widget) cursor() {
@@ -103,4 +94,12 @@ func (t *Widget) cursor() {
 			cursor.Is(pointer.CursorDefault)
 		}
 	}
+}
+
+func alpha(index, nposts int) uint8 {
+	if index == nposts {
+		return 255
+	}
+	p := float32(index+1) / float32(nposts)
+	return uint8(float32(200) * p)
 }

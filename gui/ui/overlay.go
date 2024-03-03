@@ -22,7 +22,6 @@ import (
 	"github.com/pidgy/unitehud/avi/video/wapi"
 	"github.com/pidgy/unitehud/core/fonts"
 	"github.com/pidgy/unitehud/core/notify"
-	"github.com/pidgy/unitehud/gui/cursor"
 	"github.com/pidgy/unitehud/gui/is"
 	"github.com/pidgy/unitehud/gui/ux/decorate"
 	"github.com/pidgy/unitehud/gui/ux/electron"
@@ -36,7 +35,7 @@ type overlay struct {
 	overlay image.Image
 	overlayOp paint.ImageOp
 
-	bar *title.Widget
+	nav *title.Widget
 
 	windows struct {
 		parent  *GUI
@@ -72,12 +71,12 @@ func (g *GUI) overlay(onclose func()) {
 	ui.windows.current.Perform(system.ActionCenter)
 	ui.windows.current.Perform(system.ActionRaise)
 
-	err := electron.OpenWindow()
+	err := electron.Open()
 	if err != nil {
-		notify.Warn("Overlay: Failed to render overlay (%v)", err)
+		notify.Warn("UI: Failed to render overlay (%v)", err)
 		return
 	}
-	defer electron.CloseWindow()
+	defer electron.Close()
 
 	defer fps.NewLoop(&fps.LoopOptions{
 		Async: true,
@@ -99,7 +98,7 @@ func (g *GUI) overlay(onclose func()) {
 	for {
 		switch event := ui.windows.current.NextEvent().(type) {
 		case system.DestroyEvent:
-			notify.System("Overlay: Closing...")
+			notify.System("UI: Closing overlay...")
 			return
 		case system.StageEvent:
 			if !ui.visibility.seen {
@@ -114,7 +113,7 @@ func (g *GUI) overlay(onclose func()) {
 			gtx := layout.NewContext(&ops, event)
 
 			if ui.dimensions.fullscreened {
-				ui.bar.Hide = time.Since(ui.hover) > time.Second*2
+				ui.nav.Hide = time.Since(ui.hover) > time.Second*2
 			} else {
 				ui.dimensions.size = event.Size
 			}
@@ -135,7 +134,7 @@ func (g *GUI) overlay(onclose func()) {
 						}
 					default:
 						if ui.dimensions.fullscreened {
-							ui.bar.Hide = false
+							ui.nav.Hide = false
 						}
 					}
 				case pointer.Event:
@@ -159,7 +158,7 @@ func (g *GUI) overlay(onclose func()) {
 
 			fit := widget.Contain
 
-			ui.bar.Layout(gtx,
+			ui.nav.Layout(gtx,
 				func(gtx layout.Context) layout.Dimensions {
 					return decorate.BackgroundAlt(gtx, func(gtx layout.Context) layout.Dimensions {
 						layout.Flex{
@@ -217,15 +216,15 @@ func (g *GUI) overlay(onclose func()) {
 					})
 				},
 			)
-			if ui.bar.Hide {
-				cursor.Is(pointer.CursorNone)
+			if ui.nav.Hide {
+				// cursor.Is(pointer.CursorNone)
 			}
 
 			ui.windows.current.Invalidate()
 
 			event.Frame(gtx.Ops)
 
-			p, ok := ui.bar.Dragging()
+			p, ok := ui.nav.Dragging()
 			if ok {
 				ui.setWindowPos(p)
 			}
@@ -237,7 +236,7 @@ func (g *GUI) overlay(onclose func()) {
 
 func (ui *overlay) fullscreen() {
 	ui.dimensions.fullscreened = !ui.dimensions.fullscreened
-	ui.bar.Hide = ui.dimensions.fullscreened
+	ui.nav.Hide = ui.dimensions.fullscreened
 
 	t := wapi.ThreadExecutionState(0)
 
@@ -255,7 +254,7 @@ func (ui *overlay) fullscreen() {
 
 	err := wapi.SetThreadExecutionState(t, wapi.ThreadExecutionStateContinuous)
 	if err != nil {
-		notify.Warn("Overlay: Failed to set thread execution state (%v)", err)
+		notify.Warn("UI: Overlay failed to set thread execution state (%v)", err)
 	}
 }
 
@@ -264,14 +263,14 @@ func (g *GUI) overlayUI() *overlay {
 		video: splash.Projector(),
 	}
 
-	ui.bar = title.New(
+	ui.nav = title.New(
 		"UniteHUD",
 		fonts.NewCollection(),
 		func() { ui.windows.current.Perform(system.ActionMinimize) },
 		ui.fullscreen,
 		func() { ui.windows.current.Perform(system.ActionClose) },
 	)
-	ui.bar.NoDrag = false
+	ui.nav.NoDrag = false
 
 	ui.dimensions.size = image.Pt(1280, 720)
 

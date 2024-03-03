@@ -24,6 +24,16 @@ td {
     /*border: 1px solid red;*/
 }
 
+#promo {
+    position: fixed;
+    top: 10px;
+    right: 0;
+    bottom: 0;
+    min-width: 100%;
+    min-height: 100%;
+    opacity: .05;
+}
+
 .teamscore {
     text-align: center;
     vertical-align: middle;
@@ -34,7 +44,7 @@ td {
     font-size: 33px;
     font-weight: bolder;
     background: rgba(0, 0, 0, 0);
-    top: 6px;
+    top: 4px;
 }
 
 .userscore {
@@ -79,10 +89,10 @@ td {
 
 .orangescore span {
     position: absolute;
-    left: -8px;
-    bottom: -27.5px;
+    left: -5px;
+    bottom: -6.5px;
     opacity: .7;
-    font-size: 10px;
+    font-size: 12px;
     font-weight: bolder;
     text-shadow: -1px 0 black, 0 1px black, 1px 0 black, 0 -1px black;
     color: white;
@@ -100,9 +110,9 @@ td {
 .purplescore span {
     position: absolute;
     left: 10px;
-    bottom: -27.5px;
+    bottom: -6.5px;
     opacity: .7;
-    font-size: 10px;
+    font-size: 12px;
     font-weight: bolder;
     text-shadow: -1px 0 black, 0 1px black, 1px 0 black, 0 -1px black;
     color: white;
@@ -182,7 +192,7 @@ td {
     left: 58px;
 }
 
-.rayquaza {
+.objectives-central {
     position: absolute;
     right: 207px;
     bottom: 30px;
@@ -193,7 +203,7 @@ td {
     border-radius: 15px;
 }
 
-.rayquaza-circle-purple {
+.objectives-central-circle-purple {
     position: absolute;
     background-color: #a376fe;
     border: 4px solid rgba(170, 170, 250);
@@ -204,7 +214,7 @@ td {
     -webkit-border-radius: 50%;
 }
 
-.rayquaza-circle-orange {
+.objectives-central-circle-orange {
     position: absolute;
     background-color: #ed8c44;
     border: 4px solid #ecc565;
@@ -216,7 +226,7 @@ td {
     opacity: .9;
 }
 
-.rayquaza-circle-none {
+.objectives-central-circle-none {
     position: absolute;
     background-color: #2e2c2b;
     border: 4px solid #545454;
@@ -228,17 +238,17 @@ td {
     opacity: .9;
 }
 
-.rayquaza-n {
+.objectives-central-n {
     position: absolute;
     left: 55px;
     top: 45px;
 }
 
-.rayquaza-1 {
+.objectives-central-1 {
     left: 12px;
 }
 
-.rayquaza-img {
+.objectives-central-img {
     position: absolute;
     left: 10px;
     top: 5px;
@@ -248,11 +258,11 @@ td {
     height: 35px;
 }
 
-.rayquaza-img-1 {
+.objectives-central-img-1 {
     left: 9px;
 }
 
-.regis {
+.objectives-top {
     position: absolute;
     left: 310px;
     bottom: 30px;
@@ -263,7 +273,7 @@ td {
     border-radius: 15px;
 }
 
-.regis-circle-purple {
+.objectives-circle-purple {
     position: absolute;
     background-color: #a376fe;
     border: 4px solid rgba(170, 170, 250);
@@ -274,7 +284,7 @@ td {
     -webkit-border-radius: 50%;
 }
 
-.regis-circle-orange {
+.objectives-circle-orange {
     position: absolute;
     background-color: #ed8c44;
     border: 4px solid #ecc565;
@@ -286,7 +296,7 @@ td {
     opacity: .9;
 }
 
-.regis-circle-none {
+.objectives-circle-none {
     position: absolute;
     background-color: #2e2c2b;
     border: 4px solid #545454;
@@ -298,25 +308,25 @@ td {
     opacity: .9;
 }
 
-.regis-n {
+.objectives-n {
     position: absolute;
     left: 55px;
     top: 45px;
 }
 
-.regis-1 {
+.objectives-1 {
     left: 12px;
 }
 
-.regis-2 {
+.objectives-2 {
     left: 61px;
 }
 
-.regis-3 {
+.objectives-3 {
     left: 110px;
 }
 
-.regis-img-tiny {
+.objectives-img-tiny {
     top: 25px;
     transform: none;
     transform: scaleX(-1);
@@ -324,7 +334,7 @@ td {
     height: 20px;
 }
 
-.regis-img {
+.objectives-img {
     position: absolute;
     left: 10px;
     top: 5px;
@@ -334,19 +344,19 @@ td {
     height: 35px;
 }
 
-.regis-img-1 {
+.objectives-img-1 {
     left: 9px;
 }
 
-.regis-img-2 {
+.objectives-img-2 {
     left: 58px;
 }
 
-.regis-img-3 {
+.objectives-img-3 {
     left: 107px;
 }
 
-.regis-bottom {
+.objectives-bottom {
     position: absolute;
     right: 263px;
     bottom: 30px;
@@ -357,7 +367,7 @@ td {
     border-radius: 15px;
 }
 
-.regis-bottom-circle-purple {
+.objectives-bottom-circle-purple {
     position: absolute;
     background-color: #a376fe;
     border: 4px solid rgba(170, 170, 250);
@@ -368,7 +378,7 @@ td {
     -webkit-border-radius: 50%;
 }
 
-.regis-bottom-circle-orange {
+.objectives-bottom-circle-orange {
     position: absolute;
     background-color: #ed8c44;
     border: 4px solid #ecc565;
@@ -380,7 +390,7 @@ td {
     opacity: .9;
 }
 
-.regis-bottom-circle-none {
+.objectives-bottom-circle-none {
     position: absolute;
     background-color: #2e2c2b;
     border: 4px solid #545454;
@@ -392,25 +402,25 @@ td {
     opacity: .9;
 }
 
-.regis-bottom-n {
+.objectives-bottom-n {
     position: absolute;
     left: 55px;
     top: 45px;
 }
 
-.regis-bottom-1 {
+.objectives-bottom-1 {
     left: 12px;
 }
 
-.regis-bottom-2 {
+.objectives-bottom-2 {
     left: 61px;
 }
 
-.regis-bottom-3 {
+.objectives-bottom-3 {
     left: 110px;
 }
 
-.regis-bottom-img {
+.objectives-bottom-img {
     position: absolute;
     left: 10px;
     top: 5px;
@@ -420,15 +430,15 @@ td {
     height: 35px;
 }
 
-.regis-bottom-img-1 {
+.objectives-bottom-img-1 {
     left: 9px;
 }
 
-.regis-bottom-img-2 {
+.objectives-bottom-img-2 {
     left: 58px;
 }
 
-.regis-bottom-img-3 {
+.objectives-bottom-img-3 {
     left: 107px;
 }
 
@@ -463,28 +473,13 @@ td {
     color: rgba(255, 255, 255, .7);
 }
 
+.error span {
+    font-size: 14px;
+    opacity: .6;
+}
+
 .stacks-container {
     position: absolute;
     right: 4px;
     top: 28px;
-}
-
-@keyframes shake {
-    10%,
-    90% {
-        transform: translate3d(-1px, 0, 0);
-    }
-    20%,
-    80% {
-        transform: translate3d(2px, 0, 0);
-    }
-    30%,
-    50%,
-    70% {
-        transform: translate3d(-4px, 0, 0);
-    }
-    40%,
-    60% {
-        transform: translate3d(4px, 0, 0);
-    }
 }
