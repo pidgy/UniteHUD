@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pidgy/unitehud/core/global"
 	"github.com/pidgy/unitehud/core/nrgba"
+	"github.com/pidgy/unitehud/global"
 )
 
 type (
@@ -140,10 +140,6 @@ func System(format string, a ...interface{}) {
 
 func SystemAppend(format string, a ...interface{}) {
 	feed.log(nrgba.System, false, false, false, format, a...)
-}
-
-func SystemWarn(format string, a ...interface{}) {
-	feed.log(nrgba.Pinkity, true, false, false, format, a...)
 }
 
 func Unique(c nrgba.NRGBA, format string, a ...interface{}) {

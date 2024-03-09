@@ -7,8 +7,8 @@ import (
 
 	"github.com/hashicorp/go-version"
 
-	"github.com/pidgy/unitehud/core/global"
 	"github.com/pidgy/unitehud/core/notify"
+	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/system/desktop"
 	"github.com/pidgy/unitehud/system/desktop/clicked"
 )
@@ -36,7 +36,7 @@ func Check() {
 	}
 
 	if q.Latest == "" {
-		notify.SystemWarn("Update: Failed to verify latest version")
+		notify.Warn("Update: Failed to verify latest version")
 		return
 	}
 

@@ -87,7 +87,7 @@ func Time(matrix gocv.Mat, img *image.RGBA) (seconds int, kitchen string) {
 
 		for i := range results {
 			if results[i].Empty() {
-				notify.SystemWarn("Detect: Empty result for %s", templates[i].Truncated())
+				notify.Warn("Detect: Empty result for %s", templates[i].Truncated())
 				continue
 			}
 

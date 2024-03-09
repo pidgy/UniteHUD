@@ -18,9 +18,9 @@ import (
 	"github.com/pidgy/unitehud/avi/video/device"
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/fonts"
-	"github.com/pidgy/unitehud/core/global"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/nrgba"
+	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/gui/ux"
 	"github.com/pidgy/unitehud/gui/ux/button"
 	"github.com/pidgy/unitehud/gui/ux/colorpicker"
@@ -194,45 +194,33 @@ func (g *GUI) settingsUI() *settings {
 			TextSize: 12,
 			Items: []*dropdown.Item{
 				{
-					Text: "English",
-					Checked: widget.Bool{
-						Value: true,
-					},
-					Callback: func(this *dropdown.Item) {},
+					Text:    "English",
+					Checked: widget.Bool{Value: true},
 				},
 				{
-					Text: "Español",
-					Checked: widget.Bool{
-						Value: false,
-					},
+					Text:     "Español",
+					Checked:  widget.Bool{Value: false},
 					Disabled: true,
-					Callback: func(this *dropdown.Item) {
-						notify.Error("UI: %s language detection is currently not supported", this.Text)
+					DisabledCallback: func(this *dropdown.Item) {
+						g.ToastErrorf("%s language detection is currently not supported", this.Text)
 					},
 				},
 				{
-					Text: "日本語",
-					Checked: widget.Bool{
-						Value: false,
-					},
+					Text:     "日本語",
+					Checked:  widget.Bool{Value: false},
 					Disabled: true,
-					Callback: func(this *dropdown.Item) {
-						notify.Error("UI: %s language detection is currently not supported", this.Text)
+					DisabledCallback: func(this *dropdown.Item) {
+						g.ToastErrorf("%s language detection is currently not supported", this.Text)
 					},
 				},
 				{
-					Text: "한국어",
-					Checked: widget.Bool{
-						Value: false,
-					},
+					Text:     "한국어",
+					Checked:  widget.Bool{Value: false},
 					Disabled: true,
-					Callback: func(this *dropdown.Item) {
+					DisabledCallback: func(this *dropdown.Item) {
+						g.ToastErrorf("%s language detection is currently not supported", this.Text)
 					},
 				},
-			},
-			Callback: func(item *dropdown.Item, this *dropdown.Widget) bool {
-				g.ToastErrorf("%s language detection is currently not supported", item.Text)
-				return false
 			},
 		},
 	}
@@ -287,7 +275,7 @@ func (g *GUI) settingsUI() *settings {
 					},
 				},
 			},
-			Callback: func(item *dropdown.Item, this *dropdown.Widget) bool {
+			Callback: func(item *dropdown.Item, this *dropdown.Widget) (check bool) {
 				if !device.IsActive() {
 					return true
 				}
@@ -357,7 +345,7 @@ func (g *GUI) settingsUI() *settings {
 				Text:            "Test",
 				Pressed:         nrgba.Transparent80,
 				Released:        nrgba.PastelGreen.Alpha(150),
-				TextSize:        unit.Sp(12),
+				TextSize:        unit.Sp(14),
 				TextInsetBottom: unit.Dp(-2),
 				Size:            image.Pt(80, 20),
 				Font:            ui.bar.Collection.Calibri(),
@@ -414,7 +402,6 @@ func (g *GUI) settingsUI() *settings {
 					Value: !config.Current.Advanced.Notifications.Disabled.MatchStarting,
 				},
 				Callback: func(this *dropdown.Item) {
-					this.Checked.Value = !this.Checked.Value
 					config.Current.Advanced.Notifications.Disabled.MatchStarting = this.Checked.Value
 				},
 			},
@@ -437,31 +424,22 @@ func (g *GUI) settingsUI() *settings {
 				},
 			},
 		},
-		Callback: func(item *dropdown.Item, this *dropdown.Widget) bool {
+		Callback: func(item *dropdown.Item, this *dropdown.Widget) (check bool) {
 			if item.Text != "Disabled" {
-				return true
+				return item.Checked.Value
 			}
 
-			for _, i := range this.Items {
-				switch i.Text {
-				case "Disabled", "Muted":
+			for _, that := range this.Items {
+				if that.Text == "Disabled" || that.Text == "Muted" {
 					continue
-				default:
-					i.Checked.Value = !item.Checked.Value
 				}
-			}
-			return true
-		},
-	}
 
-	if config.Current.Advanced.Notifications.Disabled.All {
-		this := ui.sections.notifications.widget.(*dropdown.Widget)
-		for i := range this.Items {
-			if this.Items[i].Text == "Disabled" {
-				continue
+				that.Checked.Value = !item.Checked.Value
+				that.Callback(that)
 			}
-			this.Items[i].Checked.Value = true
-		}
+
+			return item.Checked.Value
+		},
 	}
 
 	ui.sections.factor = &section{

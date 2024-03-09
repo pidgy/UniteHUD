@@ -1,52 +1,22 @@
-//go:build windows
-// +build windows
-
 package window
 
 import (
-	"fmt"
 	"image"
-	"reflect"
 	"sync"
-	"syscall"
 	"time"
 	"unsafe"
 
-	"github.com/nfnt/resize"
-
-	"github.com/pidgy/unitehud/avi/video/monitor"
-	"github.com/pidgy/unitehud/avi/video/wapi"
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/notify"
+	"github.com/pidgy/unitehud/system/wapi"
+	"github.com/pkg/errors"
 )
 
 var (
 	Sources = []string{}
 
-	handles = []syscall.Handle{}
+	handles = []uintptr{}
 	lock    = &sync.Mutex{}
-
-	callback = syscall.NewCallback(func(h syscall.Handle, p uintptr) uintptr {
-		found, _, _ := syscall.Syscall(wapi.IsWindowVisible.Addr(), 1, uintptr(h), uintptr(0), uintptr(0))
-		if found == 0 {
-			return 1
-		}
-
-		name, err := getWindowText(h) //, &b[0], int32(len(b)))
-		if err != nil {
-			// notify.Error("Failed to find a window title (%v)", err)
-			return 1
-		}
-
-		if name == config.ProjectorWindow {
-			return 1
-		}
-
-		Sources = append(Sources, name)
-		handles = append(handles, h)
-
-		return 1
-	})
 )
 
 func init() {
@@ -56,7 +26,8 @@ func init() {
 
 			windows, _, err := list()
 			if err != nil {
-				notify.Error("Window: Failed to list windows (%v)", err)
+				notify.Warn("Window: Failed to list windows (%v)", err)
+				continue
 			}
 
 			Sources = windows
@@ -66,165 +37,77 @@ func init() {
 
 // Capture captures the desired area from a Window and returns an image.
 func Capture() (*image.RGBA, error) {
-	handle, err := find(config.Current.Video.Capture.Window.Name)
+	w, err := wapi.NewWindow(config.Current.Video.Capture.Window.Name)
 	if err != nil {
-		notify.Error("Window: %v", err)
-		if config.Current.Video.Capture.Window.Lost == "" {
-			config.Current.Video.Capture.Window.Lost = config.Current.Video.Capture.Window.Name
-		}
-		config.Current.Video.Capture.Window.Name = config.MainDisplay
-		return monitor.Capture()
+		return nil, err
 	}
 
-	// Determine the full width and height of the window.
-	rect, err := windowRect(handle)
+	rect, err := w.Dimensions()
 	if err != nil {
-		notify.Error("Window: Failed to find window dimensions \"%s\" (%v)", config.Current.Video.Capture.Window.Name, err)
-		if config.Current.Video.Capture.Window.Lost == "" {
-			config.Current.Video.Capture.Window.Lost = config.Current.Video.Capture.Window.Name
-		}
-		config.Current.Video.Capture.Window.Name = config.MainDisplay
-		return monitor.Capture()
+		return nil, errors.Wrap(err, "dimensions")
 	}
 
-	img, err := CaptureRect(rect)
-	if err != nil {
-		notify.Error("Window: Failed to capture \"%s\" window (%v)", config.Current.Video.Capture.Window.Name, err)
-		if config.Current.Video.Capture.Window.Lost == "" {
-			config.Current.Video.Capture.Window.Lost = config.Current.Video.Capture.Window.Name
-		}
-		config.Current.Video.Capture.Window.Name = config.MainDisplay
-		return monitor.Capture()
-	}
-
-	return img, err
+	return CaptureRect(w, rect)
 }
 
-func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
-	handle, err := find(config.Current.Video.Capture.Window.Name)
+func CaptureRect(w wapi.Window, rect image.Rectangle) (*image.RGBA, error) {
+	src, err := w.Device()
 	if err != nil {
-		notify.Error("Window: %v", err)
-		return monitor.CaptureRect(rect)
+		return nil, errors.Wrap(err, "device")
 	}
+	defer src.Release()
 
-	// Get the device context for screenshotting.
-	src, _, err := wapi.GetDC.Call(uintptr(handle))
-	if src == 0 {
-		return nil, fmt.Errorf("failed to prepare screen capture: %s", err)
-	}
-	defer wapi.ReleaseDC.Call(0, src)
-
-	// Grab a compatible DC for drawing.
-	dst, _, err := wapi.CreateCompatibleDC.Call(src)
+	dst, err := src.Compatible()
 	if dst == 0 {
-		return nil, fmt.Errorf("failed to create DC for drawing: %s", err)
+		return nil, errors.Wrap(err, "context")
 	}
-	defer wapi.DeleteDC.Call(dst)
+	defer dst.Delete()
 
-	// Determine the width/height of our capture.
-	width := rect.Dx()
-	height := rect.Dy()
+	size := rect.Size()
 
-	// Get the bitmap we're going to draw onto.
-	var bitmapInfo wapi.BitmapInfo
-	bitmapInfo.BmiHeader = wapi.BitmapInfoHeader{
-		BiSize:        uint32(reflect.TypeOf(bitmapInfo.BmiHeader).Size()),
-		BiWidth:       int32(width),
-		BiHeight:      -int32(height), // Negative value will flip image vertically.
-		BiPlanes:      1,
-		BiBitCount:    32,
-		BiCompression: wapi.BitmapInfoHeaderCompression.RGB,
+	info := wapi.BitmapInfo{
+		BmiHeader: wapi.BitmapInfoHeader{
+			BiSize:        wapi.BitmapInfoHeaderSize,
+			BiWidth:       int32(size.X),
+			BiHeight:      -int32(size.Y),
+			BiPlanes:      1,
+			BiBitCount:    32,
+			BiCompression: wapi.BitmapInfoHeaderCompression.RGB,
+		},
 	}
 
-	bitmapData := unsafe.Pointer(uintptr(0))
-	bitmap, _, err := wapi.CreateDIBSection.Call(
-		dst,
-		uintptr(unsafe.Pointer(&bitmapInfo)),
-		0,
-		uintptr(unsafe.Pointer(&bitmapData)),
-		0, 0,
-	)
-	if bitmap == 0 {
-		return nil, fmt.Errorf("Failed to create bitmap for \"%s\" window", config.Current.Video.Capture.Window.Name)
+	bitmap, data, err := info.CreateSection(dst)
+	if err != nil {
+		return nil, errors.Wrap(err, "section")
 	}
-
-	defer wapi.DeleteObject.Call(bitmap)
+	defer bitmap.Delete()
 
 	// Select the object and paint it.
-	wapi.SelectObject.Call(dst, bitmap)
-
-	var ret uintptr
-	switch config.Current.Scale {
-	case 1:
-		ret, _, _ = wapi.BitBlt.Call(
-			dst,
-			0,
-			0,
-			uintptr(width),
-			uintptr(height),
-			src,
-			uintptr(rect.Min.X),
-			uintptr(rect.Min.Y),
-			wapi.BitBltRasterOperations.CaptureBLT|wapi.BitBltRasterOperations.SrcCopy,
-		)
-	default: // Scaled.
-		ret, _, _ = wapi.StretchBlt.Call(
-			dst,
-			0,
-			0,
-			uintptr(int(float64(width)*config.Current.Scale)),
-			uintptr(int(float64(height)*config.Current.Scale)),
-			src,
-			uintptr(rect.Min.X),
-			uintptr(rect.Min.Y),
-			uintptr(width),
-			uintptr(height),
-			wapi.BitBltRasterOperations.CaptureBLT|wapi.BitBltRasterOperations.SrcCopy,
-		)
-	}
-	if ret == 0 {
-		notify.Error("Window: Failed to capture \"%s\" window", config.Current.Video.Capture.Window.Name)
-		return nil, fmt.Errorf("bitblt returned: %d", ret)
+	err = w.Select(bitmap)
+	if err != nil {
+		return nil, errors.Wrap(err, "bitmap select")
 	}
 
-	// Convert the bitmap to an image.Image. We first start by directly
-	// creating a slice. This is unsafe but we know the underlying structure
-	// directly.
-	var slice []byte
-	sliceHdr := (*reflect.SliceHeader)(unsafe.Pointer(&slice))
-	sliceHdr.Data = uintptr(bitmapData)
-	sliceHdr.Len = width * height * 4
-	sliceHdr.Cap = sliceHdr.Len
+	err = dst.Copy(src, size, rect, config.Current.Scale)
+	if err != nil {
+		return nil, errors.Wrap(err, "bitmap copy")
+	}
 
-	// Using the raw data, grab the RGBA data and transform it into an image.RGBA
-	imageBytes := make([]byte, len(slice))
-	for i := 0; i < len(imageBytes); i += 4 {
-		imageBytes[i], imageBytes[i+2], imageBytes[i+1], imageBytes[i+3] =
-			slice[i+2], slice[i], slice[i+1], slice[i+3]
+	slice := unsafe.Slice(&data, size.X*size.Y*4)
+
+	pix := make([]byte, len(slice))
+	for i := 0; i < len(pix); i += 4 {
+		pix[i] = byte(slice[i+2])
+		pix[i+2] = byte(slice[i])
+		pix[i+1] = byte(slice[i+1])
+		pix[i+3] = byte(slice[i+3])
 	}
 
 	return &image.RGBA{
-		Pix:    imageBytes,
-		Stride: 4 * width,
-		Rect: image.Rect(
-			0,
-			0,
-			width,
-			height,
-		),
+		Pix:    pix,
+		Stride: 4 * size.X,
+		Rect:   image.Rectangle{Max: size},
 	}, nil
-}
-
-func This(title string) (syscall.Handle, error) {
-	var handle syscall.Handle
-
-	// First look for the normal window
-	ret, _, _ := wapi.FindWindow.Call(0, uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(title))))
-	if ret == 0 {
-		return handle, fmt.Errorf("Failed to find \"%s\" window", title)
-	}
-
-	return syscall.Handle(ret), nil
 }
 
 func IsOpen() bool {
@@ -241,18 +124,12 @@ func Open() error {
 
 	for _, win := range windows {
 		if win == config.Current.Video.Capture.Window.Name {
-			if !monitor.IsDisplay() {
-				config.Current.Video.Capture.Window.Lost = ""
-			}
+			config.Current.Video.Capture.Window.Lost = ""
 			return nil
 		}
 	}
 
-	if monitor.IsDisplay() {
-		return nil
-	}
-
-	notify.Error("Window: \"%s\" could not be found", config.Current.Video.Capture.Window.Name)
+	notify.Error("Window: Failed to find \"%s\"", config.Current.Video.Capture.Window.Name)
 
 	config.Current.Video.Capture.Window.Lost = config.Current.Video.Capture.Window.Name
 	config.Current.Video.Capture.Window.Name = config.MainDisplay
@@ -299,84 +176,37 @@ func Reattach() error {
 	return nil
 }
 
-func enumWindows(enumFunc uintptr, lparam uintptr) (err error) {
-	r1, _, e1 := syscall.Syscall(wapi.EnumWindows.Addr(), 2, uintptr(enumFunc), uintptr(lparam), 0)
-	if r1 == 0 {
-		if e1 != 0 {
-			err = error(e1)
-		} else {
-			err = syscall.EINVAL
-		}
-	}
-	return
-}
-
-func list() ([]string, []syscall.Handle, error) {
+func list() ([]string, []uintptr, error) {
 	lock.Lock()
 	defer lock.Unlock()
 
 	Sources = []string{}
 
-	err := enumWindows(callback, 0)
+	err := wapi.EnumerateWindows(func(h uintptr, p uintptr) uintptr {
+		w := wapi.Window(h)
+
+		if w.Visible() {
+			return 1
+		}
+
+		name, err := w.Title()
+		if err != nil {
+			// notify.Error("Failed to find a window title (%v)", err)
+			return 1
+		}
+
+		if name == config.ProjectorWindow {
+			return 1
+		}
+
+		Sources = append(Sources, name)
+		handles = append(handles, h)
+
+		return 1
+	})
 	if err != nil {
 		return nil, nil, err
 	}
 
 	return Sources, handles, nil
-}
-
-// find finds the handle to the window.
-func find(name string) (syscall.Handle, error) {
-	var handle syscall.Handle
-
-	// First look for the normal window
-	argv, err := syscall.UTF16PtrFromString(name)
-	if err != nil {
-		return handle, err
-	}
-
-	ret, _, _ := wapi.FindWindow.Call(0, uintptr(unsafe.Pointer(argv)))
-	if ret == 0 {
-		config.Current.Video.Capture.Window.Lost = config.Current.Video.Capture.Window.Name
-		config.Current.Video.Capture.Window.Name = config.MainDisplay
-
-		return handle, fmt.Errorf("Failed to find \"%s\"", name)
-	}
-
-	return syscall.Handle(ret), nil
-}
-
-func getWindowText(hwnd syscall.Handle) (name string, err error) {
-	var str *uint16
-	b := make([]uint16, 200)
-	maxCount := uint32(200)
-	str = &b[0]
-
-	r0, _, e1 := syscall.Syscall(wapi.GetWindowTextW.Addr(), 3, uintptr(hwnd), uintptr(unsafe.Pointer(str)), uintptr(maxCount))
-	len := int32(r0)
-	if len == 0 {
-		if e1 != 0 {
-			err = error(e1)
-		} else {
-			err = syscall.EINVAL
-		}
-	}
-
-	return syscall.UTF16ToString(b), err
-}
-
-func scaled(img *image.RGBA, scale float64) *image.RGBA {
-	x := float64(img.Rect.Max.X) * scale
-	return resize.Resize(uint(x), 0, img, resize.Lanczos3).(*image.RGBA)
-}
-
-// windowRect gets the dimensions for a Window handle.
-func windowRect(hwnd syscall.Handle) (image.Rectangle, error) {
-	var rect wapi.Rect
-	ret, _, err := wapi.GetClientRect.Call(uintptr(hwnd), uintptr(unsafe.Pointer(&rect)))
-	if ret == 0 {
-		return image.Rectangle{}, fmt.Errorf("Error getting window dimensions: %s", err)
-	}
-
-	return image.Rect(0, 0, int(rect.Right), int(rect.Bottom)), nil
 }

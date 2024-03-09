@@ -7,14 +7,14 @@ import (
 	"gocv.io/x/gocv"
 
 	"github.com/pidgy/unitehud/core/config"
-	"github.com/pidgy/unitehud/core/duplicate"
-	"github.com/pidgy/unitehud/core/global"
+	"github.com/pidgy/unitehud/core/match/duplicate"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/server"
 	"github.com/pidgy/unitehud/core/sort"
 	"github.com/pidgy/unitehud/core/stats"
 	"github.com/pidgy/unitehud/core/team"
 	"github.com/pidgy/unitehud/core/template"
+	"github.com/pidgy/unitehud/global"
 )
 
 func (m *Match) points(matrix gocv.Mat) (Result, int) {
@@ -86,7 +86,7 @@ func (m *Match) first(matrix gocv.Mat) (Result, int) {
 
 		for i := range results {
 			if results[i].Empty() {
-				notify.SystemWarn("Detect: Empty result for %s", templates[i].Truncated())
+				notify.Warn("Detect: Empty result for %s", templates[i].Truncated())
 				continue
 			}
 
@@ -191,7 +191,7 @@ func (m *Match) regular(matrix gocv.Mat) (Result, int) {
 
 		for i := range results {
 			if results[i].Empty() {
-				notify.SystemWarn("Detect: Empty result for %s", templates[i].Truncated())
+				notify.Warn("Detect: Empty result for %s", templates[i].Truncated())
 				continue
 			}
 

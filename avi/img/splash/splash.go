@@ -55,35 +55,40 @@ func AsRGBA(i image.Image) *image.RGBA {
 }
 
 func Default() image.Image {
-	if defaultImg == nil {
-		if defaultMat.Empty() {
-			defaultMat = defaultPNGToMat()
-		}
-
-		i, err := defaultMat.ToImage()
-		if err != nil {
-			notify.Warn("Splash: Failed to convert splash image (%v)", err)
-			return defaultPNG
-		}
-		defaultImg = i
+	if defaultImg != nil {
+		return defaultImg
 	}
+
+	if defaultMat.Empty() {
+		defaultMat = defaultPNGToMat()
+	}
+
+	i, err := defaultMat.ToImage()
+	if err != nil {
+		notify.Warn("Splash: Failed to convert splash image (%v)", err)
+		return defaultPNG
+	}
+	defaultImg = i
 
 	return defaultImg
 }
 
 func Device() image.Image {
-	if deviceImg == nil {
-		if deviceMat.Empty() {
-			deviceMat = defaultPNGToMat()
-		}
-
-		i, err := deviceMat.ToImage()
-		if err != nil {
-			notify.Warn("Splash: Failed to convert splash image (%v)", err)
-			return defaultPNG
-		}
-		deviceImg = i
+	if deviceImg != nil {
+		return deviceImg
 	}
+
+	if deviceMat.Empty() {
+		deviceMat = defaultPNGToMat()
+	}
+
+	i, err := deviceMat.ToImage()
+	if err != nil {
+		notify.Warn("Splash: Failed to convert splash image (%v)", err)
+		return defaultPNG
+	}
+	deviceImg = i
+
 	return deviceImg
 }
 
@@ -96,85 +101,96 @@ func DeviceMat() *gocv.Mat {
 }
 
 func DeviceRGBA() *image.RGBA {
-	if deviceRGBA == nil {
-		if deviceMat.Empty() {
-			deviceMat = defaultPNGToMat()
-		}
-
-		i, err := deviceMat.ToImage()
-		if err != nil {
-			notify.Warn("Splash: Failed to convert splash image (%v)", err)
-			return defaultPNG
-		}
-		deviceRGBA = AsRGBA(i)
+	if deviceRGBA != nil {
+		return deviceRGBA
 	}
+
+	if deviceMat.Empty() {
+		deviceMat = defaultPNGToMat()
+	}
+
+	i, err := deviceMat.ToImage()
+	if err != nil {
+		notify.Warn("Splash: Failed to convert splash image (%v)", err)
+		return defaultPNG
+	}
+	deviceRGBA = AsRGBA(i)
 
 	return deviceRGBA
 }
 
 func Invalid() image.Image {
-	if invalidImg == nil {
-		if invalidMat.Empty() {
-			invalidMat = defaultPNGToMat()
-		}
-
-		i, err := invalidMat.ToImage()
-		if err != nil {
-			notify.Warn("Splash: Failed to convert splash image (%v)", err)
-			return defaultPNG
-		}
-		invalidImg = i
+	if invalidImg != nil {
+		return invalidImg
 	}
+
+	if invalidMat.Empty() {
+		invalidMat = defaultPNGToMat()
+	}
+
+	i, err := invalidMat.ToImage()
+	if err != nil {
+		notify.Warn("Splash: Failed to convert splash image (%v)", err)
+		return defaultPNG
+	}
+	invalidImg = i
 
 	return invalidImg
 }
 
 func InvalidRGBA() *image.RGBA {
 	if invalidRGBA == nil {
-		if invalidMat.Empty() {
-			invalidMat = defaultPNGToMat()
-		}
-
-		i, err := invalidMat.ToImage()
-		if err != nil {
-			notify.Warn("Splash: Failed to convert splash image (%v)", err)
-			return defaultPNG
-		}
-		invalidRGBA = AsRGBA(i)
+		return invalidRGBA
 	}
+
+	if invalidMat.Empty() {
+		invalidMat = defaultPNGToMat()
+	}
+
+	i, err := invalidMat.ToImage()
+	if err != nil {
+		notify.Warn("Splash: Failed to convert splash image (%v)", err)
+		return defaultPNG
+	}
+	invalidRGBA = AsRGBA(i)
+
 	return invalidRGBA
 }
 
 func Loading() image.Image {
-	if loadingImg == nil {
-		if loadingMat.Empty() {
-			loadingMat = defaultPNGToMat()
-		}
-
-		i, err := loadingMat.ToImage()
-		if err != nil {
-			notify.Warn("Splash: Failed to convert splash image (%v)", err)
-			return defaultPNG
-		}
-		loadingImg = i
+	if loadingImg != nil {
+		return loadingImg
 	}
+
+	if loadingMat.Empty() {
+		loadingMat = defaultPNGToMat()
+	}
+
+	i, err := loadingMat.ToImage()
+	if err != nil {
+		notify.Warn("Splash: Failed to convert splash image (%v)", err)
+		return defaultPNG
+	}
+	loadingImg = i
 
 	return loadingImg
 }
 
 func Projector() image.Image {
-	if projectorImg == nil {
-		if projectorMat.Empty() {
-			projectorMat = defaultPNGToMat()
-		}
-
-		i, err := projectorMat.ToImage()
-		if err != nil {
-			notify.Warn("Failed to convert splash image (%v)", err)
-			return defaultPNG
-		}
-		projectorImg = i
+	if projectorImg != nil {
+		return projectorImg
 	}
+
+	if projectorMat.Empty() {
+		projectorMat = defaultPNGToMat()
+	}
+
+	i, err := projectorMat.ToImage()
+	if err != nil {
+		notify.Warn("Failed to convert splash image (%v)", err)
+		return defaultPNG
+	}
+	projectorImg = i
 
 	return projectorImg
 }

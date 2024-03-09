@@ -140,7 +140,7 @@ func status() activity {
 	a.Details = fmt.Sprintf("UniteHUD - %s", is.Now)
 
 	switch is.Now {
-	case is.Projecting:
+	case is.Configuring:
 		a.State = "Configuring capture settings"
 	case is.Loading:
 		a.State = "Starting"

@@ -33,9 +33,9 @@ type Loop struct {
 }
 
 type LoopOptions struct {
-	Async  bool
-	FPS    int
-	Render func(min, max, avg time.Duration) (close bool)
+	Async bool
+	FPS   int
+	On    func(min, max, avg time.Duration) (close bool)
 
 	stats struct {
 		min, max, avg,
@@ -63,8 +63,8 @@ func NewLoop(o *LoopOptions) *Loop {
 	if l.FPS == 0 {
 		l.FPS = 60
 	}
-	if l.Render == nil {
-		l.Render = func(min, max, avg time.Duration) (close bool) { return true }
+	if l.On == nil {
+		l.On = func(min, max, avg time.Duration) (close bool) { return true }
 	}
 
 	l.interval = time.Second / time.Duration(l.FPS)
@@ -140,7 +140,7 @@ func (l *Loop) start() {
 func (l *Loop) render() (close bool) {
 	defer l.track(time.Now())
 
-	close = l.Render(l.stats.min, l.stats.max, l.stats.avg)
+	close = l.On(l.stats.min, l.stats.max, l.stats.avg)
 
 	return
 }

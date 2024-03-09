@@ -38,7 +38,12 @@ func Capture() (img *image.RGBA, err error) {
 		return monitor.Capture()
 	}
 
-	return window.Capture()
+	img, err = window.Capture()
+	if err != nil {
+		return monitor.Capture()
+	}
+
+	return
 }
 
 func CaptureRect(rect image.Rectangle) (img *image.RGBA, err error) {
@@ -50,7 +55,7 @@ func CaptureRect(rect image.Rectangle) (img *image.RGBA, err error) {
 		return monitor.CaptureRect(rect)
 	}
 
-	return window.CaptureRect(rect)
+	return window.Capture()
 }
 
 func Close() {

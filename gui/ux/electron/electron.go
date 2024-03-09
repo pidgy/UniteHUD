@@ -12,9 +12,9 @@ import (
 	"github.com/asticode/go-astilectron"
 	"github.com/pkg/errors"
 
-	"github.com/pidgy/unitehud/avi/video/wapi"
-	"github.com/pidgy/unitehud/core/global"
 	"github.com/pidgy/unitehud/core/notify"
+	"github.com/pidgy/unitehud/global"
+	"github.com/pidgy/unitehud/system/wapi"
 )
 
 //! Required: assets/electron/vendor/astilelectron/index.js
@@ -35,9 +35,9 @@ const (
 )
 
 var (
-	app    *astilectron.Astilectron
-	window *astilectron.Window
-	active = struct{ app, window bool }{}
+	app            *astilectron.Astilectron
+	window         *astilectron.Window
+	active, hidden bool
 
 	html = filepath.Join(global.WorkingDirectory(), "www", "UniteHUD Client.html")
 
@@ -53,21 +53,38 @@ var (
 	}
 )
 
+func Active() bool {
+	return active
+}
+
 func Close() {
-	defer closeApp()
+	if !active {
+		notify.Warn("Overlay Window: Failed to close (inactive)")
+		return
+	}
+	active = false
+	hidden = true
 
-	notify.Debug("Overlay Window: Closing...")
-	defer notify.Debug("Overlay Window: Closed...")
-
-	err := window.Close()
+	err := closeWindow()
 	if err != nil {
-		notify.Error("Overlay Window: Failed to close window (%v)", err)
+		notify.Error("Overlay Window: Failed to close (%v)", err)
+		return
+	}
+
+	err = closeApp()
+	if err != nil {
+		notify.Error("Overlay Engine: Failed to close (%v)", err)
+		return
 	}
 }
 
-func Follow(hwnd uintptr, hidden bool) {
+func Follow(hwnd uintptr, parent bool) {
+	if !active {
+		return
+	}
+
 	b := offscreen
-	if !hidden {
+	if !parent {
 		r := &wapi.Rect{}
 
 		_, _, err := wapi.GetWindowRect.Call(hwnd, uintptr(unsafe.Pointer(r)))
@@ -86,30 +103,151 @@ func Follow(hwnd uintptr, hidden bool) {
 		}
 	}
 
-	for _, err := range []error{
-		window.SetBounds(b),
-		window.MoveTop(),
-		window.Show(),
-	} {
+	err := window.SetBounds(b)
+	if err != nil {
+		if active {
+			notify.Debug("Overlay Window: Failed to set bounds (%v)", err)
+		}
+	}
+
+	if !hidden {
+		err = window.MoveTop()
 		if err != nil {
-			notify.Debug("Overlay Window: Failed to render (%v)", err)
+			notify.Debug("Overlay Window: Failed to move on top (%v)", err)
+		}
+
+		err = window.Show()
+		if err != nil {
+			notify.Debug("Overlay Window: Failed to show (%v)", err)
 		}
 	}
 }
 
+func Hide() {
+	hidden = true
+
+	err := window.Hide()
+	if err != nil {
+		notify.Error("Overlay Window: Failed to hide (%v)", err)
+	}
+}
+
 func Open() error {
-	if !active.app {
-		openApp()
+	if active {
+		return fmt.Errorf("window is active")
+	}
+	active = true
+	hidden = false
+
+	err := openApp()
+	if err != nil {
+		notify.Error("Overlay Engine: Failed to open (%v)", err)
+		return err
 	}
 
-	if window != nil {
-		if active.window {
-			return errors.New("window is active")
-		}
-
-		return window.Show()
+	err = openWindow()
+	if err != nil {
+		notify.Error("Overlay Window: Failed to open (%v)", err)
+		return err
 	}
 
+	active = true
+
+	return nil
+}
+
+func Show() {
+	hidden = false
+
+	err := window.Show()
+	if err != nil {
+		notify.Error("Overlay Window: Failed to show (%v)", err)
+	}
+}
+
+func closeApp() error {
+	notify.Debug("Overlay Engine: Closing...")
+	defer notify.Debug("Overlay Engine: Closed...")
+
+	go app.Stop()
+	go app.Close()
+
+	err := app.Quit()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func closeWindow() error {
+	notify.Debug("Overlay Window: Closing...")
+	defer notify.Debug("Overlay Window: Closed...")
+
+	err := window.UpdateCustomOptions(astilectron.WindowCustomOptions{MinimizeOnClose: astikit.BoolPtr(false)})
+	if err != nil {
+		return err
+	}
+
+	err = window.Destroy()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func openApp() error {
+	notify.Debug("Overlay Engine: Opening...")
+
+	var err error
+
+	app, err = astilectron.New(
+		notify.Debugger("Overlay Engine: "),
+		astilectron.Options{
+			AppName:            title,
+			CustomElectronPath: filepath.Join(global.WorkingDirectory(), global.AssetDirectory, "electron", "vendor", "electron-windows-amd64", "UniteHUD Overlay.exe"),
+			BaseDirectoryPath:  ".",
+			DataDirectoryPath:  filepath.Join(global.WorkingDirectory(), global.AssetDirectory, "electron"),
+			AppIconDefaultPath: filepath.Join(global.WorkingDirectory(), global.AssetDirectory, "icon", "icon.png"),
+			VersionElectron:    astilectron.DefaultVersionElectron,
+			VersionAstilectron: astilectron.DefaultVersionAstilectron,
+			AcceptTCPTimeout:   time.Hour * 24,
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	app.HandleSignals()
+
+	// closed := func(e astilectron.Event) (deleteListener bool) {
+	// 	notify.Debug("Overlay Engine: %s", e.Name)
+	// 	return false
+	// }
+
+	// app.On(astilectron.EventNameAppCrash, closed)
+	// app.On(astilectron.EventNameAppCmdQuit, closed)
+	// app.On(astilectron.EventNameAppClose, closed)
+	app.On(astilectron.EventNameAppEventReady, func(e astilectron.Event) (deleteListener bool) {
+		notify.Debug("Overlay Engine: event, %s", e.Name)
+		return false
+	})
+
+	err = app.Start()
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		defer notify.Debug("Overlay App: Exiting main loop")
+		app.Wait()
+	}()
+
+	return nil
+}
+
+func openWindow() error {
 	notify.Debug("Overlay Window: Opening window...")
 	defer notify.Debug("Overlay Window: Opened window")
 
@@ -158,19 +296,19 @@ func Open() error {
 		return err
 	}
 
-	ev := func(e astilectron.Event, b bool) (deleteListener bool) {
-		notify.Debug("Overlay Window: %s", e.Name)
-		active.window = b
-		return false
-	}
-	opened := func(e astilectron.Event) (deleteListener bool) { return ev(e, true) }
-	closed := func(e astilectron.Event) (deleteListener bool) { return ev(e, false) }
+	// ev := func(e astilectron.Event, b bool) (deleteListener bool) {
+	// 	notify.Debug("Overlay Window: %s", e.Name)
+	// 	active.window = b
+	// 	return false
+	// }
+	// opened := func(e astilectron.Event) (deleteListener bool) { return ev(e, true) }
+	// // closed := func(e astilectron.Event) (deleteListener bool) { return ev(e, false) }
 
-	window.On(astilectron.EventNameWindowEventDidFinishLoad, opened)
-	window.On(astilectron.EventNameWindowEventShow, opened)
-	window.On(astilectron.EventNameWindowEventClosed, closed)
-	// window.On(astilectron.EventNameWindowEventHide, closed)
-	// window.On(astilectron.EventNameWindowEventMinimize, closed)
+	// window.On(astilectron.EventNameWindowEventDidFinishLoad, opened)
+	// window.On(astilectron.EventNameWindowEventShow, opened)
+	// // window.On(astilectron.EventNameWindowEventClosed, closed)
+	// // window.On(astilectron.EventNameWindowEventHide, closed)
+	// // window.On(astilectron.EventNameWindowEventMinimize, closed)
 
 	errq := make(chan error)
 
@@ -185,66 +323,8 @@ func Open() error {
 
 	err = <-errq
 	if err != nil {
-		return nil
+		return err
 	}
 
 	return nil
-}
-
-func closeApp() {
-	notify.Debug("Overlay Engine: Closing...")
-	defer notify.Debug("Overlay Engine: Closed...")
-
-	go app.Stop()
-	go app.Close()
-
-	active.app = false
-}
-
-func openApp() {
-	notify.Debug("Overlay Engine: Opening...")
-
-	var err error
-
-	app, err = astilectron.New(
-		notify.Debugger("Overlay Engine: "),
-		astilectron.Options{
-			AppName:            title,
-			CustomElectronPath: filepath.Join(global.WorkingDirectory(), global.AssetDirectory, "electron", "vendor", "electron-windows-amd64", "UniteHUD Overlay.exe"),
-			BaseDirectoryPath:  ".",
-			DataDirectoryPath:  filepath.Join(global.WorkingDirectory(), global.AssetDirectory, "electron"),
-			AppIconDefaultPath: filepath.Join(global.WorkingDirectory(), global.AssetDirectory, "icon", "icon.png"),
-			VersionElectron:    astilectron.DefaultVersionElectron,
-			VersionAstilectron: astilectron.DefaultVersionAstilectron,
-			AcceptTCPTimeout:   time.Hour * 24,
-		},
-	)
-	if err != nil {
-		notify.Error("Overlay Engine: Failed to create app (%v)", err)
-		return
-	}
-
-	app.HandleSignals()
-
-	closed := func(e astilectron.Event) (deleteListener bool) {
-		notify.Debug("Overlay Engine: %s", e.Name)
-		return false
-	}
-
-	app.On(astilectron.EventNameAppCrash, closed)
-	app.On(astilectron.EventNameAppCmdQuit, closed)
-	app.On(astilectron.EventNameAppClose, closed)
-	app.On(astilectron.EventNameAppEventReady, func(e astilectron.Event) (deleteListener bool) {
-		notify.Debug("Overlay Engine: event, %s", e.Name)
-		active.app = true
-		return false
-	})
-
-	err = app.Start()
-	if err != nil {
-		notify.Error("Overlay Engine: Failed to start app (%v)", err)
-		return
-	}
-
-	go app.Wait()
 }

@@ -110,15 +110,7 @@ func (g *GUI) ToastError(err error) {
 	g.previous.toast.err = err
 	g.previous.toast.time = time.Now()
 
-	header := "Error"
-	msg := err.Error()
-
-	if args := strings.Split(err.Error(), ":"); len(args) > 1 {
-		header = strings.Title(args[0])
-		msg = capitalizeFirstWord(strings.Join(args[1:], " "))
-	}
-
-	g.ToastOK(header, msg, OnToastOK(nil))
+	g.ToastOK("Error", err.Error(), OnToastOK(nil))
 }
 
 func (g *GUI) ToastErrorf(format string, a ...interface{}) {

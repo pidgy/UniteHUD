@@ -15,12 +15,14 @@ import (
 	"gioui.org/widget/material"
 
 	"github.com/pidgy/unitehud/avi/img/splash"
-	"github.com/pidgy/unitehud/core/global"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/nrgba"
+	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/gui/cursor"
 	"github.com/pidgy/unitehud/gui/is"
 	"github.com/pidgy/unitehud/gui/ux/decorate"
+	"github.com/pidgy/unitehud/system/tray"
+	"github.com/pidgy/unitehud/system/wapi"
 )
 
 type loading struct {
@@ -34,7 +36,7 @@ func (g *GUI) loading() {
 		tick:    time.NewTicker(time.Millisecond * 250).C,
 	}
 
-	go l.while(g)
+	go l.while()
 
 	width := 720
 	height := 440
@@ -66,6 +68,8 @@ func (g *GUI) loading() {
 		switch event := g.window.NextEvent().(type) {
 		case app.ViewEvent:
 			g.HWND = event.HWND
+			tray.SetHWND(g.HWND)
+			wapi.SetWindowDarkMode(g.HWND)
 		case system.DestroyEvent:
 			g.next(is.Closing)
 			return
@@ -111,7 +115,7 @@ func (g *GUI) loading() {
 	}
 }
 
-func (l *loading) while(g *GUI) {
+func (l *loading) while() {
 	i := 0
 
 	for ; is.Now == is.Loading; <-l.tick {

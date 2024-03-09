@@ -214,7 +214,6 @@ func capture() error {
 
 		for frames := float64(0); running(); frames++ {
 			lock.Lock()
-
 			ok := device.Read(&mat)
 			if !ok {
 				defer reset()
@@ -222,9 +221,9 @@ func capture() error {
 				lock.Unlock()
 				goto close
 			}
+			lock.Unlock()
 
 			size = mat.Size()
-			lock.Unlock()
 
 			select {
 			case <-tick.C:

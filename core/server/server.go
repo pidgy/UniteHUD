@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"image/png"
 	"io"
-	"math"
 	"net/http"
 	"strings"
 	"sync"
@@ -18,11 +17,11 @@ import (
 	"github.com/pidgy/unitehud/avi/video"
 	"github.com/pidgy/unitehud/avi/video/fps"
 	"github.com/pidgy/unitehud/core/config"
-	"github.com/pidgy/unitehud/core/global"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/nrgba"
 	"github.com/pidgy/unitehud/core/state"
 	"github.com/pidgy/unitehud/core/team"
+	"github.com/pidgy/unitehud/global"
 )
 
 const Address = "127.0.0.1:17069"
@@ -53,6 +52,7 @@ type info struct {
 
 	tx       int
 	requests int
+	duration time.Duration
 
 	clients map[string]time.Time
 
@@ -97,7 +97,7 @@ func Clients() int {
 
 	for c := range current.clients {
 		if time.Since(current.clients[c]) > time.Second*5 {
-			notify.Feed(nrgba.Slate, "Server: Client has disconnected (%s)", c)
+			notify.Feed(nrgba.Slate, "Server: Client disconnected (%s)", c)
 			delete(current.clients, c)
 		}
 	}
@@ -133,8 +133,13 @@ func KOs(t *team.Team) int {
 	}
 }
 
-func Listen() error {
+func Open() error {
 	http.Handle("/stream", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, ok := current.client(r)
+		if !ok {
+			return
+		}
+
 		w.Header().Add(
 			"Content-Type",
 			"multipart/x-mixed-replace; boundary=frame",
@@ -149,7 +154,7 @@ func Listen() error {
 
 		defer fps.NewLoop(&fps.LoopOptions{
 			FPS: 120,
-			Render: func(min, max, avg time.Duration) (close bool) {
+			On: func(min, max, avg time.Duration) (close bool) {
 				if global.DebugMode {
 					defer fmt.Printf("HTTP /stream min=%s, max=%s, avg=%s\n", min, max, avg)
 				}
@@ -177,20 +182,35 @@ func Listen() error {
 					return true
 				}
 
-				current.client(r, "/stream")
-
-				return
+				return false
 			},
 		}).Stop()
 	}))
 
+	var cached struct {
+		ws   []byte
+		http []byte
+	}
+
+	var err error
+
 	http.Handle("/ws", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		now, ok := current.client(r)
+		if ok {
+			cached.ws, err = json.Marshal(current.game)
+			if err != nil {
+				notify.Error("Server: Failed to create WebSocket response (%v)", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+		}
+
 		c, err := websocket.Accept(w, r, &websocket.AcceptOptions{
 			OriginPatterns:     []string{"127.0.0.1", "localhost", "0.0.0.0"},
 			InsecureSkipVerify: true,
 		})
 		if err != nil {
-			notify.Error("Server: Failed to accept websocket connection (%v)", err)
+			notify.Error("Server: WebSocket connection failed (%v)", err)
 			return
 		}
 		defer c.Close(websocket.StatusNormalClosure, "cross origin WebSocket accepted")
@@ -198,78 +218,73 @@ func Listen() error {
 		current.game.Profile = config.Current.Profile
 		current.game.Events = state.Strings(time.Second * 5)
 
-		raw, err := json.Marshal(current.game)
+		err = c.Write(context.Background(), websocket.MessageText, cached.ws)
 		if err != nil {
-			notify.Error("Server: Failed to create server response (%v)", err)
+			notify.Error("Server: Failed to send WebSocket response (%v)", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
-		err = c.Write(context.Background(), websocket.MessageText, raw)
-		if err != nil {
-			notify.Error("Server: Failed to send server response (%v)", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
+		if current.game.Started {
+			current.tx += len(cached.ws)
+			current.duration += time.Since(now)
+			current.requests++
 		}
-
-		current.client(r, "/ws")
-
-		current.tx += len(raw)
-		current.requests++
 	}))
 
 	http.HandleFunc("/http", func(w http.ResponseWriter, r *http.Request) {
+		now, ok := current.client(r)
+		if ok {
+			cached.http, err = json.Marshal(current.game)
+			if err != nil {
+				notify.Error("Server: Failed to create HTTP response (%v)", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+		}
+
 		current.game.Profile = config.Current.Profile
 		current.game.Events = state.Strings(time.Second * 5)
 
-		raw, err := json.Marshal(current.game)
+		_, err := w.Write(cached.http)
 		if err != nil {
-			notify.Error("Server: Failed to create server response (%v)", err)
+			notify.Error("Server: Failed to send HTTP response (%v)", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
-		_, err = w.Write(raw)
-		if err != nil {
-			notify.Error("Server: Failed to send server response (%v)", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
+		if current.game.Started {
+			current.tx += len(cached.http)
+			current.duration += time.Since(now)
+			current.requests++
 		}
-
-		current.client(r, "/http")
-		current.tx += len(raw)
-		current.requests++
 	})
 
-	go func() {
-		last := 0
-
-		for ; ; time.Sleep(time.Minute) {
-
-			if current.requests < 1 {
-				continue
-			}
-
-			diff := float64(last - (current.tx / current.requests))
-			if math.Abs(diff) < 10 {
-				continue
-			}
-			last = current.tx / current.requests
-
-			notify.System("Server: Averaging %d bytes per request", last)
-		}
-	}()
+	go http.ListenAndServe(Address, nil)
 
 	state.Add(state.ServerStarted, Clock(), -1)
+	notify.System("Server: Listening on %s", Address)
 
-	errq := make(chan error)
-	go func() {
-		errq <- http.ListenAndServe(Address, nil)
-	}()
+	go metrics()
 
-	time.AfterFunc(time.Second, func() { errq <- nil })
+	return nil
+}
 
-	return <-errq
+func metrics() {
+	for ; ; time.Sleep(time.Minute * 30) {
+		if current.requests < 2 {
+			notify.System("Server: Awaiting connection...")
+			continue
+		}
+
+		if current.game.Started {
+			notify.System(
+				"Server: Averaging %s / %.1fkB latency",
+				current.duration/time.Duration(current.requests),
+				float64(current.tx)/float64(current.requests)/1000,
+			)
+		}
+	}
 }
 
 func Match() bool {
@@ -559,19 +574,24 @@ func Started() bool {
 	return current.game.Started
 }
 
-func (i *info) client(r *http.Request, route string) {
+func (i *info) client(r *http.Request) (time.Time, bool) {
 	i.mutex.Lock()
 	defer i.mutex.Unlock()
 
-	ip := strings.Split(r.RemoteAddr, ":")[0]
-	key := fmt.Sprintf("%s -> %s", ip, r.URL)
+	c := fmt.Sprintf("%s -> %s", strings.Split(r.RemoteAddr, ":")[0], r.URL)
 
-	_, ok := i.clients[key]
-	if !ok {
-		notify.System("Server: New %s connection (%s)", route, key)
-	}
+	// then, ok := i.clients[c]
+	// if !ok {
+	// 	notify.System("Server: Client connected (%s)", c)
+	// }
+	// if time.Since(then) < time.Second/2 {
+	// 	notify.Warn("Server: Ignoring spurious requests (%s)", c)
+	// 	return then, false
+	// }
 
-	i.clients[key] = time.Now()
+	i.clients[c] = time.Now()
+
+	return i.clients[c], true
 }
 
 func reset() *game {

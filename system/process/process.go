@@ -1,6 +1,7 @@
 package process
 
 import (
+	"fmt"
 	"os"
 	"path"
 	"runtime"
@@ -9,7 +10,7 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/pidgy/unitehud/core/global"
+	"github.com/pidgy/unitehud/global"
 	"golang.org/x/sys/windows"
 )
 
@@ -23,12 +24,11 @@ type Process struct {
 
 var (
 	handle syscall.Handle
+	memory runtime.MemStats
 
 	ctime, etime, ktime, utime syscall.Filetime
 	prev, usage                = ctime.Nanoseconds(), ktime.Nanoseconds() + utime.Nanoseconds()
 	cpus                       = float64(runtime.NumCPU()) - 2
-
-	memory runtime.MemStats
 )
 
 func CPU() (float64, error) {
@@ -51,7 +51,7 @@ func CPU() (float64, error) {
 
 func RAM() float64 {
 	runtime.ReadMemStats(&memory)
-	return (float64(memory.Sys) / 1024 / 1024)
+	return float64(memory.Sys) / 1024 / 1024
 }
 
 func Start() error {
@@ -68,30 +68,13 @@ func Start() error {
 	return nil
 }
 
-func Uptime() time.Time {
-	return time.Time{}.Add(time.Since(global.Uptime))
+func Memory() runtime.MemStats {
+	return memory
 }
 
-func kill(exe string) error {
-	ps, err := all()
-	if err != nil {
-		return err
-	}
-
-	this := os.Getpid()
-
-	for _, p := range ps {
-		if strings.EqualFold(p.Exe, exe) && p.ID != this {
-			p, err := os.FindProcess(p.ID)
-			if err != nil {
-				return err
-			}
-
-			return p.Kill()
-		}
-	}
-
-	return nil
+func Uptime() string {
+	u := time.Time{}.Add(time.Since(global.Uptime))
+	return fmt.Sprintf("%02d:%02d:%02d", u.Hour(), u.Minute(), u.Second())
 }
 
 func all() ([]Process, error) {
@@ -139,6 +122,28 @@ func from(e *windows.ProcessEntry32) Process {
 		ParentID: int(e.ParentProcessID),
 		Exe:      syscall.UTF16ToString(e.ExeFile[:end]),
 	}
+}
+
+func kill(exe string) error {
+	ps, err := all()
+	if err != nil {
+		return err
+	}
+
+	this := os.Getpid()
+
+	for _, p := range ps {
+		if strings.EqualFold(p.Exe, exe) && p.ID != this {
+			p, err := os.FindProcess(p.ID)
+			if err != nil {
+				return err
+			}
+
+			return p.Kill()
+		}
+	}
+
+	return nil
 }
 
 func replace() error {

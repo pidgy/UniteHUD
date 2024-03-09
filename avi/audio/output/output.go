@@ -59,7 +59,7 @@ func New(ctx *malgo.AllocatedContext, name string) (*Device, error) {
 }
 
 func (d *Device) Active() bool {
-	return d.active
+	return d == nil || d.active
 }
 
 func (d *Device) Close() {
@@ -111,16 +111,14 @@ func (d *Device) Start(mctx malgo.Context, r io.ReadWriter) error {
 					return
 				}
 
-				n, err := io.ReadFull(r, outputSamples)
+				_, err := io.ReadFull(r, outputSamples)
 				if err != nil {
 					if err == io.EOF || err == io.ErrUnexpectedEOF {
 						d.reconnects++
 						return
 					}
-					notify.Error("Audio Output: Playback error (%v)", errors.Wrap(err, d.name))
+					notify.Warn("Audio Output: Playback error (%v)", errors.Wrap(err, d.name))
 				}
-
-				println("read", n, "bytes")
 			},
 		}
 
@@ -136,7 +134,13 @@ func (d *Device) Start(mctx malgo.Context, r io.ReadWriter) error {
 			errq <- errors.Wrap(err, d.name)
 			return
 		}
-		defer device.Stop()
+		defer func() {
+			err := device.Stop()
+			if err != nil {
+				notify.Error("Audio Output: Failed to stop device (%v)", err)
+				return
+			}
+		}()
 
 		close(errq)
 		<-d.closingq

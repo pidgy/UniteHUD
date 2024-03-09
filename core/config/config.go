@@ -17,13 +17,13 @@ import (
 	"gocv.io/x/gocv"
 
 	"github.com/pidgy/unitehud/core/filter"
-	"github.com/pidgy/unitehud/core/global"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/nrgba"
 	"github.com/pidgy/unitehud/core/sort"
 	"github.com/pidgy/unitehud/core/state"
 	"github.com/pidgy/unitehud/core/team"
 	"github.com/pidgy/unitehud/core/template"
+	"github.com/pidgy/unitehud/global"
 )
 
 const (
@@ -366,7 +366,7 @@ func (c *Config) UnsetHiddenThemes() {
 	}
 
 	if len(failed) > 0 {
-		notify.Error("Config: Failed to apply default themes (%s)", strings.Join(failed, ", "))
+		notify.Warn("Config: Failed to apply default themes (%s)", strings.Join(failed, ", "))
 	}
 
 	if len(applied) > 0 {
@@ -384,7 +384,7 @@ func (c *Config) pointFiles(t *team.Team) []filter.Filter {
 		}
 		if info.IsDir() {
 			if info.Name() != "points" {
-				notify.SystemWarn("Config: Skipping templates from %s%s", root, info.Name())
+				notify.Warn("Config: Skipping templates from %s%s", root, info.Name())
 				return filepath.SkipDir
 			}
 		}
@@ -415,7 +415,7 @@ func (c *Config) pointFiles(t *team.Team) []filter.Filter {
 
 		value, err := strconv.Atoi(v)
 		if err != nil {
-			notify.SystemWarn("Config: Failed to invalidate \"%s\" file \"%s\" (%v)", root, file, err)
+			notify.Warn("Config: Failed to invalidate \"%s\" file \"%s\" (%v)", root, file, err)
 			continue
 		}
 
@@ -438,7 +438,7 @@ func (c *Config) scoreFiles(t *team.Team) []filter.Filter {
 		}
 		if info.IsDir() {
 			if info.Name() != "score" {
-				notify.SystemWarn("Config: Skipping \"%s%s\"", root, info.Name())
+				notify.Warn("Config: Skipping \"%s%s\"", root, info.Name())
 				return filepath.SkipDir
 			}
 		}
@@ -498,7 +498,7 @@ func Load(profile string) error {
 	defer func() {
 		r := recover()
 		if r != nil {
-			notify.SystemWarn("Config: Corrupted .unitehud file (%s)", Current.File())
+			notify.Warn("Config: Corrupted .unitehud file (%s)", Current.File())
 			recovered(r)
 		}
 	}()
@@ -556,9 +556,9 @@ func Load(profile string) error {
 		return err
 	}
 
-	if global.DebugMode {
-		Current.Advanced.Discord.Disabled = true
-	}
+	// if global.DebugMode {
+	// 	Current.Advanced.Discord.Disabled = true
+	// }
 
 	return nil
 }

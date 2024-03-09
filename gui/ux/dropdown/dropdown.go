@@ -6,8 +6,6 @@ import (
 	"gioui.org/font"
 	"gioui.org/io/pointer"
 	"gioui.org/layout"
-	"gioui.org/op/clip"
-	"gioui.org/op/paint"
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
@@ -18,13 +16,13 @@ import (
 )
 
 var (
-	Disabled = nrgba.PastelRed.Color()
-	Enabled  = nrgba.PastelGreen.Color()
+	ColorDisabled = nrgba.PastelRed.Color()
+	ColorEnabled  = nrgba.PastelGreen.Color()
 )
 
 type Widget struct {
 	Items         []*Item
-	Callback      func(item *Item, this *Widget) bool
+	Callback      func(item *Item, this *Widget) (check bool)
 	WidthModifier int
 	Radio         bool
 	TextSize      float32
@@ -41,18 +39,27 @@ type Item struct {
 	Disabled bool
 	Weight   int
 
-	Callback func(this *Item)
+	Callback         func(this *Item)
+	DisabledCallback func(this *Item)
+
+	check material.CheckBoxStyle
 
 	hovered bool
 }
 
-func (l *Widget) Checked() *Item {
-	for _, item := range l.Items {
-		if item.Checked.Value {
-			return item
-		}
+func (item *Item) hint(gtx layout.Context, theme *material.Theme) (layout.Dimensions, bool) {
+	if item.Hint == "" {
+		return layout.Dimensions{}, false
 	}
-	return nil
+
+	label := material.Label(
+		theme,
+		item.check.TextSize*unit.Sp(.9),
+		item.Hint,
+	)
+	label.Color = nrgba.Transparent80.Color()
+
+	return label.Layout(gtx), true
 }
 
 func (l *Widget) Default() *Item {
@@ -62,195 +69,151 @@ func (l *Widget) Default() *Item {
 	return l.Items[0]
 }
 
-func (l *Widget) Disable() {
-	for _, item := range l.Items {
-		item.Checked.Value = false
-		if item.Text == "Disabled" {
-			item.Checked.Value = true
-		}
-	}
-}
-
-func (l *Widget) Disabled() {
-	for _, item := range l.Items {
-		if item.Text == "Disabled" {
-			item.Checked.Value = true
-			return
-		}
-	}
-}
-
-func (l *Widget) Enabled() {
-	for _, item := range l.Items {
-		if item.Text == "Disabled" {
-			item.Checked.Value = false
-			return
-		}
-	}
-}
-
 // Layout handles drawing the letters view.
-func (l *Widget) Layout(gtx layout.Context) layout.Dimensions {
-	if l.liststyle.Scrollbar == nil {
-		l.liststyle = material.List(l.Theme,
-			&widget.List{
-				Scrollbar: widget.Scrollbar{},
-				List: layout.List{
-					Axis:      layout.Vertical,
-					Alignment: layout.Start,
-				},
-			},
-		)
-		l.liststyle.AnchorStrategy = material.Overlay
-		l.liststyle.Track.MajorPadding = unit.Dp(1)
-		l.liststyle.Track.MinorPadding = unit.Dp(1)
-	}
+func (list *Widget) Layout(gtx layout.Context) layout.Dimensions {
+	list.defaultList()
 
-	decorate.Scrollbar(&l.liststyle.ScrollbarStyle)
-	decorate.List(&l.liststyle)
-
-	return l.liststyle.Layout(gtx, len(l.Items),
+	return list.liststyle.Layout(gtx, len(list.Items),
 		func(gtx layout.Context, index int) layout.Dimensions {
-			item := l.Items[index]
+			item := list.Items[index]
+			list.defaultCheckBox(item)
 
-			check := material.CheckBox(l.Theme, &item.Checked, item.Text)
-			check.Size = unit.Dp(l.TextSize)
-			check.TextSize = unit.Sp(l.TextSize)
-			check.Font.Weight = font.ExtraBold
-			if l.TextSize == 0 {
-				check.Size = unit.Dp(12)
-				check.TextSize = unit.Sp(12)
+			if !item.Checked.Update(gtx) {
+				return list.draw(gtx, item)
 			}
 
-			decorate.CheckBox(&check)
-
-			if l.liststyle.Scrollbar.IndicatorHovered() || l.liststyle.Scrollbar.TrackHovered() {
-				l.liststyle.Scrollbar.AddDrag(gtx.Ops)
-				cursor.Is(pointer.CursorPointer)
-			}
-
-			if item.Checked.Update(gtx) {
-				enabled := !item.Disabled
-				if enabled && l.Callback != nil {
-					enabled = l.Callback(item, l)
-				}
-				if !enabled {
-					item.Checked.Value = false
-
-					return layout.E.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-						dim := check.Layout(gtx)
-						dim.Size.X = gtx.Constraints.Max.X / l.WidthModifier
-						return dim
-					})
-				}
-
-				if item.Disabled {
-					item.Checked.Value = !item.Checked.Value
-				} else if item.Callback != nil {
-					item.Callback(item)
-				}
-
-				if l.Radio {
-					for i := range l.Items {
-						if i == index {
-							l.Items[i].Checked.Value = true
-							continue
-						}
-
-						l.Items[i].Checked.Value = false
-					}
-				}
-			}
-
-			if item.Checked.Value {
-				check.Color = nrgba.DarkSeafoam.Color()
-				if item.Text == "Disabled" {
-					check.Color = Disabled
-				}
-			}
 			if item.Disabled {
-				check.Color = Disabled
-			}
-			switch {
-			case item.Checked.Hovered(), item.Checked.Focused():
-				l.hovered(gtx, index)
+				item.Checked.Value = false
+				item.Callback(item)
 
-				item.hovered = true
-				cursor.Is(pointer.CursorPointer)
-			case item.Checked.Value:
-				selectedItem(gtx, index)
-			case item.hovered:
-				item.hovered = false
-				cursor.Is(pointer.CursorDefault)
+				return list.draw(gtx, item)
 			}
 
-			if l.WidthModifier == 0 {
-				l.WidthModifier = 1
-			}
+			item.Callback(item)
+			list.Callback(item, list)
 
-			dims := layout.E.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-				dim := check.Layout(gtx)
-				dim.Size.X = gtx.Constraints.Max.X / l.WidthModifier
-				return dim
-			})
+			list.radio(item)
 
-			if item.Hint != "" {
-				label := material.Label(
-					l.Theme,
-					check.TextSize*unit.Sp(.9),
-					item.Hint,
-				)
-				label.Color = nrgba.Transparent80.Color()
-
-				dims = label.Layout(gtx)
-			}
-
-			return dims
+			return list.draw(gtx, item)
 		},
 	)
 }
 
-func selectedItem(gtx layout.Context, index int) {
-	widget.Border{
-		Color:        nrgba.White.Alpha(5).Color(),
-		Width:        unit.Dp(1),
-		CornerRadius: unit.Dp(1),
-	}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-		return colorRect(gtx,
-			clip.Rect{
-				Min: image.Pt(
-					0,
-					0,
-				),
-				Max: image.Pt(
-					gtx.Constraints.Max.X,
-					20,
-				),
+func (list *Widget) defaultCheckBox(i *Item) {
+	defer decorate.CheckBox(&i.check)
+
+	if i.check.CheckBox != nil {
+		return
+	}
+
+	if i.Callback == nil {
+		i.Callback = i.defaultCallback
+	}
+
+	if i.DisabledCallback == nil {
+		i.DisabledCallback = i.defaultDisabledCallback
+	}
+
+	i.check = material.CheckBox(list.Theme, &i.Checked, i.Text)
+	i.check.Size = unit.Dp(list.TextSize)
+	i.check.TextSize = unit.Sp(list.TextSize)
+	i.check.Font.Weight = font.ExtraBold
+	if list.TextSize == 0 {
+		i.check.Size = unit.Dp(12)
+		i.check.TextSize = unit.Sp(12)
+	}
+}
+
+func (list *Widget) defaultList() {
+	defer decorate.Scrollbar(&list.liststyle.ScrollbarStyle)
+	defer decorate.List(&list.liststyle)
+
+	if list.liststyle.Scrollbar != nil {
+		return
+	}
+
+	cb := list.Callback
+	list.Callback = func(item *Item, this *Widget) (check bool) {
+		if cb == nil {
+			return false
+		}
+		item.Checked.Value = cb(item, this)
+		return false
+	}
+
+	list.liststyle = material.List(
+		list.Theme,
+		&widget.List{
+			Scrollbar: widget.Scrollbar{},
+			List: layout.List{
+				Axis:      layout.Vertical,
+				Alignment: layout.Start,
 			},
-			nrgba.Black.Alpha(50),
-		)
+		},
+	)
+	list.liststyle.AnchorStrategy = material.Overlay
+	list.liststyle.Track.MajorPadding = unit.Dp(1)
+	list.liststyle.Track.MinorPadding = unit.Dp(1)
+
+	if list.WidthModifier == 0 {
+		list.WidthModifier = 1
+	}
+}
+
+func (list *Widget) draw(gtx layout.Context, item *Item) layout.Dimensions {
+	if list.liststyle.Scrollbar.IndicatorHovered() || list.liststyle.Scrollbar.TrackHovered() {
+		list.liststyle.Scrollbar.AddDrag(gtx.Ops)
+		cursor.Is(pointer.CursorPointer)
+	}
+
+	if item.Checked.Value {
+		item.check.Color = nrgba.DarkSeafoam.Color()
+	}
+	if item.Disabled || item.Text == "Disabled" {
+		item.check.Color = ColorDisabled
+	}
+	switch {
+	case item.Checked.Hovered(): //, item.Checked.Focused():
+		list.hovered(gtx, item)
+	default:
+		list.unhovered(item)
+	}
+
+	d, ok := item.hint(gtx, list.Theme)
+	if ok {
+		return d
+	}
+
+	return layout.E.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+		dim := item.check.Layout(gtx)
+		dim.Size.X = gtx.Constraints.Max.X / list.WidthModifier
+		return dim
 	})
 }
 
-func (l *Widget) hovered(gtx layout.Context, index int) {
-	colorRect(gtx,
-		clip.Rect{
-			Min: image.Pt(
-				0,
-				0,
-			),
-			Max: image.Pt(
-				gtx.Constraints.Max.X,
-				20,
-			),
-		},
-		nrgba.White.Alpha(5),
-	)
+func (list *Widget) hovered(gtx layout.Context, i *Item) {
+	i.hovered = true
+	decorate.ColorBox(gtx, image.Pt(gtx.Constraints.Max.X, 20), nrgba.White.Alpha(5))
+	cursor.Is(pointer.CursorPointer)
 }
 
-func colorRect(gtx layout.Context, rect clip.Rect, nrgba nrgba.NRGBA) layout.Dimensions {
-	defer rect.Push(gtx.Ops).Pop()
-	paint.ColorOp{Color: nrgba.Color()}.Add(gtx.Ops)
-	paint.PaintOp{}.Add(gtx.Ops)
-	return layout.Dimensions{Size: rect.Max}
+func (list *Widget) radio(item *Item) {
+	if !list.Radio {
+		return
+	}
+
+	for _, i := range list.Items {
+		i.Checked.Value = false
+		if i == item {
+			i.Checked.Value = true
+		}
+	}
 }
+
+func (list *Widget) unhovered(i *Item) {
+	i.hovered = false
+	cursor.Is(pointer.CursorDefault)
+}
+
+func (_ *Item) defaultCallback(_ *Item)         {}
+func (i *Item) defaultDisabledCallback(_ *Item) { i.Checked.Value = false }

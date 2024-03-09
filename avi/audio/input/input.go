@@ -169,7 +169,13 @@ func (d *Device) Start(mctx malgo.Context, w io.ReadWriter) error {
 			errq <- errors.Wrap(err, d.name)
 			return
 		}
-		defer device.Stop()
+		defer func() {
+			err := device.Stop()
+			if err != nil {
+				notify.Error("Audio Input: Failed to stop device (%v)", err)
+				return
+			}
+		}()
 
 		close(errq)
 		<-d.closingq

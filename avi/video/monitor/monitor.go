@@ -3,15 +3,14 @@ package monitor
 import (
 	"fmt"
 	"image"
-	"reflect"
 	"sync"
-	"unsafe"
 
 	"github.com/kbinani/screenshot"
+	"github.com/pkg/errors"
 
-	"github.com/pidgy/unitehud/avi/video/wapi"
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/notify"
+	"github.com/pidgy/unitehud/system/wapi"
 )
 
 var (
@@ -55,110 +54,60 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 	rect.Min.Y = b.Min.Y + rect.Min.Y
 	rect.Max.Y = b.Min.Y + rect.Max.Y
 
-	src := getDC(0)
-	if src == 0 {
-		return nil, fmt.Errorf("Failed to find primary display (%d)", getLastError())
+	src, err := wapi.Window(0).Device()
+	if err != nil {
+		return nil, errors.Wrap(err, "device")
 	}
-	defer releaseDC(0, src)
+	defer src.Release()
 
-	dst := createCompatibleDC(src)
-	if dst == 0 {
+	dst, err := src.Compatible()
+	if err != nil {
 		return nil, fmt.Errorf("Could not Create Compatible DC (%d)", getLastError())
 	}
-	defer wapi.DeleteDC.Call(dst) // nolint
+	defer dst.Delete()
 
-	x, y := rect.Dx(), rect.Dy()
+	size := rect.Size()
 
-	bt := wapi.BitmapInfo{}
-	bt.BmiHeader = wapi.BitmapInfoHeader{
-		BiSize:        uint32(reflect.TypeOf(bt.BmiHeader).Size()),
-		BiWidth:       int32(x),
-		BiHeight:      int32(-y),
-		BiPlanes:      1,
-		BiBitCount:    32,
-		BiCompression: wapi.BitmapInfoHeaderCompression.RGB,
+	info := wapi.BitmapInfo{
+		BmiHeader: wapi.BitmapInfoHeader{
+			BiSize:        wapi.BitmapInfoHeaderSize,
+			BiWidth:       int32(size.X),
+			BiHeight:      -int32(size.Y),
+			BiPlanes:      1,
+			BiBitCount:    32,
+			BiCompression: wapi.BitmapInfoHeaderCompression.RGB,
+		},
 	}
 
-	ptr := uintptr(0)
-
-	m, _, _ := wapi.CreateDIBSection.Call(uintptr(dst), uintptr(unsafe.Pointer(&bt)), uintptr(wapi.CreateDIBSectionUsage.RGBColors), uintptr(unsafe.Pointer(&ptr)), 0, 0)
-	if m == 0 {
-		return nil, fmt.Errorf("Could not Create DIB Section err:%d.\n", getLastError())
+	bitmap, raw, err := info.CreateRGBSection(&dst)
+	if err != nil {
+		return nil, errors.Wrap(err, "section")
 	}
-	if m == wapi.CreateDIBSectionError.InvalidParameter {
-		return nil, fmt.Errorf("One or more of the input parameters is invalid while calling CreateDIBSection.\n")
+	defer bitmap.Delete()
+
+	obj, err := dst.Select(bitmap)
+	if err != nil {
+		return nil, errors.Wrap(err, "bitmap select")
 	}
-	defer deleteObject(m)
+	defer obj.Delete()
 
-	obj := selectObject(dst, m)
-	if obj == 0 {
-		return nil, fmt.Errorf("error occurred and the selected object is not a region err:%d.\n", getLastError())
-	}
-	if obj == 0xffffffff { //GDI_ERROR
-		return nil, fmt.Errorf("GDI_ERROR while calling SelectObject err:%d.\n", getLastError())
-	}
-	defer deleteObject(obj)
-
-	//if !bitBlt(mHDC, 0, 0, x, y, hdc, rect.Min.X, rect.Min.Y) {
-	//	return nil, fmt.Errorf("BitBlt failed err:%d.\n", getLastError())
-	//}
-
-	width := rect.Dx()
-	height := rect.Dy()
-
-	var ret uintptr
-	switch config.Current.Scale {
-	case 1:
-		ret, _, _ = wapi.BitBlt.Call(
-			uintptr(dst),
-			0,
-			0,
-			uintptr(width),
-			uintptr(height),
-			uintptr(src),
-			uintptr(rect.Min.X),
-			uintptr(rect.Min.Y),
-			wapi.BitBltRasterOperations.CaptureBLT|wapi.BitBltRasterOperations.SrcCopy,
-		)
-	default: // Scaled.
-		scaledW := int(float64(width) * config.Current.Scale)
-		scaledH := int(float64(height) * config.Current.Scale)
-
-		ret, _, _ = wapi.StretchBlt.Call(
-			uintptr(dst),
-			0,
-			0,
-			uintptr(scaledW),
-			uintptr(scaledH),
-			uintptr(src),
-			uintptr(rect.Min.X),
-			uintptr(rect.Min.Y),
-			uintptr(width),
-			uintptr(height),
-			wapi.BitBltRasterOperations.CaptureBLT|wapi.BitBltRasterOperations.SrcCopy,
-		)
-	}
-	if ret == 0 {
-		notify.Error("Video: Failed to capture \"%s\"", config.Current.Video.Capture.Window.Name)
-		return nil, fmt.Errorf("bitblt returned: %d", ret)
+	err = dst.Copy(src, size, rect, config.Current.Scale)
+	if err != nil {
+		return nil, errors.Wrap(err, "bitmap copy")
 	}
 
-	var slice []byte
-	hdrp := (*reflect.SliceHeader)(unsafe.Pointer(&slice))
-	hdrp.Data = uintptr(ptr)
-	hdrp.Len = x * y * 4
-	hdrp.Cap = x * y * 4
+	data := raw.Slice(size)
 
-	imageBytes := make([]byte, len(slice))
+	pix := make([]byte, len(data))
 
-	for i := 0; i < len(imageBytes); i += 4 {
-		imageBytes[i], imageBytes[i+2], imageBytes[i+1], imageBytes[i+3] = slice[i+2], slice[i], slice[i+1], slice[i+3]
+	for i := 0; i < len(pix); i += 4 {
+		pix[i], pix[i+2], pix[i+1], pix[i+3] = byte(data[i+2]), byte(data[i]), byte(data[i+1]), byte(data[i+3])
 	}
 
 	return &image.RGBA{
-		Pix:    imageBytes,
-		Stride: 4 * x,
-		Rect:   image.Rect(0, 0, x, y),
+		Pix:    pix,
+		Stride: 4 * size.X,
+		Rect:   image.Rect(0, 0, size.X, size.Y),
 	}, nil
 }
 

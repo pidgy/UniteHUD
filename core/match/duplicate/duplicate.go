@@ -8,7 +8,7 @@ import (
 	"github.com/pidgy/unitehud/core/notify"
 )
 
-const delay = time.Millisecond * 2500
+const delay = time.Millisecond * 2000
 
 type Duplicate struct {
 	Value int
@@ -41,12 +41,12 @@ func (d *Duplicate) Close() {
 
 	err := d.Mat.Close()
 	if err != nil {
-		notify.SystemWarn("Duplicate: Failed to close duplicate matrix")
+		notify.Warn("Duplicate: Failed to close duplicate matrix")
 	}
 
 	err = d.region.Close()
 	if err != nil {
-		notify.SystemWarn("Duplicate: Failed to close duplicate region")
+		notify.Warn("Duplicate: Failed to close duplicate region")
 	}
 }
 
@@ -68,18 +68,13 @@ func (d *Duplicate) Of(d2 *Duplicate) (bool, string) {
 		return false, "inequality"
 	}
 
-	// Dodrio breaks this, but same scores less than <delay> seconds apart are 99% duplicate.
-	if d.Value != -1 && d.Value == d2.Value && d.Counted && d2.Time.Sub(d.Time) < delay {
-		return true, "positive-equality,counted,three-second-window"
+	delta := d2.Time.Sub(d.Time)
+	if delta > delay*2 {
+		return false, "long-delay"
 	}
-
-	/*
-		// If were not debugging, no scores *should* ever be the same after two iterations.
-		if d2.Time.Sub(d.Time) > delay*2 && !global.DebugMode {
-			notify.Warn("[Duplicate] +%d -%d Potential false positive", d.Value, d2.Value)
-			return false
-		}
-	*/
+	if delta < delay && d.Value != -1 && d.Value == d2.Value && d.Counted {
+		return true, "short-delay,positive-equality,counted"
+	}
 
 	return d.Pixels(d2)
 }

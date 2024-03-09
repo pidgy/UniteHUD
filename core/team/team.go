@@ -6,7 +6,7 @@ import (
 
 	"gocv.io/x/gocv"
 
-	"github.com/pidgy/unitehud/core/duplicate"
+	"github.com/pidgy/unitehud/core/match/duplicate"
 	"github.com/pidgy/unitehud/core/nrgba"
 )
 

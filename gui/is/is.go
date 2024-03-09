@@ -6,7 +6,7 @@ const (
 	Closing What = iota
 	Loading
 	MainMenu
-	Projecting
+	Configuring
 	Display
 )
 
@@ -20,7 +20,7 @@ func (w What) String() string {
 		return "Loading"
 	case MainMenu:
 		return "Main Menu"
-	case Projecting:
+	case Configuring:
 		return "Projector Menu"
 	}
 	return "Unknown"

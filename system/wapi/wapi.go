@@ -135,9 +135,13 @@ var (
 		NoWindow: 0x08000000,
 	}
 	DwmWindowAttributeFlags = struct {
-		Cloaked uintptr
+		Cloaked                uintptr
+		UseImmersiveDarkMode10 uintptr // Windows 10.
+		UseImmersiveDarkMode11 uintptr // Windows 11.
 	}{
-		Cloaked: 0x000E,
+		Cloaked:                0x000E,
+		UseImmersiveDarkMode10: 19,
+		UseImmersiveDarkMode11: 20,
 	}
 	GetDeviceCapsIndex = struct {
 		HorzRes,
@@ -237,6 +241,7 @@ var (
 	GetDeviceDriverBaseName = psapi32.MustFindProc("GetDeviceDriverBaseNameW")
 
 	user32                       = syscall.MustLoadDLL("user32.dll")
+	BringWindowToTop             = user32.MustFindProc("BringWindowToTop")
 	EnumWindows                  = user32.MustFindProc("EnumWindows")
 	FindWindow                   = user32.MustFindProc("FindWindowW")
 	GetClientRect                = user32.MustFindProc("GetClientRect")
@@ -277,6 +282,7 @@ var (
 
 	dwmapi                = syscall.MustLoadDLL("dwmapi.dll")
 	DwmGetWindowAttribute = dwmapi.MustFindProc("DwmGetWindowAttribute")
+	DwmSetWindowAttribute = dwmapi.MustFindProc("DwmSetWindowAttribute")
 
 	modShcore              = syscall.NewLazyDLL("shcore.dll")
 	setProcessDpiAwareness = modShcore.NewProc("SetProcessDpiAwareness")

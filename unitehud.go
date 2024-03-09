@@ -2,7 +2,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"os/signal"
 
@@ -10,16 +9,15 @@ import (
 	"github.com/pidgy/unitehud/avi/video"
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/detect"
-	"github.com/pidgy/unitehud/core/global"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/server"
-	"github.com/pidgy/unitehud/core/state"
-	"github.com/pidgy/unitehud/core/stats"
 	"github.com/pidgy/unitehud/core/team"
+	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/gui/ui"
 	"github.com/pidgy/unitehud/system/discord"
 	"github.com/pidgy/unitehud/system/process"
 	"github.com/pidgy/unitehud/system/save"
+	"github.com/pidgy/unitehud/system/tray"
 	"github.com/pidgy/unitehud/system/update"
 )
 
@@ -32,17 +30,17 @@ func init() {
 func kill(errs ...error) {
 	defer close(sigq)
 
-	if len(errs) > 0 {
-		config.Current.Report(errs[0].Error())
+	for i, err := range errs {
+		if i == 0 {
+			config.Current.Report(errs[i].Error())
 
-		err := config.Current.Save()
-		if err != nil {
-			notify.Error("UniteHUD: Failed to save crash log (%v)", err)
+			err := config.Current.Save()
+			if err != nil {
+				notify.Warn("UniteHUD: Failed to save crash log (%v)", err)
+			}
 		}
-	}
 
-	for _, err := range errs {
-		notify.Error("UniteHUD: Crashed (%v)", err)
+		notify.Warn("UniteHUD: Crashed (%v)", err)
 	}
 
 	report := make(chan bool)
@@ -63,6 +61,7 @@ func kill(errs ...error) {
 				err := save.OpenLogDirectory()
 				if err != nil {
 					notify.Error("UniteHUD: Failed to open log directory (%v)", err)
+					return
 				}
 			},
 		),
@@ -75,9 +74,12 @@ func signals() {
 	signal.Notify(sigq, os.Interrupt)
 	<-sigq
 
+	notify.Announce("UniteHUD: Closing...")
+
 	video.Close()
 	audio.Close()
 	ui.UI.Close()
+	tray.Close()
 
 	save.TemplateStatistics()
 
@@ -85,38 +87,38 @@ func signals() {
 }
 
 func main() {
-	ui.New()
-	defer ui.UI.Open()
-
-	defer func() {
-		if r := recover(); r != nil {
-			kill(fmt.Errorf("%v", r))
-		}
-	}()
+	defer ui.New().
+		OnClose(func() { close(sigq) }).
+		Open()
 
 	err := process.Start()
 	if err != nil {
-		notify.SystemWarn("UniteHUD: Failed to stop previous process (%v)", err)
+		notify.Warn("UniteHUD: Failed to stop previous process (%v)", err)
 	}
 
 	err = config.Load(config.Current.Profile)
 	if err != nil {
-		notify.Error("UniteHUD: Failed to load %s (%v)", config.Current.File(), err)
+		notify.Warn("UniteHUD: Failed to load %s (%v)", config.Current.File(), err)
 	}
 
 	err = video.Open()
 	if err != nil {
-		notify.Error("UniteHUD: Failed to open video (%v)", err)
+		notify.Warn("UniteHUD: Failed to open video (%v)", err)
 	}
 
 	err = audio.Open()
 	if err != nil {
-		notify.Error("UniteHUD: Failed to open audio session (%v)", err)
+		notify.Warn("UniteHUD: Failed to open audio session (%v)", err)
 	}
 
-	err = server.Listen()
+	err = server.Open()
 	if err != nil {
-		notify.Error("UniteHUD: Failed to start server (%v)", err)
+		notify.Warn("UniteHUD: Failed to start server (%v)", err)
+	}
+
+	err = tray.Open(global.Title, global.TitleVersion, ui.UI.Close)
+	if err != nil {
+		notify.Warn("UniteHUD: Failed to open system tray (%v)", err)
 	}
 
 	go discord.Connect()
@@ -138,43 +140,6 @@ func main() {
 	go detect.Scores(team.Orange.Name)
 	go detect.Scores(team.First.Name)
 	go update.Check()
-
-	go func() {
-		for action := range ui.UI.Actions {
-			switch action {
-			case ui.Closing:
-				signal.Reset()
-				close(sigq)
-			case ui.Start:
-				server.SetConfig(true)
-
-				detect.Resume()
-
-				notify.Clear()
-				server.Clear()
-				state.Clear()
-				stats.Clear()
-				team.Clear()
-
-				server.SetStarted()
-
-				notify.Announce("UniteHUD: Started %s", global.Title)
-			case ui.Stop:
-				detect.Pause()
-
-				server.Clear()
-				team.Clear()
-
-				server.SetStopped()
-
-				save.TemplateStatistics()
-
-				notify.Announce("UniteHUD: Stopped %s", global.Title)
-			case ui.Refresh:
-				notify.Debug("UniteHUD: Action received (Refresh)")
-			}
-		}
-	}()
 
 	go signals()
 

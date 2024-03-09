@@ -29,7 +29,6 @@ import (
 	"github.com/pidgy/unitehud/avi/video/window"
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/detect"
-	"github.com/pidgy/unitehud/core/global"
 	"github.com/pidgy/unitehud/core/history"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/nrgba"
@@ -37,6 +36,7 @@ import (
 	"github.com/pidgy/unitehud/core/state"
 	"github.com/pidgy/unitehud/core/stats"
 	"github.com/pidgy/unitehud/core/team"
+	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/gui/is"
 	"github.com/pidgy/unitehud/gui/ux/button"
 	"github.com/pidgy/unitehud/gui/ux/decorate"
@@ -48,9 +48,13 @@ import (
 	"github.com/pidgy/unitehud/system/desktop/clicked"
 	"github.com/pidgy/unitehud/system/discord"
 	"github.com/pidgy/unitehud/system/save"
+	"github.com/pidgy/unitehud/system/tray"
 )
 
 type main struct {
+	ops   op.Ops
+	stage system.Stage
+
 	nav struct {
 		settings,
 		client,
@@ -117,26 +121,31 @@ type main struct {
 	}
 }
 
+func (g *GUI) once() {
+	g.window.Option(
+		app.Title(global.Title),
+		app.Size(
+			unit.Dp(g.dimensions.min.X),
+			unit.Dp(g.dimensions.min.Y),
+		),
+		app.MinSize(
+			unit.Dp(g.dimensions.min.X),
+			unit.Dp(g.dimensions.min.Y),
+		),
+		app.MaxSize(
+			unit.Dp(g.dimensions.max.X),
+			unit.Dp(g.dimensions.max.Y),
+		),
+	)
+}
+
 func (g *GUI) main() {
-	sync.OnceFunc(func() {
-		g.window.Option(
-			app.Title(global.Title),
-			app.Size(
-				unit.Dp(g.dimensions.min.X),
-				unit.Dp(g.dimensions.min.Y),
-			),
-			app.MinSize(
-				unit.Dp(g.dimensions.min.X),
-				unit.Dp(g.dimensions.min.Y),
-			),
-			app.MaxSize(
-				unit.Dp(g.dimensions.max.X),
-				unit.Dp(g.dimensions.max.Y),
-			),
-		)
-	})()
+	sync.OnceFunc(g.once)()
 
 	ui := g.mainUI()
+
+	tray.SetStartStopEnabled()
+	defer tray.SetStartStopDisabled()
 
 	defer ui.spinners.run.Stop()
 	defer ui.spinners.stop.Stop()
@@ -146,13 +155,14 @@ func (g *GUI) main() {
 	defer g.nav.Remove(g.nav.Add(ui.nav.client))
 	defer g.nav.Remove(g.nav.Add(ui.nav.hideRight))
 	defer g.nav.Remove(g.nav.Add(ui.nav.hideTop))
-	// defer g.header.Remove(g.header.Add(ui.menu.stats))
-	// defer g.header.Remove(g.header.Add(ui.menu.results))
 	defer g.nav.Remove(g.nav.Add(ui.nav.obs))
-	// defer g.header.Remove(g.header.Add(ui.menu.clear))
-	// defer g.header.Remove(g.header.Add(ui.menu.eco))
 	defer g.nav.Remove(g.nav.Add(ui.nav.logs))
 	defer g.nav.Remove(g.nav.Add(ui.nav.record))
+
+	// defer g.header.Remove(g.header.Add(ui.menu.stats))
+	// defer g.header.Remove(g.header.Add(ui.menu.results))
+	// defer g.header.Remove(g.header.Add(ui.menu.clear))
+	// defer g.header.Remove(g.header.Add(ui.menu.eco))
 	// defer g.nav.Remove(g.nav.Add(ui.nav.file))
 
 	g.window.Perform(system.ActionRaise)
@@ -176,6 +186,7 @@ func (g *GUI) main() {
 					err := save.Open()
 					if err != nil {
 						notify.Error("UI: Failed to open save directory (%v)", err)
+						return
 					}
 				},
 			),
@@ -183,11 +194,9 @@ func (g *GUI) main() {
 		)
 		err := config.Current.Reset()
 		if err != nil {
-			notify.Error("UI: Failed to reset configuration (%v)", err)
+			notify.Warn("UI: Failed to reset configuration (%v)", err)
 		}
 	}
-
-	var ops op.Ops
 
 	for is.Now == is.MainMenu {
 		if !g.open {
@@ -205,15 +214,18 @@ func (g *GUI) main() {
 		}
 
 		switch event := g.window.NextEvent().(type) {
-		case app.ConfigEvent:
+		case system.StageEvent:
+			ui.stage = event.Stage
+			notify.Debug("UI: Main stage: %s", ui.stage)
 		case system.DestroyEvent:
 			g.next(is.Closing)
 			return
 		case system.FrameEvent:
-			gtx := layout.NewContext(&ops, event)
-			op.InvalidateOp{
-				At: gtx.Now,
-			}.Add(gtx.Ops)
+			gtx := layout.NewContext(&ui.ops, event)
+
+			if tray.StartStopEvent() {
+				ui.nav.startstop.Click(ui.nav.startstop)
+			}
 
 			g.dimensions.size = event.Size
 
@@ -551,7 +563,7 @@ func (g *GUI) main() {
 					case key.ModCtrl:
 						switch event.Name {
 						case "C":
-							g.next(is.Projecting)
+							g.next(is.Configuring)
 						case "F":
 							g.nav.Resize()
 						case "S":
@@ -576,6 +588,12 @@ func (g *GUI) main() {
 			}.Add(gtx.Ops)
 			area.Pop()
 
+			// if ui.stage == system.StageRunning {
+			op.InvalidateOp{
+				At: gtx.Now,
+			}.Add(gtx.Ops)
+			// }
+
 			g.frame(gtx, event)
 		default:
 			notify.Missed(event, "Main")
@@ -584,7 +602,9 @@ func (g *GUI) main() {
 }
 
 func (g *GUI) mainUI() *main {
-	ui := &main{}
+	ui := &main{
+		stage: system.StageRunning,
+	}
 
 	var err error
 
@@ -608,7 +628,6 @@ func (g *GUI) mainUI() *main {
 			ui.buttons.start.Disabled = false
 			ui.buttons.start.Released = nrgba.PastelGreen.Alpha(150)
 
-			g.Actions <- Stop
 			g.Running = false
 			g.Preview = true
 
@@ -616,6 +635,16 @@ func (g *GUI) mainUI() *main {
 			ui.nav.startstop.OnHoverHint = ui.buttons.start.OnHoverHint
 			ui.nav.startstop.Pressed = nrgba.PastelGreen
 			ui.nav.startstop.Released = nrgba.Nothing
+
+			detect.Pause()
+			server.Clear()
+			team.Clear()
+			server.SetStopped()
+			save.TemplateStatistics()
+
+			tray.SetStartStopTitle("Start")
+
+			notify.Announce("UniteHUD: Stopped %s", global.Title)
 		},
 	}
 
@@ -639,20 +668,32 @@ func (g *GUI) mainUI() *main {
 			this.Disabled = true
 			this.Released = nrgba.Disabled
 
-			g.Actions <- Start
-			g.Running = true
-
 			ui.nav.startstop.Text = "⏸"
 			ui.nav.startstop.OnHoverHint = ui.buttons.stop.OnHoverHint
 			ui.nav.startstop.Pressed = nrgba.Nothing
 			ui.nav.startstop.Released = nrgba.PastelRed
+
+			server.SetConfig(true)
+			detect.Resume()
+			notify.Clear()
+			server.Clear()
+			state.Clear()
+			stats.Clear()
+			team.Clear()
+			server.SetStarted()
+
+			tray.SetStartStopTitle("Stop")
+
+			g.Running = true
+
+			notify.Announce("UniteHUD: Started %s", global.Title)
 		},
 	}
 
 	ui.textblocks.feed, err = textblock.New(g.nav.Collection.Cascadia(), 75)
 	if err != nil {
 		ui.textblocks.feed = &textblock.Widget{}
-		notify.Error("Failed to load font: (%v)", err)
+		notify.Warn("Failed to load font: (%v)", err)
 	}
 
 	ui.buttons.projector = &button.ImageWidget{
@@ -667,7 +708,7 @@ func (g *GUI) mainUI() *main {
 				ui.buttons.stop.Click(ui.buttons.stop)
 			}
 
-			g.next(is.Projecting)
+			g.next(is.Configuring)
 		},
 	}
 
@@ -857,10 +898,8 @@ func (g *GUI) mainUI() *main {
 		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
-			// ui.buttons.start.Click(ui.buttons.start)
-			go g.overlay(func() {
-				// ui.buttons.stop.Click(ui.buttons.stop)
-			})
+			this.Disabled = true
+			go g.projector(func() { this.Disabled = false })
 		},
 	}
 
@@ -1062,12 +1101,14 @@ func (g *GUI) mainUI() *main {
 				this.Text = "⏸"
 				this.OnHoverHint = ui.buttons.stop.OnHoverHint
 				this.Released = nrgba.PastelRed
+				tray.SetStartStopTitle("Stop")
 			} else {
 				ui.buttons.stop.Click(ui.buttons.stop)
 				this.Text = "▶"
 				this.OnHoverHint = ui.buttons.start.OnHoverHint
 				this.Pressed = nrgba.PastelGreen
 				this.Released = nrgba.Nothing
+				tray.SetStartStopTitle("Start")
 			}
 		},
 	}

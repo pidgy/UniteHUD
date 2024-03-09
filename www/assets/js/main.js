@@ -10,6 +10,19 @@ const cached = {
     }
 }
 
+const sync = function(func, delay) {
+    var wait, id;
+
+    wait = () => {
+        func();
+        id = setTimeout(wait, delay);
+    };
+
+    id = setTimeout(wait, delay);
+
+    return () => { clearTimeout(id); };
+};
+
 var intervals = {
     loading: {
         _text: ["", ".", "..", "..."],
@@ -132,8 +145,20 @@ async function render(data) {
 
     // Render scores.
     {
-        $('.purplescore').html(`<div class="animated">${data.purple.value}</div> <span><i>~ ${data.purple.value + data.regis.filter(x => x === "purple").length * 20}</i></span>`);
-        $('.orangescore').html(`<div class="animated">${data.orange.value}</div> <span><i>~ ${data.orange.value + data.regis.filter(x => x === "orange").length * 20}</i></span>`);
+        var pspan = "";
+        var p = data.regis.filter(x => x === "purple").length;
+        if (p > 0) {
+            pspan = ` <span><i>max ${data.purple.value + p* 20}</i></span>`;
+        }
+        $('.purplescore').html(`<div class="animated">${data.purple.value}</div>${pspan}`);
+
+        var ospan = "";
+        var o = data.regis.filter(x => x === "orange").length;
+        if (o > 0) {
+            ospan = ` <span><i>max ${data.orange.value + o * 20}</i></span>`;
+        }
+
+        $('.orangescore').html(`<div class="animated">${data.orange.value}</div>${ospan}`);
 
         // Check if orange team scored.
         if (prev.orange && prev.orange.value != data.orange.value) {
@@ -224,29 +249,20 @@ async function render(data) {
     }
 }
 
-const syncInterval = function(func, delay) {
-    var intervalFunction, timeoutId, clear;
-    // Call to clear the interval.
-    clear = function() {
-        clearTimeout(timeoutId);
-    };
-    intervalFunction = function() {
-            func();
-            timeoutId = setTimeout(intervalFunction, delay);
-        }
-        // Delay start.
-    timeoutId = setTimeout(intervalFunction, delay);
-    // You should capture the returned function for clearing.
-    return clear;
-};
-
 // WebSocket connection handler.
 function websocket() {
-    let socket = new WebSocket(urlWS);
-    socket.onmessage = function(event) {
+    var ws = new WebSocket(urlWS);
+    ws.onmessage = function(event) {
         render(JSON.parse(event.data));
+        ws.close();
     };
-    socket.onerror = error;
+    ws.onerror = error;
+
+    // setTimeout(() => {
+    //     if (ws.readyState == WebSocket.CONNECTING) {
+    //         ws.close();
+    //     }
+    // }, 500);
 }
 
 $(document).ready(() => {
@@ -254,15 +270,15 @@ $(document).ready(() => {
 
     switch (true) {
         case window.location.search.includes('debug'):
-            syncInterval(debug.start, 1000);
+            sync(debug.start, 1000);
             break;
         case window.location.search.includes('http'):
             console.log(`[UniteHUD] creating http connection to ${urlHTTP}`);
-            syncInterval(http, 1000);
+            sync(http, 1000);
             break;
         default:
             console.info(`[UniteHUD] creating websocket connection to ${urlWS} (add "?http" to connect to the http endpoint)`);
-            syncInterval(websocket, 1000);
+            sync(websocket, 1000);
             break;
     }
 });

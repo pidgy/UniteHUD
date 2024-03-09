@@ -108,7 +108,7 @@ func IconBytes(name string) []byte {
 
 	err = ico.SaveICO(b)
 	if err != nil {
-		notify.SystemWarn("Image: Failed to encode %s (%v)", name, err)
+		notify.Warn("Image: Failed to encode %s (%v)", name, err)
 	}
 
 	c := &cached{

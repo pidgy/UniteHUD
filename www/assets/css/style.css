@@ -90,7 +90,7 @@ td {
 .orangescore span {
     position: absolute;
     left: -5px;
-    bottom: -6.5px;
+    bottom: -7.5px;
     opacity: .7;
     font-size: 12px;
     font-weight: bolder;
@@ -110,7 +110,7 @@ td {
 .purplescore span {
     position: absolute;
     left: 10px;
-    bottom: -6.5px;
+    bottom: -7.5px;
     opacity: .7;
     font-size: 12px;
     font-weight: bolder;

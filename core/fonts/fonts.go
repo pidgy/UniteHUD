@@ -10,8 +10,8 @@ import (
 	"gioui.org/text"
 	"gioui.org/widget/material"
 
-	"github.com/pidgy/unitehud/core/global"
 	"github.com/pidgy/unitehud/core/notify"
+	"github.com/pidgy/unitehud/global"
 )
 
 type Collection map[string]*Style

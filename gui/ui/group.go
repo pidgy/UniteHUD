@@ -80,15 +80,6 @@ func (g *GUI) audios(text float32) *audios {
 						},
 					},
 				},
-				Callback: func(i *dropdown.Item, d *dropdown.Widget) bool {
-					for _, item := range d.Items {
-						item.Checked.Value = false
-						if item == i {
-							item.Checked.Value = true
-						}
-					}
-					return true
-				},
 			},
 		},
 		out: capture{
@@ -120,15 +111,6 @@ func (g *GUI) audios(text float32) *audios {
 							i.Checked.Value = false
 						},
 					},
-				},
-				Callback: func(i *dropdown.Item, d *dropdown.Widget) bool {
-					for _, item := range d.Items {
-						item.Checked.Value = false
-						if item == i {
-							item.Checked.Value = true
-						}
-					}
-					return true
 				},
 			},
 		},
@@ -402,7 +384,7 @@ func (g *GUI) videos(text float32) *videos {
 			Theme:    g.nav.Collection.NotoSans().Theme,
 			TextSize: text,
 			Items:    []*dropdown.Item{},
-			Callback: func(i *dropdown.Item, _ *dropdown.Widget) bool {
+			Callback: func(i *dropdown.Item, _ *dropdown.Widget) (check bool) {
 				defer v.onevent()
 
 				video.Close()
@@ -469,7 +451,7 @@ func (g *GUI) videos(text float32) *videos {
 			Theme:    g.nav.Collection.NotoSans().Theme,
 			TextSize: text,
 			Items:    []*dropdown.Item{},
-			Callback: func(i *dropdown.Item, _ *dropdown.Widget) bool {
+			Callback: func(i *dropdown.Item, _ *dropdown.Widget) (check bool) {
 				defer v.onevent()
 
 				video.Close()
@@ -545,7 +527,7 @@ func (g *GUI) videos(text float32) *videos {
 					},
 				},
 			},
-			Callback: func(i *dropdown.Item, _ *dropdown.Widget) bool {
+			Callback: func(i *dropdown.Item, _ *dropdown.Widget) (check bool) {
 				defer v.onevent()
 
 				video.Close()
@@ -620,7 +602,7 @@ func (g *GUI) videos(text float32) *videos {
 			Theme:    g.nav.Collection.NotoSans().Theme,
 			TextSize: text,
 			Items:    []*dropdown.Item{},
-			Callback: func(i *dropdown.Item, this *dropdown.Widget) bool {
+			Callback: func(i *dropdown.Item, this *dropdown.Widget) (check bool) {
 				for _, item := range this.Items {
 					item.Checked.Value = false
 				}
@@ -675,7 +657,7 @@ func (g *GUI) videos(text float32) *videos {
 					Checked: widget.Bool{Value: config.Current.Platform == config.PlatformBluestacks},
 				},
 			},
-			Callback: func(i *dropdown.Item, l *dropdown.Widget) bool {
+			Callback: func(i *dropdown.Item, l *dropdown.Widget) (check bool) {
 				defer v.onevent()
 
 				for _, item := range l.Items {

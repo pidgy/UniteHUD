@@ -16,13 +16,13 @@ import (
 	"github.com/skratchdot/open-golang/open"
 	"gocv.io/x/gocv"
 
-	"github.com/pidgy/unitehud/core/global"
 	"github.com/pidgy/unitehud/core/match"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/server"
 	"github.com/pidgy/unitehud/core/sort"
 	"github.com/pidgy/unitehud/core/stats"
 	"github.com/pidgy/unitehud/core/team"
+	"github.com/pidgy/unitehud/global"
 )
 
 const (

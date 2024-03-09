@@ -13,17 +13,15 @@ import (
 
 	"github.com/pidgy/unitehud/avi/video/fps"
 	"github.com/pidgy/unitehud/avi/video/monitor"
-	"github.com/pidgy/unitehud/avi/video/wapi"
 	"github.com/pidgy/unitehud/core/fonts"
-	"github.com/pidgy/unitehud/core/global"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/stats"
+	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/gui/is"
 	"github.com/pidgy/unitehud/gui/ux/title"
 	"github.com/pidgy/unitehud/system/process"
+	"github.com/pidgy/unitehud/system/wapi"
 )
-
-type Action string
 
 type GUI struct {
 	HWND uintptr
@@ -38,8 +36,9 @@ type GUI struct {
 
 	Preview bool
 	open    bool
-	Actions chan Action
 	Running bool
+
+	onClose func()
 
 	dimensions struct {
 		min,
@@ -75,20 +74,9 @@ type GUI struct {
 	hz *fps.Hz
 }
 
-const (
-	Start = Action("start")
-	Stop  = Action("stop")
-	// Record = Action("record")
-	// Open    = Action("open")
-	Closing = Action("closing")
-	Refresh = Action("refresh")
-	// Config  = Action("Config")
-	// Log     = Action("Log")
-)
-
 var UI *GUI
 
-func New() {
+func New() *GUI {
 	err := wapi.SetProcessDPIAwareness(wapi.PerMonitorAware)
 	if err != nil {
 		notify.Warn("UI: Failed to set DPI awareness, %v", err)
@@ -127,7 +115,6 @@ func New() {
 		},
 
 		Preview: true,
-		Actions: make(chan Action, 1024),
 
 		hz: fps.NewHz(),
 
@@ -160,7 +147,12 @@ func New() {
 
 	go UI.loading()
 
-	// go UI.draw()
+	return UI
+}
+
+func (g *GUI) OnClose(fn func()) *GUI {
+	g.onClose = fn
+	return g
 }
 
 func (g *GUI) Close() {
@@ -170,15 +162,11 @@ func (g *GUI) Close() {
 func (g *GUI) Open() {
 	g.next(is.MainMenu)
 
-	// tray.Open(g.Close)
-	// defer tray.Close()
-
 	go func() {
 		g.open = true
 
-		g.Actions <- Refresh
 		defer func() {
-			g.Actions <- Closing
+			g.onClose()
 		}()
 
 		for is.Now != is.Closing {
@@ -187,8 +175,8 @@ func (g *GUI) Open() {
 				notify.Debug("UI: Loading...")
 			case is.MainMenu:
 				g.main()
-			case is.Projecting:
-				g.projector()
+			case is.Configuring:
+				g.configure()
 			default:
 				g.ToastError(fmt.Errorf("Unexpected configuration... shutting down"))
 				return
@@ -197,6 +185,10 @@ func (g *GUI) Open() {
 	}()
 
 	go g.proc()
+
+	if global.DebugMode {
+		go g.debug()
+	}
 
 	if is.Now != is.Closing {
 		app.Main()
@@ -283,13 +275,12 @@ func (g *GUI) proc() {
 	peak := struct{ cpu, ram float64 }{}
 
 	for ; is.Now != is.Closing; time.Sleep(time.Second) {
-		uptime := process.Uptime()
-		g.performance.uptime = fmt.Sprintf("%02d:%02d:%02d", uptime.Hour(), uptime.Minute(), uptime.Second())
+		g.performance.uptime = process.Uptime()
 
 		ram := process.RAM()
 		if ram > peak.ram+100 {
 			peak.ram = ram
-			notify.SystemWarn("UI: Consumed %.0fMB of RAM", peak.ram)
+			notify.Warn("UI: RAM Usage: %.0fMB", peak.ram)
 		}
 		g.performance.ram = fmt.Sprintf("RAM %.0f%s", ram, "MB")
 		go stats.RAM(ram)
@@ -299,9 +290,9 @@ func (g *GUI) proc() {
 			notify.Error("Process: Failed to monitor CPU/RAM (%v)", err)
 			continue
 		}
-		if cpu > peak.cpu*2 {
+		if cpu > peak.cpu+10 {
 			peak.cpu = cpu
-			notify.SystemWarn("UI: Consumed %.1f%s CPU", peak.cpu, "%")
+			notify.Warn("UI: CPU Usage: %.1f%s", peak.cpu, "%")
 		}
 		g.performance.cpu = fmt.Sprintf("CPU %.1f%s", cpu, "%")
 		go stats.CPU(cpu)

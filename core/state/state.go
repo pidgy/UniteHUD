@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pidgy/unitehud/core/global"
 	"github.com/pidgy/unitehud/core/team"
+	"github.com/pidgy/unitehud/global"
 )
 
 type Event struct {

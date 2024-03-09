@@ -112,6 +112,9 @@ func Input(name string) (err error) {
 }
 
 func Inputs() []*input.Device {
+	if current == nil {
+		return nil
+	}
 	return input.Devices(current.context)
 }
 
@@ -151,6 +154,10 @@ func Output(name string) (err error) {
 }
 
 func Outputs() []*output.Device {
+	if current == nil {
+		return nil
+	}
+
 	return output.Devices(current.context)
 }
 
@@ -176,6 +183,7 @@ func Start() error {
 	notify.System("Audio: Starting %s", current)
 
 	if current.input.IsDisabled() || current.output.IsDisabled() {
+		notify.Debug("Audio: Ignoring session, i/o disabled")
 		return nil
 	}
 

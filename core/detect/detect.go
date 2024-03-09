@@ -414,7 +414,7 @@ func Scores(name string) {
 		case match.Missed:
 			state.Add(state.ScoreMissedBy(m.Team.Name), server.Clock(), p)
 
-			notify.Error("Detect: [%s] [%s] [Missed] +%d", server.Clock(), m.Team, p)
+			notify.Warn("Detect: [%s] [%s] [Missed] +%d", server.Clock(), m.Team, p)
 		case match.Invalid:
 			notify.Error("Detect: [%s] [%s] [Invalid] +%d", server.Clock(), m.Team, p)
 		case match.Duplicate:
@@ -564,6 +564,7 @@ func Window() {
 		err := window.Reattach()
 		if err != nil {
 			notify.Error("Detect: Failed to reattach window (%v)", err)
+			continue
 		}
 	}
 }
