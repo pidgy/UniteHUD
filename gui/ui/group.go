@@ -17,7 +17,7 @@ import (
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/team"
 	"github.com/pidgy/unitehud/gui/ux/area"
-	"github.com/pidgy/unitehud/gui/ux/dropdown"
+	"github.com/pidgy/unitehud/gui/ux/checklist"
 )
 
 type areas struct {
@@ -35,7 +35,7 @@ type audios struct {
 }
 
 type capture struct {
-	list     *dropdown.Widget
+	list     *checklist.Widget
 	populate func(bool)
 	len      int
 }
@@ -53,15 +53,15 @@ type videos struct {
 func (g *GUI) audios(text float32) *audios {
 	a := &audios{
 		in: capture{
-			list: &dropdown.Widget{
+			list: &checklist.Widget{
 				Theme:         g.nav.Collection.NotoSans().Theme,
 				WidthModifier: 1,
 				TextSize:      text,
 				Radio:         true,
-				Items: []*dropdown.Item{
+				Items: []*checklist.Item{
 					{
 						Text: audio.Disabled,
-						Callback: func(i *dropdown.Item) {
+						Callback: func(i *checklist.Item) {
 							err := audio.Input(audio.Disabled)
 							if err != nil {
 								g.ToastError(err)
@@ -71,7 +71,7 @@ func (g *GUI) audios(text float32) *audios {
 					},
 					{
 						Text: audio.Default,
-						Callback: func(i *dropdown.Item) {
+						Callback: func(i *checklist.Item) {
 							err := audio.Input(audio.Default)
 							if err != nil {
 								g.ToastError(err)
@@ -83,15 +83,15 @@ func (g *GUI) audios(text float32) *audios {
 			},
 		},
 		out: capture{
-			list: &dropdown.Widget{
+			list: &checklist.Widget{
 				Theme:         g.nav.Collection.NotoSans().Theme,
 				WidthModifier: 1,
 				TextSize:      text,
 				Radio:         true,
-				Items: []*dropdown.Item{
+				Items: []*checklist.Item{
 					{
 						Text: audio.Disabled,
-						Callback: func(i *dropdown.Item) {
+						Callback: func(i *checklist.Item) {
 							err := audio.Output(audio.Disabled)
 							if err != nil {
 								g.ToastError(err)
@@ -102,7 +102,7 @@ func (g *GUI) audios(text float32) *audios {
 					},
 					{
 						Text: audio.Default,
-						Callback: func(i *dropdown.Item) {
+						Callback: func(i *checklist.Item) {
 							err := audio.Output(audio.Default)
 							if err != nil {
 								g.ToastError(err)
@@ -117,10 +117,10 @@ func (g *GUI) audios(text float32) *audios {
 	}
 
 	for _, d := range audio.Inputs() {
-		i := &dropdown.Item{
+		i := &checklist.Item{
 			Text:    d.Name(),
 			Checked: widget.Bool{Value: d.Is(config.Current.Audio.Capture.Device.Name)},
-			Callback: func(i *dropdown.Item) {
+			Callback: func(i *checklist.Item) {
 				err := audio.Input(i.Text)
 				if err != nil {
 					g.ToastError(err)
@@ -142,10 +142,10 @@ func (g *GUI) audios(text float32) *audios {
 	}
 
 	for _, d := range audio.Outputs() {
-		i := &dropdown.Item{
+		i := &checklist.Item{
 			Text:    d.Name(),
 			Checked: widget.Bool{Value: d.Is(config.Current.Audio.Playback.Device.Name)},
-			Callback: func(i *dropdown.Item) {
+			Callback: func(i *checklist.Item) {
 				err := audio.Output(i.Text)
 				if err != nil {
 					g.ToastError(err)
@@ -380,11 +380,11 @@ func (g *GUI) videos(text float32) *videos {
 	}
 
 	v.monitor = capture{
-		list: &dropdown.Widget{
+		list: &checklist.Widget{
 			Theme:    g.nav.Collection.NotoSans().Theme,
 			TextSize: text,
-			Items:    []*dropdown.Item{},
-			Callback: func(i *dropdown.Item, _ *dropdown.Widget) (check bool) {
+			Items:    []*checklist.Item{},
+			Callback: func(i *checklist.Item, _ *checklist.Widget) (check bool) {
 				defer v.onevent()
 
 				video.Close()
@@ -417,7 +417,7 @@ func (g *GUI) videos(text float32) *videos {
 			}
 			v.monitor.len = len(screens)
 
-			items := []*dropdown.Item{}
+			items := []*checklist.Item{}
 
 			if videoCaptureDisabledEvent && config.Current.Video.Capture.Window.Name == "" {
 				config.Current.Video.Capture.Window.Name = config.MainDisplay
@@ -425,7 +425,7 @@ func (g *GUI) videos(text float32) *videos {
 
 			for _, screen := range screens {
 				items = append(items,
-					&dropdown.Item{
+					&checklist.Item{
 						Text:    screen,
 						Checked: widget.Bool{Value: video.Active(video.Monitor, screen)},
 					},
@@ -447,11 +447,11 @@ func (g *GUI) videos(text float32) *videos {
 	// }
 
 	v.window = capture{
-		list: &dropdown.Widget{
+		list: &checklist.Widget{
 			Theme:    g.nav.Collection.NotoSans().Theme,
 			TextSize: text,
-			Items:    []*dropdown.Item{},
-			Callback: func(i *dropdown.Item, _ *dropdown.Widget) (check bool) {
+			Items:    []*checklist.Item{},
+			Callback: func(i *checklist.Item, _ *checklist.Widget) (check bool) {
 				defer v.onevent()
 
 				video.Close()
@@ -476,7 +476,7 @@ func (g *GUI) videos(text float32) *videos {
 				item.Checked.Value = config.Current.Video.Capture.Window.Name == item.Text
 			}
 
-			items := []*dropdown.Item{}
+			items := []*checklist.Item{}
 
 			windows := video.Windows()
 			if len(windows) == len(v.window.list.Items) && !videoCaptureDisabledEvent {
@@ -490,19 +490,19 @@ func (g *GUI) videos(text float32) *videos {
 
 				for _, item := range v.window.list.Items {
 					if item.Checked.Value {
-						items = append([]*dropdown.Item{item}, items...)
+						items = append([]*checklist.Item{item}, items...)
 					} else {
 						items = append(items, item)
 					}
 				}
 			} else {
 				for _, win := range windows {
-					item := &dropdown.Item{
+					item := &checklist.Item{
 						Text:    win,
 						Checked: widget.Bool{Value: win == config.Current.Video.Capture.Window.Name},
 					}
 					if item.Checked.Value {
-						items = append([]*dropdown.Item{item}, items...)
+						items = append([]*checklist.Item{item}, items...)
 					} else {
 						items = append(items, item)
 					}
@@ -515,10 +515,10 @@ func (g *GUI) videos(text float32) *videos {
 	}
 
 	v.device = capture{
-		list: &dropdown.Widget{
+		list: &checklist.Widget{
 			Theme:    g.nav.Collection.NotoSans().Theme,
 			TextSize: text,
-			Items: []*dropdown.Item{
+			Items: []*checklist.Item{
 				{
 					Text:  "Disabled",
 					Value: config.NoVideoCaptureDevice,
@@ -527,7 +527,7 @@ func (g *GUI) videos(text float32) *videos {
 					},
 				},
 			},
-			Callback: func(i *dropdown.Item, _ *dropdown.Widget) (check bool) {
+			Callback: func(i *checklist.Item, _ *checklist.Widget) (check bool) {
 				defer v.onevent()
 
 				video.Close()
@@ -571,7 +571,7 @@ func (g *GUI) videos(text float32) *videos {
 				return
 			}
 
-			v.device.list.Items = []*dropdown.Item{
+			v.device.list.Items = []*checklist.Item{
 				{
 					Text:  "Disabled",
 					Value: config.NoVideoCaptureDevice,
@@ -581,7 +581,7 @@ func (g *GUI) videos(text float32) *videos {
 				},
 			}
 			for _, d := range devices {
-				v.device.list.Items = append(v.device.list.Items, &dropdown.Item{
+				v.device.list.Items = append(v.device.list.Items, &checklist.Item{
 					Text:  device.Name(d),
 					Value: d,
 				},
@@ -598,11 +598,11 @@ func (g *GUI) videos(text float32) *videos {
 	}
 
 	v.apis = capture{
-		list: &dropdown.Widget{
+		list: &checklist.Widget{
 			Theme:    g.nav.Collection.NotoSans().Theme,
 			TextSize: text,
-			Items:    []*dropdown.Item{},
-			Callback: func(i *dropdown.Item, this *dropdown.Widget) (check bool) {
+			Items:    []*checklist.Item{},
+			Callback: func(i *checklist.Item, this *checklist.Widget) (check bool) {
 				for _, item := range this.Items {
 					item.Checked.Value = false
 				}
@@ -628,7 +628,7 @@ func (g *GUI) videos(text float32) *videos {
 
 			for i, api := range device.APIs() {
 				v.apis.list.Items = append(v.apis.list.Items,
-					&dropdown.Item{
+					&checklist.Item{
 						Text:  api,
 						Value: device.API(api),
 						Checked: widget.Bool{
@@ -641,9 +641,9 @@ func (g *GUI) videos(text float32) *videos {
 	}
 
 	v.platform = capture{
-		list: &dropdown.Widget{
+		list: &checklist.Widget{
 			Theme: g.nav.Collection.NotoSans().Theme,
-			Items: []*dropdown.Item{
+			Items: []*checklist.Item{
 				{
 					Text:    strings.Title(config.DeviceSwitch),
 					Checked: widget.Bool{Value: config.Current.Device == config.DeviceSwitch},
@@ -657,7 +657,7 @@ func (g *GUI) videos(text float32) *videos {
 					Checked: widget.Bool{Value: config.Current.Device == config.DeviceBluestacks},
 				},
 			},
-			Callback: func(i *dropdown.Item, l *dropdown.Widget) (check bool) {
+			Callback: func(i *checklist.Item, l *checklist.Widget) (check bool) {
 				defer v.onevent()
 
 				for _, item := range l.Items {

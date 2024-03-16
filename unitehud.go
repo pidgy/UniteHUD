@@ -11,6 +11,7 @@ import (
 	"github.com/pidgy/unitehud/core/detect"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/server"
+	"github.com/pidgy/unitehud/core/stats"
 	"github.com/pidgy/unitehud/core/team"
 	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/gui/ui"
@@ -57,8 +58,12 @@ func kill(errs ...error) {
 			func() {
 				defer close(report)
 
-				save.Logs()
-				err := save.OpenLogDirectory()
+				err := save.Logs(notify.FeedStrings(), stats.Lines(), stats.AllTemplates())
+				if err != nil {
+					notify.Warn("UniteHUD: Failed to save logs (%v)", err)
+				}
+
+				err = save.OpenLogDirectory()
 				if err != nil {
 					notify.Error("UniteHUD: Failed to open log directory (%v)", err)
 					return
@@ -81,7 +86,10 @@ func signals() {
 	ui.UI.Close()
 	tray.Close()
 
-	save.Logs()
+	err := save.Logs(notify.FeedStrings(), stats.Lines(), stats.AllTemplates())
+	if err != nil {
+		notify.Warn("UniteHUD: Failed to save logs (%v)", err)
+	}
 
 	os.Exit(0)
 }

@@ -16,6 +16,8 @@ import (
 )
 
 var (
+	Activity = status()
+
 	rpc client
 
 	last struct {
@@ -35,10 +37,6 @@ var (
 		activity
 		time.Time
 	}
-)
-
-var (
-	Activity = status()
 )
 
 func Connect() {

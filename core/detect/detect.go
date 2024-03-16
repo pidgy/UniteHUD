@@ -183,7 +183,7 @@ func Energy() {
 
 		last := state.HoldingEnergy.Occured(time.Hour)
 		if last == nil || last.Value != points {
-			notify.Feed(team.Self.NRGBA, "Detect: [%s] [Self] Holding %d point%s", server.Clock(), points, s(points))
+			notify.Feed(team.Self.NRGBA, "Detect: [%s] [Self] Holding %d %s", server.Clock(), points, plural("point", points))
 			state.Add(state.HoldingEnergy, server.Clock(), points)
 
 			server.SetEnergy(points)
@@ -432,7 +432,10 @@ func Scores(name string) {
 		}
 
 		if config.Current.Record {
-			save.Image(img, matrix, m.Team, m.Point, p, r)
+			err = save.Image(img, matrix, m.Team.Crop(m.Point), p, m.Team.Name, r.String(), server.Clock())
+			if err != nil {
+				notify.Warn("Detect: Failed to save image (%v)", err)
+			}
 		}
 
 		matrix.Close()
@@ -515,27 +518,29 @@ func States() {
 
 				// Purple score and objective results.
 				regielekis, regices, regirocks, registeels, rayquazas := server.Objectives(team.Purple)
-				notify.Feed(team.Purple.NRGBA,
-					"Detect: [%s] %d [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s] [+%d Rayquazas]",
+				notify.Feed(
+					team.Purple.NRGBA,
+					"Detect: [%s] %s [+%d %s] [+%d %s] [+%d %s] [+%d %s] [+%d Rayquazas]",
 					team.Purple,
-					p,
-					regielekis, s(regielekis),
-					regices, s(regices),
-					regirocks, s(regirocks),
-					registeels, s(registeels),
+					server.ScoreString(p),
+					regielekis, plural("Regieleki", regielekis),
+					regices, plural("Regice", regices),
+					regirocks, plural("Regirock", regirocks),
+					registeels, plural("Registeel", registeels),
 					rayquazas,
 				)
 
 				// Orange score and objective results.
 				regielekis, regices, regirocks, registeels, rayquazas = server.Objectives(team.Orange)
-				notify.Feed(team.Orange.NRGBA,
-					"Detect: [%s] %d [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s] [+%d Rayquazas]",
+				notify.Feed(
+					team.Orange.NRGBA,
+					"Detect: [%s] %s [+%d %s] [+%d %s] [+%d %s] [+%d %s] [+%d Rayquazas]",
 					team.Orange,
-					o,
-					regielekis, s(regielekis),
-					regices, s(regices),
-					regirocks, s(regirocks),
-					registeels, s(registeels),
+					server.ScoreString(o),
+					regielekis, plural("Regieleki", regielekis),
+					regices, plural("Regice", regices),
+					regirocks, plural("Regirock", regirocks),
+					registeels, plural("Registeel", registeels),
 					rayquazas,
 				)
 
@@ -558,9 +563,7 @@ func States() {
 				history.Add(p, o, self)
 			}
 
-			if e.Either(state.SurrenderOrange, state.SurrenderPurple) {
-				time.Sleep(time.Second * 10)
-			}
+			time.Sleep(time.Second * 10)
 
 			server.Clear()
 			team.Clear()
@@ -612,10 +615,10 @@ func energyScoredConfirm(before, after int, at time.Time) {
 	}
 
 	notify.Feed(team.Self.NRGBA,
-		"Detect: [%s] [Self] +%d Confirming point%s scored %s ago",
+		"Detect: [%s] [Self] +%d Confirming %s scored %s ago",
 		server.Clock(),
 		before,
-		s(before),
+		plural("point", before),
 		time.Since(at),
 	)
 
@@ -648,11 +651,11 @@ func energyScoredConfirm(before, after int, at time.Time) {
 	notify.Feed(team.Self.NRGBA, "Detect: [%s] [%s] [%s] +%d", server.Clock(), team.Purple, team.Self, before)
 }
 
-func s(size int) string {
+func plural(s string, size int) string {
 	if size == 1 {
-		return ""
+		return s
 	}
-	return "s"
+	return s + "s"
 }
 
 func sleep(d time.Duration) {

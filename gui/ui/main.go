@@ -176,7 +176,11 @@ func (g *GUI) main() {
 
 	if config.Current.Crashed != "" {
 		notify.Warn("Crash: %s", config.Current.Crashed)
-		save.Logs()
+
+		err := save.Logs(notify.FeedStrings(), stats.Lines(), stats.AllTemplates())
+		if err != nil {
+			notify.Warn("UI: Failed to save logs (%v)", err)
+		}
 
 		g.ToastYesNo(
 			"Configuration Reset",
@@ -192,7 +196,7 @@ func (g *GUI) main() {
 			),
 			nil,
 		)
-		err := config.Current.Reset()
+		err = config.Current.Reset()
 		if err != nil {
 			notify.Warn("UI: Failed to reset configuration (%v)", err)
 		}
@@ -640,11 +644,15 @@ func (g *GUI) mainUI() *main {
 			server.Clear()
 			team.Clear()
 			server.SetStopped()
-			save.Logs()
+
+			err := save.Logs(notify.FeedStrings(), stats.Lines(), stats.AllTemplates())
+			if err != nil {
+				notify.Warn("UI: Failed to save logs (%v)", err)
+			}
 
 			tray.SetStartStopTitle("Start")
 
-			notify.Announce("UniteHUD: Stopped %s", global.Title)
+			notify.Announce("UI: Stopped %s", global.Title)
 		},
 	}
 
@@ -686,14 +694,14 @@ func (g *GUI) mainUI() *main {
 
 			g.Running = true
 
-			notify.Announce("UniteHUD: Started %s", global.Title)
+			notify.Announce("UI: Started %s", global.Title)
 		},
 	}
 
 	ui.textblocks.feed, err = textblock.New(g.nav.Collection.Cascadia(), 75)
 	if err != nil {
 		ui.textblocks.feed = &textblock.Widget{}
-		notify.Warn("Failed to load font: (%v)", err)
+		notify.Warn("UI: Failed to load font: (%v)", err)
 	}
 
 	ui.buttons.projector = &button.ImageWidget{
@@ -1009,11 +1017,14 @@ func (g *GUI) mainUI() *main {
 		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
-			save.Logs()
+			err = save.Logs(notify.FeedStrings(), stats.Lines(), stats.AllTemplates())
+			if err != nil {
+				notify.Warn("UI: Failed to save logs (%v)", err)
+			}
 
 			err := save.Open()
 			if err != nil {
-				notify.Error("UI: Failed to open \"%s\" (%v)", save.Directory, err)
+				notify.Warn("UI: Failed to open: %s (%v)", save.Directory, err)
 			}
 		},
 	}
@@ -1029,25 +1040,31 @@ func (g *GUI) mainUI() *main {
 			title := "Record"
 			description := "Record and save captured events on your computer?"
 			yes := func() {
-				defer save.Logs()
-
 				config.Current.Record = true
 				notify.System("UI: Recording captured events in %s", save.Directory)
 				this.Text = "■"
+
+				err := save.Logs(notify.FeedStrings(), stats.Lines(), stats.AllTemplates())
+				if err != nil {
+					notify.Warn("UI: Failed to save logs (%v)", err)
+				}
 			}
 
 			if config.Current.Record {
 				title = "Stop"
 				description = "Stop recording captured events?"
 				yes = func() {
-					defer save.Logs()
-
 					notify.System("UI: Saved captured events in %s", save.Directory)
 					this.Text = "🎬"
 
 					err := save.Open()
 					if err != nil {
 						notify.Error("UI: Failed to open \"%s\" (%v)", save.Directory, err)
+					}
+
+					err = save.Logs(notify.FeedStrings(), stats.Lines(), stats.AllTemplates())
+					if err != nil {
+						notify.Warn("UI: Failed to save logs (%v)", err)
 					}
 
 					config.Current.Record = false

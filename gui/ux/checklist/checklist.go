@@ -1,4 +1,4 @@
-package dropdown
+package checklist
 
 import (
 	"image"
@@ -161,6 +161,8 @@ func (list *Widget) defaultList() {
 }
 
 func (list *Widget) draw(gtx layout.Context, item *Item) layout.Dimensions {
+	// list.liststyle.Scrollbar.AddTrack(gtx.Ops)
+
 	if list.liststyle.Scrollbar.IndicatorHovered() || list.liststyle.Scrollbar.TrackHovered() {
 		list.liststyle.Scrollbar.AddDrag(gtx.Ops)
 		cursor.Is(pointer.CursorPointer)
@@ -187,6 +189,7 @@ func (list *Widget) draw(gtx layout.Context, item *Item) layout.Dimensions {
 	return layout.E.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 		dim := item.check.Layout(gtx)
 		dim.Size.X = gtx.Constraints.Max.X / list.WidthModifier
+		// dim.Size.Y -= 10
 		return dim
 	})
 }
@@ -215,5 +218,6 @@ func (list *Widget) unhovered(i *Item) {
 	cursor.Is(pointer.CursorDefault)
 }
 
-func (_ *Item) defaultCallback(_ *Item)         {}
+func (_ *Item) defaultCallback(_ *Item) {}
+
 func (i *Item) defaultDisabledCallback(_ *Item) { i.Checked.Value = false }

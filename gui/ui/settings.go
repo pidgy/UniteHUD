@@ -23,9 +23,9 @@ import (
 	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/gui/ux"
 	"github.com/pidgy/unitehud/gui/ux/button"
+	"github.com/pidgy/unitehud/gui/ux/checklist"
 	"github.com/pidgy/unitehud/gui/ux/colorpicker"
 	"github.com/pidgy/unitehud/gui/ux/decorate"
-	"github.com/pidgy/unitehud/gui/ux/dropdown"
 	"github.com/pidgy/unitehud/gui/ux/title"
 	"github.com/pidgy/unitehud/system/desktop"
 	"github.com/pidgy/unitehud/system/desktop/clicked"
@@ -188,11 +188,11 @@ func (g *GUI) settingsUI() *settings {
 	ui.sections.language = &section{
 		title:       material.Label(ui.bar.Collection.Calibri().Theme, 14, "🗨️ Language"),
 		description: material.Caption(ui.bar.Collection.Calibri().Theme, "Select the language used for image detection"),
-		widget: &dropdown.Widget{
+		widget: &checklist.Widget{
 			Theme:    ui.bar.Collection.NotoSans().Theme,
 			Radio:    true,
 			TextSize: 12,
-			Items: []*dropdown.Item{
+			Items: []*checklist.Item{
 				{
 					Text:    "English",
 					Checked: widget.Bool{Value: true},
@@ -201,7 +201,7 @@ func (g *GUI) settingsUI() *settings {
 					Text:     "Español",
 					Checked:  widget.Bool{Value: false},
 					Disabled: true,
-					DisabledCallback: func(this *dropdown.Item) {
+					DisabledCallback: func(this *checklist.Item) {
 						g.ToastErrorf("%s language detection is currently not supported", this.Text)
 					},
 				},
@@ -209,7 +209,7 @@ func (g *GUI) settingsUI() *settings {
 					Text:     "日本語",
 					Checked:  widget.Bool{Value: false},
 					Disabled: true,
-					DisabledCallback: func(this *dropdown.Item) {
+					DisabledCallback: func(this *checklist.Item) {
 						g.ToastErrorf("%s language detection is currently not supported", this.Text)
 					},
 				},
@@ -217,7 +217,7 @@ func (g *GUI) settingsUI() *settings {
 					Text:     "한국어",
 					Checked:  widget.Bool{Value: false},
 					Disabled: true,
-					DisabledCallback: func(this *dropdown.Item) {
+					DisabledCallback: func(this *checklist.Item) {
 						g.ToastErrorf("%s language detection is currently not supported", this.Text)
 					},
 				},
@@ -233,17 +233,17 @@ func (g *GUI) settingsUI() *settings {
 	ui.sections.video = &section{
 		title:       material.Label(ui.bar.Collection.Calibri().Theme, 14, "🎥 Video Capture Device"),
 		description: material.Caption(ui.bar.Collection.Calibri().Theme, "Advanced Video Capture Device settings"),
-		widget: &dropdown.Widget{
+		widget: &checklist.Widget{
 			Theme:    ui.bar.Collection.NotoSans().Theme,
 			Radio:    true,
 			TextSize: 12,
-			Items: []*dropdown.Item{
+			Items: []*checklist.Item{
 				{
 					Text: "60 FPS",
 					Checked: widget.Bool{
 						Value: false,
 					},
-					Callback: func(this *dropdown.Item) {
+					Callback: func(this *checklist.Item) {
 						config.Current.Video.Capture.Device.FPS = 60
 					},
 				},
@@ -252,7 +252,7 @@ func (g *GUI) settingsUI() *settings {
 					Checked: widget.Bool{
 						Value: false,
 					},
-					Callback: func(this *dropdown.Item) {
+					Callback: func(this *checklist.Item) {
 						config.Current.Video.Capture.Device.FPS = 120
 					},
 				},
@@ -261,7 +261,7 @@ func (g *GUI) settingsUI() *settings {
 					Checked: widget.Bool{
 						Value: false,
 					},
-					Callback: func(this *dropdown.Item) {
+					Callback: func(this *checklist.Item) {
 						config.Current.Video.Capture.Device.FPS = 144
 					},
 				},
@@ -270,12 +270,12 @@ func (g *GUI) settingsUI() *settings {
 					Checked: widget.Bool{
 						Value: false,
 					},
-					Callback: func(this *dropdown.Item) {
+					Callback: func(this *checklist.Item) {
 						config.Current.Video.Capture.Device.FPS = 240
 					},
 				},
 			},
-			Callback: func(item *dropdown.Item, this *dropdown.Widget) (check bool) {
+			Callback: func(item *checklist.Item, this *checklist.Widget) (check bool) {
 				if !device.IsActive() {
 					return true
 				}
@@ -289,7 +289,7 @@ func (g *GUI) settingsUI() *settings {
 			},
 		},
 	}
-	for _, item := range ui.sections.video.widget.(*dropdown.Widget).Items {
+	for _, item := range ui.sections.video.widget.(*checklist.Widget).Items {
 		if strings.HasPrefix(item.Text, fmt.Sprintf("%d", config.Current.Video.Capture.Device.FPS)) {
 			item.Checked.Value = true
 		}
@@ -374,16 +374,16 @@ func (g *GUI) settingsUI() *settings {
 	notificationsWarning.Color = nrgba.PastelRed.Alpha(127).Color()
 	notificationsWarning.Font.Weight = 0
 	ui.sections.notifications.warning = notificationsWarning
-	ui.sections.notifications.widget = &dropdown.Widget{
+	ui.sections.notifications.widget = &checklist.Widget{
 		Theme:    ui.bar.Collection.NotoSans().Theme,
 		TextSize: 12,
-		Items: []*dropdown.Item{
+		Items: []*checklist.Item{
 			{
 				Text: "Disabled",
 				Checked: widget.Bool{
 					Value: config.Current.Advanced.Notifications.Disabled.All,
 				},
-				Callback: func(this *dropdown.Item) {
+				Callback: func(this *checklist.Item) {
 					config.Current.Advanced.Notifications.Disabled.All = this.Checked.Value
 				},
 			},
@@ -392,7 +392,7 @@ func (g *GUI) settingsUI() *settings {
 				Checked: widget.Bool{
 					Value: config.Current.Advanced.Notifications.Muted,
 				},
-				Callback: func(this *dropdown.Item) {
+				Callback: func(this *checklist.Item) {
 					config.Current.Advanced.Notifications.Muted = this.Checked.Value
 				},
 			},
@@ -401,7 +401,7 @@ func (g *GUI) settingsUI() *settings {
 				Checked: widget.Bool{
 					Value: !config.Current.Advanced.Notifications.Disabled.MatchStarting,
 				},
-				Callback: func(this *dropdown.Item) {
+				Callback: func(this *checklist.Item) {
 					config.Current.Advanced.Notifications.Disabled.MatchStarting = this.Checked.Value
 				},
 			},
@@ -410,7 +410,7 @@ func (g *GUI) settingsUI() *settings {
 				Checked: widget.Bool{
 					Value: !config.Current.Advanced.Notifications.Disabled.MatchStopped,
 				},
-				Callback: func(this *dropdown.Item) {
+				Callback: func(this *checklist.Item) {
 					config.Current.Advanced.Notifications.Disabled.MatchStopped = this.Checked.Value
 				},
 			},
@@ -419,12 +419,12 @@ func (g *GUI) settingsUI() *settings {
 				Checked: widget.Bool{
 					Value: !config.Current.Advanced.Notifications.Disabled.Updates,
 				},
-				Callback: func(this *dropdown.Item) {
+				Callback: func(this *checklist.Item) {
 					config.Current.Advanced.Notifications.Disabled.Updates = this.Checked.Value
 				},
 			},
 		},
-		Callback: func(item *dropdown.Item, this *dropdown.Widget) (check bool) {
+		Callback: func(item *checklist.Item, this *checklist.Widget) (check bool) {
 			if item.Text != "Disabled" {
 				return item.Checked.Value
 			}
@@ -445,17 +445,17 @@ func (g *GUI) settingsUI() *settings {
 	ui.sections.factor = &section{
 		title:       material.Label(ui.bar.Collection.Calibri().Theme, 14, "🕔 Match Frequency Factor"),
 		description: material.Caption(ui.bar.Collection.Calibri().Theme, "Decrease the amount of match attempts per second"),
-		widget: &dropdown.Widget{
+		widget: &checklist.Widget{
 			Theme:    ui.bar.Collection.NotoSans().Theme,
 			Radio:    true,
 			TextSize: 12,
-			Items: []*dropdown.Item{
+			Items: []*checklist.Item{
 				{
 					Text: "Default",
 					Checked: widget.Bool{
 						Value: false,
 					},
-					Callback: func(this *dropdown.Item) {
+					Callback: func(this *checklist.Item) {
 						config.Current.Advanced.DecreasedCaptureLevel = 0
 					},
 				},
@@ -464,7 +464,7 @@ func (g *GUI) settingsUI() *settings {
 					Checked: widget.Bool{
 						Value: false,
 					},
-					Callback: func(this *dropdown.Item) {
+					Callback: func(this *checklist.Item) {
 						config.Current.Advanced.DecreasedCaptureLevel = 1
 					},
 				},
@@ -473,7 +473,7 @@ func (g *GUI) settingsUI() *settings {
 					Checked: widget.Bool{
 						Value: false,
 					},
-					Callback: func(this *dropdown.Item) {
+					Callback: func(this *checklist.Item) {
 						config.Current.Advanced.DecreasedCaptureLevel = 2
 					},
 				},
@@ -482,7 +482,7 @@ func (g *GUI) settingsUI() *settings {
 					Checked: widget.Bool{
 						Value: false,
 					},
-					Callback: func(this *dropdown.Item) {
+					Callback: func(this *checklist.Item) {
 						config.Current.Advanced.DecreasedCaptureLevel = 3
 					},
 				},
@@ -491,14 +491,14 @@ func (g *GUI) settingsUI() *settings {
 					Checked: widget.Bool{
 						Value: false,
 					},
-					Callback: func(this *dropdown.Item) {
+					Callback: func(this *checklist.Item) {
 						config.Current.Advanced.DecreasedCaptureLevel = 4
 					},
 				},
 			},
 		},
 	}
-	for i, item := range ui.sections.factor.widget.(*dropdown.Widget).Items {
+	for i, item := range ui.sections.factor.widget.(*checklist.Widget).Items {
 		if i == int(config.Current.Advanced.DecreasedCaptureLevel) {
 			item.Checked.Value = true
 		}
@@ -581,17 +581,17 @@ func (g *GUI) settingsUI() *settings {
 		title:       material.Label(ui.bar.Collection.Calibri().Theme, 14, "📦 Preset Themes"),
 		description: material.Caption(ui.bar.Collection.Calibri().Theme, "Select a theme preset to apply to UniteHUD"),
 		warning:     material.Label(ui.bar.Collection.Calibri().Theme, 12, ""),
-		widget: &dropdown.Widget{
+		widget: &checklist.Widget{
 			Theme:    ui.bar.Collection.NotoSans().Theme,
 			TextSize: 12,
-			Items:    []*dropdown.Item{},
+			Items:    []*checklist.Item{},
 		},
 	}
 	for name := range config.Current.Themes {
-		ui.sections.themes.widget.(*dropdown.Widget).Items = append(ui.sections.themes.widget.(*dropdown.Widget).Items,
-			&dropdown.Item{
+		ui.sections.themes.widget.(*checklist.Widget).Items = append(ui.sections.themes.widget.(*checklist.Widget).Items,
+			&checklist.Item{
 				Text: name,
-				Callback: func(this *dropdown.Item) {
+				Callback: func(this *checklist.Item) {
 					println(this.Text)
 				},
 			},

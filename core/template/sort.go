@@ -1,34 +1,38 @@
-package sort
+package template
 
 import (
 	"image"
 	"math"
 	"sort"
 
-	"github.com/pidgy/unitehud/core/template"
 	"github.com/pidgy/unitehud/core/template/filter"
 )
 
 // Templates represents a sortable set of unique templates where set len > 1.
-type Templates struct {
-	templates []*template.Template
-	cache     map[string]cached
-	invalid   bool
-}
+type (
+	Sortable struct {
+		templates []*Template
+		cache     map[string]cached
+		invalid   bool
+	}
 
-type cached struct {
-	image.Point
-	value float32
-	seen  int
-}
+	byLocation Sortable
+	byValues   Sortable
 
-func NewTemplates() Templates {
-	return Templates{
+	cached struct {
+		image.Point
+		value float32
+		seen  int
+	}
+)
+
+func NewSortable() Sortable {
+	return Sortable{
 		cache: map[string]cached{},
 	}
 }
 
-func (t *Templates) Cache(t2 *template.Template, p image.Point, value float32) {
+func (t *Sortable) Cache(t2 *Template, p image.Point, value float32) {
 	if t2.Value == 0 {
 		p = image.Pt(math.MaxInt32, math.MaxInt32)
 	}
@@ -46,7 +50,7 @@ func (t *Templates) Cache(t2 *template.Template, p image.Point, value float32) {
 	}
 }
 
-func ByLocation(t Templates) bool {
+func ByLocation(t Sortable) bool {
 	if t.invalid || len(t.cache) == 0 || len(t.cache) > 3 {
 		return false
 	}
@@ -58,7 +62,7 @@ func ByLocation(t Templates) bool {
 	return !t.invalid
 }
 
-func ByValues(t Templates) bool {
+func ByValues(t Sortable) bool {
 	for _, c := range t.cache {
 		if c.seen > 1 {
 			return false
@@ -69,7 +73,7 @@ func ByValues(t Templates) bool {
 	return t.Value() > 0 && t.Value() < 100
 }
 
-func (t *Templates) Value() int {
+func (t *Sortable) Value() int {
 	switch len(t.templates) {
 	case 1:
 		return -1
@@ -82,8 +86,6 @@ func (t *Templates) Value() int {
 	}
 }
 
-type byLocation Templates
-
 func (b byLocation) Len() int {
 	return len(b.templates)
 }
@@ -95,8 +97,6 @@ func (b byLocation) Less(i, j int) bool {
 func (b byLocation) Swap(i, j int) {
 	b.templates[i], b.templates[j] = b.templates[j], b.templates[i]
 }
-
-type byValues Templates
 
 func (b byValues) Len() int {
 	return len(b.templates)

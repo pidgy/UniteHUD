@@ -18,12 +18,12 @@ import (
 
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/rgba/nrgba"
-	"github.com/pidgy/unitehud/core/sort"
 	"github.com/pidgy/unitehud/core/state"
 	"github.com/pidgy/unitehud/core/team"
 	"github.com/pidgy/unitehud/core/template"
 	"github.com/pidgy/unitehud/core/template/filter"
 	"github.com/pidgy/unitehud/global"
+	"github.com/pidgy/unitehud/system/sort"
 )
 
 const (
@@ -125,8 +125,6 @@ type Config struct {
 
 	filenames map[string]map[string][]filter.Filter      `json:"-"`
 	templates map[string]map[string][]*template.Template `json:"-"`
-
-	load func()
 }
 
 type Shift struct {
@@ -177,10 +175,6 @@ func (c Config) Eq(c2 Config) bool {
 
 func (c *Config) File() string {
 	return fmt.Sprintf("config-%s.unitehud", strings.ReplaceAll(global.Version, ".", "-"))
-}
-
-func (c *Config) ProfileAssets() string {
-	return filepath.Join(global.WorkingDirectory(), global.AssetDirectory, "device", c.Device)
 }
 
 func (c *Config) Reload() {
@@ -379,10 +373,106 @@ func (c *Config) UnsetHiddenThemes() {
 	}
 }
 
+func (c *Config) deviceAssets() string {
+	return filepath.Join(global.WorkingDirectory(), global.AssetDirectory, "device", c.Device)
+}
+
+func (c *Config) loadDeviceAssets() {
+	c.filenames = map[string]map[string][]filter.Filter{
+		"goals": {
+			team.Game.Name: {
+				filter.New(team.Game, Current.deviceAssets()+"/game/purple_base_open.png", state.PurpleBaseOpen.Int(), false),
+				filter.New(team.Game, Current.deviceAssets()+"/game/orange_base_open.png", state.OrangeBaseOpen.Int(), false),
+				filter.New(team.Game, Current.deviceAssets()+"/game/purple_base_closed.png", state.PurpleBaseClosed.Int(), false),
+				filter.New(team.Game, Current.deviceAssets()+"/game/orange_base_closed.png", state.OrangeBaseClosed.Int(), false),
+			},
+		},
+		"killed": {
+			team.Game.Name: {
+				filter.New(team.Game, Current.deviceAssets()+"/game/killed.png", state.Killed.Int(), false),
+				filter.New(team.Game, Current.deviceAssets()+"/game/killed_with_points.png", state.KilledWithPoints.Int(), false),
+				filter.New(team.Game, Current.deviceAssets()+"/game/killed_without_points.png", state.KilledWithoutPoints.Int(), false),
+			},
+		},
+		"secure": {
+			team.Game.Name: {
+				filter.New(team.Game, Current.deviceAssets()+"/game/rayquaza_ally.png", state.RayquazaSecurePurple.Int(), false),
+				filter.New(team.Game, Current.deviceAssets()+"/game/rayquaza_enemy.png", state.RayquazaSecureOrange.Int(), false),
+				filter.New(team.Game, Current.deviceAssets()+"/game/regieleki_ally.png", state.RegielekiSecurePurple.Int(), false),
+				filter.New(team.Game, Current.deviceAssets()+"/game/regieleki_enemy.png", state.RegielekiSecureOrange.Int(), false),
+				filter.New(team.Game, Current.deviceAssets()+"/game/regice_ally.png", state.RegiceSecurePurple.Int(), false),
+				filter.New(team.Game, Current.deviceAssets()+"/game/regice_enemy.png", state.RegiceSecureOrange.Int(), false),
+				filter.New(team.Game, Current.deviceAssets()+"/game/regice_enemy_alt.png", state.RegiceSecureOrange.Int(), false),
+				filter.New(team.Game, Current.deviceAssets()+"/game/regirock_ally.png", state.RegirockSecurePurple.Int(), false),
+				filter.New(team.Game, Current.deviceAssets()+"/game/regirock_enemy.png", state.RegirockSecureOrange.Int(), false),
+				filter.New(team.Game, Current.deviceAssets()+"/game/registeel_ally.png", state.RegisteelSecurePurple.Int(), false),
+				filter.New(team.Game, Current.deviceAssets()+"/game/registeel_enemy.png", state.RegisteelSecureOrange.Int(), false),
+			},
+		},
+		"ko": {
+			team.Game.Name: {
+				// filter.New(team.Game, Current.ProfileAssets()+"/game/ko_ally.png", state.KOPurple.Int(), false),
+				// filter.New(team.Game, Current.ProfileAssets()+"/game/ko_streak_ally.png", state.KOStreakPurple.Int(), false),
+				// filter.New(team.Game, Current.ProfileAssets()+"/game/ko_enemy.png", state.KOOrange.Int(), false),
+				// filter.New(team.Game, Current.ProfileAssets()+"/game/ko_streak_enemy.png", state.KOStreakOrange.Int(), false),
+			},
+		},
+		"objective": {
+			team.Game.Name: {
+				filter.New(team.Game, Current.deviceAssets()+"/game/objective.png", state.ObjectivePresent.Int(), false),
+				filter.New(team.Game, Current.deviceAssets()+"/game/objective_half.png", state.ObjectivePresent.Int(), false),
+				filter.New(team.Game, Current.deviceAssets()+"/game/objective_orange_base.png", state.ObjectiveReachedOrange.Int(), false),
+			},
+		},
+		"starting": {
+			team.Game.Name: {
+				filter.New(team.Game, Current.deviceAssets()+"/game/vs.png", state.MatchStarting.Int(), false),
+				filter.New(team.Game, Current.deviceAssets()+"/game/vs_alt.png", state.MatchStarting.Int(), false),
+			},
+		},
+		"ending": {
+			team.Game.Name: {
+				filter.New(team.Game, Current.deviceAssets()+"/game/end.png", state.MatchEnding.Int(), false),
+			},
+		},
+		"surrender": {
+			team.Game.Name: {
+				filter.New(team.Game, Current.deviceAssets()+"/game/surrender_enemy.png", state.SurrenderOrange.Int(), false),
+				filter.New(team.Game, Current.deviceAssets()+"/game/surrender_ally.png", state.SurrenderPurple.Int(), false),
+			},
+		},
+		"scoring": {
+			team.Game.Name: {
+				filter.New(team.Game, Current.deviceAssets()+"/game/pre_scoring_alt_alt.png", state.PreScore.Int(), false),
+				filter.New(team.Game, Current.deviceAssets()+"/game/pre_scoring_alt.png", state.PreScore.Int(), false),
+				filter.New(team.Game, Current.deviceAssets()+"/game/pre_scoring.png", state.PreScore.Int(), false),
+				filter.New(team.Game, Current.deviceAssets()+"/game/post_scoring.png", state.PostScore.Int(), false),
+				filter.New(team.Game, Current.deviceAssets()+"/game/press_button_to_score.png", state.PressButtonToScore.Int(), false),
+			},
+		},
+		"scored": {
+			team.Purple.Name: Current.scoreFiles(team.Purple),
+			team.Orange.Name: Current.scoreFiles(team.Orange),
+			team.Self.Name:   Current.scoreFiles(team.Self),
+			team.First.Name:  Current.scoreFiles(team.First),
+		},
+		"points": {
+			team.Purple.Name: Current.pointFiles(team.Purple),
+			team.Orange.Name: Current.pointFiles(team.Orange),
+			team.Self.Name:   Current.pointFiles(team.Self),
+			team.First.Name:  Current.pointFiles(team.First),
+			team.Energy.Name: Current.pointFiles(team.Energy),
+		},
+		"time": {
+			team.Time.Name: Current.pointFiles(team.Time),
+		},
+	}
+}
+
 func (c *Config) pointFiles(t *team.Team) []filter.Filter {
 	var files []string
 
-	root := fmt.Sprintf("%s/%s/points/", c.ProfileAssets(), t.Name)
+	root := fmt.Sprintf("%s/%s/points/", c.deviceAssets(), t.Name)
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if info == nil {
 			return fmt.Errorf("directory does not exist")
@@ -435,7 +525,7 @@ func (c *Config) pointFiles(t *team.Team) []filter.Filter {
 func (c *Config) scoreFiles(t *team.Team) []filter.Filter {
 	var files []string
 
-	root := fmt.Sprintf("%s/%s/score/", c.ProfileAssets(), t.Name)
+	root := fmt.Sprintf("%s/%s/score/", c.deviceAssets(), t.Name)
 
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if info == nil {
@@ -493,7 +583,7 @@ func (c *Config) setDefaultAreas() {
 	c.XY.KOs = image.Rect(730, 130, 1160, 310)
 }
 
-func Load(platform string) error {
+func Load(device string) error {
 	defer func() {
 		r := recover()
 		if r != nil {
@@ -502,14 +592,13 @@ func Load(platform string) error {
 		}
 	}()
 
-	if platform == "" {
+	if device == "" {
 		Current.Device = DeviceSwitch
-		Current.load = loadAssetsSwitch
 	}
 
 	defer validate()
 
-	notify.System("Config: Loading %s profile (%s)", platform, Current.File())
+	notify.System("Config: Loading %s profile (%s)", device, Current.File())
 
 	ok := open()
 	if !ok {
@@ -524,22 +613,17 @@ func Load(platform string) error {
 		Current.Video.Capture.Device.Index = NoVideoCaptureDevice
 
 		Current.Device = DeviceSwitch
-		Current.load = loadAssetsSwitch
 		Current.SetDefaultTheme()
 
 		Current.setDefaultAreas()
 		Current.setDefaultAdvancedSettings()
 
-		Current.load()
+		Current.loadDeviceAssets()
 	}
 
 	if Current.Video.Capture.Window.Name == "" {
 		Current.Video.Capture.Window.Name = MainDisplay
 		Current.Video.Capture.Device.Index = NoVideoCaptureDevice
-	}
-
-	if Current.Device == "" {
-		Current.Device = DeviceSwitch
 	}
 
 	if Current.Themes == nil {
@@ -555,10 +639,6 @@ func Load(platform string) error {
 		return err
 	}
 
-	// if global.DebugMode {
-	// 	Current.Advanced.Discord.Disabled = true
-	// }
-
 	return nil
 }
 
@@ -573,98 +653,6 @@ func TemplatesFirstRound(t1 []*template.Template) []*template.Template {
 	return t2
 }
 
-func loadAssetsSwitch() {
-	Current.filenames = map[string]map[string][]filter.Filter{
-		"goals": {
-			team.Game.Name: {
-				filter.New(team.Game, Current.ProfileAssets()+"/game/purple_base_open.png", state.PurpleBaseOpen.Int(), false),
-				filter.New(team.Game, Current.ProfileAssets()+"/game/orange_base_open.png", state.OrangeBaseOpen.Int(), false),
-				filter.New(team.Game, Current.ProfileAssets()+"/game/purple_base_closed.png", state.PurpleBaseClosed.Int(), false),
-				filter.New(team.Game, Current.ProfileAssets()+"/game/orange_base_closed.png", state.OrangeBaseClosed.Int(), false),
-			},
-		},
-		"killed": {
-			team.Game.Name: {
-				filter.New(team.Game, Current.ProfileAssets()+"/game/killed.png", state.Killed.Int(), false),
-				filter.New(team.Game, Current.ProfileAssets()+"/game/killed_with_points.png", state.KilledWithPoints.Int(), false),
-				filter.New(team.Game, Current.ProfileAssets()+"/game/killed_without_points.png", state.KilledWithoutPoints.Int(), false),
-			},
-		},
-		"secure": {
-			team.Game.Name: {
-				filter.New(team.Game, Current.ProfileAssets()+"/game/rayquaza_ally.png", state.RayquazaSecurePurple.Int(), false),
-				filter.New(team.Game, Current.ProfileAssets()+"/game/rayquaza_enemy.png", state.RayquazaSecureOrange.Int(), false),
-				filter.New(team.Game, Current.ProfileAssets()+"/game/regieleki_ally.png", state.RegielekiSecurePurple.Int(), false),
-				filter.New(team.Game, Current.ProfileAssets()+"/game/regieleki_enemy.png", state.RegielekiSecureOrange.Int(), false),
-				filter.New(team.Game, Current.ProfileAssets()+"/game/regice_ally.png", state.RegiceSecurePurple.Int(), false),
-				filter.New(team.Game, Current.ProfileAssets()+"/game/regice_enemy.png", state.RegiceSecureOrange.Int(), false),
-				filter.New(team.Game, Current.ProfileAssets()+"/game/regice_enemy_alt.png", state.RegiceSecureOrange.Int(), false),
-				filter.New(team.Game, Current.ProfileAssets()+"/game/regirock_ally.png", state.RegirockSecurePurple.Int(), false),
-				filter.New(team.Game, Current.ProfileAssets()+"/game/regirock_enemy.png", state.RegirockSecureOrange.Int(), false),
-				filter.New(team.Game, Current.ProfileAssets()+"/game/registeel_ally.png", state.RegisteelSecurePurple.Int(), false),
-				filter.New(team.Game, Current.ProfileAssets()+"/game/registeel_enemy.png", state.RegisteelSecureOrange.Int(), false),
-			},
-		},
-		"ko": {
-			team.Game.Name: {
-				// filter.New(team.Game, Current.ProfileAssets()+"/game/ko_ally.png", state.KOPurple.Int(), false),
-				// filter.New(team.Game, Current.ProfileAssets()+"/game/ko_streak_ally.png", state.KOStreakPurple.Int(), false),
-				// filter.New(team.Game, Current.ProfileAssets()+"/game/ko_enemy.png", state.KOOrange.Int(), false),
-				// filter.New(team.Game, Current.ProfileAssets()+"/game/ko_streak_enemy.png", state.KOStreakOrange.Int(), false),
-			},
-		},
-		"objective": {
-			team.Game.Name: {
-				filter.New(team.Game, Current.ProfileAssets()+"/game/objective.png", state.ObjectivePresent.Int(), false),
-				filter.New(team.Game, Current.ProfileAssets()+"/game/objective_half.png", state.ObjectivePresent.Int(), false),
-				filter.New(team.Game, Current.ProfileAssets()+"/game/objective_orange_base.png", state.ObjectiveReachedOrange.Int(), false),
-			},
-		},
-		"starting": {
-			team.Game.Name: {
-				filter.New(team.Game, Current.ProfileAssets()+"/game/vs.png", state.MatchStarting.Int(), false),
-				filter.New(team.Game, Current.ProfileAssets()+"/game/vs_alt.png", state.MatchStarting.Int(), false),
-			},
-		},
-		"ending": {
-			team.Game.Name: {
-				filter.New(team.Game, Current.ProfileAssets()+"/game/end.png", state.MatchEnding.Int(), false),
-			},
-		},
-		"surrender": {
-			team.Game.Name: {
-				filter.New(team.Game, Current.ProfileAssets()+"/game/surrender_enemy.png", state.SurrenderOrange.Int(), false),
-				filter.New(team.Game, Current.ProfileAssets()+"/game/surrender_ally.png", state.SurrenderPurple.Int(), false),
-			},
-		},
-		"scoring": {
-			team.Game.Name: {
-				filter.New(team.Game, Current.ProfileAssets()+"/game/pre_scoring_alt_alt.png", state.PreScore.Int(), false),
-				filter.New(team.Game, Current.ProfileAssets()+"/game/pre_scoring_alt.png", state.PreScore.Int(), false),
-				filter.New(team.Game, Current.ProfileAssets()+"/game/pre_scoring.png", state.PreScore.Int(), false),
-				filter.New(team.Game, Current.ProfileAssets()+"/game/post_scoring.png", state.PostScore.Int(), false),
-				filter.New(team.Game, Current.ProfileAssets()+"/game/press_button_to_score.png", state.PressButtonToScore.Int(), false),
-			},
-		},
-		"scored": {
-			team.Purple.Name: Current.scoreFiles(team.Purple),
-			team.Orange.Name: Current.scoreFiles(team.Orange),
-			team.Self.Name:   Current.scoreFiles(team.Self),
-			team.First.Name:  Current.scoreFiles(team.First),
-		},
-		"points": {
-			team.Purple.Name: Current.pointFiles(team.Purple),
-			team.Orange.Name: Current.pointFiles(team.Orange),
-			team.Self.Name:   Current.pointFiles(team.Self),
-			team.First.Name:  Current.pointFiles(team.First),
-			team.Energy.Name: Current.pointFiles(team.Energy),
-		},
-		"time": {
-			team.Time.Name: Current.pointFiles(team.Time),
-		},
-	}
-}
-
 func open() bool {
 	if Current.Device == "" {
 		Current.Device = DeviceSwitch
@@ -677,7 +665,6 @@ func open() bool {
 
 	c := Config{
 		Device: DeviceSwitch,
-		load:   loadAssetsSwitch,
 	}
 
 	err = json.Unmarshal(b, &c)
@@ -689,9 +676,9 @@ func open() bool {
 		c.Device = DeviceSwitch
 	}
 
-	Current = c
+	c.loadDeviceAssets()
 
-	Current.load()
+	Current = c
 
 	return true
 }

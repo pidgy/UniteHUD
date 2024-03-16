@@ -10,7 +10,6 @@ import (
 	"github.com/pidgy/unitehud/core/match/duplicate"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/server"
-	"github.com/pidgy/unitehud/core/sort"
 	"github.com/pidgy/unitehud/core/stats"
 	"github.com/pidgy/unitehud/core/team"
 	"github.com/pidgy/unitehud/core/template"
@@ -54,7 +53,7 @@ func (m *Match) first(matrix gocv.Mat) (Result, int) {
 	}
 
 	// Collect matched templates, exit early if we detect different images once.
-	sorted := sort.NewTemplates()
+	sorted := template.NewSortable()
 
 	for round := 0; round < len(points); round++ {
 		templates := templatesWithoutZero

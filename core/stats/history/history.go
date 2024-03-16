@@ -43,16 +43,13 @@ func Dump() {
 		case h.orange > h.purple:
 			result = "Lost"
 			color = nrgba.DarkRed
-			result = " /-"
+			symbol = " /-"
 		case h.orange == h.purple:
 			result = "Tied"
 			color = nrgba.Yellow
-			result = " / "
+			symbol = " / "
 		}
 
 		notify.Append(color, "%s (%s) %s %d - %d - %d", symbol, h.Time.Format(time.Kitchen), result, h.purple, h.orange, h.self)
 	}
-}
-
-func Record() {
 }

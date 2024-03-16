@@ -12,7 +12,6 @@ import (
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/rgba/nrgba"
-	"github.com/pidgy/unitehud/core/sort"
 	"github.com/pidgy/unitehud/core/team"
 	"github.com/pidgy/unitehud/global"
 )
@@ -223,7 +222,7 @@ func Lines() []string {
 			},
 		)
 
-		sorted := sort.Stats{}
+		sorted := sortable{}
 
 		// Use frequencies to see all images sent to be matched, or use matches to
 		// only see matched images.
@@ -232,11 +231,11 @@ func Lines() []string {
 				if frequencies[n] < 1 {
 					continue
 				}
-				sorted = sorted.Append(n, matches[n], averages[n], frequencies[n])
+				sorted.add(n, matches[n], averages[n], frequencies[n])
 			}
 		} else {
 			for n := range matches {
-				sorted = sorted.Append(n, matches[n], averages[n], frequencies[n])
+				sorted.add(n, matches[n], averages[n], frequencies[n])
 			}
 		}
 
@@ -307,20 +306,11 @@ func round(v float64) float64 {
 }
 
 func sanitize(stat string) string {
-	stat = strings.ReplaceAll(
-		strings.ReplaceAll(
-			stat,
-			"\\", "/",
-		),
-		"PNG", "png")
+	stat = strings.ReplaceAll(strings.ReplaceAll(stat, "\\", "/"), "PNG", "png")
 
-	if strings.Contains(stat, "profiles") {
-		args := strings.Split(stat, "/")
-		for i := range args {
-			if args[i] == "profiles" {
-				return strings.Join(args[i:], "/")
-			}
-		}
+	args := strings.Split(stat, "device/")
+	if len(args) > 1 {
+		stat = args[1]
 	}
 
 	return stat

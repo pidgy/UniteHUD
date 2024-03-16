@@ -383,6 +383,13 @@ func Score(t *team.Team) int {
 	}
 }
 
+func ScoreString(v int) string {
+	if v == -1 {
+		return "Surrendered"
+	}
+	return fmt.Sprintf("%d", v)
+}
+
 func Scores() (orange, purple, self int) {
 	return current.game.Orange.Value, current.game.Purple.Value, current.game.Self.Value
 }

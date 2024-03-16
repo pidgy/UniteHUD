@@ -90,6 +90,13 @@ func Error(format string, a ...interface{}) {
 	feed.log(nrgba.DarkRed, true, false, false, format, a...)
 }
 
+func FeedStrings() (s []string) {
+	for _, p := range Feeds() {
+		s = append(s, p.String())
+	}
+	return
+}
+
 func Feeds() []Post {
 	return feed.logs
 }

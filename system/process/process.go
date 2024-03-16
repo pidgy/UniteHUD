@@ -10,8 +10,9 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/pidgy/unitehud/global"
 	"golang.org/x/sys/windows"
+
+	"github.com/pidgy/unitehud/global"
 )
 
 const TH32CSSnapProcess = 0x00000002
@@ -49,6 +50,10 @@ func CPU() (float64, error) {
 	return (100 * float64(diff2) / float64(diff)) / cpus, nil
 }
 
+func Memory() runtime.MemStats {
+	return memory
+}
+
 func RAM() float64 {
 	runtime.ReadMemStats(&memory)
 	return float64(memory.Sys) / 1024 / 1024
@@ -66,10 +71,6 @@ func Start() error {
 	}
 
 	return nil
-}
-
-func Memory() runtime.MemStats {
-	return memory
 }
 
 func Uptime() string {

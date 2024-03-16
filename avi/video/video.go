@@ -90,5 +90,5 @@ func StateArea() image.Rectangle {
 	}
 
 	b := img.Bounds()
-	return image.Rect(b.Max.X/3, 0, b.Max.X-b.Max.X/3, b.Max.Y)
+	return image.Rect(b.Max.X/3, 0, b.Max.X-b.Max.X/3, b.Max.Y/2)
 }
