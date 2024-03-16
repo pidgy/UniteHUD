@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"image"
-	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -27,22 +26,20 @@ import (
 
 const (
 	// Directories.
-	top    = "saved"
+	saved  = "saved"
 	images = "img"
-	logs   = "log"
 
 	// Files.
-	templates       = "templates.json"
-	templatesLoaded = "templates_loaded.json"
+	log       = "unitehud.log"
+	templates = "templates.json"
 )
 
 var (
-	Directory = fmt.Sprintf("%d_%02d_%02d_%02d_%02d", now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute())
+	Directory = fmt.Sprintf("%4d-%02d-%02d", now.Year(), now.Month(), now.Day())
 
 	cpu, ram   *os.File
 	counts     = map[string]int64{}
 	countsLock = &sync.Mutex{}
-	logfile    = fmt.Sprintf("unitehud_%d.log", now.Unix())
 	now        = time.Now()
 )
 
@@ -51,7 +48,7 @@ func Image(img image.Image, mat gocv.Mat, t *team.Team, p image.Point, value int
 		return ""
 	}
 
-	subdir := filepath.Join(global.WorkingDirectory(), top, Directory, images, t.Name)
+	subdir := filepath.Join(global.WorkingDirectory(), saved, Directory, images, t.Name)
 	err := createDirIfNotExist(subdir)
 	if err != nil {
 		notify.Error("Save: failed to create directory \"%s\" (%v)", subdir, err)
@@ -79,9 +76,9 @@ func Logs() {
 		return
 	}
 
-	dir := filepath.Join(global.WorkingDirectory(), top, Directory, logs, logfile)
+	dir := filepath.Join(global.WorkingDirectory(), saved, Directory, log)
 
-	f, err := os.OpenFile(dir, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(dir, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		notify.Error("Save: Failed to open log file in %s (%v)", Directory, err)
 		return
@@ -101,6 +98,8 @@ func Logs() {
 			notify.Error("Save: Failed to append statistic logs in %s (%v)", Directory, err)
 		}
 	}
+
+	templateStatistics()
 }
 
 func Open() error {
@@ -119,7 +118,7 @@ func OpenLogDirectory() error {
 		notify.Error("Save: Failed to create \"%s/\" directory (%v)", Directory, err)
 		return err
 	}
-	return open.Run(fmt.Sprintf("%s/%s/%s", d, Directory, logs))
+	return open.Run(fmt.Sprintf("%s/%s", d, Directory))
 }
 
 func ProfileStart() {
@@ -158,52 +157,6 @@ func ProfileStop() {
 	ram.Close()
 }
 
-func TemplateStatistics() {
-	all := make(map[string]int)
-
-	f, err := os.OpenFile(templates, os.O_APPEND|os.O_CREATE, 0644)
-	if err != nil {
-		notify.Error("Save: Failed to open %s (%v)", templates, err)
-		return
-	}
-	defer f.Close()
-
-	b, err := io.ReadAll(f)
-	if err != nil {
-		if err != io.EOF {
-			notify.Error("Save: Failed to read %s (%v)", templates, err)
-			return
-		}
-	}
-	if len(b) == 0 {
-		b = []byte("{}")
-	}
-
-	err = json.Unmarshal(b, &all)
-	if err != nil {
-		notify.Error("Save: Failed to unpack %s (%v)", templates, err)
-		return
-	}
-
-	current := stats.AllTemplates()
-
-	for k, v := range current {
-		all[k] += v
-	}
-
-	b, err = json.Marshal(all)
-	if err != nil {
-		notify.Error("Save: Failed to pack %s (%v)", templates, err)
-		return
-	}
-
-	err = os.WriteFile(templates, sort.JSON(b), os.ModePerm)
-	if err != nil {
-		notify.Error("Save: Failed to save %s (%v)", templates, err)
-		return
-	}
-}
-
 func createAllIfNotExist() (string, error) {
 	d, err := createTmpIfNotExist()
 	if err != nil {
@@ -212,10 +165,9 @@ func createAllIfNotExist() (string, error) {
 
 	for _, subdir := range []string{
 		"/",
-		fmt.Sprintf("/%s", logs),
 		fmt.Sprintf("/%s", images),
 	} {
-		err := createDirIfNotExist(filepath.Join(global.WorkingDirectory(), top, Directory, subdir))
+		err := createDirIfNotExist(filepath.Join(global.WorkingDirectory(), saved, Directory, subdir))
 		if err != nil {
 			return "", err
 		}
@@ -245,7 +197,7 @@ func createDirIfNotExist(subdir string) error {
 }
 
 func createTmpIfNotExist() (string, error) {
-	dir := filepath.Join(global.WorkingDirectory(), top)
+	dir := filepath.Join(global.WorkingDirectory(), saved)
 
 	err := os.Mkdir(dir, 0755)
 	if err != nil {
@@ -273,4 +225,53 @@ func name(name, subdir string, value int) string {
 	)
 
 	return p
+}
+
+func templateStatistics() {
+	all := make(map[string]int)
+
+	f := filepath.Join(global.WorkingDirectory(), saved, templates)
+
+	b, err := os.ReadFile(f)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			notify.Error("Save: Failed to open %s (%v)", templates, err)
+			return
+		}
+	}
+	if len(b) == 0 {
+		b = []byte("{}")
+	}
+
+	err = json.Unmarshal(b, &all)
+	if err != nil {
+		notify.Error("Save: Failed to unpack %s (%v)", templates, err)
+		return
+	}
+
+	current := stats.AllTemplates()
+
+	for k, v := range current {
+		all[k] += v
+	}
+
+	b, err = json.Marshal(all)
+	if err != nil {
+		notify.Error("Save: Failed to pack %s (%v)", templates, err)
+		return
+	}
+
+	err = os.WriteFile(f, sort.JSON(b), os.ModePerm)
+	if err != nil {
+		notify.Error("Save: Failed to save %s (%v)", templates, err)
+		return
+	}
+
+	f = filepath.Join(global.WorkingDirectory(), saved, Directory, templates)
+
+	err = os.WriteFile(f, sort.JSON(b), os.ModePerm)
+	if err != nil {
+		notify.Error("Save: Failed to save %s (%v)", templates, err)
+		return
+	}
 }

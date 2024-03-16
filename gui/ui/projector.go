@@ -21,7 +21,7 @@ import (
 	"github.com/pidgy/unitehud/avi/video/fps"
 	"github.com/pidgy/unitehud/core/fonts"
 	"github.com/pidgy/unitehud/core/notify"
-	"github.com/pidgy/unitehud/core/nrgba"
+	"github.com/pidgy/unitehud/core/rgba/nrgba"
 	"github.com/pidgy/unitehud/gui/is"
 	"github.com/pidgy/unitehud/gui/ux/button"
 	"github.com/pidgy/unitehud/gui/ux/decorate"

@@ -7,7 +7,7 @@ import (
 	"gocv.io/x/gocv"
 
 	"github.com/pidgy/unitehud/core/match/duplicate"
-	"github.com/pidgy/unitehud/core/nrgba"
+	"github.com/pidgy/unitehud/core/rgba/nrgba"
 )
 
 // Team represents a team side in Pokémon Unite.

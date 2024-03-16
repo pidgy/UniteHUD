@@ -187,7 +187,7 @@ func (g *GUI) Open() {
 	go g.proc()
 
 	if global.DebugMode {
-		go g.debug()
+		// go g.debug()
 	}
 
 	if is.Now != is.Closing {

@@ -14,11 +14,11 @@ import (
 	"github.com/pidgy/unitehud/avi/video/monitor"
 	"github.com/pidgy/unitehud/avi/video/window"
 	"github.com/pidgy/unitehud/core/config"
-	"github.com/pidgy/unitehud/core/history"
 	"github.com/pidgy/unitehud/core/match"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/server"
 	"github.com/pidgy/unitehud/core/state"
+	"github.com/pidgy/unitehud/core/stats/history"
 	"github.com/pidgy/unitehud/core/team"
 	"github.com/pidgy/unitehud/system/desktop"
 	"github.com/pidgy/unitehud/system/desktop/clicked"
@@ -43,19 +43,24 @@ func Clock() {
 		matrix, img, err := capture(config.Current.XY.Time)
 		if err != nil {
 			notify.Error("Detect: Failed to capture clock area (%v)", err)
+			matrix.Close()
 			continue
 		}
 
-		rs, kitchen := match.Time(matrix, img)
-		if rs == 0 {
+		min, sec, kitchen := match.Time(matrix, img)
+		if min+sec == 0 {
 			sleep(time.Second * 5) // Let's back off and save cpu cycles.
+			matrix.Close()
 			continue
 		}
+
+		server.SetTime(min, sec)
 
 		if images {
 			notify.Time, err = match.AsTimeImage(matrix, kitchen)
 			if err != nil {
 				notify.Error("Detect: Failed to identify time (%v)", err)
+				matrix.Close()
 				continue
 			}
 		}
@@ -84,6 +89,7 @@ func Defeated() {
 		matrix, img, err := capture(area)
 		if err != nil {
 			notify.Error("Detect: Failed to capture area (%v)", err)
+			matrix.Close()
 			continue
 		}
 
@@ -116,7 +122,7 @@ func Defeated() {
 
 			notify.Feed(team.Self.NRGBA, "Detect: [%s] [Self] %s", server.Clock(), str)
 
-			if state.Occured(time.Minute, state.Killed, state.KilledWithPoints, state.KilledWithoutPoints) != nil {
+			if state.Occured(time.Minute, state.Killed, state.KilledWithPoints, state.KilledWithoutPoints) {
 				server.SetDefeated()
 			}
 		default:
@@ -142,6 +148,7 @@ func Energy() {
 		matrix, img, err := capture(config.Current.XY.Energy)
 		if err != nil {
 			notify.Error("Detect: Failed to capture energy area (%v)", err)
+			matrix.Close()
 			continue
 		}
 
@@ -212,6 +219,7 @@ func Objectives() {
 		matrix, img, err := capture(config.Current.XY.Objectives)
 		if err != nil {
 			notify.Error("Detect: Failed to capture objective area (%v)", err)
+			matrix.Close()
 			continue
 		}
 
@@ -280,6 +288,7 @@ func PressButtonToScore() {
 		matrix, img, err := capture(config.Current.ScoringOption())
 		if err != nil {
 			notify.Error("Detect: [%s] [Self] Failed to capture energy area (%v)", server.Clock(), err)
+			matrix.Close()
 			continue
 		}
 
@@ -359,6 +368,7 @@ func Scores(name string) {
 		matrix, img, err := capture(config.Current.XY.Scores)
 		if err != nil {
 			notify.Error("Detect: Failed to capture score area (%v)", err)
+			matrix.Close()
 			continue
 		}
 
@@ -432,9 +442,17 @@ func Scores(name string) {
 func States() {
 	area := image.Rectangle{}
 
+	starting := config.Current.TemplatesStarting()
+	ending := append(config.Current.TemplatesEnding(), config.Current.TemplatesSurrender()...)
+
 	for ; ; sleep(time.Second * 2) {
 		if idle {
 			continue
+		}
+
+		curr := starting
+		if server.Seconds() != 0 {
+			curr = ending
 		}
 
 		if area.Empty() {
@@ -448,12 +466,11 @@ func States() {
 			continue
 		}
 
-		m, r, e := match.Matches(matrix, img, config.Current.TemplatesGame(team.Game.Name))
+		m, r, e := match.Matches(matrix, img, curr)
 		if r != match.Found {
 			matrix.Close()
 			continue
 		}
-
 		state.Add(state.EventType(m.Template.Value), server.Clock(), -1)
 
 		switch e := state.EventType(e); e {
@@ -481,14 +498,24 @@ func States() {
 
 			// Also tells javascript to turn on.
 			server.SetTime(10, 0)
+		case state.SurrenderOrange, state.SurrenderPurple:
+			t := team.Purple
+			if e == state.SurrenderOrange {
+				t = team.Orange
+			}
+			notify.Feed(t.NRGBA, "Detect: [%s] Surrendered", t)
+
+			server.SetScoreSurrendered(t)
+
+			fallthrough
 		case state.MatchEnding:
 			o, p, self := server.Scores()
-			if o+p+self > 0 {
+			if o+p+self != 0 {
 				notify.Feed(team.Game.NRGBA, "Detect: [%s] Match ended", team.Game)
 
 				// Purple score and objective results.
 				regielekis, regices, regirocks, registeels, rayquazas := server.Objectives(team.Purple)
-				purpleResult := fmt.Sprintf(
+				notify.Feed(team.Purple.NRGBA,
 					"Detect: [%s] %d [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s] [+%d Rayquazas]",
 					team.Purple,
 					p,
@@ -499,11 +526,9 @@ func States() {
 					rayquazas,
 				)
 
-				notify.Feed(team.Purple.NRGBA, purpleResult)
-
 				// Orange score and objective results.
 				regielekis, regices, regirocks, registeels, rayquazas = server.Objectives(team.Orange)
-				orangeResult := fmt.Sprintf(
+				notify.Feed(team.Orange.NRGBA,
 					"Detect: [%s] %d [+%d Regieleki%s] [+%d Regice%s] [+%d Regirock%s] [+%d Registeel%s] [+%d Rayquazas]",
 					team.Orange,
 					o,
@@ -513,8 +538,6 @@ func States() {
 					registeels, s(registeels),
 					rayquazas,
 				)
-
-				notify.Feed(team.Orange.NRGBA, orangeResult)
 
 				// Self score and objective results.
 				notify.Feed(team.Self.NRGBA, "Detect: [%s] %d", team.Self, self)
@@ -535,17 +558,9 @@ func States() {
 				history.Add(p, o, self)
 			}
 
-			// If time since match started is greater thaaaan 2 mins lets wait for 10 seconds...
-			cooldown := time.Second * 0
-			start := state.MatchStarting.Occured(time.Since(state.Start().Time))
-			if start != nil {
-				end := state.MatchEnding.Occured(time.Since(state.Start().Time))
-				if end != nil && start.After(end.Time) {
-					cooldown = time.Second * 10
-				}
+			if e.Either(state.SurrenderOrange, state.SurrenderPurple) {
+				time.Sleep(time.Second * 10)
 			}
-
-			time.Sleep(cooldown)
 
 			server.Clear()
 			team.Clear()

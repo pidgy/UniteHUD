@@ -111,7 +111,7 @@ func MatchesWithAcceptance(matrix gocv.Mat, img image.Image, templates []*templa
 			go stats.Average(m.Template.Truncated(), maxv)
 			go stats.Count(m.Template.Truncated())
 
-			r, p := m.process(matrix, img)
+			r, p := m.process(matrix)
 
 			return m, r, p
 		}
@@ -120,7 +120,7 @@ func MatchesWithAcceptance(matrix gocv.Mat, img image.Image, templates []*templa
 	return m, NotFound, 0
 }
 
-func (m *Match) process(matrix gocv.Mat, img image.Image) (Result, int) {
+func (m *Match) process(matrix gocv.Mat) (Result, int) {
 	switch m.Template.Category {
 	case "killed":
 		return Found, team.Energy.Holding

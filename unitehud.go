@@ -81,7 +81,7 @@ func signals() {
 	ui.UI.Close()
 	tray.Close()
 
-	save.TemplateStatistics()
+	save.Logs()
 
 	os.Exit(0)
 }
@@ -96,7 +96,7 @@ func main() {
 		notify.Warn("UniteHUD: Failed to stop previous process (%v)", err)
 	}
 
-	err = config.Load(config.Current.Profile)
+	err = config.Load(config.Current.Device)
 	if err != nil {
 		notify.Warn("UniteHUD: Failed to load %s (%v)", config.Current.File(), err)
 	}
@@ -125,7 +125,7 @@ func main() {
 
 	notify.Debug("UniteHUD: Server Address (%s)", server.Address)
 	notify.Debug("UniteHUD: Recording (%t)", config.Current.Record)
-	notify.Debug("UniteHUD: Profile (%s)", config.Current.Profile)
+	notify.Debug("UniteHUD: Platform (%s)", config.Current.Device)
 	notify.Debug("UniteHUD: Assets (%s)", config.Current.Assets())
 	notify.Debug("UniteHUD: Match Threshold: (%.0f%%)", config.Current.Acceptance*100)
 

@@ -4,3 +4,5 @@ tmp/
 .pat
 config.unitehud
 TODO.txt
+lib/
+saved/

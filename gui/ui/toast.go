@@ -20,7 +20,7 @@ import (
 	"github.com/pidgy/unitehud/avi/img/splash"
 	"github.com/pidgy/unitehud/core/fonts"
 	"github.com/pidgy/unitehud/core/notify"
-	"github.com/pidgy/unitehud/core/nrgba"
+	"github.com/pidgy/unitehud/core/rgba/nrgba"
 	"github.com/pidgy/unitehud/gui/ux/button"
 	"github.com/pidgy/unitehud/gui/ux/decorate"
 	"github.com/pidgy/unitehud/gui/ux/title"

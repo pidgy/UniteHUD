@@ -10,7 +10,7 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 
-	"github.com/pidgy/unitehud/core/nrgba"
+	"github.com/pidgy/unitehud/core/rgba/nrgba"
 	"github.com/pidgy/unitehud/gui/cursor"
 	"github.com/pidgy/unitehud/gui/ux/decorate"
 )

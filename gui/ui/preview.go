@@ -18,7 +18,7 @@ import (
 	"github.com/pidgy/unitehud/avi/video"
 	"github.com/pidgy/unitehud/core/fonts"
 	"github.com/pidgy/unitehud/core/notify"
-	"github.com/pidgy/unitehud/core/nrgba"
+	"github.com/pidgy/unitehud/core/rgba/nrgba"
 	"github.com/pidgy/unitehud/gui/ux/area"
 	"github.com/pidgy/unitehud/gui/ux/button"
 	"github.com/pidgy/unitehud/gui/ux/decorate"
@@ -296,10 +296,10 @@ func (g *GUI) previewUI() *preview {
 	ui.bar.NoTip = true
 	ui.bar.NoDrag = true
 
-	ui.labels.header = material.Body1(ui.bar.Collection.Calibri().Theme, "🗗 Preview the areas visible to UniteHUD. Select an image to save and preview on your desktop")
-	ui.labels.header.Color = nrgba.Highlight.Color()
+	ui.labels.header = material.Body1(ui.bar.Collection.Calibri().Theme, "📌 Press ⛶ to start detecting events, select images below to save to your desktop.")
+	ui.labels.header.Color = nrgba.Slate.Color()
 	ui.labels.header.Font.Weight = 200
-	ui.labels.header.TextSize = 16
+	ui.labels.header.TextSize = 14
 	ui.labels.header.Alignment = text.Start
 
 	ui.labels.capture = material.Label(ui.bar.Collection.Calibri().Theme, unit.Sp(14), "")

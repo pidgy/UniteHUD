@@ -10,7 +10,6 @@ import (
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/rgba"
-	"github.com/pidgy/unitehud/core/server"
 	"github.com/pidgy/unitehud/core/stats"
 	"github.com/pidgy/unitehud/core/team"
 )
@@ -48,7 +47,7 @@ func AsTimeImage(mat gocv.Mat, kitchen string) (image.Image, error) {
 	return crop, nil
 }
 
-func Time(matrix gocv.Mat, img *image.RGBA) (seconds int, kitchen string) {
+func Time(matrix gocv.Mat, img *image.RGBA) (minutes, seconds int, kitchen string) {
 	clock := [4]int{-1, -1, -1, -1}
 	locs := []int{math.MaxInt32, math.MaxInt32, math.MaxInt32, math.MaxInt32}
 	cols := []int{0, 0, 0, 0}
@@ -74,7 +73,7 @@ func Time(matrix gocv.Mat, img *image.RGBA) (seconds int, kitchen string) {
 					// dev.Capture(img, region, team.Time.Name, "missed-"+template.Name, false, template.Value)
 				}
 
-				return 0, ""
+				return 0, 0, "00:00"
 			}
 
 			mat := gocv.NewMat()
@@ -113,7 +112,7 @@ func Time(matrix gocv.Mat, img *image.RGBA) (seconds int, kitchen string) {
 		}
 
 		if clock[c] == -1 {
-			return 0, "00:00"
+			return 0, 0, "00:00"
 		}
 
 		// Crop the left side of the selection area via the first <x,y> point matched.
@@ -123,16 +122,14 @@ func Time(matrix gocv.Mat, img *image.RGBA) (seconds int, kitchen string) {
 		}
 	}
 
-	minutes := clock[0]*10 + clock[1]
-	secs := clock[2]*10 + clock[3]
+	minutes = clock[0]*10 + clock[1]
+	seconds = clock[2]*10 + clock[3]
 	kitchen = fmt.Sprintf("%d%d:%d%d", clock[0], clock[1], clock[2], clock[3])
 
-	if clock[0] != 0 || minutes > 10 || secs > 59 {
+	if clock[0] != 0 || minutes > 10 || seconds > 59 {
 		notify.Error("Detect: Invalid time detected %s", kitchen)
-		return 0, "00:00"
+		return 0, 0, "00:00"
 	}
 
-	server.SetTime(minutes, secs)
-
-	return minutes*60 + secs, kitchen
+	return minutes, seconds, kitchen
 }

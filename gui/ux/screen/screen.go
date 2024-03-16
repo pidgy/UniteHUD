@@ -6,7 +6,7 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"github.com/pidgy/unitehud/core/notify"
-	"github.com/pidgy/unitehud/core/nrgba"
+	"github.com/pidgy/unitehud/core/rgba/nrgba"
 
 	"gioui.org/layout"
 	"gioui.org/op/clip"

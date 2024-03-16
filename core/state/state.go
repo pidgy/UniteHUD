@@ -22,45 +22,48 @@ type EventType int
 type Types []EventType
 
 const (
-	Nothing                = EventType(-1)
-	PreScore               = EventType(0)
-	PostScore              = EventType(1)
-	Killed                 = EventType(2)
-	KilledWithPoints       = EventType(3)
-	KilledWithoutPoints    = EventType(4)
-	MatchStarting          = EventType(5)
-	MatchEnding            = EventType(6)
-	HoldingEnergy          = EventType(7)
-	PurpleBaseOpen         = EventType(8)
-	OrangeBaseOpen         = EventType(9)
-	PurpleBaseClosed       = EventType(10)
-	OrangeBaseClosed       = EventType(11)
-	OrangeScore            = EventType(12)
-	PurpleScore            = EventType(13)
-	FirstScored            = EventType(14)
-	OrangeScoreMissed      = EventType(15)
-	PurpleScoreMissed      = EventType(16)
-	RegielekiSecureOrange  = EventType(17)
-	RegielekiSecurePurple  = EventType(18)
-	PressButtonToScore     = EventType(19)
-	ScoreOverride          = EventType(20)
-	ObjectivePresent       = EventType(21)
-	ObjectiveReachedOrange = EventType(22)
-	ObjectiveReachedPurple = EventType(23)
-	ServerStarted          = EventType(24)
-	ServerStopped          = EventType(25)
-	RegiceSecureOrange     = EventType(26)
-	RegiceSecurePurple     = EventType(27)
-	RegirockSecureOrange   = EventType(28)
-	RegirockSecurePurple   = EventType(29)
-	RegisteelSecureOrange  = EventType(30)
-	RegisteelSecurePurple  = EventType(31)
-	KOPurple               = EventType(32)
-	KOStreakPurple         = EventType(33)
-	KOOrange               = EventType(34)
-	KOStreakOrange         = EventType(35)
-	RayquazaSecureOrange   = EventType(36)
-	RayquazaSecurePurple   = EventType(37)
+	Custom EventType = iota - 2
+	Nothing
+	PreScore
+	PostScore
+	Killed
+	KilledWithPoints
+	KilledWithoutPoints
+	MatchStarting
+	MatchEnding
+	HoldingEnergy
+	PurpleBaseOpen
+	OrangeBaseOpen
+	PurpleBaseClosed
+	OrangeBaseClosed
+	OrangeScore
+	PurpleScore
+	FirstScored
+	OrangeScoreMissed
+	PurpleScoreMissed
+	RegielekiSecureOrange
+	RegielekiSecurePurple
+	PressButtonToScore
+	ScoreOverride
+	ObjectivePresent
+	ObjectiveReachedOrange
+	ObjectiveReachedPurple
+	ServerStarted
+	ServerStopped
+	RegiceSecureOrange
+	RegiceSecurePurple
+	RegirockSecureOrange
+	RegirockSecurePurple
+	RegisteelSecureOrange
+	RegisteelSecurePurple
+	KOPurple
+	KOStreakPurple
+	KOOrange
+	KOStreakOrange
+	RayquazaSecureOrange
+	RayquazaSecurePurple
+	SurrenderOrange
+	SurrenderPurple
 )
 
 var (
@@ -73,6 +76,8 @@ func (e EventType) Int() int {
 
 func (e EventType) String() string {
 	switch e {
+	case Custom:
+		return "Custom"
 	case Nothing:
 		return "Nothing"
 	case PreScore:
@@ -151,8 +156,12 @@ func (e EventType) String() string {
 		return "[Purple] Rayquaza"
 	case RayquazaSecureOrange:
 		return "[Orange] Rayquaza"
+	case SurrenderPurple:
+		return "[Purple] Surrender"
+	case SurrenderOrange:
+		return "[Orange] Surrender"
 	default:
-		return fmt.Sprintf("Unknown (%d)", e.Int())
+		return fmt.Sprintf("Unknown State: %d", e.Int())
 	}
 }
 
@@ -227,6 +236,15 @@ func (this EventType) Before(that EventType) bool {
 	return false
 }
 
+func (this EventType) Either(those ...EventType) bool {
+	for _, that := range those {
+		if this == that {
+			return true
+		}
+	}
+	return false
+}
+
 func (this EventType) Occured(since time.Duration) *Event {
 	for _, event := range Events {
 		if time.Since(event.Time) > since {
@@ -260,14 +278,14 @@ func Last() *Event {
 	return Events[0]
 }
 
-func Occured(since time.Duration, e ...EventType) *Event {
+func Occured(since time.Duration, e ...EventType) bool {
 	for _, e := range e {
 		event := e.Occured(since)
 		if event != nil {
-			return event
+			return true
 		}
 	}
-	return nil
+	return false
 }
 
 func Past(e EventType, since time.Duration) []*Event {

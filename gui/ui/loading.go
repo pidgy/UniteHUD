@@ -16,7 +16,7 @@ import (
 
 	"github.com/pidgy/unitehud/avi/img/splash"
 	"github.com/pidgy/unitehud/core/notify"
-	"github.com/pidgy/unitehud/core/nrgba"
+	"github.com/pidgy/unitehud/core/rgba/nrgba"
 	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/gui/cursor"
 	"github.com/pidgy/unitehud/gui/is"

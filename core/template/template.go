@@ -3,7 +3,7 @@ package template
 import (
 	"gocv.io/x/gocv"
 
-	"github.com/pidgy/unitehud/core/filter"
+	"github.com/pidgy/unitehud/core/template/filter"
 )
 
 type Template struct {

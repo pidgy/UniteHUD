@@ -29,12 +29,12 @@ import (
 	"github.com/pidgy/unitehud/avi/video/window"
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/detect"
-	"github.com/pidgy/unitehud/core/history"
 	"github.com/pidgy/unitehud/core/notify"
-	"github.com/pidgy/unitehud/core/nrgba"
+	"github.com/pidgy/unitehud/core/rgba/nrgba"
 	"github.com/pidgy/unitehud/core/server"
 	"github.com/pidgy/unitehud/core/state"
 	"github.com/pidgy/unitehud/core/stats"
+	"github.com/pidgy/unitehud/core/stats/history"
 	"github.com/pidgy/unitehud/core/team"
 	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/gui/is"
@@ -640,7 +640,7 @@ func (g *GUI) mainUI() *main {
 			server.Clear()
 			team.Clear()
 			server.SetStopped()
-			save.TemplateStatistics()
+			save.Logs()
 
 			tray.SetStartStopTitle("Start")
 
@@ -1077,7 +1077,7 @@ func (g *GUI) mainUI() *main {
 			}
 
 			// Called once window is closed.
-			err = config.Load(config.Current.Profile)
+			err = config.Load(config.Current.Device)
 			if err != nil {
 				notify.Error("UI: Failed to reload \"%s\" (%v)", config.Current.File(), err)
 				return

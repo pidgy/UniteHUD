@@ -8,5 +8,5 @@ import (
 
 func TestTemplateStatistics(t *testing.T) {
 	global.DebugMode = true
-	TemplateStatistics()
+	templateStatistics()
 }

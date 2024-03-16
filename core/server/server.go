@@ -18,7 +18,7 @@ import (
 	"github.com/pidgy/unitehud/avi/video/fps"
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/notify"
-	"github.com/pidgy/unitehud/core/nrgba"
+	"github.com/pidgy/unitehud/core/rgba/nrgba"
 	"github.com/pidgy/unitehud/core/state"
 	"github.com/pidgy/unitehud/core/team"
 	"github.com/pidgy/unitehud/global"
@@ -35,7 +35,7 @@ type game struct {
 	Match     bool        `json:"match"`
 	Orange    *score      `json:"orange"`
 	Purple    *score      `json:"purple"`
-	Profile   string      `json:"profile"`
+	Platform  string      `json:"platform"`
 	Rayquaza  string      `json:"rayquaza"`
 	Regilekis []string    `json:"regis"`
 	Seconds   int         `json:"seconds"`
@@ -215,7 +215,7 @@ func Open() error {
 		}
 		defer c.Close(websocket.StatusNormalClosure, "cross origin WebSocket accepted")
 
-		current.game.Profile = config.Current.Profile
+		current.game.Platform = config.Current.Device
 		current.game.Events = state.Strings(time.Second * 5)
 
 		err = c.Write(context.Background(), websocket.MessageText, cached.ws)
@@ -243,7 +243,7 @@ func Open() error {
 			}
 		}
 
-		current.game.Profile = config.Current.Profile
+		current.game.Platform = config.Current.Device
 		current.game.Events = state.Strings(time.Second * 5)
 
 		_, err := w.Write(cached.http)
@@ -520,10 +520,10 @@ func SetRegisteel(t *team.Team) {
 	})
 }
 
-func SetScore(t *team.Team, value int) {
+func SetScore(t *team.Team, v int) {
 	s := score{
 		Team:  t.Name,
-		Value: value,
+		Value: v,
 	}
 
 	switch t.Name {
@@ -544,6 +544,15 @@ func SetScore(t *team.Team, value int) {
 		default:
 			notify.Error("Server: Received first goal from an unknown team")
 		}
+	}
+}
+
+func SetScoreSurrendered(t *team.Team) {
+	switch t {
+	case team.Purple:
+		current.game.Purple.Value = -1
+	case team.Orange:
+		current.game.Orange.Value = -1
 	}
 }
 

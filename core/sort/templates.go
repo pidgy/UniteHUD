@@ -5,8 +5,8 @@ import (
 	"math"
 	"sort"
 
-	"github.com/pidgy/unitehud/core/filter"
 	"github.com/pidgy/unitehud/core/template"
+	"github.com/pidgy/unitehud/core/template/filter"
 )
 
 // Templates represents a sortable set of unique templates where set len > 1.

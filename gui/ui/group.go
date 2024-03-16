@@ -645,16 +645,16 @@ func (g *GUI) videos(text float32) *videos {
 			Theme: g.nav.Collection.NotoSans().Theme,
 			Items: []*dropdown.Item{
 				{
-					Text:    strings.Title(config.PlatformSwitch),
-					Checked: widget.Bool{Value: config.Current.Platform == config.PlatformSwitch},
+					Text:    strings.Title(config.DeviceSwitch),
+					Checked: widget.Bool{Value: config.Current.Device == config.DeviceSwitch},
 				},
 				{
-					Text:    strings.Title(config.PlatformMobile),
-					Checked: widget.Bool{Value: config.Current.Platform == config.PlatformMobile},
+					Text:    strings.Title(config.DeviceMobile),
+					Checked: widget.Bool{Value: config.Current.Device == config.DeviceMobile},
 				},
 				{
-					Text:    strings.Title(config.PlatformBluestacks),
-					Checked: widget.Bool{Value: config.Current.Platform == config.PlatformBluestacks},
+					Text:    strings.Title(config.DeviceBluestacks),
+					Checked: widget.Bool{Value: config.Current.Device == config.DeviceBluestacks},
 				},
 			},
 			Callback: func(i *dropdown.Item, l *dropdown.Widget) (check bool) {
@@ -667,24 +667,24 @@ func (g *GUI) videos(text float32) *videos {
 					}
 					item.Checked.Value = true
 
-					config.Current.Platform = strings.ToLower(item.Text)
+					config.Current.Device = strings.ToLower(item.Text)
 
 					err := config.Current.Save()
 					if err != nil {
-						notify.Error("UI: Failed to load %s profile configuration", config.Current.Profile)
+						notify.Error("UI: Failed to load %s configuration", config.Current.Device)
 						return false
 					}
 
-					err = config.Load(config.Current.Profile)
+					err = config.Load(config.Current.Device)
 					if err != nil {
-						notify.Error("UI: Failed to load %s profile configuration", config.Current.Profile)
+						notify.Error("UI: Failed to load %s configuration", config.Current.Device)
 						return false
 					}
 
 					time.AfterFunc(time.Second, func() {
 						err := config.Current.Save()
 						if err != nil {
-							notify.Error("UI: Failed to save %s profile configuration", config.Current.Profile)
+							notify.Error("UI: Failed to save %s configuration", config.Current.Device)
 						}
 					})
 				}

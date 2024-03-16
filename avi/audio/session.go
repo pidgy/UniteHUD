@@ -115,6 +115,7 @@ func Inputs() []*input.Device {
 	if current == nil {
 		return nil
 	}
+
 	return input.Devices(current.context)
 }
 
@@ -124,9 +125,11 @@ func Label() string {
 	}
 
 	speakers := []string{"🎤", "🔊"}
+
 	if current.input.IsDisabled() {
 		speakers[0] = "🎤"
 	}
+
 	if current.output.IsDisabled() {
 		speakers[1] = "🔈"
 	}

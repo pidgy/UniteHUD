@@ -17,7 +17,7 @@ import (
 	"github.com/pidgy/unitehud/avi/img"
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/fonts"
-	"github.com/pidgy/unitehud/core/nrgba"
+	"github.com/pidgy/unitehud/core/rgba/nrgba"
 	"github.com/pidgy/unitehud/gui/cursor"
 	"github.com/pidgy/unitehud/gui/ux"
 	"github.com/pidgy/unitehud/gui/ux/button"

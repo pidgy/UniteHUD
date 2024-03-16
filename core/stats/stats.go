@@ -11,7 +11,7 @@ import (
 
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/notify"
-	"github.com/pidgy/unitehud/core/nrgba"
+	"github.com/pidgy/unitehud/core/rgba/nrgba"
 	"github.com/pidgy/unitehud/core/sort"
 	"github.com/pidgy/unitehud/core/team"
 	"github.com/pidgy/unitehud/global"

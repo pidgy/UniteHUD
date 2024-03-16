@@ -26,7 +26,7 @@ import (
 	"github.com/pidgy/unitehud/avi/video/window"
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/notify"
-	"github.com/pidgy/unitehud/core/nrgba"
+	"github.com/pidgy/unitehud/core/rgba/nrgba"
 	"github.com/pidgy/unitehud/core/server"
 	"github.com/pidgy/unitehud/gui/cursor"
 	"github.com/pidgy/unitehud/gui/is"
@@ -632,7 +632,7 @@ func (g *GUI) configureUI() *configure {
 			}
 
 			// Called once window is closed.
-			err = config.Load(config.Current.Profile)
+			err = config.Load(config.Current.Device)
 			if err != nil {
 				notify.Error("UI: Failed to reload \"%s\" (%v)", config.Current.File(), err)
 				return
@@ -657,7 +657,7 @@ func (g *GUI) configureUI() *configure {
 		Disabled:        false,
 		OnHoverHint:     func() { g.nav.Tip("Reset configuration") },
 		Click: func(this *button.Widget) {
-			g.ToastYesNo("Reset", fmt.Sprintf("Reset %s configuration?", config.Current.Profile),
+			g.ToastYesNo("Reset", fmt.Sprintf("Reset %s configuration?", config.Current.Device),
 				OnToastYes(func() {
 					defer this.Deactivate()
 					defer server.Clear()
@@ -666,7 +666,7 @@ func (g *GUI) configureUI() *configure {
 
 					err := config.Current.Reset()
 					if err != nil {
-						notify.Warn("UI: Failed to reset %s configuration (%v)", config.Current.Profile, err)
+						notify.Warn("UI: Failed to reset %s configuration (%v)", config.Current.Device, err)
 					}
 
 					config.Current.Reload()
@@ -684,7 +684,7 @@ func (g *GUI) configureUI() *configure {
 
 					g.next(is.MainMenu)
 
-					notify.Announce("UI: Reset UniteHUD %s configuration", config.Current.Profile)
+					notify.Announce("UI: Reset UniteHUD %s configuration", config.Current.Device)
 				}),
 				OnToastNo(this.Deactivate),
 			)

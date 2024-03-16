@@ -23,7 +23,7 @@ import (
 	"github.com/pidgy/unitehud/avi/video/window"
 	"github.com/pidgy/unitehud/core/fonts"
 	"github.com/pidgy/unitehud/core/notify"
-	"github.com/pidgy/unitehud/core/nrgba"
+	"github.com/pidgy/unitehud/core/rgba/nrgba"
 	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/gui/ux/button"
 	"github.com/pidgy/unitehud/gui/ux/decorate"
@@ -323,7 +323,7 @@ func (a *Widget) match() error {
 			a.Capture.MatchedText = a.Capture.Option
 			if a.matched.ok {
 				a.Capture.MatchedColor = Match.Color()
-				a.Capture.MatchedText = fmt.Sprintf("%s (%s)", a.Text, a.Subtext)
+				a.Capture.MatchedText = fmt.Sprintf("%s: %s", a.Text, a.Subtext)
 			}
 
 			time.Sleep(a.Cooldown)

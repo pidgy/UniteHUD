@@ -9,7 +9,7 @@ import (
 	"github.com/pidgy/unitehud/avi/video"
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/match"
-	"github.com/pidgy/unitehud/core/nrgba"
+	"github.com/pidgy/unitehud/core/rgba/nrgba"
 	"github.com/pidgy/unitehud/core/server"
 	"github.com/pidgy/unitehud/core/state"
 	"github.com/pidgy/unitehud/core/team"
@@ -183,7 +183,8 @@ func (g *GUI) matchState(a *area.Widget) (bool, error) {
 	}
 	defer matrix.Close()
 
-	_, r, e := match.Matches(matrix, img, config.Current.TemplatesGame(team.Game.Name))
+	templates := append(config.Current.TemplatesStarting(), append(config.Current.TemplatesEnding(), config.Current.TemplatesSurrender()...)...)
+	_, r, e := match.Matches(matrix, img, templates)
 	if r == match.Found {
 		a.Subtext = state.EventType(e).String()
 		a.NRGBA = area.Match
@@ -226,8 +227,8 @@ func (g *GUI) matchTime(a *area.Widget) (bool, error) {
 	}
 	defer matrix.Close()
 
-	s, k := match.Time(matrix, img)
-	if s != 0 {
+	m, s, k := match.Time(matrix, img)
+	if m+s != 0 {
 		a.NRGBA = area.Match
 		a.Subtext = k
 		return true, nil

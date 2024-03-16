@@ -50,30 +50,6 @@ type Objectives struct {
 	Bottom bool
 }
 
-type Map struct {
-	Goals
-	Objectives
-}
-
-func MiniMap(matrix gocv.Mat, img *image.RGBA) (Map, bool) {
-	return Map{}, false
-
-	g, ok := goals(matrix, img)
-	if !ok {
-		return Map{}, false
-	}
-
-	obj, ok := objectives(matrix, img)
-	if !ok {
-		return Map{}, false
-	}
-
-	return Map{
-		Goals:      g,
-		Objectives: obj,
-	}, true
-}
-
 func objectives(matrix gocv.Mat, img *image.RGBA) (Objectives, bool) {
 	return Objectives{}, true
 }

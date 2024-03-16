@@ -9,7 +9,7 @@ import (
 
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/notify"
-	"github.com/pidgy/unitehud/core/nrgba"
+	"github.com/pidgy/unitehud/core/rgba/nrgba"
 	"github.com/pidgy/unitehud/core/server"
 	"github.com/pidgy/unitehud/core/state"
 	"github.com/pidgy/unitehud/gui/is"

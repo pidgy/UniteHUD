@@ -19,7 +19,7 @@ import (
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/fonts"
 	"github.com/pidgy/unitehud/core/notify"
-	"github.com/pidgy/unitehud/core/nrgba"
+	"github.com/pidgy/unitehud/core/rgba/nrgba"
 	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/gui/ux"
 	"github.com/pidgy/unitehud/gui/ux/button"

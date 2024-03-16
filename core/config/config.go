@@ -16,13 +16,13 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"gocv.io/x/gocv"
 
-	"github.com/pidgy/unitehud/core/filter"
 	"github.com/pidgy/unitehud/core/notify"
-	"github.com/pidgy/unitehud/core/nrgba"
+	"github.com/pidgy/unitehud/core/rgba/nrgba"
 	"github.com/pidgy/unitehud/core/sort"
 	"github.com/pidgy/unitehud/core/state"
 	"github.com/pidgy/unitehud/core/team"
 	"github.com/pidgy/unitehud/core/template"
+	"github.com/pidgy/unitehud/core/template/filter"
 	"github.com/pidgy/unitehud/global"
 )
 
@@ -31,11 +31,9 @@ const (
 	ProjectorWindow      = "UniteHUD Projector"
 	NoVideoCaptureDevice = -1
 
-	ProfilePlayer = "player"
-
-	PlatformSwitch     = "switch"
-	PlatformMobile     = "mobile"
-	PlatformBluestacks = "bluestacks"
+	DeviceSwitch     = "switch"
+	DeviceMobile     = "mobile"
+	DeviceBluestacks = "bluestacks"
 )
 
 type Config struct {
@@ -91,8 +89,7 @@ type Config struct {
 
 	Crashed string
 
-	Platform string
-	Profile  string
+	Device string
 
 	Scale float64
 	Shift Shift
@@ -179,11 +176,11 @@ func (c Config) Eq(c2 Config) bool {
 }
 
 func (c *Config) File() string {
-	return fmt.Sprintf("config-%s-%s.unitehud", c.Profile, strings.ReplaceAll(global.Version, ".", "-"))
+	return fmt.Sprintf("config-%s.unitehud", strings.ReplaceAll(global.Version, ".", "-"))
 }
 
 func (c *Config) ProfileAssets() string {
-	return filepath.Join(global.WorkingDirectory(), global.AssetDirectory, "profiles", c.Profile, c.Platform)
+	return filepath.Join(global.WorkingDirectory(), global.AssetDirectory, "device", c.Device)
 }
 
 func (c *Config) Reload() {
@@ -202,11 +199,11 @@ func (c *Config) Reset() error {
 		return err
 	}
 
-	return Load(c.Profile)
+	return Load(c.Device)
 }
 
 func (c *Config) Save() error {
-	notify.System("Config: Saving %s profile (%s)", c.Profile, c.File())
+	notify.System("Config: Saving %s profile (%s)", c.Device, c.File())
 
 	f, err := os.Create(c.File())
 	if err != nil {
@@ -295,8 +292,16 @@ func (c *Config) TemplateCategories() (categories []string) {
 	return
 }
 
-func (c *Config) TemplatesGame(n string) []*template.Template {
-	return c.templates["game"][n]
+func (c *Config) TemplatesStarting() []*template.Template {
+	return c.templates["starting"][team.Game.Name]
+}
+
+func (c *Config) TemplatesEnding() []*template.Template {
+	return c.templates["ending"][team.Game.Name]
+}
+
+func (c *Config) TemplatesSurrender() []*template.Template {
+	return c.templates["surrender"][team.Game.Name]
 }
 
 func (c *Config) TemplatesGoals(n string) []*template.Template {
@@ -463,7 +468,7 @@ func (c *Config) scoreFiles(t *team.Team) []filter.Filter {
 			continue
 		}
 
-		filters = append(filters, filter.New(t, file, -1, false))
+		filters = append(filters, filter.New(t, file, state.Nothing.Int(), false))
 	}
 
 	return filters
@@ -488,13 +493,7 @@ func (c *Config) setDefaultAreas() {
 	c.XY.KOs = image.Rect(730, 130, 1160, 310)
 }
 
-func (c *Config) setProfilePlayer() {
-	c.Profile = ProfilePlayer
-
-	c.load = loadProfileAssetsPlayer
-}
-
-func Load(profile string) error {
+func Load(platform string) error {
 	defer func() {
 		r := recover()
 		if r != nil {
@@ -503,29 +502,29 @@ func Load(profile string) error {
 		}
 	}()
 
-	if profile == "" {
-		profile = ProfilePlayer
-		Current.setProfilePlayer()
+	if platform == "" {
+		Current.Device = DeviceSwitch
+		Current.load = loadAssetsSwitch
 	}
 
 	defer validate()
 
-	notify.System("Config: Loading %s profile (%s)", profile, Current.File())
+	notify.System("Config: Loading %s profile (%s)", platform, Current.File())
 
 	ok := open()
 	if !ok {
 		Current = Config{
 			Scale:      1,
 			Shift:      Shift{},
-			Profile:    profile,
 			Acceptance: .91,
-			Platform:   PlatformSwitch,
+			Device:     DeviceSwitch,
 		}
 
 		Current.Video.Capture.Window.Name = MainDisplay
 		Current.Video.Capture.Device.Index = NoVideoCaptureDevice
 
-		Current.setProfilePlayer()
+		Current.Device = DeviceSwitch
+		Current.load = loadAssetsSwitch
 		Current.SetDefaultTheme()
 
 		Current.setDefaultAreas()
@@ -539,8 +538,8 @@ func Load(profile string) error {
 		Current.Video.Capture.Device.Index = NoVideoCaptureDevice
 	}
 
-	if Current.Platform == "" {
-		Current.Platform = "Switch"
+	if Current.Device == "" {
+		Current.Device = DeviceSwitch
 	}
 
 	if Current.Themes == nil {
@@ -574,7 +573,7 @@ func TemplatesFirstRound(t1 []*template.Template) []*template.Template {
 	return t2
 }
 
-func loadProfileAssetsPlayer() {
+func loadAssetsSwitch() {
 	Current.filenames = map[string]map[string][]filter.Filter{
 		"goals": {
 			team.Game.Name: {
@@ -621,13 +620,21 @@ func loadProfileAssetsPlayer() {
 				filter.New(team.Game, Current.ProfileAssets()+"/game/objective_orange_base.png", state.ObjectiveReachedOrange.Int(), false),
 			},
 		},
-		"game": {
-			"vs": {
+		"starting": {
+			team.Game.Name: {
 				filter.New(team.Game, Current.ProfileAssets()+"/game/vs.png", state.MatchStarting.Int(), false),
 				filter.New(team.Game, Current.ProfileAssets()+"/game/vs_alt.png", state.MatchStarting.Int(), false),
 			},
-			"end": {
+		},
+		"ending": {
+			team.Game.Name: {
 				filter.New(team.Game, Current.ProfileAssets()+"/game/end.png", state.MatchEnding.Int(), false),
+			},
+		},
+		"surrender": {
+			team.Game.Name: {
+				filter.New(team.Game, Current.ProfileAssets()+"/game/surrender_enemy.png", state.SurrenderOrange.Int(), false),
+				filter.New(team.Game, Current.ProfileAssets()+"/game/surrender_ally.png", state.SurrenderPurple.Int(), false),
 			},
 		},
 		"scoring": {
@@ -659,8 +666,8 @@ func loadProfileAssetsPlayer() {
 }
 
 func open() bool {
-	if Current.Profile == "" {
-		Current.Profile = ProfilePlayer
+	if Current.Device == "" {
+		Current.Device = DeviceSwitch
 	}
 
 	b, err := os.ReadFile(Current.File())
@@ -669,7 +676,8 @@ func open() bool {
 	}
 
 	c := Config{
-		load: loadProfileAssetsPlayer,
+		Device: DeviceSwitch,
+		load:   loadAssetsSwitch,
 	}
 
 	err = json.Unmarshal(b, &c)
@@ -677,7 +685,9 @@ func open() bool {
 		return false
 	}
 
-	c.setProfilePlayer()
+	if c.Device == "" {
+		c.Device = DeviceSwitch
+	}
 
 	Current = c
 
@@ -702,7 +712,13 @@ func validate() {
 		"goals": {
 			team.Game.Name: {},
 		},
-		"game": {
+		"starting": {
+			team.Game.Name: {},
+		},
+		"ending": {
+			team.Game.Name: {},
+		},
+		"surrender": {
 			team.Game.Name: {},
 		},
 		"ko": {
