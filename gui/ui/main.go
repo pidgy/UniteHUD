@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"gioui.org/app"
@@ -121,28 +120,12 @@ type main struct {
 	}
 }
 
-func (g *GUI) once() {
-	g.window.Option(
-		app.Title(global.Title),
-		app.Size(
-			unit.Dp(g.dimensions.min.X),
-			unit.Dp(g.dimensions.min.Y),
-		),
-		app.MinSize(
-			unit.Dp(g.dimensions.min.X),
-			unit.Dp(g.dimensions.min.Y),
-		),
-		app.MaxSize(
-			unit.Dp(g.dimensions.max.X),
-			unit.Dp(g.dimensions.max.Y),
-		),
-	)
-}
+var trayIsSetup bool
 
 func (g *GUI) main() {
-	sync.OnceFunc(g.once)()
-
 	ui := g.mainUI()
+
+	g.once(ui)
 
 	tray.SetStartStopEnabled()
 	defer tray.SetStartStopDisabled()
@@ -226,10 +209,6 @@ func (g *GUI) main() {
 			return
 		case system.FrameEvent:
 			gtx := layout.NewContext(&ui.ops, event)
-
-			if tray.StartStopEvent() {
-				ui.nav.startstop.Click(ui.nav.startstop)
-			}
 
 			g.dimensions.size = event.Size
 
@@ -1179,4 +1158,35 @@ func (g *GUI) mainUI() *main {
 	}
 
 	return ui
+}
+
+func (g *GUI) once(ui *main) {
+	if trayIsSetup {
+		return
+	}
+	trayIsSetup = true
+
+	g.window.Option(
+		app.Title(global.Title),
+		app.Size(
+			unit.Dp(g.dimensions.min.X),
+			unit.Dp(g.dimensions.min.Y),
+		),
+		app.MinSize(
+			unit.Dp(g.dimensions.min.X),
+			unit.Dp(g.dimensions.min.Y),
+		),
+		app.MaxSize(
+			unit.Dp(g.dimensions.max.X),
+			unit.Dp(g.dimensions.max.Y),
+		),
+	)
+
+	go func() {
+		for ; ; time.Sleep(time.Second / 3) {
+			if tray.StartStopEvent() {
+				ui.nav.startstop.Click(ui.nav.startstop)
+			}
+		}
+	}()
 }

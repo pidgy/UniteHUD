@@ -6,3 +6,5 @@ config.unitehud
 TODO.txt
 lib/
 saved/
+system/save/*.json
+bin/

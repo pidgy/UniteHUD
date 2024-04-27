@@ -506,7 +506,7 @@ func States() {
 			if e == state.SurrenderOrange {
 				t = team.Orange
 			}
-			notify.Feed(t.NRGBA, "Detect: [%s] Surrendered", t)
+			notify.Feed(t.NRGBA, "Detect: [%s] Surrendered (%d)", t, server.Score(team.Orange))
 
 			server.SetScoreSurrendered(t)
 

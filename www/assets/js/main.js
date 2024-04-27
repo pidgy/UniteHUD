@@ -145,20 +145,27 @@ async function render(data) {
 
     // Render scores.
     {
-        var pspan = "";
-        var p = data.regis.filter(x => x === "purple").length;
-        if (p > 0) {
-            pspan = ` <span><i>max ${data.purple.value + p* 20}</i></span>`;
-        }
-        $('.purplescore').html(`<div class="animated">${data.purple.value}</div>${pspan}`);
-
-        var ospan = "";
-        var o = data.regis.filter(x => x === "orange").length;
-        if (o > 0) {
-            ospan = ` <span><i>max ${data.orange.value + o * 20}</i></span>`;
+        if (data.purple.value == -1) {
+            $('.purplescore').html(`<div class="animated">SND</div>`);
+        } else {
+            var pspan = "";
+            var p = data.regis.filter(x => x === "purple").length;
+            if (p > 0) {
+                pspan = ` <span><i>max ${data.purple.value + p* 20}</i></span>`;
+            }
+            $('.purplescore').html(`<div class="animated">${data.purple.value}</div>${pspan}`);
         }
 
-        $('.orangescore').html(`<div class="animated">${data.orange.value}</div>${ospan}`);
+        if (data.orange.value == -1) {
+            $('.orangescore').html(`<div class="animated">SND</div>`);
+        } else {
+            var ospan = "";
+            var o = data.regis.filter(x => x === "orange").length;
+            if (o > 0) {
+                ospan = ` <span><i>max ${data.orange.value + o * 20}</i></span>`;
+            }
+            $('.orangescore').html(`<div class="animated">${data.orange.value}</div>${ospan}`);
+        }
 
         // Check if orange team scored.
         if (prev.orange && prev.orange.value != data.orange.value) {
@@ -314,6 +321,10 @@ const debug = {
     score: {
         get purple() { return debug.data.purple.value += Math.floor(Math.random() * 100); },
         get orange() { return debug.data.orange.value += Math.floor(Math.random() * 100); },
+    },
+    surrender: {
+        get purple() { return debug.data.purple.value = -1; },
+        get orange() { return debug.data.orange.value = -1; },
     },
     objectives: {
         top: {

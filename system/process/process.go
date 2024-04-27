@@ -55,6 +55,7 @@ func Memory() runtime.MemStats {
 }
 
 func RAM() float64 {
+	memory = runtime.MemStats{}
 	runtime.ReadMemStats(&memory)
 	return float64(memory.Sys) / 1024 / 1024
 }

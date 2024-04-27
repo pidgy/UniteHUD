@@ -141,18 +141,20 @@ func (m *Match) regular(matrix gocv.Mat) (Result, int) {
 	maxs := []float32{0, 0}
 	lefts := []int{math.MaxInt32, math.MaxInt32}
 	points := []int{-1, -1}
+	// rects := []image.Rectangle{{}, {}}
 
 	if server.IsFinalStretch() || global.DebugMode {
 		mins = []int{math.MaxInt32, math.MaxInt32, math.MaxInt32}
 		maxs = []float32{0, 0, 0}
 		lefts = []int{math.MaxInt32, math.MaxInt32, math.MaxInt32}
 		points = []int{-1, -1, -1}
+		// rects = []image.Rectangle{{}, {}, {}}
 	}
 
 	templates2ndRound := config.Current.TemplatesPoints(m.Team.Name)
 	templates1stRound := config.TemplatesFirstRound(templates2ndRound)
 
-	for round := 0; round < len(mins); round++ {
+	for round := 0; round < len(points); round++ {
 		templates := templates2ndRound
 		if round == 0 {
 			templates = templates1stRound
@@ -170,8 +172,6 @@ func (m *Match) regular(matrix gocv.Mat) (Result, int) {
 				Max: max,
 			},
 		)
-
-		// gocv.IMWrite(fmt.Sprintf("round_%d.png", round), region)
 
 		results := make([]gocv.Mat, len(templates))
 
@@ -202,9 +202,10 @@ func (m *Match) regular(matrix gocv.Mat) (Result, int) {
 			go stats.Frequency(templates[i].Truncated(), maxv)
 
 			if maxv >= m.Team.Acceptance {
-				if round > 0 && maxp.X > templates[i].Mat.Cols() {
-					maxp.X = 0
-				}
+				// XXX: What does this do? Breaks 120 (Falinks scores).
+				// if round > 0 && maxp.X > templates[i].Mat.Cols() {
+				// 	maxp.X = 0
+				// }
 
 				// Select the left-most image first, when the difference is small enough,
 				// use the highest template-match value to break the tie.
@@ -219,12 +220,16 @@ func (m *Match) regular(matrix gocv.Mat) (Result, int) {
 					maxs[round] = maxv
 					mins[round] = maxp.X + templates[i].Mat.Cols() - 1
 					points[round] = templates[i].Value
+					// rects[round] = image.Rectangle{Min: minp, Max: maxp}
 				}
 
 				go stats.Average(templates[i].Truncated(), maxv)
 				go stats.Count(templates[i].Truncated())
 			}
 		}
+
+		// gocv.Rectangle(&region, rects[round], rgba.Red.Color(), 1)
+		// gocv.IMWrite(fmt.Sprintf("round_%d-%d-points.png", round, points[round]), region)
 
 		inset += mins[round] - 5
 		if inset > matrix.Cols() {
@@ -241,7 +246,7 @@ func (m *Match) regular(matrix gocv.Mat) (Result, int) {
 }
 
 func (m *Match) validate(matrix gocv.Mat, value int) (Result, int) {
-	if value < 1 || value > 100 {
+	if value < 0 || value > 120 {
 		return Invalid, value
 	}
 
