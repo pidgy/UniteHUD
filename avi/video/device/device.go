@@ -364,17 +364,17 @@ func storeSources() {
 		names := []string{}
 
 		for i := 0; i < 10; i++ {
-			name, err := win32.VideoCaptureDeviceName(i)
+			d, err := win32.NewVideoCaptureDevice(i)
 			if err != nil {
 				notify.Warn("Device: %d, Failed to read properties of device", i)
 				break
 			}
-			if name == "" {
+			if d.Name == "" {
 				break
 			}
 
 			ids = append(ids, i)
-			names = append(names, name)
+			names = append(names, d.Name)
 		}
 
 		for _, name := range names {

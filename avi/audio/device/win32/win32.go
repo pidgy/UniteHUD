@@ -22,7 +22,6 @@ const (
 
 // AudioDevice represents a connected device capable of capturing audio.
 type AudioDevice struct {
-	Index int
 	Flow
 
 	Name        string
@@ -32,81 +31,23 @@ type AudioDevice struct {
 	Association string
 	JackSubType string
 	Description string
+
+	Index int
 }
 
 // NewAudioCaptureDevice returns an AudioDevice capable of capturing audio, based on an index.
 func NewAudioCaptureDevice(index int) (*AudioDevice, error) {
-	d := C.AudioDevice{}
-	defer free(&d)
-
-	r := C.NewAudioCaptureDevice(&d, C.int(index))
-	if r < 0 {
-		return nil, fmt.Errorf("failed to find video capture device: %d", r)
-	}
-
-	return &AudioDevice{
-		Index: index,
-
-		Name:        C.GoString(d.name),
-		ID:          C.GoString(d.id),
-		GUID:        C.GoString(d.guid),
-		Format:      C.GoString(d.format),
-		Association: C.GoString(d.association),
-		JackSubType: C.GoString(d.jacksubtype),
-		Description: C.GoString(d.description),
-
-		Flow: FlowCapture,
-	}, nil
+	return newAudioDevice(index, FlowCapture, func(ad *C.AudioDevice, i C.int) C.int { return C.NewAudioCaptureDevice(ad, i) })
 }
 
 // NewAudioCaptureRenderDevice returns an AudioDevice capable of both capturing and rendering audio, based on an index.
 func NewAudioCaptureRenderDevice(index int) (*AudioDevice, error) {
-	d := C.AudioDevice{}
-	defer free(&d)
-
-	r := C.NewAudioCaptureRenderDevice(&d, C.int(index))
-	if r < 0 {
-		return nil, fmt.Errorf("failed to find video capture device: %d", r)
-	}
-
-	return &AudioDevice{
-		Index: index,
-
-		Name:        C.GoString(d.name),
-		ID:          C.GoString(d.id),
-		GUID:        C.GoString(d.guid),
-		Format:      C.GoString(d.format),
-		Association: C.GoString(d.association),
-		JackSubType: C.GoString(d.jacksubtype),
-		Description: C.GoString(d.description),
-
-		Flow: FlowCaptureRender,
-	}, nil
+	return newAudioDevice(index, FlowCaptureRender, func(ad *C.AudioDevice, i C.int) C.int { return C.NewAudioCaptureRenderDevice(ad, i) })
 }
 
 // NewAudioRenderDevice returns an AudioDevice capable of rendering audio, based on an index.
 func NewAudioRenderDevice(index int) (*AudioDevice, error) {
-	d := C.AudioDevice{}
-	defer free(&d)
-
-	r := C.NewAudioRenderDevice(&d, C.int(index))
-	if r < 0 {
-		return nil, fmt.Errorf("failed to find video capture device: %d", r)
-	}
-
-	return &AudioDevice{
-		Index: index,
-
-		Name:        C.GoString(d.name),
-		ID:          C.GoString(d.id),
-		GUID:        C.GoString(d.guid),
-		Format:      C.GoString(d.format),
-		Association: C.GoString(d.association),
-		JackSubType: C.GoString(d.jacksubtype),
-		Description: C.GoString(d.description),
-
-		Flow: FlowRender,
-	}, nil
+	return newAudioDevice(index, FlowRender, func(ad *C.AudioDevice, i C.int) C.int { return C.NewAudioCaptureRenderDevice(ad, i) })
 }
 
 func (a *AudioDevice) String() string {
@@ -127,18 +68,39 @@ func (f Flow) String() string {
 }
 
 func free(d *C.AudioDevice) {
-	C.free(unsafe.Pointer(d.name))
-	d.name = nil
-	C.free(unsafe.Pointer(d.id))
-	d.id = nil
-	C.free(unsafe.Pointer(d.guid))
-	d.guid = nil
-	C.free(unsafe.Pointer(d.format))
-	d.format = nil
-	C.free(unsafe.Pointer(d.association))
-	d.association = nil
-	C.free(unsafe.Pointer(d.jacksubtype))
-	d.jacksubtype = nil
-	C.free(unsafe.Pointer(d.description))
-	d.description = nil
+	fchar := func(c *C.char) *C.char {
+		C.free(unsafe.Pointer(c))
+		return nil
+	}
+	d.name = fchar(d.name)
+	d.id = fchar(d.id)
+	d.guid = fchar(d.guid)
+	d.format = fchar(d.format)
+	d.association = fchar(d.association)
+	d.jacksubtype = fchar(d.jacksubtype)
+	d.description = fchar(d.description)
+}
+
+func newAudioDevice(index int, f Flow, fn func(*C.AudioDevice, C.int) C.int) (*AudioDevice, error) {
+	d := C.AudioDevice{}
+	defer free(&d)
+
+	r := fn(&d, C.int(index))
+	if r != 0 {
+		return nil, fmt.Errorf("failed to find video capture device: %d", r)
+	}
+
+	return &AudioDevice{
+		Flow: f,
+
+		Name:        C.GoString(d.name),
+		ID:          C.GoString(d.id),
+		GUID:        C.GoString(d.guid),
+		Format:      C.GoString(d.format),
+		Association: C.GoString(d.association),
+		JackSubType: C.GoString(d.jacksubtype),
+		Description: C.GoString(d.description),
+
+		Index: index,
+	}, nil
 }

@@ -1,5 +1,6 @@
 #ifdef __cplusplus
-extern "C" {
+extern "C" 
+{
 #endif
 
 #define INITGUID  // For PKEY_AudioEndpoint_GUID.
@@ -14,7 +15,8 @@ extern "C" {
 #include <mmsystem.h>
 #include <functiondiscoverykeys_devpkey.h>
 
-typedef struct _AudioDevice {
+typedef struct _AudioDevice 
+{
     const char *name, 
                *id, 
                *guid,
@@ -33,35 +35,42 @@ int NewAudioRenderDevice(AudioDevice *device, int index);
 #endif
 
 #ifdef __cplusplus
+
+const IID            _mmdeID     = __uuidof(MMDeviceEnumerator);
+const IID            _immdeID    = __uuidof(IMMDeviceEnumerator);
+
 template <class T> void release(T **ppT)
 {
-    if (*ppT) {
-        (*ppT)->Release();
-        *ppT = NULL;
+    if (!*ppT) 
+    {
+        return;
     }
+
+    (*ppT)->Release();
+    *ppT = NULL;
 };
 
-static int _pstring(IPropertyStore *pProps, PROPERTYKEY key, const char **out) {
-    HRESULT hr = S_OK;
-    
+static int _pstring(IPropertyStore *pProps, PROPERTYKEY key, const char **out) 
+{
+    HRESULT hr;
     PROPVARIANT var;
 
     PropVariantInit(&var);
     
     hr = pProps->GetValue(key, &var);
-    if (FAILED(hr)) {
-        goto exit;
+    if (FAILED(hr))
+    {
+        goto release;
     }
 
     *out = (const char *)calloc(sizeof(char), 1024);
-    hr = snprintf((char *)*out, 1024, "%S", var.bstrVal);
-    if (FAILED(hr)) {
-        goto exit;
-    }
+    snprintf((char *)*out, 1024, "%S", var.bstrVal);
 
-exit:
     PropVariantClear(&var); 
+
+release:
 
     return hr;
 }
+
 #endif

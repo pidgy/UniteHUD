@@ -4,6 +4,8 @@ package win32
 #cgo LDFLAGS: -L. -lstdc++ -lstrmiids -lole32 -loleaut32
 #cgo CXXFLAGS: -std=c++14 -I.
 
+#include <stdlib.h>
+
 #include "win32.h"
 */
 import "C"
@@ -19,10 +21,14 @@ import (
 
 // VideoCaptureDevice represents a connected device capable of capturing video.
 type VideoCaptureDevice struct {
-	Name     string
-	Path     string
-	ID       string
-	WaveInID string
+	Name        string
+	Description string
+	Path        string
+	ID          string
+
+	WaveInID int64
+
+	Index int
 }
 
 // NewVideoCaptureDevice returns a VideoCaptureDevice based on an index or nil and an error.
@@ -33,7 +39,7 @@ func NewVideoCaptureDevice(index int) (*VideoCaptureDevice, error) {
 	if hr != 0 {
 		return nil, errors.Errorf("failed to find device information: %d", hr)
 	}
-	defer free(unsafe.Pointer(d.name), unsafe.Pointer(d.path), unsafe.Pointer(d.waveinid))
+	defer free(unsafe.Pointer(d.name), unsafe.Pointer(d.path))
 
 	name, err := utf16to8([]byte(C.GoBytes(unsafe.Pointer(d.name), d.namelen)))
 	if err != nil {
@@ -45,55 +51,14 @@ func NewVideoCaptureDevice(index int) (*VideoCaptureDevice, error) {
 		return nil, errors.Wrap(err, "video capture device path")
 	}
 
-	wave, err := utf16to8(C.GoBytes(unsafe.Pointer(d.waveinid), d.waveinidlen))
-	if err != nil {
-		return nil, errors.Wrap(err, "video capture device wave in id")
-	}
-
 	return &VideoCaptureDevice{
 		Name:     name,
 		Path:     path,
 		ID:       fmt.Sprintf("%s:%s", name, path),
-		WaveInID: wave,
+		WaveInID: int64(d.waveinid),
+
+		Index: index,
 	}, nil
-}
-
-// VideoCaptureDeviceDescription will fetch the L"Description" property of a DirectShow device.
-func VideoCaptureDeviceDescription(index int) (string, error) {
-	len := C.int(0)
-	v := C.GetVideoCaptureDeviceDescription(C.int(index), &len)
-	u, err := utf16to8(C.GoBytes(unsafe.Pointer(v), len))
-	return u, errors.Wrap(err, "dshow device description")
-}
-
-// VideoCaptureDeviceName will fetch the L"FriendlyName" property of a DirectShow device.
-func VideoCaptureDeviceName(index int) (string, error) {
-	len := C.int(0)
-	v := C.GetVideoCaptureDeviceName(C.int(index), &len)
-	src := C.GoBytes(unsafe.Pointer(v), len)
-	dst := make([]byte, len)
-	copy(dst, src)
-	u, err := utf16to8(dst)
-	return u, errors.Wrap(err, "dshow device name")
-}
-
-// VideoCaptureDevicePath will fetch the L"DevicePath" property of a DirectShow device.
-func VideoCaptureDevicePath(index int) (string, error) {
-	len := C.int(0)
-	v := C.GetVideoCaptureDevicePath(C.int(index), &len)
-	src := C.GoBytes(unsafe.Pointer(v), len)
-	dst := make([]byte, len)
-	copy(dst, src)
-	u, err := utf16to8(dst)
-	return u, errors.Wrap(err, "dshow device path")
-}
-
-// VideoCaptureDeviceWaveInID will fetch the L"WaveInId" property of a DirectShow device.
-func VideoCaptureDeviceWaveInID(index int) (string, error) {
-	len := C.int(0)
-	v := C.GetVideoCaptureDeviceWaveInID(C.int(index), &len)
-	u, err := utf16to8(C.GoBytes(unsafe.Pointer(v), len))
-	return u, errors.Wrap(err, "dshow device wave in id")
 }
 
 func free(p ...unsafe.Pointer) {

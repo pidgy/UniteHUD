@@ -1,26 +1,63 @@
 #ifdef __cplusplus
-extern "C" {
+extern "C" 
+{
 #endif
 
-#include <stdlib.h>
-
-typedef struct _VideoCaptureDevice {
+typedef struct _VideoCaptureDevice 
+{
     char *name;
     char *path;
-    char *waveinid;
+    char *description;
 
     int namelen;
     int pathlen;
-    int waveinidlen;
+    int descriptionlen;
+
+    long waveinid;
 } VideoCaptureDevice;
 
 int GetVideoCaptureDevice(int index, VideoCaptureDevice *device);
 
-const char * GetVideoCaptureDeviceName(int device, int *len);
-const char * GetVideoCaptureDevicePath(int device, int *len);
-const char * GetVideoCaptureDeviceDescription(int device, int *len);
-const char * GetVideoCaptureDeviceWaveInID(int device, int *len);
-
 #ifdef __cplusplus
 }
+#endif
+
+#ifdef __cplusplus
+
+template <class T> void release(T **ppT)
+{
+    if (!*ppT) 
+    {
+        return;
+    }
+
+    (*ppT)->Release();
+    *ppT = NULL;
+};
+
+// https://learn.microsoft.com/en-us/windows/win32/directshow/selecting-a-capture-device
+HRESULT _enumerateDevices(REFGUID category, IEnumMoniker **ppEnum)
+{
+    VIDEOINFO      *pvi      = NULL;
+    ICreateDevEnum *pDevEnum = NULL;
+    HRESULT         hr;
+
+    hr = CoCreateInstance(CLSID_SystemDeviceEnum, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pDevEnum));
+    if (FAILED(hr))
+    {
+        goto release;
+    }
+
+    hr = pDevEnum->CreateClassEnumerator(category, ppEnum, 0);
+    if (FAILED(hr))
+    {
+        goto release;
+    }
+
+release:
+    release(&pDevEnum);
+
+    return hr;
+}
+
 #endif

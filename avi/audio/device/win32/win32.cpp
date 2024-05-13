@@ -1,20 +1,7 @@
 #include "win32.h"
 
-int newAudioDevice(AudioDevice *device, int index, EDataFlow eDataFlow);
-
-int NewAudioCaptureDevice(AudioDevice *device, int index) {
-    return newAudioDevice(device, index, EDataFlow::eCapture);
-}
-
-int NewAudioCaptureRenderDevice(AudioDevice *device, int index) {
-    return newAudioDevice(device, index, EDataFlow::eAll);
-}
-
-int NewAudioRenderDevice(AudioDevice *device, int index) {
-    return newAudioDevice(device, index, EDataFlow::eRender);
-}
-
-int newAudioDevice(AudioDevice *device, int index, EDataFlow eDataFlow) {
+int newAudioDevice(AudioDevice *device, int index, EDataFlow eDataFlow) 
+{
     IMMDeviceEnumerator *pEnum       = NULL; // Audio device enumerator.
     IMMDeviceCollection *pDevices    = NULL; // Audio device collection.
     IMMDevice           *pDevice     = NULL; // An audio device.
@@ -22,8 +9,6 @@ int newAudioDevice(AudioDevice *device, int index, EDataFlow eDataFlow) {
     IMFMediaSink        *pSink       = NULL; // Streaming audio renderer (SAR)
     IPropertyStore      *pProps      = NULL;
     LPWSTR               wstrID      = NULL; // Device ID.
-    const IID            _mmdeID      = __uuidof(MMDeviceEnumerator);
-    const IID            _immdeID     = __uuidof(IMMDeviceEnumerator);
 
     HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
     if (FAILED(hr))
@@ -63,37 +48,44 @@ int newAudioDevice(AudioDevice *device, int index, EDataFlow eDataFlow) {
 
     device->id = (const char *)calloc(sizeof(char), 1024);
     hr = snprintf((char *)device->id, 1024, "%S", wstrID);
-    if (FAILED(hr)) {
+    if (FAILED(hr)) 
+    {
         goto release;
     }
 
     hr = pDevice->OpenPropertyStore(STGM_READ, &pProps);
-    if (FAILED(hr)) {
+    if (FAILED(hr)) 
+    {
         goto release;
     }
 
     hr = _pstring(pProps, PKEY_DeviceInterface_FriendlyName, &device->name);
-    if (FAILED(hr)) {
+    if (FAILED(hr))
+    {
         goto release;
     }
 
     hr =  _pstring(pProps, PKEY_AudioEndpoint_GUID, &device->guid);
-    if (FAILED(hr)) {
+    if (FAILED(hr)) 
+    {
         goto release;
     }
 
     hr =  _pstring(pProps, PKEY_AudioEndpoint_Association, &device->association);
-    if (FAILED(hr)) {
+    if (FAILED(hr)) 
+    {
         goto release;
     }
 
     hr =  _pstring(pProps, PKEY_AudioEndpoint_JackSubType, &device->jacksubtype);
-    if (FAILED(hr)) {
+    if (FAILED(hr)) 
+    {
         goto release;
     }
 
     hr =  _pstring(pProps, PKEY_Device_DeviceDesc, &device->description);
-    if (FAILED(hr)) {
+    if (FAILED(hr)) 
+    {
         goto release;
     }
 
@@ -106,4 +98,19 @@ int newAudioDevice(AudioDevice *device, int index, EDataFlow eDataFlow) {
         release(&pProps);
 
     return hr;
+}
+
+int NewAudioCaptureDevice(AudioDevice *device, int index) 
+{
+    return newAudioDevice(device, index, EDataFlow::eCapture);
+}
+
+int NewAudioCaptureRenderDevice(AudioDevice *device, int index) 
+{
+    return newAudioDevice(device, index, EDataFlow::eAll);
+}
+
+int NewAudioRenderDevice(AudioDevice *device, int index) 
+{
+    return newAudioDevice(device, index, EDataFlow::eRender);
 }
