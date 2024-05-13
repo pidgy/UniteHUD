@@ -79,35 +79,34 @@ func goals(matrix gocv.Mat, img *image.RGBA) (Goals, bool) {
 			}
 
 			_, maxv, _, maxp := gocv.MinMaxLoc(results[i])
-			if maxv >= .9 {
-				go stats.Average(templates[i].Truncated(), maxv)
-				go stats.Count(templates[i].Truncated())
-
-				switch e := state.EventType(templates[i].Value); e {
-				case state.PurpleBaseOpen:
-					println("purple base open: ", maxp.String())
-					purple = append(purple, Tier{Point: maxp, Match: maxv})
-					gocv.Rectangle(&matrix, image.Rectangle{maxp, maxp.Add(image.Pt(25, 25))}, rgba.Black.Color(), -1)
-					gocv.PutText(&matrix, fmt.Sprintf("%.1f%%", maxv*100), maxp, gocv.FontHersheyPlain, 1, rgba.White.Color(), 2)
-				case state.PurpleBaseClosed:
-					println("purple base closed: ", maxp.String())
-					purple = append(purple, Tier{Destroyed: true, Point: maxp, Match: maxv})
-					gocv.Rectangle(&matrix, image.Rectangle{maxp, maxp.Add(image.Pt(25, 25))}, rgba.Black.Color(), -1)
-					gocv.PutText(&matrix, fmt.Sprintf("%.1f%%", maxv*100), maxp, gocv.FontHersheyPlain, 1, rgba.White.Color(), 2)
-				case state.OrangeBaseOpen:
-					println("orange base open: ", maxp.String())
-					orange = append(orange, Tier{Point: maxp, Match: maxv})
-					gocv.Rectangle(&matrix, image.Rectangle{maxp, maxp.Add(image.Pt(25, 25))}, rgba.Black.Color(), -1)
-					gocv.PutText(&matrix, fmt.Sprintf("%.1f%%", maxv*100), maxp, gocv.FontHersheyPlain, 1, rgba.White.Color(), 2)
-				case state.OrangeBaseClosed:
-					println("orange base closed: ", maxp.String(), templates[i].File)
-					orange = append(orange, Tier{Destroyed: true, Point: maxp, Match: maxv})
-					gocv.Rectangle(&matrix, image.Rectangle{maxp, maxp.Add(image.Pt(25, 25))}, rgba.Black.Color(), -1)
-					gocv.PutText(&matrix, fmt.Sprintf("%.1f%%", maxv*100), maxp, gocv.FontHersheyPlain, 1, rgba.White.Color(), 2)
-				}
+			if maxv < .9 {
+				continue
 			}
 
-			go stats.Frequency(templates[i].Truncated(), 1)
+			go stats.Collect(templates[i].Truncated(), maxv)
+
+			switch e := state.EventType(templates[i].Value); e {
+			case state.PurpleBaseOpen:
+				println("purple base open: ", maxp.String())
+				purple = append(purple, Tier{Point: maxp, Match: maxv})
+				gocv.Rectangle(&matrix, image.Rectangle{maxp, maxp.Add(image.Pt(25, 25))}, rgba.Black.Color(), -1)
+				gocv.PutText(&matrix, fmt.Sprintf("%.1f%%", maxv*100), maxp, gocv.FontHersheyPlain, 1, rgba.White.Color(), 2)
+			case state.PurpleBaseClosed:
+				println("purple base closed: ", maxp.String())
+				purple = append(purple, Tier{Destroyed: true, Point: maxp, Match: maxv})
+				gocv.Rectangle(&matrix, image.Rectangle{maxp, maxp.Add(image.Pt(25, 25))}, rgba.Black.Color(), -1)
+				gocv.PutText(&matrix, fmt.Sprintf("%.1f%%", maxv*100), maxp, gocv.FontHersheyPlain, 1, rgba.White.Color(), 2)
+			case state.OrangeBaseOpen:
+				println("orange base open: ", maxp.String())
+				orange = append(orange, Tier{Point: maxp, Match: maxv})
+				gocv.Rectangle(&matrix, image.Rectangle{maxp, maxp.Add(image.Pt(25, 25))}, rgba.Black.Color(), -1)
+				gocv.PutText(&matrix, fmt.Sprintf("%.1f%%", maxv*100), maxp, gocv.FontHersheyPlain, 1, rgba.White.Color(), 2)
+			case state.OrangeBaseClosed:
+				println("orange base closed: ", maxp.String(), templates[i].File)
+				orange = append(orange, Tier{Destroyed: true, Point: maxp, Match: maxv})
+				gocv.Rectangle(&matrix, image.Rectangle{maxp, maxp.Add(image.Pt(25, 25))}, rgba.Black.Color(), -1)
+				gocv.PutText(&matrix, fmt.Sprintf("%.1f%%", maxv*100), maxp, gocv.FontHersheyPlain, 1, rgba.White.Color(), 2)
+			}
 		}
 	}
 

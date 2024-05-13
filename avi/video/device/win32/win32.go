@@ -17,6 +17,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// VideoCaptureDevice represents a connected device capable of capturing video.
 type VideoCaptureDevice struct {
 	Name     string
 	Path     string
@@ -24,17 +25,15 @@ type VideoCaptureDevice struct {
 	WaveInID string
 }
 
+// NewVideoCaptureDevice returns a VideoCaptureDevice based on an index or nil and an error.
 func NewVideoCaptureDevice(index int) (*VideoCaptureDevice, error) {
 	d := C.VideoCaptureDevice{}
 
 	hr := C.GetVideoCaptureDevice(C.int(index), &d)
 	if hr != 0 {
-		return nil, errors.Wrap(errors.Errorf("failed to find device information: %d", hr), fmt.Sprintf("video capture device %d", index))
+		return nil, errors.Errorf("failed to find device information: %d", hr)
 	}
-
-	defer C.free(unsafe.Pointer(d.name))
-	defer C.free(unsafe.Pointer(d.path))
-	defer C.free(unsafe.Pointer(d.waveinid))
+	defer free(unsafe.Pointer(d.name), unsafe.Pointer(d.path), unsafe.Pointer(d.waveinid))
 
 	name, err := utf16to8([]byte(C.GoBytes(unsafe.Pointer(d.name), d.namelen)))
 	if err != nil {
@@ -59,6 +58,14 @@ func NewVideoCaptureDevice(index int) (*VideoCaptureDevice, error) {
 	}, nil
 }
 
+// VideoCaptureDeviceDescription will fetch the L"Description" property of a DirectShow device.
+func VideoCaptureDeviceDescription(index int) (string, error) {
+	len := C.int(0)
+	v := C.GetVideoCaptureDeviceDescription(C.int(index), &len)
+	u, err := utf16to8(C.GoBytes(unsafe.Pointer(v), len))
+	return u, errors.Wrap(err, "dshow device description")
+}
+
 // VideoCaptureDeviceName will fetch the L"FriendlyName" property of a DirectShow device.
 func VideoCaptureDeviceName(index int) (string, error) {
 	len := C.int(0)
@@ -81,20 +88,18 @@ func VideoCaptureDevicePath(index int) (string, error) {
 	return u, errors.Wrap(err, "dshow device path")
 }
 
-// VideoCaptureDeviceDescription will fetch the L"Description" property of a DirectShow device.
-func VideoCaptureDeviceDescription(index int) (string, error) {
-	len := C.int(0)
-	v := C.GetVideoCaptureDeviceDescription(C.int(index), &len)
-	u, err := utf16to8(C.GoBytes(unsafe.Pointer(v), len))
-	return u, errors.Wrap(err, "dshow device description")
-}
-
 // VideoCaptureDeviceWaveInID will fetch the L"WaveInId" property of a DirectShow device.
 func VideoCaptureDeviceWaveInID(index int) (string, error) {
 	len := C.int(0)
 	v := C.GetVideoCaptureDeviceWaveInID(C.int(index), &len)
 	u, err := utf16to8(C.GoBytes(unsafe.Pointer(v), len))
 	return u, errors.Wrap(err, "dshow device wave in id")
+}
+
+func free(p ...unsafe.Pointer) {
+	for _, u := range p {
+		C.free(u)
+	}
 }
 
 func utf16to8(b []byte) (string, error) {

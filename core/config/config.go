@@ -566,8 +566,8 @@ func (c *Config) scoreFiles(t *team.Team) []filter.Filter {
 
 func (c *Config) setDefaultAdvancedSettings() {
 	c.Advanced.Notifications.Muted = false
-	c.Advanced.Notifications.Disabled.All = true
-	c.Advanced.Notifications.Disabled.Updates = true
+	c.Advanced.Notifications.Disabled.All = false
+	c.Advanced.Notifications.Disabled.Updates = false
 	c.Advanced.Notifications.Disabled.MatchStarting = true
 	c.Advanced.Notifications.Disabled.MatchStopped = true
 	c.Advanced.Notifications.Muted = true

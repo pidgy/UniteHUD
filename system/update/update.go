@@ -58,7 +58,7 @@ func Check() {
 	case v1.LessThan(v2):
 		notify.System("Update: %s is available for download (http://unitehud.dev)", q.Latest)
 
-		desktop.Notification("%s Update", q.Latest).
+		desktop.Notification("UniteHUD %s", q.Latest).
 			Says("An update is available for UniteHUD").
 			When(clicked.VisitWebsite).
 			Send()

@@ -494,10 +494,12 @@ func States() {
 				d = device.ActiveName()
 			}
 
-			desktop.Notification("Match is starting").
-				Says("Capturing from %s", d).
-				When(clicked.OpenUniteHUD).
-				Send()
+			if !config.Current.Advanced.Notifications.Disabled.MatchStarting {
+				desktop.Notification("Match Starting").
+					Says("Capturing from %s", d).
+					When(clicked.OpenUniteHUD).
+					Send()
+			}
 
 			// Also tells javascript to turn on.
 			server.SetTime(10, 0)
@@ -555,10 +557,12 @@ func States() {
 					owin = "(Won)"
 				}
 
-				desktop.Notification("Match has ended").
-					Says("Purple: %d %s\nOrange: %d %s\nYou scored %d points", p, pwin, o, owin, self).
-					When(clicked.OpenUniteHUD).
-					Send()
+				if !config.Current.Advanced.Notifications.Disabled.MatchStopped {
+					desktop.Notification("Match Ended").
+						Says("Purple: %d %s\nOrange: %d %s\nYou scored %d points", p, pwin, o, owin, self).
+						When(clicked.OpenUniteHUD).
+						Send()
+				}
 
 				history.Add(p, o, self)
 			}

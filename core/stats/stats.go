@@ -45,7 +45,57 @@ func init() {
 	}
 }
 
-func AllTemplates() map[string]int {
+func Clear() {
+	notify.System("Stats: Clearing matched image template statistics")
+	statsq <- func() {
+		clear()
+	}
+}
+
+func Collect(stat string, maxv float32) {
+	if config.Current.Advanced.Stats.Disabled {
+		return
+	}
+
+	if math.IsInf(float64(maxv), 1) {
+		maxv = 1
+	}
+
+	stat = sanitize(stat)
+
+	statsq <- func() {
+		// Average
+		asets[stat] = append(asets[stat], maxv)
+
+		sum := float32(0)
+		for _, n := range asets[stat] {
+			sum += n
+		}
+
+		avg := int((sum / float32(len(asets[stat]))) * 100)
+		if avg > 0 {
+			averages[stat] = avg
+		}
+
+		// Count.
+		matches[stat]++
+
+		// Frequency.
+		fsets[stat] = append(fsets[stat], maxv)
+
+		fsum := float32(0)
+		for _, n := range fsets[stat] {
+			fsum += n
+		}
+
+		freq := (fsum / float32(len(fsets[stat]))) * 100
+		if freq > 0 {
+			frequencies[stat] = freq
+		}
+	}
+}
+
+func Counts() map[string]int {
 	fq := make(chan map[string]int)
 
 	counts := make(map[string]int)
@@ -65,51 +115,6 @@ func AllTemplates() map[string]int {
 	}
 
 	return <-fq
-}
-
-func Average(stat string, maxv float32) {
-	if config.Current.Advanced.Stats.Disabled {
-		return
-	}
-
-	if math.IsInf(float64(maxv), 1) {
-		maxv = 1
-	}
-
-	stat = sanitize(stat)
-
-	statsq <- func() {
-		asets[stat] = append(asets[stat], maxv)
-
-		sum := float32(0)
-		for _, n := range asets[stat] {
-			sum += n
-		}
-
-		avg := int((sum / float32(len(asets[stat]))) * 100)
-		if avg > 0 {
-			averages[stat] = avg
-		}
-	}
-}
-
-func Clear() {
-	notify.System("Stats: Clearing matched image template statistics")
-	statsq <- func() {
-		clear()
-	}
-}
-
-func Count(stat string) {
-	if config.Current.Advanced.Stats.Disabled {
-		return
-	}
-
-	stat = sanitize(stat)
-
-	statsq <- func() {
-		matches[stat]++
-	}
 }
 
 func CPU(v float64) {
@@ -151,32 +156,6 @@ func Data() {
 			notify.Append(nrgba.Gray, line)
 		default:
 			notify.SystemAppend(line)
-		}
-	}
-}
-
-func Frequency(stat string, freq float32) {
-	if config.Current.Advanced.Stats.Disabled {
-		return
-	}
-
-	stat = sanitize(stat)
-
-	if math.IsInf(float64(freq), 1) {
-		freq = 1
-	}
-
-	statsq <- func() {
-		fsets[stat] = append(fsets[stat], freq)
-
-		sum := float32(0)
-		for _, n := range fsets[stat] {
-			sum += n
-		}
-
-		freq := (sum / float32(len(fsets[stat]))) * 100
-		if freq > 0 {
-			frequencies[stat] = freq
 		}
 	}
 }

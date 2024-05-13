@@ -95,20 +95,17 @@ func Time(matrix gocv.Mat, img *image.RGBA) (minutes, seconds int, kitchen strin
 				continue
 			}
 
-			go stats.Frequency(templates[i].Truncated(), maxv)
-
-			if maxv >= team.Time.Acceptance {
-				go stats.Average(templates[i].Truncated(), maxv)
-				go stats.Count(templates[i].Truncated())
-
-				if maxp.X < locs[c] {
-					locs[c] = maxp.X
-					cols[c] = templates[i].Cols() - 2
-					clock[c] = templates[i].Value
-				}
+			if maxv < team.Time.Acceptance {
+				continue
 			}
 
-			go stats.Frequency(templates[i].Truncated(), 1)
+			go stats.Collect(templates[i].Truncated(), maxv)
+
+			if maxp.X < locs[c] {
+				locs[c] = maxp.X
+				cols[c] = templates[i].Cols() - 2
+				clock[c] = templates[i].Value
+			}
 		}
 
 		if clock[c] == -1 {

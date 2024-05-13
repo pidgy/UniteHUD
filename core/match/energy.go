@@ -73,44 +73,41 @@ func Energy(matrix gocv.Mat, img image.Image) (Result, []int, int) {
 				continue
 			}
 
-			go stats.Frequency(templates[i].Truncated(), maxv)
-
-			if maxv >= team.Energy.Acceptance {
-				go stats.Average(templates[i].Truncated(), maxv)
-				go stats.Count(templates[i].Truncated())
-
-				// No sorting comparison exists yet, proceed.
-				if mins[round] == 0 {
-					break
-				}
-
-				// Keep the leftmost value, always.
-				if maxp.X > mins[round] {
-					continue
-				}
-				// Keep the best match for locations.
-				if maxp.X == mins[round] && maxv < maxs[round] {
-					continue
-				}
-
-				// First round we care more about the smallest X value, 0 is trumped.
-				// Second round we care more about the highest acceptance value.
-				switch round {
-				case 0:
-				case 1:
-					if maxv < maxs[round] {
-						continue
-					}
-				}
-
-				// Once were here we should have the smallest X value (leftmost).
-				maxs[round] = maxv
-				mins[round] = maxp.X
-				points[round] = templates[i].Value
-				matched[round] = image.Rect(maxp.X, maxp.Y, maxp.X+templates[i].Cols(), maxp.Y+templates[i].Rows())
+			if maxv < team.Energy.Acceptance {
+				continue
 			}
 
-			go stats.Frequency(templates[i].Truncated(), maxv)
+			go stats.Collect(templates[i].Truncated(), maxv)
+
+			// No sorting comparison exists yet, proceed.
+			if mins[round] == 0 {
+				break
+			}
+
+			// Keep the leftmost value, always.
+			if maxp.X > mins[round] {
+				continue
+			}
+			// Keep the best match for locations.
+			if maxp.X == mins[round] && maxv < maxs[round] {
+				continue
+			}
+
+			// First round we care more about the smallest X value, 0 is trumped.
+			// Second round we care more about the highest acceptance value.
+			switch round {
+			case 0:
+			case 1:
+				if maxv < maxs[round] {
+					continue
+				}
+			}
+
+			// Once were here we should have the smallest X value (leftmost).
+			maxs[round] = maxv
+			mins[round] = maxp.X
+			points[round] = templates[i].Value
+			matched[round] = image.Rect(maxp.X, maxp.Y, maxp.X+templates[i].Cols(), maxp.Y+templates[i].Rows())
 		}
 
 		if points[round] == -1 {

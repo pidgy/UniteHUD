@@ -58,7 +58,7 @@ func kill(errs ...error) {
 			func() {
 				defer close(report)
 
-				err := save.Logs(notify.FeedStrings(), stats.Lines(), stats.AllTemplates())
+				err := save.Logs(notify.FeedStrings(), stats.Lines(), stats.Counts())
 				if err != nil {
 					notify.Warn("UniteHUD: Failed to save logs (%v)", err)
 				}
@@ -86,7 +86,7 @@ func signals() {
 	ui.UI.Close()
 	tray.Close()
 
-	err := save.Logs(notify.FeedStrings(), stats.Lines(), stats.AllTemplates())
+	err := save.Logs(notify.FeedStrings(), stats.Lines(), stats.Counts())
 	if err != nil {
 		notify.Warn("UniteHUD: Failed to save logs (%v)", err)
 	}

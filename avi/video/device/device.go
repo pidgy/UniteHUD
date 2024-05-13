@@ -22,13 +22,16 @@ import (
 )
 
 type properties struct {
-	resolution  image.Point
-	fps         float64
-	buffersize  int
-	codec, guid string
-	backend     string
-	bitrate     float64
-	rgb         bool
+	resolution image.Point
+
+	fps,
+	bitrate float64
+
+	codec,
+	backend string
+
+	buffersize int
+	rgb        bool
 }
 
 var (
@@ -190,7 +193,7 @@ func Sources() []int {
 func capture() error {
 	api := API(config.Current.Video.Capture.Device.API)
 
-	notify.System("Device: %s, capturing with %s API", active.name, APIName(api))
+	notify.Debug("Device: %s, capturing with %s API", active.name, APIName(api))
 
 	device, err := gocv.OpenVideoCaptureWithAPI(active.index, gocv.VideoCaptureAPI(api))
 	if err != nil {
@@ -262,17 +265,6 @@ func poll(device *gocv.VideoCapture) properties {
 	return defaults
 }
 
-func (p properties) diff() {
-	notify.System("Device: %s", active.name)
-	notify.System("Device:  Codec       %s → %s", p.codec, active.applied.codec)
-	notify.System("Device:  FPS         %.0f FPS → %.0f FPS", p.fps, active.applied.fps)
-	notify.System("Device:  Resolution  %s → %s", p.resolution, active.applied.resolution)
-	notify.System("Device:  Backend     %s → %s", p.backend, active.applied.backend)
-	notify.System("Device:  Bitrate     %.0f kb/s", active.applied.bitrate)
-	notify.System("Device:  BufferSize  %d", active.applied.buffersize)
-	notify.System("Device:  RGB         %t → %t", p.rgb, active.applied.rgb)
-}
-
 func reset() {
 	notify.Debug("Device: %s, resetting", active.name)
 
@@ -321,7 +313,14 @@ func set(device *gocv.VideoCapture) error {
 		return errors.Wrapf(fmt.Errorf("%.0f FPS", required.fps), "failed to set property")
 	}
 
-	p.diff()
+	notify.System("Device: %s, configured", active.name)
+	notify.System("Device:   Codec       %s → %s", p.codec, active.applied.codec)
+	notify.System("Device:   FPS         %.0f FPS → %.0f FPS", p.fps, active.applied.fps)
+	notify.System("Device:   Resolution  %s → %s", p.resolution, active.applied.resolution)
+	notify.System("Device:   Backend     %s → %s", p.backend, active.applied.backend)
+	notify.System("Device:   Bitrate     %.0f kb/s", active.applied.bitrate)
+	notify.System("Device:   BufferSize  %d", active.applied.buffersize)
+	notify.System("Device:   RGB         %t → %t", p.rgb, active.applied.rgb)
 
 	return nil
 }

@@ -17,8 +17,9 @@ type Duplicate struct {
 	region  gocv.Mat
 	Counted bool
 
-	Captured bool
-	Replaces int
+	Captured  bool
+	Replaces  int
+	Potential bool
 }
 
 func New(value int, mat, region gocv.Mat) *Duplicate {
@@ -51,8 +52,8 @@ func (d *Duplicate) Close() {
 }
 
 func (d *Duplicate) Of(d2 *Duplicate) (bool, string) {
-	if d2.Value == 0 {
-		return false, "zero-value"
+	if d.Value == 0 || d2.Value == 0 {
+		return false, "zero-equality"
 	}
 
 	if d == nil || d2 == nil {
@@ -67,6 +68,7 @@ func (d *Duplicate) Of(d2 *Duplicate) (bool, string) {
 	if d.Value != d2.Value {
 		return false, "inequality"
 	}
+	d2.Potential = true
 
 	delta := d2.Time.Sub(d.Time)
 	if delta > delay*2 {
@@ -76,7 +78,14 @@ func (d *Duplicate) Of(d2 *Duplicate) (bool, string) {
 		return true, "short-delay,positive-equality,counted"
 	}
 
-	return d.Pixels(d2)
+	mat := gocv.NewMat()
+	defer mat.Close()
+
+	gocv.MatchTemplate(d.region, d2.region, &mat, gocv.TmCcoeffNormed, gocv.NewMat())
+
+	_, maxc, _, _ := gocv.MinMaxLoc(mat)
+
+	return maxc > 0.91, "max-gt-91"
 }
 
 func (d *Duplicate) Overrides(prev *Duplicate) bool {
@@ -99,23 +108,4 @@ func (d *Duplicate) Overrides(prev *Duplicate) bool {
 		notify.Warn("Duplicate: Potential duplicate override detected (-%d)/(+%d)", prev.Value, d.Value)
 		return true
 	}
-}
-
-func (d *Duplicate) Pixels(d2 *Duplicate) (bool, string) {
-	if d == nil || d2 == nil {
-		return false, "nil-equality"
-	}
-
-	if d.Value == 0 || d2.Value == 0 {
-		return false, "zero-equality"
-	}
-
-	mat := gocv.NewMat()
-	defer mat.Close()
-
-	gocv.MatchTemplate(d.region, d2.region, &mat, gocv.TmCcoeffNormed, gocv.NewMat())
-
-	_, maxc, _, _ := gocv.MinMaxLoc(mat)
-
-	return maxc > 0.91, "max-gt-91"
 }

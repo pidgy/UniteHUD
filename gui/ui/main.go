@@ -160,7 +160,7 @@ func (g *GUI) main() {
 	if config.Current.Crashed != "" {
 		notify.Warn("Crash: %s", config.Current.Crashed)
 
-		err := save.Logs(notify.FeedStrings(), stats.Lines(), stats.AllTemplates())
+		err := save.Logs(notify.FeedStrings(), stats.Lines(), stats.Counts())
 		if err != nil {
 			notify.Warn("UI: Failed to save logs (%v)", err)
 		}
@@ -624,7 +624,7 @@ func (g *GUI) mainUI() *main {
 			team.Clear()
 			server.SetStopped()
 
-			err := save.Logs(notify.FeedStrings(), stats.Lines(), stats.AllTemplates())
+			err := save.Logs(notify.FeedStrings(), stats.Lines(), stats.Counts())
 			if err != nil {
 				notify.Warn("UI: Failed to save logs (%v)", err)
 			}
@@ -996,7 +996,7 @@ func (g *GUI) mainUI() *main {
 		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
-			err = save.Logs(notify.FeedStrings(), stats.Lines(), stats.AllTemplates())
+			err = save.Logs(notify.FeedStrings(), stats.Lines(), stats.Counts())
 			if err != nil {
 				notify.Warn("UI: Failed to save logs (%v)", err)
 			}
@@ -1023,7 +1023,7 @@ func (g *GUI) mainUI() *main {
 				notify.System("UI: Recording captured events in %s", save.Directory)
 				this.Text = "■"
 
-				err := save.Logs(notify.FeedStrings(), stats.Lines(), stats.AllTemplates())
+				err := save.Logs(notify.FeedStrings(), stats.Lines(), stats.Counts())
 				if err != nil {
 					notify.Warn("UI: Failed to save logs (%v)", err)
 				}
@@ -1041,7 +1041,7 @@ func (g *GUI) mainUI() *main {
 						notify.Error("UI: Failed to open \"%s\" (%v)", save.Directory, err)
 					}
 
-					err = save.Logs(notify.FeedStrings(), stats.Lines(), stats.AllTemplates())
+					err = save.Logs(notify.FeedStrings(), stats.Lines(), stats.Counts())
 					if err != nil {
 						notify.Warn("UI: Failed to save logs (%v)", err)
 					}

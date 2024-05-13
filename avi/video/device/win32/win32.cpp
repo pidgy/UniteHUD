@@ -1,4 +1,3 @@
-// wrapper.cc
 #include <windows.h>
 #include <iostream>
 #include <sstream>

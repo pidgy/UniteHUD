@@ -4,16 +4,18 @@ import "testing"
 
 func TestNewVideoCaptureDevice(t *testing.T) {
 	for index := 0; index < 10; index++ {
-		println("Index:", index)
+		println("Video Capture Device", index)
 
 		d, err := NewVideoCaptureDevice(index)
 		if err != nil {
-			println("\tError:", err.Error())
+			println("* Error:", err.Error(), "\n")
 			continue
 		}
-		println("\tID:", d.ID)
-		println("\tName:", d.Name)
-		println("\tPath:", d.Path)
-		println("\tWaveInID:", d.WaveInID)
+
+		println("\t* Name:", d.Name)
+		println("\t* Path:", d.Path)
+		println("\t* ID:", d.ID)
+		println("\t* WaveInID:", d.WaveInID)
+		println()
 	}
 }

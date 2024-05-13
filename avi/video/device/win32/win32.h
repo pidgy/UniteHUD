@@ -21,7 +21,6 @@ const char * GetVideoCaptureDevicePath(int device, int *len);
 const char * GetVideoCaptureDeviceDescription(int device, int *len);
 const char * GetVideoCaptureDeviceWaveInID(int device, int *len);
 
-
 #ifdef __cplusplus
 }
 #endif

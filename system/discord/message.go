@@ -18,7 +18,7 @@ type (
 
 	opcode int32
 
-	opper interface {
+	oper interface {
 		opcode() opcode
 		opreceived() opcode
 	}

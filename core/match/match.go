@@ -100,21 +100,19 @@ func MatchesWithAcceptance(matrix gocv.Mat, img image.Image, templates []*templa
 		}
 
 		_, maxv, _, maxp := gocv.MinMaxLoc(mat)
-
-		go stats.Frequency(templates[i].Truncated(), maxv)
-
-		if maxv >= acceptance {
-			m.Template = templates[i]
-			m.Point = maxp
-			m.Accepted = maxv
-
-			go stats.Average(m.Template.Truncated(), maxv)
-			go stats.Count(m.Template.Truncated())
-
-			r, p := m.process(matrix)
-
-			return m, r, p
+		if maxv < acceptance {
+			continue
 		}
+
+		m.Template = templates[i]
+		m.Point = maxp
+		m.Accepted = maxv
+
+		go stats.Collect(m.Template.Truncated(), maxv)
+
+		r, p := m.process(matrix)
+
+		return m, r, p
 	}
 
 	return m, NotFound, 0

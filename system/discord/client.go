@@ -31,6 +31,8 @@ var (
 	}{0, 9}
 
 	timeout = time.Second
+
+	logStateCount = 0
 )
 
 func connect() (client, error) {
@@ -116,14 +118,17 @@ func (c *client) receive() (message, error) {
 	return msg, nil
 }
 
-func (c *client) send(o opper) {
+func (c *client) send(o oper) {
 	p, err := json.Marshal(o)
 	if err != nil {
 		c.errq <- err
 		return
 	}
 
-	notify.Debug("Discord: %s", string(p))
+	if logStateCount--; logStateCount < 1 {
+		notify.Debug("Discord: %s", string(p))
+		logStateCount = 100
+	}
 
 	m := message{
 		opcode:  o.opcode(),

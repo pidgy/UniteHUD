@@ -94,28 +94,27 @@ func (m *Match) first(matrix gocv.Mat) (Result, int) {
 				continue
 			}
 
-			go stats.Frequency(templates[i].Truncated(), maxv)
-
-			if maxv >= m.Team.Acceptance {
-				sorted.Cache(templates[i], maxp, maxv)
-
-				go stats.Average(templates[i].Truncated(), maxv)
-				go stats.Count(templates[i].Truncated())
-
-				// Select the left-most image first, when the difference is small enough,
-				// use the highest template-match value to break the tie.
-				leftmost := maxp.X < lefts[round]
-				if delta(maxp.X, lefts[round]) < 3 {
-					leftmost = maxv > maxs[round]
-				}
-
-				if leftmost {
-					lefts[round] = maxp.X
-					maxs[round] = maxv
-					mins[round] = maxp.X
-					points[round] = templates[i].Value
-				}
+			if maxv < m.Team.Acceptance {
+				continue
 			}
+
+			sorted.Cache(templates[i], maxp, maxv)
+
+			// Select the left-most image first, when the difference is small enough,
+			// use the highest template-match value to break the tie.
+			leftmost := maxp.X < lefts[round]
+			if delta(maxp.X, lefts[round]) < 3 {
+				leftmost = maxv > maxs[round]
+			}
+
+			if leftmost {
+				lefts[round] = maxp.X
+				maxs[round] = maxv
+				mins[round] = maxp.X
+				points[round] = templates[i].Value
+			}
+
+			go stats.Collect(templates[i].Truncated(), maxv)
 		}
 
 		inset += mins[round] + 15
@@ -124,12 +123,16 @@ func (m *Match) first(matrix gocv.Mat) (Result, int) {
 		}
 	}
 
-	r, p := sliceToValue(points)
-	if r != Found {
-		return r, p
-	}
+	return sliceToValue(points)
 
-	return m.validate(matrix, p)
+	// XXX: Do we need to validate?
+	//
+	// r, p := sliceToValue(points)
+	// if r != Found {
+	// 	return r, p
+	// }
+
+	// return m.validate(matrix, p)
 }
 
 func (m *Match) regular(matrix gocv.Mat) (Result, int) {
@@ -199,33 +202,31 @@ func (m *Match) regular(matrix gocv.Mat) (Result, int) {
 				continue
 			}
 
-			go stats.Frequency(templates[i].Truncated(), maxv)
-
-			if maxv >= m.Team.Acceptance {
-				// XXX: What does this do? Breaks 120 (Falinks scores).
-				// if round > 0 && maxp.X > templates[i].Mat.Cols() {
-				// 	maxp.X = 0
-				// }
-
-				// Select the left-most image first, when the difference is small enough,
-				// use the highest template-match value to break the tie.
-				leftmost := maxp.X < lefts[round]
-				if delta(maxp.X, lefts[round]) < 5 {
-					leftmost = maxv > maxs[round]
-				}
-
-				if leftmost {
-					m.Points[round] = maxp
-					lefts[round] = maxp.X
-					maxs[round] = maxv
-					mins[round] = maxp.X + templates[i].Mat.Cols() - 1
-					points[round] = templates[i].Value
-					// rects[round] = image.Rectangle{Min: minp, Max: maxp}
-				}
-
-				go stats.Average(templates[i].Truncated(), maxv)
-				go stats.Count(templates[i].Truncated())
+			if maxv < m.Team.Acceptance {
+				continue
 			}
+			// XXX: What does this do? Breaks 120 (Falinks scores).
+			// if round > 0 && maxp.X > templates[i].Mat.Cols() {
+			// 	maxp.X = 0
+			// }
+
+			// Select the left-most image first, when the difference is small enough,
+			// use the highest template-match value to break the tie.
+			leftmost := maxp.X < lefts[round]
+			if delta(maxp.X, lefts[round]) < 5 {
+				leftmost = maxv > maxs[round]
+			}
+
+			if leftmost {
+				m.Points[round] = maxp
+				lefts[round] = maxp.X
+				maxs[round] = maxv
+				mins[round] = maxp.X + templates[i].Mat.Cols() - 1
+				points[round] = templates[i].Value
+				// rects[round] = image.Rectangle{Min: minp, Max: maxp}
+			}
+
+			go stats.Collect(templates[i].Truncated(), maxv)
 		}
 
 		// gocv.Rectangle(&region, rects[round], rgba.Red.Color(), 1)
@@ -257,14 +258,17 @@ func (m *Match) validate(matrix gocv.Mat, value int) (Result, int) {
 		}
 	}()
 
-	switch dup, reason := m.Team.Duplicate.Of(latest); {
+	switch ok, reason := m.Team.Duplicate.Of(latest); {
 	case latest.Overrides(m.Team.Duplicate):
 		latest.Counted = true
 		notify.Debug("Detect: [%s] [%s] [Override] %s", server.Clock(), m.Team, reason)
 		return Override, value
-	case dup:
+	case ok:
 		notify.Debug("Detect: [%s] [%s] [Duplicate] %s", server.Clock(), m.Team, reason)
 		return Duplicate, value
+	case latest.Potential:
+		notify.Debug("Detect: [%s] [%s] [Potential Duplicate] %s", server.Clock(), m.Team, reason)
+		fallthrough
 	default:
 		latest.Counted = true
 		return Found, value
