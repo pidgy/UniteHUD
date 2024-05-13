@@ -26,7 +26,45 @@ template <class T> void release(T **ppT);
 
 static int getStringProp(IPropertyStore *pProps, PROPERTYKEY key, const char **out);
 
-int NewAudioCaptureDevice(AudioCaptureDevice *device, int index) {
+int newAudioDevice(AudioDevice *device, int index, EDataFlow eDataFlow);
+
+int NewAudioCaptureDevice(AudioDevice *device, int index) {
+    return newAudioDevice(device, index, EDataFlow::eCapture);
+}
+
+int NewAudioCaptureRenderDevice(AudioDevice *device, int index) {
+    return newAudioDevice(device, index, EDataFlow::eAll);
+}
+
+int NewAudioRenderDevice(AudioDevice *device, int index) {
+    return newAudioDevice(device, index, EDataFlow::eRender);
+}
+
+static int getStringProp(IPropertyStore *pProps, PROPERTYKEY key, const char **out) {
+    HRESULT hr = S_OK;
+    
+    PROPVARIANT var;
+
+    PropVariantInit(&var);
+    
+    hr = pProps->GetValue(key, &var);
+    if (FAILED(hr)) {
+        goto exit;
+    }
+
+    *out = (const char *)calloc(sizeof(char), 1024);
+    hr = snprintf((char *)*out, 1024, "%S", var.bstrVal);
+    if (FAILED(hr)) {
+        goto exit;
+    }
+
+exit:
+    PropVariantClear(&var); 
+
+    return hr;
+}
+
+int newAudioDevice(AudioDevice *device, int index, EDataFlow eDataFlow) {
     IMMDeviceEnumerator *pEnum       = NULL; // Audio device enumerator.
     IMMDeviceCollection *pDevices    = NULL; // Audio device collection.
     IMMDevice           *pDevice     = NULL; // An audio device.
@@ -34,6 +72,8 @@ int NewAudioCaptureDevice(AudioCaptureDevice *device, int index) {
     IMFMediaSink        *pSink       = NULL; // Streaming audio renderer (SAR)
     IPropertyStore      *pProps      = NULL;
     LPWSTR               wstrID      = NULL; // Device ID.
+    const IID            _mmdeID      = __uuidof(MMDeviceEnumerator);
+    const IID            _immdeID     = __uuidof(IMMDeviceEnumerator);
 
     HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
     if (FAILED(hr))
@@ -41,14 +81,13 @@ int NewAudioCaptureDevice(AudioCaptureDevice *device, int index) {
         goto release;
     }
 
-    // Create the device enumerator.
-    hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void**)&pEnum);
+    hr = CoCreateInstance(_mmdeID, NULL, CLSCTX_ALL, _immdeID, (void**)&pEnum);
     if (FAILED(hr))
     {
         goto release;
     }
 
-    hr = pEnum->EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE, &pDevices);
+    hr = pEnum->EnumAudioEndpoints(eDataFlow, DEVICE_STATE_ACTIVE, &pDevices);
     if (FAILED(hr))
     {
         goto release;
@@ -127,30 +166,6 @@ int NewAudioCaptureDevice(AudioCaptureDevice *device, int index) {
         release(&pAttributes);
         release(&pSink);
         release(&pProps);
-
-    return hr;
-}
-
-static int getStringProp(IPropertyStore *pProps, PROPERTYKEY key, const char **out) {
-    HRESULT hr = S_OK;
-    
-    PROPVARIANT var;
-
-    PropVariantInit(&var);
-    
-    hr = pProps->GetValue(key, &var);
-    if (FAILED(hr)) {
-        goto exit;
-    }
-
-    *out = (const char *)calloc(sizeof(char), 1024);
-    hr = snprintf((char *)*out, 1024, "%S", var.bstrVal);
-    if (FAILED(hr)) {
-        goto exit;
-    }
-
-exit:
-    PropVariantClear(&var); 
 
     return hr;
 }

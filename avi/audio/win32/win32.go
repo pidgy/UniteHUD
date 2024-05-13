@@ -12,8 +12,16 @@ import (
 	"unsafe"
 )
 
-// AudioCaptureDevice represents a connected device capable of capturing audio.
-type AudioCaptureDevice struct {
+type Flow int
+
+const (
+	FlowCapture Flow = iota
+	FlowRender
+	FlowCaptureRender
+)
+
+// AudioDevice represents a connected device capable of capturing audio.
+type AudioDevice struct {
 	Index int
 
 	Name        string
@@ -23,15 +31,17 @@ type AudioCaptureDevice struct {
 	Association string
 	JackSubType string
 	Description string
+
+	Flow Flow
 }
 
-func (a *AudioCaptureDevice) String() string {
+func (a *AudioDevice) String() string {
 	return fmt.Sprintf("%s (%s)", a.Description, a.Name)
 }
 
-// NewAudioCaptureDevice returns an AudioCaptureDevice based on an index or nil and an error.
-func NewAudioCaptureDevice(index int) (*AudioCaptureDevice, error) {
-	d := C.AudioCaptureDevice{}
+// NewAudioCaptureDevice returns an AudioDevice capable of capturing audio, based on an index.
+func NewAudioCaptureDevice(index int) (*AudioDevice, error) {
+	d := C.AudioDevice{}
 	defer free(&d)
 
 	r := C.NewAudioCaptureDevice(&d, C.int(index))
@@ -39,7 +49,7 @@ func NewAudioCaptureDevice(index int) (*AudioCaptureDevice, error) {
 		return nil, fmt.Errorf("failed to find video capture device: %d", r)
 	}
 
-	return &AudioCaptureDevice{
+	return &AudioDevice{
 		Index: index,
 
 		Name:        C.GoString(d.name),
@@ -49,10 +59,75 @@ func NewAudioCaptureDevice(index int) (*AudioCaptureDevice, error) {
 		Association: C.GoString(d.association),
 		JackSubType: C.GoString(d.jacksubtype),
 		Description: C.GoString(d.description),
+
+		Flow: FlowCapture,
 	}, nil
 }
 
-func free(d *C.AudioCaptureDevice) {
+// NewAudioCaptureRenderDevice returns an AudioDevice capable of both capturing and rendering audio, based on an index.
+func NewAudioCaptureRenderDevice(index int) (*AudioDevice, error) {
+	d := C.AudioDevice{}
+	defer free(&d)
+
+	r := C.NewAudioCaptureRenderDevice(&d, C.int(index))
+	if r < 0 {
+		return nil, fmt.Errorf("failed to find video capture device: %d", r)
+	}
+
+	return &AudioDevice{
+		Index: index,
+
+		Name:        C.GoString(d.name),
+		ID:          C.GoString(d.id),
+		GUID:        C.GoString(d.guid),
+		Format:      C.GoString(d.format),
+		Association: C.GoString(d.association),
+		JackSubType: C.GoString(d.jacksubtype),
+		Description: C.GoString(d.description),
+
+		Flow: FlowCaptureRender,
+	}, nil
+}
+
+// NewAudioRenderDevice returns an AudioDevice capable of rendering audio, based on an index.
+func NewAudioRenderDevice(index int) (*AudioDevice, error) {
+	d := C.AudioDevice{}
+	defer free(&d)
+
+	r := C.NewAudioRenderDevice(&d, C.int(index))
+	if r < 0 {
+		return nil, fmt.Errorf("failed to find video capture device: %d", r)
+	}
+
+	return &AudioDevice{
+		Index: index,
+
+		Name:        C.GoString(d.name),
+		ID:          C.GoString(d.id),
+		GUID:        C.GoString(d.guid),
+		Format:      C.GoString(d.format),
+		Association: C.GoString(d.association),
+		JackSubType: C.GoString(d.jacksubtype),
+		Description: C.GoString(d.description),
+
+		Flow: FlowRender,
+	}, nil
+}
+
+func (f Flow) String() string {
+	switch f {
+	case FlowCapture:
+		return "Capture"
+	case FlowRender:
+		return "Render"
+	case FlowCaptureRender:
+		return "Capture/Render"
+	default:
+		return "Invalid"
+	}
+}
+
+func free(d *C.AudioDevice) {
 	C.free(unsafe.Pointer(d.name))
 	d.name = nil
 	C.free(unsafe.Pointer(d.id))

@@ -4,7 +4,7 @@ extern "C" {
 
 #include <stdlib.h>
 
-typedef struct _AudioCaptureDevice {
+typedef struct _AudioDevice {
     const char *name;
     const char *id;
     const char *guid;
@@ -12,9 +12,11 @@ typedef struct _AudioCaptureDevice {
     const char *association;
     const char *jacksubtype;
     const char *description;
-} AudioCaptureDevice;
+} AudioDevice;
 
-int NewAudioCaptureDevice(AudioCaptureDevice *device, int index);
+int NewAudioCaptureDevice(AudioDevice *device, int index);
+int NewAudioCaptureRenderDevice(AudioDevice *device, int index);
+int NewAudioRenderDevice(AudioDevice *device, int index);
 
 #ifdef __cplusplus
 }
