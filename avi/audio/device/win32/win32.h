@@ -33,6 +33,35 @@ int NewAudioRenderDevice(AudioDevice *device, int index);
 #endif
 
 #ifdef __cplusplus
-template <class T> void release(T **ppT);
-static int _pstring(IPropertyStore *pProps, PROPERTYKEY key, const char **out);
+template <class T> void release(T **ppT)
+{
+    if (*ppT) {
+        (*ppT)->Release();
+        *ppT = NULL;
+    }
+};
+
+static int _pstring(IPropertyStore *pProps, PROPERTYKEY key, const char **out) {
+    HRESULT hr = S_OK;
+    
+    PROPVARIANT var;
+
+    PropVariantInit(&var);
+    
+    hr = pProps->GetValue(key, &var);
+    if (FAILED(hr)) {
+        goto exit;
+    }
+
+    *out = (const char *)calloc(sizeof(char), 1024);
+    hr = snprintf((char *)*out, 1024, "%S", var.bstrVal);
+    if (FAILED(hr)) {
+        goto exit;
+    }
+
+exit:
+    PropVariantClear(&var); 
+
+    return hr;
+}
 #endif

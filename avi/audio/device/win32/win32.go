@@ -23,6 +23,7 @@ const (
 // AudioDevice represents a connected device capable of capturing audio.
 type AudioDevice struct {
 	Index int
+	Flow
 
 	Name        string
 	ID          string
@@ -31,8 +32,6 @@ type AudioDevice struct {
 	Association string
 	JackSubType string
 	Description string
-
-	Flow Flow
 }
 
 // NewAudioCaptureDevice returns an AudioDevice capable of capturing audio, based on an index.
