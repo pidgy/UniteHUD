@@ -55,7 +55,16 @@ func NewAudioCaptureDevice(index int) (*AudioCaptureDevice, error) {
 func free(d *C.AudioCaptureDevice) {
 	C.free(unsafe.Pointer(d.name))
 	d.name = nil
-
 	C.free(unsafe.Pointer(d.id))
 	d.id = nil
+	C.free(unsafe.Pointer(d.guid))
+	d.guid = nil
+	C.free(unsafe.Pointer(d.format))
+	d.format = nil
+	C.free(unsafe.Pointer(d.association))
+	d.association = nil
+	C.free(unsafe.Pointer(d.jacksubtype))
+	d.jacksubtype = nil
+	C.free(unsafe.Pointer(d.description))
+	d.description = nil
 }
