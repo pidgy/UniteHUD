@@ -1,5 +1,20 @@
 #include "win32.h"
 
+int NewAudioCaptureDevice(AudioDevice *device, int index) 
+{
+    return newAudioDevice(device, index, EDataFlow::eCapture);
+}
+
+int NewAudioCaptureRenderDevice(AudioDevice *device, int index) 
+{
+    return newAudioDevice(device, index, EDataFlow::eAll);
+}
+
+int NewAudioRenderDevice(AudioDevice *device, int index) 
+{
+    return newAudioDevice(device, index, EDataFlow::eRender);
+}
+
 int newAudioDevice(AudioDevice *device, int index, EDataFlow eDataFlow) 
 {
     IMMDeviceEnumerator *pEnum       = NULL; // Audio device enumerator.
@@ -98,19 +113,4 @@ int newAudioDevice(AudioDevice *device, int index, EDataFlow eDataFlow)
         release(&pProps);
 
     return hr;
-}
-
-int NewAudioCaptureDevice(AudioDevice *device, int index) 
-{
-    return newAudioDevice(device, index, EDataFlow::eCapture);
-}
-
-int NewAudioCaptureRenderDevice(AudioDevice *device, int index) 
-{
-    return newAudioDevice(device, index, EDataFlow::eAll);
-}
-
-int NewAudioRenderDevice(AudioDevice *device, int index) 
-{
-    return newAudioDevice(device, index, EDataFlow::eRender);
 }

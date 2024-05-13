@@ -15,7 +15,7 @@
 
 #pragma comment(lib, "strmiids");
 
-int GetVideoCaptureDevice(int index, VideoCaptureDevice *device) 
+int NewVideoCaptureDevice(int index, VideoCaptureDevice *device) 
 {
     VARIANT       var;
     IEnumMoniker *pEnum    = NULL;

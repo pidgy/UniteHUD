@@ -35,7 +35,7 @@ type VideoCaptureDevice struct {
 func NewVideoCaptureDevice(index int) (*VideoCaptureDevice, error) {
 	d := C.VideoCaptureDevice{}
 
-	hr := C.GetVideoCaptureDevice(C.int(index), &d)
+	hr := C.NewVideoCaptureDevice(C.int(index), &d)
 	if hr != 0 {
 		return nil, errors.Errorf("failed to find device information: %d", hr)
 	}

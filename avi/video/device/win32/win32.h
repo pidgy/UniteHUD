@@ -16,7 +16,7 @@ typedef struct _VideoCaptureDevice
     long waveinid;
 } VideoCaptureDevice;
 
-int GetVideoCaptureDevice(int index, VideoCaptureDevice *device);
+int NewVideoCaptureDevice(int index, VideoCaptureDevice *device);
 
 #ifdef __cplusplus
 }

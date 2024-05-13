@@ -39,6 +39,8 @@ int NewAudioRenderDevice(AudioDevice *device, int index);
 const IID            _mmdeID     = __uuidof(MMDeviceEnumerator);
 const IID            _immdeID    = __uuidof(IMMDeviceEnumerator);
 
+int newAudioDevice(AudioDevice *device, int index, EDataFlow eDataFlow);
+
 template <class T> void release(T **ppT)
 {
     if (!*ppT) 
