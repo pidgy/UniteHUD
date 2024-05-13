@@ -1,31 +1,5 @@
 #include "win32.h"
 
-#include <windows.h>
-#include <stdio.h>
-#include <stdlib.h>
-
-#include <iostream>
-#include <sstream>
-#include <codecvt> 
-#include <locale>
-#include <comutil.h>
-#include <comdef.h>
-#include <string>
-
-#define INITGUID  // For PKEY_AudioEndpoint_GUID
-#include <mfidl.h>
-#include <mfapi.h>
-#include <mmdeviceapi.h>
-#include <mmsystem.h>
-#include <functiondiscoverykeys_devpkey.h>
-#include <uuids.h>
-
-#pragma comment(lib, "strmiids");
-
-template <class T> void release(T **ppT);
-
-static int getStringProp(IPropertyStore *pProps, PROPERTYKEY key, const char **out);
-
 int newAudioDevice(AudioDevice *device, int index, EDataFlow eDataFlow);
 
 int NewAudioCaptureDevice(AudioDevice *device, int index) {
@@ -38,30 +12,6 @@ int NewAudioCaptureRenderDevice(AudioDevice *device, int index) {
 
 int NewAudioRenderDevice(AudioDevice *device, int index) {
     return newAudioDevice(device, index, EDataFlow::eRender);
-}
-
-static int getStringProp(IPropertyStore *pProps, PROPERTYKEY key, const char **out) {
-    HRESULT hr = S_OK;
-    
-    PROPVARIANT var;
-
-    PropVariantInit(&var);
-    
-    hr = pProps->GetValue(key, &var);
-    if (FAILED(hr)) {
-        goto exit;
-    }
-
-    *out = (const char *)calloc(sizeof(char), 1024);
-    hr = snprintf((char *)*out, 1024, "%S", var.bstrVal);
-    if (FAILED(hr)) {
-        goto exit;
-    }
-
-exit:
-    PropVariantClear(&var); 
-
-    return hr;
 }
 
 int newAudioDevice(AudioDevice *device, int index, EDataFlow eDataFlow) {
@@ -122,27 +72,27 @@ int newAudioDevice(AudioDevice *device, int index, EDataFlow eDataFlow) {
         goto release;
     }
 
-    hr = getStringProp(pProps, PKEY_DeviceInterface_FriendlyName, &device->name);
+    hr = _pstring(pProps, PKEY_DeviceInterface_FriendlyName, &device->name);
     if (FAILED(hr)) {
         goto release;
     }
 
-    hr = getStringProp(pProps, PKEY_AudioEndpoint_GUID, &device->guid);
+    hr =  _pstring(pProps, PKEY_AudioEndpoint_GUID, &device->guid);
     if (FAILED(hr)) {
         goto release;
     }
 
-    hr = getStringProp(pProps, PKEY_AudioEndpoint_Association, &device->association);
+    hr =  _pstring(pProps, PKEY_AudioEndpoint_Association, &device->association);
     if (FAILED(hr)) {
         goto release;
     }
 
-    hr = getStringProp(pProps, PKEY_AudioEndpoint_JackSubType, &device->jacksubtype);
+    hr =  _pstring(pProps, PKEY_AudioEndpoint_JackSubType, &device->jacksubtype);
     if (FAILED(hr)) {
         goto release;
     }
 
-    hr = getStringProp(pProps, PKEY_Device_DeviceDesc, &device->description);
+    hr =  _pstring(pProps, PKEY_Device_DeviceDesc, &device->description);
     if (FAILED(hr)) {
         goto release;
     }
@@ -170,11 +120,34 @@ int newAudioDevice(AudioDevice *device, int index, EDataFlow eDataFlow) {
     return hr;
 }
 
+static int _pstring(IPropertyStore *pProps, PROPERTYKEY key, const char **out) {
+    HRESULT hr = S_OK;
+    
+    PROPVARIANT var;
+
+    PropVariantInit(&var);
+    
+    hr = pProps->GetValue(key, &var);
+    if (FAILED(hr)) {
+        goto exit;
+    }
+
+    *out = (const char *)calloc(sizeof(char), 1024);
+    hr = snprintf((char *)*out, 1024, "%S", var.bstrVal);
+    if (FAILED(hr)) {
+        goto exit;
+    }
+
+exit:
+    PropVariantClear(&var); 
+
+    return hr;
+}
+
 template <class T> void release(T **ppT)
 {
-    if (*ppT)
-    {
+    if (*ppT) {
         (*ppT)->Release();
         *ppT = NULL;
     }
-}
+};

@@ -12,7 +12,6 @@ func TestNewAudioCaptureDevice(t *testing.T) {
 	for index := 0; index < 100; index++ {
 		d, err := NewAudioCaptureDevice(index)
 		if err != nil {
-			// println("* Error:", err.Error(), "\n")
 			continue
 		}
 
@@ -34,7 +33,6 @@ func TestNewAudioCaptureRenderDevice(t *testing.T) {
 	for index := 0; index < 100; index++ {
 		d, err := NewAudioCaptureRenderDevice(index)
 		if err != nil {
-			// println("* Error:", err.Error(), "\n")
 			continue
 		}
 
@@ -56,7 +54,6 @@ func TestNewAudioRenderDevice(t *testing.T) {
 	for index := 0; index < 100; index++ {
 		d, err := NewAudioRenderDevice(index)
 		if err != nil {
-			// println("* Error:", err.Error(), "\n")
 			continue
 		}
 

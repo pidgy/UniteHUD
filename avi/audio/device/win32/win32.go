@@ -35,10 +35,6 @@ type AudioDevice struct {
 	Flow Flow
 }
 
-func (a *AudioDevice) String() string {
-	return fmt.Sprintf("%s (%s)", a.Description, a.Name)
-}
-
 // NewAudioCaptureDevice returns an AudioDevice capable of capturing audio, based on an index.
 func NewAudioCaptureDevice(index int) (*AudioDevice, error) {
 	d := C.AudioDevice{}
@@ -112,6 +108,10 @@ func NewAudioRenderDevice(index int) (*AudioDevice, error) {
 
 		Flow: FlowRender,
 	}, nil
+}
+
+func (a *AudioDevice) String() string {
+	return fmt.Sprintf("%s (%s)", a.Description, a.Name)
 }
 
 func (f Flow) String() string {
