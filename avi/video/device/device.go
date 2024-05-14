@@ -78,12 +78,12 @@ func init() {
 
 func Open() error {
 	if config.Current.Video.Capture.Device.Index == config.NoVideoCaptureDevice {
-		notify.Debug("Device: Disabled, ignorning call to open")
+		notify.Debug("Video: Disabled, ignorning call to open")
 		return nil
 	}
 
 	if active.index != config.NoVideoCaptureDevice {
-		notify.Debug("Device: %s, ignorning call to open active device", active.name)
+		notify.Debug("Video: %s, ignorning call to open active device", active.name)
 		return nil
 	}
 
@@ -92,7 +92,7 @@ func Open() error {
 	active.closeq = make(chan bool)
 	active.closedq = make(chan bool)
 
-	notify.System("Device: %s, opening...", active.name)
+	notify.System("Video: %s, opening...", active.name)
 
 	err := capture()
 	if err != nil {
@@ -149,12 +149,12 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 
 func Close() {
 	if active.index == config.NoVideoCaptureDevice {
-		notify.Debug("Device: Disabled, ignoring close")
+		notify.Debug("Video: Disabled, ignoring close")
 		return
 	}
 
-	notify.Debug("Device: %s, closing", active.name)
-	defer notify.Debug("Device: %s, closed", active.name)
+	notify.Debug("Video: %s, closing", active.name)
+	defer notify.Debug("Video: %s, closed", active.name)
 
 	stop()
 
@@ -169,14 +169,20 @@ func IsActive() bool {
 	return active.index != config.NoVideoCaptureDevice
 }
 
-func Name(d int) string {
-	if d == config.NoVideoCaptureDevice {
+func Name(index int) string {
+	if index == config.NoVideoCaptureDevice {
 		return "Disabled"
 	}
-	if d != config.NoVideoCaptureDevice && len(cached.devices.names) > d {
-		return cached.devices.names[d]
+
+	d, err := win32.NewVideoCaptureDevice(index)
+	if err != nil {
+		return fmt.Sprintf("%d", index)
 	}
-	return fmt.Sprintf("%d", d)
+	if d.Name == "" {
+		return fmt.Sprintf("%d", index)
+	}
+
+	return d.Name
 }
 
 func Restart() error {
@@ -193,7 +199,7 @@ func Sources() []int {
 func capture() error {
 	api := API(config.Current.Video.Capture.Device.API)
 
-	notify.Debug("Device: %s, capturing with %s API", active.name, APIName(api))
+	notify.Debug("Video: %s, capturing with %s API", active.name, APIName(api))
 
 	device, err := gocv.OpenVideoCaptureWithAPI(active.index, gocv.VideoCaptureAPI(api))
 	if err != nil {
@@ -220,7 +226,7 @@ func capture() error {
 			ok := device.Read(&mat)
 			if !ok {
 				defer reset()
-				notify.Error("Device: %s, failed to capture", active.name)
+				notify.Error("Video: %s, failed to capture", active.name)
 				lock.Unlock()
 				goto close
 			}
@@ -241,7 +247,7 @@ func capture() error {
 	close:
 		err := device.Close()
 		if err != nil {
-			notify.Warn("Device: %s, failed to close (%v)", active.name, err)
+			notify.Warn("Video: %s, failed to close (%v)", active.name, err)
 		}
 	}()
 
@@ -266,7 +272,7 @@ func poll(device *gocv.VideoCapture) properties {
 }
 
 func reset() {
-	notify.Debug("Device: %s, resetting", active.name)
+	notify.Debug("Video: %s, resetting", active.name)
 
 	lock.Lock()
 	defer lock.Unlock()
@@ -313,14 +319,14 @@ func set(device *gocv.VideoCapture) error {
 		return errors.Wrapf(fmt.Errorf("%.0f FPS", required.fps), "failed to set property")
 	}
 
-	notify.System("Device: %s, configured", active.name)
-	notify.System("Device:   Codec       %s → %s", p.codec, active.applied.codec)
-	notify.System("Device:   FPS         %.0f FPS → %.0f FPS", p.fps, active.applied.fps)
-	notify.System("Device:   Resolution  %s → %s", p.resolution, active.applied.resolution)
-	notify.System("Device:   Backend     %s → %s", p.backend, active.applied.backend)
-	notify.System("Device:   Bitrate     %.0f kb/s", active.applied.bitrate)
-	notify.System("Device:   BufferSize  %d", active.applied.buffersize)
-	notify.System("Device:   RGB         %t → %t", p.rgb, active.applied.rgb)
+	notify.System("Video: %s, configured", active.name)
+	notify.System("Video:   Codec       %s → %s", p.codec, active.applied.codec)
+	notify.System("Video:   FPS         %.0f FPS → %.0f FPS", p.fps, active.applied.fps)
+	notify.System("Video:   Resolution  %s → %s", p.resolution, active.applied.resolution)
+	notify.System("Video:   Backend     %s → %s", p.backend, active.applied.backend)
+	notify.System("Video:   Bitrate     %.0f kb/s", active.applied.bitrate)
+	notify.System("Video:   BufferSize  %d", active.applied.buffersize)
+	notify.System("Video:   RGB         %t → %t", p.rgb, active.applied.rgb)
 
 	return nil
 }
@@ -335,7 +341,7 @@ func stop() {
 			}
 			return
 		case <-t.C:
-			notify.Error("Device: %s, failed to stop", active.name)
+			notify.Error("Video: %s, failed to stop", active.name)
 			return
 		}
 	}
@@ -360,21 +366,18 @@ func storeAPIs() {
 
 func storeSources() {
 	for ; ; time.Sleep(time.Second * 5) {
-		ids := []int{}
 		names := []string{}
+		ids := []int{}
 
 		for i := 0; i < 10; i++ {
 			d, err := win32.NewVideoCaptureDevice(i)
 			if err != nil {
-				notify.Warn("Device: %d, Failed to read properties of device", i)
-				break
+				continue
 			}
-			if d.Name == "" {
-				break
+			if d.Name != "" {
+				names = append(names, d.Name)
+				ids = append(ids, i)
 			}
-
-			ids = append(ids, i)
-			names = append(names, d.Name)
 		}
 
 		for _, name := range names {

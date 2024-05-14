@@ -34,7 +34,7 @@ int NewVideoCaptureDevice(int index, VideoCaptureDevice *device)
         goto release;
     }
 
-    for (int i = index; i >= 0; i--) hr = pEnum->Next(1, &pMoniker, NULL);
+    for (int i = 0; i <= index; i++) hr = pEnum->Next(1, &pMoniker, NULL);
     if (FAILED(hr)) 
     {
         goto release;
