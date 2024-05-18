@@ -7,9 +7,9 @@ extern "C"
 
 #include <stdlib.h>
   typedef const int DeviceType;
-  
-  DeviceType DeviceTypeAudioCapture = 0x01;
-  DeviceType DeviceTypeVideoCapture = 0x02;
+
+  const DeviceType DeviceTypeAudioCapture = 0x01;
+  const DeviceType DeviceTypeVideoCapture = 0x02;
 
   typedef struct _Device
   {
@@ -20,6 +20,7 @@ extern "C"
   void DeviceFree(Device* device);
   int DeviceInit(Device* device, int index, DeviceType t);
   char* DeviceName(int index, DeviceType t);
+  char* DevicePath(int index, DeviceType t);
 
 #ifdef __cplusplus
 }
@@ -89,9 +90,21 @@ public:
     CoUninitialize();
   }
 
-  __props(int index, REFGUID category)
+  __props(int index, DeviceType type)
   {
     ULONG n;
+    GUID guid;
+
+    switch (type) {
+      case DeviceTypeAudioCapture:
+        guid = CLSID_AudioInputDeviceCategory;
+        break;
+      case DeviceTypeVideoCapture:
+        guid = CLSID_VideoInputDeviceCategory;
+        break;
+      default:
+        goto failed;
+    }
 
     if (IS_ERROR(CoInitializeEx(NULL, COINIT_MULTITHREADED))) {
       goto failed;
@@ -103,7 +116,7 @@ public:
       goto failed;
     }
 
-    _result = _dev->CreateClassEnumerator(category, &_enum, 0);
+    _result = _dev->CreateClassEnumerator(guid, &_enum, 0);
     if (FAILED(_result)) {
       goto failed;
     }
@@ -169,23 +182,10 @@ public:
 
 } _props;
 
-GUID
-_toGUID(DeviceType t)
-{
-  switch (t) {
-    case DeviceTypeAudioCapture:
-      return CLSID_AudioInputDeviceCategory;
-    case DeviceTypeVideoCapture:
-      return CLSID_VideoInputDeviceCategory;
-    default:
-      return GUID{};
-  }
-}
-
 static int
-newDevice(Device* device, int index, GUID category)
+_deviceInit(Device* device, int index, DeviceType type)
 {
-  _props props(index, category);
+  _props props(index, type);
   if (!props) {
     return props.result();
   }
@@ -196,6 +196,17 @@ newDevice(Device* device, int index, GUID category)
   device->Description = props.string(L"Description");
 
   return props.result();
+}
+
+static char*
+_deviceProp(int index, DeviceType type, LPCOLESTR prop)
+{
+  _props props(index, type);
+  if (!props) {
+    return NULL;
+  }
+
+  return props.string(prop);
 }
 
 #endif

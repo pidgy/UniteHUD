@@ -9,18 +9,19 @@ DeviceFree(Device* device)
 }
 
 int
-DeviceInit(Device* device, int index, DeviceType t)
+DeviceInit(Device* device, int index, DeviceType type)
 {
-  return newDevice(device, index, _toGUID(t));
+  return _deviceInit(device, index, type);
 }
 
 char*
-DeviceName(int index, DeviceType t)
+DeviceName(int index, DeviceType type)
 {
-  _props props(index, _toGUID(t));
-  if (!props) {
-    return NULL;
-  }
+  return _deviceProp(index, type, L"FriendlyName");
+}
 
-  return props.string(L"FriendlyName");
+char*
+DevicePath(int index, DeviceType type)
+{
+  return _deviceProp(index, type, L"DevicePath");
 }
