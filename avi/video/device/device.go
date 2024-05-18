@@ -11,9 +11,9 @@ import (
 	"gocv.io/x/gocv"
 	"golang.org/x/exp/slices"
 
+	"github.com/pidgy/unitehud/avi/device"
 	"github.com/pidgy/unitehud/avi/img"
 	"github.com/pidgy/unitehud/avi/img/splash"
-	"github.com/pidgy/unitehud/avi/video/device/win32"
 	"github.com/pidgy/unitehud/avi/video/fps"
 	"github.com/pidgy/unitehud/avi/video/monitor"
 	"github.com/pidgy/unitehud/core/config"
@@ -126,7 +126,7 @@ func Capture() (*image.RGBA, error) {
 	return CaptureRect(image.Rectangle{Max: required.resolution})
 }
 
-func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
+func CaptureRect(r image.Rectangle) (*image.RGBA, error) {
 	lock.RLock()
 	defer lock.RUnlock()
 
@@ -134,17 +134,17 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 		return nil, nil
 	}
 
-	if !rect.In(monitor.MainResolution) {
-		return nil, fmt.Errorf("illegal boundaries: %s outside %s", rect, monitor.MainResolution)
+	if !r.In(monitor.MainResolution) {
+		return nil, fmt.Errorf("illegal boundaries: %s outside %s", r, monitor.MainResolution)
 	}
 
 	mrect := image.Rect(0, 0, size[1], size[0])
 
-	if !rect.In(mrect) {
-		return splash.AsRGBA(splash.Invalid()), fmt.Errorf("illegal boundaries: %s outside %s", rect, mrect)
+	if !r.In(mrect) {
+		return splash.AsRGBA(splash.Invalid()), fmt.Errorf("illegal boundaries: %s outside %s", r, mrect)
 	}
 
-	return img.RGBA(mat.Region(rect))
+	return img.RGBA(mat.Region(r))
 }
 
 func Close() {
@@ -174,15 +174,13 @@ func Name(index int) string {
 		return "Disabled"
 	}
 
-	d, err := win32.NewVideoCaptureDevice(index)
+	n, err := device.VideoCaptureDeviceName(index)
 	if err != nil {
-		return fmt.Sprintf("%d", index)
-	}
-	if d.Name == "" {
+		notify.Error("Video: Failed to find capture device name (%v)", err)
 		return fmt.Sprintf("%d", index)
 	}
 
-	return d.Name
+	return n
 }
 
 func Restart() error {
@@ -370,7 +368,7 @@ func storeSources() {
 		ids := []int{}
 
 		for i := 0; i < 10; i++ {
-			d, err := win32.NewVideoCaptureDevice(i)
+			d, err := device.NewVideoCaptureDevice(i)
 			if err != nil {
 				continue
 			}

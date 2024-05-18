@@ -62,7 +62,7 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 
 	dst, err := src.Compatible()
 	if err != nil {
-		return nil, fmt.Errorf("Could not Create Compatible DC (%d)", getLastError())
+		return nil, fmt.Errorf("could not create compatible DC (%d)", getLastError())
 	}
 	defer dst.Delete()
 
