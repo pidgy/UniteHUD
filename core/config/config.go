@@ -197,7 +197,7 @@ func (c *Config) Reset() error {
 }
 
 func (c *Config) Save() error {
-	notify.System("Config: Saving %s profile (%s)", c.Device, c.File())
+	notify.System("[Config] Saving %s profile (%s)", c.Device, c.File())
 
 	f, err := os.Create(c.File())
 	if err != nil {
@@ -365,11 +365,11 @@ func (c *Config) UnsetHiddenThemes() {
 	}
 
 	if len(failed) > 0 {
-		notify.Warn("Config: Failed to apply default themes (%s)", strings.Join(failed, ", "))
+		notify.Warn("[Config] Failed to apply default themes (%s)", strings.Join(failed, ", "))
 	}
 
 	if len(applied) > 0 {
-		notify.System("Config: Default themes applied to %s", strings.Join(applied, ", "))
+		notify.System("[Config] Default themes applied to %s", strings.Join(applied, ", "))
 	}
 }
 
@@ -479,7 +479,7 @@ func (c *Config) pointFiles(t *team.Team) []filter.Filter {
 		}
 		if info.IsDir() {
 			if info.Name() != "points" {
-				notify.Warn("Config: Skipping templates from %s%s", root, info.Name())
+				notify.Warn("[Config] Skipping templates from %s%s", root, info.Name())
 				return filepath.SkipDir
 			}
 		}
@@ -489,7 +489,7 @@ func (c *Config) pointFiles(t *team.Team) []filter.Filter {
 		return nil
 	})
 	if err != nil {
-		notify.Error("Config: Failed to read from \"point\" directory \"%s\" (%v)", root, err)
+		notify.Error("[Config] Failed to read from \"point\" directory \"%s\" (%v)", root, err)
 		return nil
 	}
 
@@ -510,7 +510,7 @@ func (c *Config) pointFiles(t *team.Team) []filter.Filter {
 
 		value, err := strconv.Atoi(v)
 		if err != nil {
-			notify.Warn("Config: Failed to invalidate \"%s\" file \"%s\" (%v)", root, file, err)
+			notify.Warn("[Config] Failed to invalidate \"%s\" file \"%s\" (%v)", root, file, err)
 			continue
 		}
 
@@ -533,7 +533,7 @@ func (c *Config) scoreFiles(t *team.Team) []filter.Filter {
 		}
 		if info.IsDir() {
 			if info.Name() != "score" {
-				notify.Warn("Config: Skipping \"%s%s\"", root, info.Name())
+				notify.Warn("[Config] Skipping \"%s%s\"", root, info.Name())
 				return filepath.SkipDir
 			}
 		}
@@ -543,7 +543,7 @@ func (c *Config) scoreFiles(t *team.Team) []filter.Filter {
 		return nil
 	})
 	if err != nil {
-		notify.Error("Config: Failed to read from \"score\" directory \"%s\" (%v)", root, err)
+		notify.Error("[Config] Failed to read from \"score\" directory \"%s\" (%v)", root, err)
 		return nil
 	}
 
@@ -587,7 +587,7 @@ func Load(device string) error {
 	defer func() {
 		r := recover()
 		if r != nil {
-			notify.Warn("Config: Corrupted .unitehud file (%s)", Current.File())
+			notify.Warn("[Config] Corrupted .unitehud file (%s)", Current.File())
 			recovered(r)
 		}
 	}()
@@ -598,7 +598,7 @@ func Load(device string) error {
 
 	defer validate()
 
-	notify.System("Config: Loading %s profile (%s)", device, Current.File())
+	notify.System("[Config] Loading %s profile (%s)", device, Current.File())
 
 	ok := open()
 	if !ok {
@@ -691,7 +691,7 @@ func recovered(r interface{}) {
 	case string:
 		s = e
 	}
-	notify.Debug("Config: Recovered from %s", s)
+	notify.Debug("[Config] Recovered from %s", s)
 }
 
 func validate() {
@@ -779,7 +779,7 @@ func validate() {
 		for subcategory, templates := range Current.templates[category] {
 			for _, t := range templates {
 				if t.Empty() {
-					notify.Error("Config: Failed to read \"%s/%s\" template from file \"%s\"", category, subcategory, t.File)
+					notify.Error("[Config] Failed to read \"%s/%s\" template from file \"%s\"", category, subcategory, t.File)
 					continue
 				}
 			}

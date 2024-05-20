@@ -42,7 +42,7 @@ func Clock() {
 
 		matrix, img, err := capture(config.Current.XY.Time)
 		if err != nil {
-			notify.Error("Detect: Failed to capture clock area (%v)", err)
+			notify.Error("[Detect] Failed to capture clock area (%v)", err)
 			matrix.Close()
 			continue
 		}
@@ -59,7 +59,7 @@ func Clock() {
 		if images {
 			notify.Time, err = match.AsTimeImage(matrix, kitchen)
 			if err != nil {
-				notify.Error("Detect: Failed to identify time (%v)", err)
+				notify.Error("[Detect] Failed to identify time (%v)", err)
 				matrix.Close()
 				continue
 			}
@@ -88,7 +88,7 @@ func Defeated() {
 
 		matrix, img, err := capture(area)
 		if err != nil {
-			notify.Error("Detect: Failed to capture area (%v)", err)
+			notify.Error("[Detect] Failed to capture area (%v)", err)
 			matrix.Close()
 			continue
 		}
@@ -120,7 +120,7 @@ func Defeated() {
 				str = fmt.Sprintf("%s with unscored points (%d)", str, server.Holding())
 			}
 
-			notify.Feed(team.Self.NRGBA, "Detect: [%s] [Self] %s", server.Clock(), str)
+			notify.Feed(team.Self.NRGBA, "[Detect] [%s] [Self] %s", server.Clock(), str)
 
 			if state.Occured(time.Minute, state.Killed, state.KilledWithPoints, state.KilledWithoutPoints) {
 				server.SetDefeated()
@@ -147,7 +147,7 @@ func Energy() {
 
 		matrix, img, err := capture(config.Current.XY.Energy)
 		if err != nil {
-			notify.Error("Detect: Failed to capture energy area (%v)", err)
+			notify.Error("[Detect] Failed to capture energy area (%v)", err)
 			matrix.Close()
 			continue
 		}
@@ -183,7 +183,7 @@ func Energy() {
 
 		last := state.HoldingEnergy.Occured(time.Hour)
 		if last == nil || last.Value != points {
-			notify.Feed(team.Self.NRGBA, "Detect: [%s] [Self] Holding %d %s", server.Clock(), points, plural("point", points))
+			notify.Feed(team.Self.NRGBA, "[Detect] [%s] [Self] Holding %d %s", server.Clock(), points, plural("point", points))
 			state.Add(state.HoldingEnergy, server.Clock(), points)
 
 			server.SetEnergy(points)
@@ -191,7 +191,7 @@ func Energy() {
 			if images {
 				notify.Energy, err = match.AsAeosImage(matrix, points)
 				if err != nil {
-					notify.Warn("Detect: [Self] Failed to identify (%v)", err)
+					notify.Warn("[Detect] [Self] Failed to identify (%v)", err)
 				}
 			}
 
@@ -218,7 +218,7 @@ func Objectives() {
 
 		matrix, img, err := capture(config.Current.XY.Objectives)
 		if err != nil {
-			notify.Error("Detect: Failed to capture objective area (%v)", err)
+			notify.Error("[Detect] Failed to capture objective area (%v)", err)
 			matrix.Close()
 			continue
 		}
@@ -271,7 +271,7 @@ func Objectives() {
 		}
 
 		state.Add(event, server.Clock(), 0)
-		notify.Feed(team.NRGBA, "Detect: [%s] %s", server.Clock(), event)
+		notify.Feed(team.NRGBA, "[Detect] [%s] %s", server.Clock(), event)
 	}
 }
 
@@ -287,7 +287,7 @@ func PressButtonToScore() {
 
 		matrix, img, err := capture(config.Current.ScoringOption())
 		if err != nil {
-			notify.Error("Detect: [%s] [Self] Failed to capture energy area (%v)", server.Clock(), err)
+			notify.Error("[Detect] [%s] [Self] Failed to capture energy area (%v)", server.Clock(), err)
 			matrix.Close()
 			continue
 		}
@@ -300,7 +300,7 @@ func PressButtonToScore() {
 
 		state.Add(state.PressButtonToScore, server.Clock(), team.Energy.Holding)
 
-		notify.Feed(team.Self.NRGBA, "Detect: [%s] [Self] Score option present (%d)", server.Clock(), team.Energy.Holding)
+		notify.Feed(team.Self.NRGBA, "[Detect] [%s] [Self] Score option present (%d)", server.Clock(), team.Energy.Holding)
 
 		matrix.Close()
 
@@ -321,13 +321,13 @@ func Preview() {
 	preview := func() {
 		img, err := video.Capture()
 		if err != nil {
-			notify.Error("Detect: Failed to capture preview (%v)", err)
+			notify.Error("[Detect] Failed to capture preview (%v)", err)
 			return
 		}
 		notify.Preview = img
 
 		if config.Current.Video.Capture.Window.Name != window && config.Current.Video.Capture.Device.Index != device {
-			notify.System("Detect: Input resolution calculated (%dpx, %dpx)", img.Bounds().Max.X, img.Bounds().Max.Y)
+			notify.System("[Detect] Input resolution calculated (%dpx, %dpx)", img.Bounds().Max.X, img.Bounds().Max.Y)
 		}
 
 		window = config.Current.Video.Capture.Window.Name
@@ -367,7 +367,7 @@ func Scores(name string) {
 
 		matrix, img, err := capture(config.Current.XY.Scores)
 		if err != nil {
-			notify.Error("Detect: Failed to capture score area (%v)", err)
+			notify.Error("[Detect] Failed to capture score area (%v)", err)
 			matrix.Close()
 			continue
 		}
@@ -382,7 +382,7 @@ func Scores(name string) {
 		case match.Override:
 			state.Add(state.ScoreOverride, server.Clock(), p)
 			server.SetScore(m.Team, -m.Team.Duplicate.Replaces)
-			notify.Feed(m.Team.NRGBA, "Detect: [%s] [%s] -%d (override)", server.Clock(), strings.Title(m.Team.Name), m.Team.Duplicate.Replaces)
+			notify.Feed(m.Team.NRGBA, "[Detect] [%s] [%s] -%d (override)", server.Clock(), strings.Title(m.Team.Name), m.Team.Duplicate.Replaces)
 
 			fallthrough
 		case match.Found:
@@ -393,7 +393,7 @@ func Scores(name string) {
 				title = fmt.Sprintf("[%s] [%s]", strings.Title(m.Team.Alias), strings.Title(m.Team.Name))
 			}
 
-			notify.Feed(m.Team.NRGBA, "Detect: [%s] %s +%d", server.Clock(), title, p)
+			notify.Feed(m.Team.NRGBA, "[Detect] [%s] %s +%d", server.Clock(), title, p)
 
 			state.Add(state.ScoredBy(m.Team.Name), server.Clock(), p)
 
@@ -404,7 +404,7 @@ func Scores(name string) {
 			if images {
 				score, err := m.AsImage(matrix, p)
 				if err != nil {
-					notify.Error("Detect: [%s] [%s] Failed to identify score (%v)", server.Clock(), m.Team, err)
+					notify.Error("[Detect] [%s] [%s] Failed to identify score (%v)", server.Clock(), m.Team, err)
 					break
 				}
 
@@ -424,17 +424,17 @@ func Scores(name string) {
 		case match.Missed:
 			state.Add(state.ScoreMissedBy(m.Team.Name), server.Clock(), p)
 
-			notify.Warn("Detect: [%s] [%s] [Missed] +%d", server.Clock(), m.Team, p)
+			notify.Warn("[Detect] [%s] [%s] [Missed] +%d", server.Clock(), m.Team, p)
 		case match.Invalid:
-			notify.Error("Detect: [%s] [%s] [Invalid] +%d", server.Clock(), m.Team, p)
+			notify.Error("[Detect] [%s] [%s] [Invalid] +%d", server.Clock(), m.Team, p)
 		case match.Duplicate:
-			notify.Warn("Detect: [%s] [%s] [Duplicate] +%d", server.Clock(), m.Team, p)
+			notify.Warn("[Detect] [%s] [%s] [Duplicate] +%d", server.Clock(), m.Team, p)
 		}
 
 		if config.Current.Record {
 			err = save.Image(img, matrix, m.Team.Crop(m.Point), p, m.Team.Name, r.String(), server.Clock())
 			if err != nil {
-				notify.Warn("Detect: Failed to save image (%v)", err)
+				notify.Warn("[Detect] Failed to save image (%v)", err)
 			}
 		}
 
@@ -464,7 +464,7 @@ func States() {
 
 		matrix, img, err := capture(area)
 		if err != nil {
-			notify.Error("Detect: Failed to capture state area (%v)", err)
+			notify.Error("[Detect] Failed to capture state area (%v)", err)
 			matrix.Close()
 			continue
 		}
@@ -508,7 +508,7 @@ func States() {
 			if e == state.SurrenderOrange {
 				t = team.Orange
 			}
-			notify.Feed(t.NRGBA, "Detect: [%s] Surrendered (%d)", t, server.Score(team.Orange))
+			notify.Feed(t.NRGBA, "[Detect] [%s] Surrendered", t)
 
 			server.SetScoreSurrendered(t)
 
@@ -516,7 +516,7 @@ func States() {
 		case state.MatchEnding:
 			o, p, self := server.Scores()
 			if o+p+self != 0 {
-				notify.Feed(team.Game.NRGBA, "Detect: [%s] Match ended", team.Game)
+				notify.Feed(team.Game.NRGBA, "[Detect] [%s] Match ended", team.Game)
 
 				// Purple score and objective results.
 				regielekis, regices, regirocks, registeels, rayquazas := server.Objectives(team.Purple)
@@ -524,7 +524,7 @@ func States() {
 					team.Purple.NRGBA,
 					"Detect: [%s] %s [+%d %s] [+%d %s] [+%d %s] [+%d %s] [+%d Rayquazas]",
 					team.Purple,
-					server.ScoreString(p),
+					server.ScoreString(team.Purple),
 					regielekis, plural("Regieleki", regielekis),
 					regices, plural("Regice", regices),
 					regirocks, plural("Regirock", regirocks),
@@ -538,7 +538,7 @@ func States() {
 					team.Orange.NRGBA,
 					"Detect: [%s] %s [+%d %s] [+%d %s] [+%d %s] [+%d %s] [+%d Rayquazas]",
 					team.Orange,
-					server.ScoreString(o),
+					server.ScoreString(team.Orange),
 					regielekis, plural("Regieleki", regielekis),
 					regices, plural("Regice", regices),
 					regirocks, plural("Regirock", regirocks),
@@ -547,17 +547,16 @@ func States() {
 				)
 
 				// Self score and objective results.
-				notify.Feed(team.Self.NRGBA, "Detect: [%s] %d", team.Self, self)
-
-				pwin := ""
-				owin := ""
-				if p > o {
-					pwin = "(Won)"
-				} else if o > p {
-					owin = "(Won)"
-				}
+				notify.Feed(team.Self.NRGBA, "[Detect] [%s] %d", team.Self, self)
 
 				if !config.Current.Advanced.Notifications.Disabled.MatchStopped {
+					pwin, owin := "", ""
+					if p > o {
+						pwin = "(Won)"
+					} else if o > p {
+						owin = "(Won)"
+					}
+
 					desktop.Notification("Match Ended").
 						Says("Purple: %d %s\nOrange: %d %s\nYou scored %d points", p, pwin, o, owin, self).
 						When(clicked.OpenUniteHUD).
@@ -585,7 +584,7 @@ func Window() {
 
 		err := window.Reattach()
 		if err != nil {
-			notify.Error("Detect: Failed to reattach window (%v)", err)
+			notify.Error("[Detect] Failed to reattach window (%v)", err)
 			continue
 		}
 	}
@@ -628,7 +627,7 @@ func energyScoredConfirm(before, after int, at time.Time) {
 
 	// Confirm user was not defeated with points since the goal.
 	if state.KilledWithPoints.Occured(time.Second*2) != nil {
-		notify.Warn("Detect: [%s] [Self] [Missed] +%d Defeated before scoring", server.Clock(), before)
+		notify.Warn("[Detect] [%s] [Self] [Missed] +%d Defeated before scoring", server.Clock(), before)
 		return
 	}
 
@@ -636,7 +635,7 @@ func energyScoredConfirm(before, after int, at time.Time) {
 	if p != nil && !p.Verified {
 		p.Verified = true
 	} else {
-		notify.Warn("Detect: [%s] [Self] [Missed] +%d Failed to find \"Help Text\"", server.Clock(), before)
+		notify.Warn("[Detect] [%s] [Self] [Missed] +%d Failed to find \"Help Text\"", server.Clock(), before)
 		return
 	}
 
@@ -652,7 +651,7 @@ func energyScoredConfirm(before, after int, at time.Time) {
 
 	state.Add(state.PostScore, server.Clock(), before)
 
-	notify.Feed(team.Self.NRGBA, "Detect: [%s] [%s] [%s] +%d", server.Clock(), team.Purple, team.Self, before)
+	notify.Feed(team.Self.NRGBA, "[Detect] [%s] [%s] [%s] +%d", server.Clock(), team.Purple, team.Self, before)
 }
 
 func plural(s string, size int) string {

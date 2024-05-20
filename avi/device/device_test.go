@@ -60,6 +60,7 @@ func TestNewVideoCaptureDevice(t *testing.T) {
 		println("\t* Description: ", d.Description)
 		println("\t\t* Type:         ", d.Path.Type)
 		println("\t\t* VendorID:     ", d.Path.VendorID)
+		println("\t* Path:         ", d.Path.String())
 		println()
 	}
 }

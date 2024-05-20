@@ -125,7 +125,7 @@ func (m *Match) first(matrix gocv.Mat) (Result, int) {
 
 	return sliceToValue(points)
 
-	// XXX: Do we need to validate?
+	// TODO: Do we need to validate?
 	//
 	// r, p := sliceToValue(points)
 	// if r != Found {
@@ -205,7 +205,8 @@ func (m *Match) regular(matrix gocv.Mat) (Result, int) {
 			if maxv < m.Team.Acceptance {
 				continue
 			}
-			// XXX: What does this do? Breaks 120 (Falinks scores).
+
+			// TODO: What does this do? Breaks 120 (Falinks scores).
 			// if round > 0 && maxp.X > templates[i].Mat.Cols() {
 			// 	maxp.X = 0
 			// }

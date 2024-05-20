@@ -8,8 +8,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/pidgy/unitehud/avi/audio/device"
-	"github.com/pidgy/unitehud/avi/video/device/win32"
-	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/notify"
 )
 
@@ -59,46 +57,6 @@ func New(ctx *malgo.AllocatedContext, name string) (*Device, error) {
 	}
 
 	return disabled, fmt.Errorf("failed to find capture device: %s", name)
-}
-
-func NewFromVideoCaptureDevice(ctx *malgo.AllocatedContext) (*Device, error) {
-	if config.Current.Video.Capture.Device.Index == config.NoVideoCaptureDevice {
-		return disabled, nil
-	}
-
-	d32, err := win32.NewVideoCaptureDevice(config.Current.Video.Capture.Device.Index)
-	if err != nil {
-		return disabled, err
-	}
-
-	dev := [256]byte{}
-	for i, s := range d32.Path {
-		dev[i] = byte(s)
-	}
-
-	info, err := ctx.DeviceInfo(malgo.Capture, malgo.DeviceID(dev), malgo.Shared)
-	if err != nil {
-		return disabled, err
-	}
-
-	d := &Device{
-		ID:      info.ID.String(),
-		Formats: info.Formats,
-
-		name:      info.Name(),
-		isDefault: info.IsDefault != 0,
-
-		config: malgo.DefaultDeviceConfig(malgo.Capture),
-	}
-
-	d.config.Capture.Format = malgo.FormatS16
-	d.config.Capture.Channels = 1
-	d.config.Playback.Format = malgo.FormatS16
-	d.config.Playback.Channels = 1
-	d.config.SampleRate = 44100
-	d.config.Alsa.NoMMap = 1
-
-	return d, nil
 }
 
 func (d *Device) Active() bool {

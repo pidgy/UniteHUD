@@ -60,15 +60,17 @@ type info struct {
 }
 
 type objective struct {
-	Name string `json:"name"`
-	Team string `json:"team"`
-	Time int64  `json:"time"`
+	Name        string `json:"name"`
+	Team        string `json:"team"`
+	Time        int64  `json:"time"`
+	Surrendered bool   `json:"surrendered"`
 }
 
 type score struct {
-	Team  string `json:"team"`
-	Value int    `json:"value"`
-	KOs   int    `json:"kos"`
+	Team        string `json:"team"`
+	Value       int    `json:"value"`
+	KOs         int    `json:"kos"`
+	Surrendered bool   `json:"surrendered"`
 }
 
 var current = &info{
@@ -383,11 +385,20 @@ func Score(t *team.Team) int {
 	}
 }
 
-func ScoreString(v int) string {
-	if v == -1 {
-		return "Surrendered"
+func ScoreString(t *team.Team) string {
+	switch t {
+	case team.Purple:
+		if current.game.Purple.Surrendered {
+			return fmt.Sprintf("%d (SND)", current.game.Purple.Value)
+		}
+		return fmt.Sprintf("%d", current.game.Purple.Value)
+	case team.Orange:
+		if current.game.Orange.Surrendered {
+			return fmt.Sprintf("%d (SND)", current.game.Orange.Value)
+		}
+		return fmt.Sprintf("%d", current.game.Orange.Value)
 	}
-	return fmt.Sprintf("%d", v)
+	return fmt.Sprintf("0 (Unknown Team %s)", t)
 }
 
 func Scores() (orange, purple, self int) {
@@ -557,9 +568,9 @@ func SetScore(t *team.Team, v int) {
 func SetScoreSurrendered(t *team.Team) {
 	switch t {
 	case team.Purple:
-		current.game.Purple.Value = -1
+		current.game.Purple.Surrendered = true
 	case team.Orange:
-		current.game.Orange.Value = -1
+		current.game.Orange.Surrendered = true
 	}
 }
 
@@ -613,16 +624,19 @@ func (i *info) client(r *http.Request) (time.Time, bool) {
 func reset() *game {
 	return &game{
 		Purple: &score{
-			Team:  team.Purple.Name,
-			Value: 0,
+			Team:        team.Purple.Name,
+			Value:       0,
+			Surrendered: false,
 		},
 		Orange: &score{
-			Team:  team.Orange.Name,
-			Value: 0,
+			Team:        team.Orange.Name,
+			Value:       0,
+			Surrendered: false,
 		},
 		Self: &score{
-			Team:  team.Self.Name,
-			Value: 0,
+			Team:        team.Self.Name,
+			Value:       0,
+			Surrendered: false,
 		},
 		Seconds:   0,
 		Energy:    0,

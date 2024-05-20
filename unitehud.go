@@ -95,9 +95,7 @@ func signals() {
 }
 
 func main() {
-	defer ui.New().
-		OnClose(func() { close(sigq) }).
-		Open()
+	defer ui.New().OnClose(func() { close(sigq) }).Open()
 
 	err := process.Start()
 	if err != nil {
