@@ -1,0 +1,16 @@
+# github.com/rodrigocfd/windigo v0.0.0-20230809154420-8faa606d9f5f
+## explicit; go 1.21
+github.com/rodrigocfd/windigo/internal/proc
+github.com/rodrigocfd/windigo/internal/util
+github.com/rodrigocfd/windigo/win
+github.com/rodrigocfd/windigo/win/co
+github.com/rodrigocfd/windigo/win/com/autom
+github.com/rodrigocfd/windigo/win/com/autom/automco
+github.com/rodrigocfd/windigo/win/com/autom/automvt
+github.com/rodrigocfd/windigo/win/com/com
+github.com/rodrigocfd/windigo/win/com/com/comco
+github.com/rodrigocfd/windigo/win/com/com/comvt
+github.com/rodrigocfd/windigo/win/com/dshow
+github.com/rodrigocfd/windigo/win/com/dshow/dshowco
+github.com/rodrigocfd/windigo/win/com/dshow/dshowvt
+github.com/rodrigocfd/windigo/win/errco
