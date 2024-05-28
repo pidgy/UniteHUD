@@ -41,13 +41,13 @@ func Close() {
 	}
 	menu.visible = false
 
-	notify.Debug("Tray: Closing")
+	notify.Debug("[Tray] Closing")
 	systray.Quit()
 }
 
 func Open(title, version string, exit func()) error {
-	notify.Debug("Tray: Opening...")
-	defer notify.Debug("Tray: Opened")
+	notify.Debug("[Tray] Opening...")
+	defer notify.Debug("[Tray] Opened")
 
 	go systray.Run(func() {
 		menu.header = header(title, version)
@@ -71,7 +71,7 @@ func Open(title, version string, exit func()) error {
 				menu.quit.event()
 			}
 		}
-	}, nil, func(s systray.SessionEvent) { notify.System("Tray: Session Event \"%s\"", s) })
+	}, nil, func(s systray.SessionEvent) { notify.System("[Tray] Session Event \"%s\"", s) })
 
 	return <-menu.errorq
 }
@@ -97,7 +97,7 @@ func StartStopEvent() bool {
 }
 
 func quit() toggle {
-	notify.Debug("Tray: Adding Quit")
+	notify.Debug("[Tray] Adding Quit")
 
 	systray.AddSeparator()
 
@@ -108,7 +108,7 @@ func quit() toggle {
 }
 
 func startstop() toggle {
-	notify.Debug("Tray: Adding Start/Stop")
+	notify.Debug("[Tray] Adding Start/Stop")
 
 	systray.AddSeparator()
 
@@ -119,7 +119,7 @@ func startstop() toggle {
 }
 
 func header(title, version string) toggle {
-	notify.Debug("Tray: Adding Title")
+	notify.Debug("[Tray] Adding Title")
 
 	systray.SetIcon(img.IconBytes("icon.ico"))
 	systray.SetTitle(title)
@@ -131,14 +131,14 @@ func header(title, version string) toggle {
 	return toggle{
 		MenuItem: t,
 		event: func() {
-			notify.Debug("Tray: Raising hwnd: %d", hwnd)
+			notify.Debug("[Tray] Raising hwnd: %d", hwnd)
 			wapi.RaiseWindow(hwnd)
 		},
 	}
 }
 
 func website() toggle {
-	notify.Debug("Tray: Adding Website")
+	notify.Debug("[Tray] Adding Website")
 
 	systray.AddSeparator()
 
@@ -147,7 +147,7 @@ func website() toggle {
 		event: func() {
 			err := open.Run("https://unitehud.dev")
 			if err != nil {
-				notify.Error("Tray: Failed to open unitehud.dev (%v)", err)
+				notify.Error("[Tray] Failed to open unitehud.dev (%v)", err)
 			}
 		},
 	}

@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"image"
 	"strings"
 	"time"
@@ -47,7 +48,7 @@ type videos struct {
 	platform capture
 	apis     capture
 
-	onevent func()
+	onevent func(bool)
 }
 
 func (g *GUI) audios(text float32) *audios {
@@ -261,123 +262,10 @@ func (g *GUI) areas(collection fonts.Collection) *areas {
 			},
 		},
 	}
-
-	// a.ko = &area.Widget{
-	// 	Text:     "KO",
-	// 	TextSize: unit.Sp(13),
-	// 	Theme:    collection.Calibri().Theme,
-	// 	Min:      config.Current.XY.KOs.Min,
-	// 	Max:      config.Current.XY.KOs.Max,
-	// 	NRGBA:    area.Locked,
-	// 	Match:    g.matchKOs,
-	// 	Cooldown: time.Millisecond * 1500,
-
-	// 	Capture: &area.Capture{
-	// 		Option:      "KO",
-	// 		File:        "ko_area.png",
-	// 		Base:        config.Current.XY.KOs,
-	// 		DefaultBase: config.Current.XY.KOs,
-	// 	},
-	// }
-
-	// a.objective = &area.Widget{
-	// 	Text:     "Objectives",
-	// 	TextSize: unit.Sp(13),
-	// 	Theme:    collection.Calibri().Theme,
-	// 	Min:      config.Current.XY.Objectives.Min,
-	// 	Max:      config.Current.XY.Objectives.Max,
-	// 	NRGBA:    area.Locked,
-	// 	Match:    g.matchObjectives,
-	// 	Cooldown: time.Second,
-
-	// 	Capture: &area.Capture{
-	// 		Option:      "Objective",
-	// 		File:        "objective_area.png",
-	// 		Base:        config.Current.XY.Objectives,
-	// 		DefaultBase: config.Current.XY.Objectives,
-	// 	},
-	// }
-
-	// a.energy = &area.Widget{
-	// 	Text:     "Aeos",
-	// 	TextSize: unit.Sp(13),
-	// 	Theme:    collection.Calibri().Theme,
-	// 	Min:      config.Current.XY.Energy.Min,
-	// 	Max:      config.Current.XY.Energy.Max,
-	// 	NRGBA:    area.Locked,
-	// 	Match:    g.matchEnergy,
-	// 	Cooldown: team.Energy.Delay,
-
-	// 	Capture: &area.Capture{
-	// 		Option:      "Aeos",
-	// 		File:        "aeos_area.png",
-	// 		Base:        config.Current.XY.Energy,
-	// 		DefaultBase: config.Current.XY.Energy,
-	// 	},
-	// }
-
-	// a.time = &area.Widget{
-	// 	Text:     "Time",
-	// 	TextSize: unit.Sp(12),
-	// 	Theme:    collection.Calibri().Theme,
-	// 	Min:      config.Current.XY.Time.Min,
-	// 	Max:      config.Current.XY.Time.Max,
-	// 	NRGBA:    area.Locked,
-	// 	Match:    g.matchTime,
-	// 	Cooldown: team.Time.Delay,
-
-	// 	Capture: &area.Capture{
-	// 		Option:      "Time",
-	// 		File:        "time_area.png",
-	// 		Base:        config.Current.XY.Time,
-	// 		DefaultBase: config.Current.XY.Time,
-	// 	},
-	// }
-
-	// a.score = &area.Widget{
-	// 	Text:          "Score",
-	// 	TextAlignLeft: true,
-	// 	Theme:         collection.Calibri().Theme,
-	// 	Min:           config.Current.XY.Scores.Min,
-	// 	Max:           config.Current.XY.Scores.Max,
-	// 	NRGBA:         area.Locked,
-	// 	Match:         g.matchScore,
-	// 	Cooldown:      team.Purple.Delay,
-
-	// 	Capture: &area.Capture{
-	// 		Option:      "Score",
-	// 		File:        "score_area.png",
-	// 		Base:        config.Current.XY.Scores,
-	// 		DefaultBase: config.Current.XY.Scores,
-	// 	},
-	// }
-
-	// a.state = &area.Widget{
-	// 	Hidden: true,
-
-	// 	Text:    "State",
-	// 	Subtext: strings.Title(match.NotFound.String()),
-	// 	Theme:   collection.Calibri().Theme,
-	// 	NRGBA:   area.Locked.Alpha(0),
-	// 	Match:   g.matchState,
-	// 	Min:     image.Pt(0, 0),
-	// 	Max:     image.Pt(150, 25),
-
-	// 	Capture: &area.Capture{
-	// 		Option:      "State",
-	// 		File:        "state_area.png",
-	// 		Base:        video.StateArea(),
-	// 		DefaultBase: video.StateArea(),
-	// 	},
-	// }
-
-	// return a
 }
 
 func (g *GUI) videos(text float32) *videos {
-	v := &videos{
-		onevent: func() { /*No-op.*/ },
-	}
+	v := &videos{}
 
 	v.monitor = capture{
 		list: &checklist.Widget{
@@ -385,8 +273,6 @@ func (g *GUI) videos(text float32) *videos {
 			TextSize: text,
 			Items:    []*checklist.Item{},
 			Callback: func(i *checklist.Item, _ *checklist.Widget) (check bool) {
-				defer v.onevent()
-
 				video.Close()
 
 				config.Current.Video.Capture.Window.Name = i.Text
@@ -394,9 +280,10 @@ func (g *GUI) videos(text float32) *videos {
 					config.Current.Video.Capture.Window.Name = config.MainDisplay
 				}
 
-				defer v.monitor.populate(true)
-				defer v.window.populate(true)
-				defer v.device.populate(true)
+				v.monitor.populate(true)
+				v.window.populate(true)
+				v.device.populate(true)
+				v.apis.populate(true)
 
 				return true
 			},
@@ -436,29 +323,18 @@ func (g *GUI) videos(text float32) *videos {
 		},
 	}
 
-	// v.window = capture{
-	// 	list: &dropdown.Widget{
-	// 		Theme:    g.nav.Collection.NotoSans().Theme,
-	// 		TextSize: text,
-	// 		Items:    []*dropdown.Item{},
-	// 		Callback: func(i *dropdown.Item, _ *dropdown.Widget) bool { return true },
-	// 	},
-	// 	populate: func(videoCaptureDisabledEvent bool) {},
-	// }
-
 	v.window = capture{
 		list: &checklist.Widget{
 			Theme:    g.nav.Collection.NotoSans().Theme,
 			TextSize: text,
 			Items:    []*checklist.Item{},
 			Callback: func(i *checklist.Item, _ *checklist.Widget) (check bool) {
-				defer v.onevent()
-
 				video.Close()
 
 				defer v.window.populate(true)
 				defer v.monitor.populate(true)
 				defer v.device.populate(true)
+				defer v.apis.populate(true)
 
 				config.Current.Video.Capture.Window.Name = i.Text
 				if config.Current.Video.Capture.Window.Name == "" {
@@ -528,8 +404,6 @@ func (g *GUI) videos(text float32) *videos {
 				},
 			},
 			Callback: func(i *checklist.Item, _ *checklist.Widget) (check bool) {
-				defer v.onevent()
-
 				video.Close()
 
 				if i.Text == "Disabled" {
@@ -538,17 +412,17 @@ func (g *GUI) videos(text float32) *videos {
 
 				go func() {
 					config.Current.Video.Capture.Device.Index = i.Value
+					config.Current.Video.Capture.Device.Name = i.Text
 
 					err := video.Open()
 					if err != nil {
 						g.ToastError(err)
-						config.Current.Video.Capture.Window.Name = config.MainDisplay
-						config.Current.Video.Capture.Device.Index = config.NoVideoCaptureDevice
 					}
 
-					defer v.device.populate(i.Text == "Disabled")
-					defer v.window.populate(true)
-					defer v.monitor.populate(true)
+					v.device.populate(i.Text == "Disabled")
+					v.window.populate(true)
+					v.monitor.populate(true)
+					v.apis.populate(true)
 				}()
 
 				return true
@@ -603,20 +477,74 @@ func (g *GUI) videos(text float32) *videos {
 			TextSize: text,
 			Items:    []*checklist.Item{},
 			Callback: func(i *checklist.Item, this *checklist.Widget) (check bool) {
+				if i.Text == config.Current.Video.Capture.Device.API {
+					return true
+				}
+				if config.Current.Video.Capture.Device.Index == config.NoVideoCaptureDevice {
+					return false
+				}
+
+				defer v.device.populate(false)
+				defer v.window.populate(true)
+				defer v.monitor.populate(true)
+				defer v.apis.populate(true)
+
 				for _, item := range this.Items {
 					item.Checked.Value = false
 				}
 				i.Checked.Value = true
 
+				// Set the API, restart the capture device, and verify application.
+				prev := config.Current.Video.Capture.Device
 				config.Current.Video.Capture.Device.API = i.Text
 
-				for _, item := range v.device.list.Items {
-					if item.Checked.Value {
-						v.device.list.Callback(item, v.device.list)
-						return true
-					}
+				v.onevent(true) // Hide preview.
+
+				err := device.Restart()
+				if err != nil {
+					g.ToastOK(
+						config.Current.Video.Capture.Device.Name,
+						err.Error(),
+						OnToastOK(func() {
+							defer v.apis.populate(true)
+
+							config.Current.Video.Capture.Device = prev
+
+							err = device.Restart()
+							if err != nil {
+								g.ToastOK(
+									config.Current.Video.Capture.Device.Name,
+									err.Error(),
+									OnToastOK(func() {
+										defer v.apis.populate(true)
+
+										v.onevent(false) // Show preview.
+									}),
+								)
+								return
+							}
+
+							v.onevent(false) // Show preview.
+						}))
+
+					return false
 				}
 
+				if config.Current.Video.Capture.Device.API != i.Text {
+					g.ToastOK(
+						config.Current.Video.Capture.Device.Name,
+						fmt.Sprintf("Using default API for this device (%s)", config.Current.Video.Capture.Device.API),
+						OnToastOK(func() {
+							defer v.apis.populate(true)
+
+							v.onevent(false) // Show preview.
+						}),
+					)
+
+					return false
+				}
+
+				v.onevent(false) // Show preview.
 				return true
 			},
 		},
@@ -626,13 +554,15 @@ func (g *GUI) videos(text float32) *videos {
 				return
 			}
 
-			for i, api := range device.APIs() {
+			v.apis.list.Items = []*checklist.Item{}
+
+			for _, api := range device.APIs() {
 				v.apis.list.Items = append(v.apis.list.Items,
 					&checklist.Item{
 						Text:  api,
 						Value: device.API(api),
 						Checked: widget.Bool{
-							Value: api == config.Current.Video.Capture.Device.API || (i == 0 && config.Current.Video.Capture.Device.API == ""),
+							Value: api == config.Current.Video.Capture.Device.API,
 						},
 					},
 				)
@@ -658,8 +588,6 @@ func (g *GUI) videos(text float32) *videos {
 				},
 			},
 			Callback: func(i *checklist.Item, l *checklist.Widget) (check bool) {
-				defer v.onevent()
-
 				for _, item := range l.Items {
 					if item != i {
 						item.Checked.Value = false
@@ -671,20 +599,20 @@ func (g *GUI) videos(text float32) *videos {
 
 					err := config.Current.Save()
 					if err != nil {
-						notify.Error("UI: Failed to load %s configuration", config.Current.Device)
+						notify.Error("[UI] Failed to load %s configuration", config.Current.Device)
 						return false
 					}
 
 					err = config.Load(config.Current.Device)
 					if err != nil {
-						notify.Error("UI: Failed to load %s configuration", config.Current.Device)
+						notify.Error("[UI] Failed to load %s configuration", config.Current.Device)
 						return false
 					}
 
 					time.AfterFunc(time.Second, func() {
 						err := config.Current.Save()
 						if err != nil {
-							notify.Error("UI: Failed to save %s configuration", config.Current.Device)
+							notify.Error("[UI] Failed to save %s configuration", config.Current.Device)
 						}
 					})
 				}

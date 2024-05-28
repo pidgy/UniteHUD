@@ -74,6 +74,7 @@ func Defeated() {
 	modified := config.Current.TemplatesKilled(team.Game.Name)
 	unmodified := config.Current.TemplatesKilled(team.Game.Name)
 
+	// Frequent, used to invalidate Self score detection by justifying the held energy drop.
 	for ; ; sleep(time.Second) {
 		if idle || config.Current.Advanced.Matching.Disabled.Defeated {
 			modified = config.Current.TemplatesKilled(team.Game.Name)
@@ -494,6 +495,8 @@ func States() {
 				d = device.ActiveName()
 			}
 
+			notify.Feed(team.Game.NRGBA, "[Detect] [%s] Match starting", team.Game)
+
 			if !config.Current.Advanced.Notifications.Disabled.MatchStarting {
 				desktop.Notification("Match Starting").
 					Says("Capturing from %s", d).
@@ -519,10 +522,11 @@ func States() {
 				notify.Feed(team.Game.NRGBA, "[Detect] [%s] Match ended", team.Game)
 
 				// Purple score and objective results.
+
 				regielekis, regices, regirocks, registeels, rayquazas := server.Objectives(team.Purple)
 				notify.Feed(
 					team.Purple.NRGBA,
-					"Detect: [%s] %s [+%d %s] [+%d %s] [+%d %s] [+%d %s] [+%d Rayquazas]",
+					"[Detect] [%s] %s [+%d %s] [+%d %s] [+%d %s] [+%d %s] [+%d Rayquazas]",
 					team.Purple,
 					server.ScoreString(team.Purple),
 					regielekis, plural("Regieleki", regielekis),
@@ -533,10 +537,11 @@ func States() {
 				)
 
 				// Orange score and objective results.
+
 				regielekis, regices, regirocks, registeels, rayquazas = server.Objectives(team.Orange)
 				notify.Feed(
 					team.Orange.NRGBA,
-					"Detect: [%s] %s [+%d %s] [+%d %s] [+%d %s] [+%d %s] [+%d Rayquazas]",
+					"[Detect] [%s] %s [+%d %s] [+%d %s] [+%d %s] [+%d %s] [+%d Rayquazas]",
 					team.Orange,
 					server.ScoreString(team.Orange),
 					regielekis, plural("Regieleki", regielekis),
@@ -547,6 +552,7 @@ func States() {
 				)
 
 				// Self score and objective results.
+
 				notify.Feed(team.Self.NRGBA, "[Detect] [%s] %d", team.Self, self)
 
 				if !config.Current.Advanced.Notifications.Disabled.MatchStopped {
@@ -618,7 +624,7 @@ func energyScoredConfirm(before, after int, at time.Time) {
 	}
 
 	notify.Feed(team.Self.NRGBA,
-		"Detect: [%s] [Self] +%d Confirming %s scored %s ago",
+		"[Detect] [%s] [Self] +%d Confirming %s scored %s ago",
 		server.Clock(),
 		before,
 		plural("point", before),

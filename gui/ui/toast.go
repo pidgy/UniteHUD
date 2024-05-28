@@ -5,7 +5,6 @@ import (
 	"image"
 	"strings"
 	"time"
-	"unicode"
 
 	"gioui.org/app"
 	"gioui.org/io/system"
@@ -71,6 +70,8 @@ func (c *closeable) ready() {
 }
 
 func (g *GUI) toast(header, msg string, width, height float32) *toast {
+	notify.Debug("[Toast] %s: %s", header, msg)
+
 	if g.previous.toast.active {
 		return nil
 	}
@@ -93,7 +94,7 @@ func (g *GUI) toast(header, msg string, width, height float32) *toast {
 	t.bar.NoTip = true
 	t.bar.NoDrag = true
 
-	t.label = material.Label(t.bar.Collection.Calibri().Theme, toastTextSize, msg)
+	t.label = material.Label(t.bar.Collection.Calibri().Theme, toastTextSize, titleFirstWord(msg))
 	t.label.Alignment = text.Middle
 	return t
 }
@@ -124,8 +125,8 @@ func (g *GUI) ToastOK(header, msg string, ok OnToastOK) {
 	}
 
 	go func() {
-		notify.Debug("UI: Opening Ok (active: %t)", g.previous.toast.active)
-		defer notify.Debug("UI: Closing Ok (active: %t)", g.previous.toast.active)
+		notify.Debug("[UI] Opening Ok (active: %t)", g.previous.toast.active)
+		defer notify.Debug("[UI] Closing Ok (active: %t)", g.previous.toast.active)
 		defer t.close()
 
 		okButton := &button.Widget{
@@ -213,8 +214,8 @@ func (g *GUI) ToastSplash(header, msg string, img image.Image) waiter {
 	defer c.ready()
 
 	go func() {
-		notify.Debug("UI: Opening Splash (active: %t)", g.previous.toast.active)
-		defer notify.Debug("UI: Closing Splash (active: %t)", g.previous.toast.active)
+		notify.Debug("[UI] Opening Splash (active: %t)", g.previous.toast.active)
+		defer notify.Debug("[UI] Closing Splash (active: %t)", g.previous.toast.active)
 		defer c.toast.close()
 
 		c.toast.bar.Hide = true
@@ -272,8 +273,8 @@ func (g *GUI) ToastYesNo(header, msg string, y OnToastYes, n OnToastNo) {
 	}
 
 	go func() {
-		notify.Debug("UI: Opening Yes/No (active: %t)", g.previous.toast.active)
-		defer notify.Debug("UI: Closing Yes/No (active: %t)", g.previous.toast.active)
+		notify.Debug("[UI] Opening Yes/No (active: %t)", g.previous.toast.active)
+		defer notify.Debug("[UI] Closing Yes/No (active: %t)", g.previous.toast.active)
 		defer t.close()
 
 		yButton := &button.Widget{
@@ -366,9 +367,6 @@ func (g *GUI) ToastYesNo(header, msg string, y OnToastYes, n OnToastNo) {
 	}()
 }
 
-func capitalizeFirstWord(s string) string {
-	s = strings.TrimSpace(s)
-	runes := []rune(s)
-	runes[0] = unicode.ToUpper(runes[0])
-	return string(runes)
+func titleFirstWord(s string) string {
+	return strings.ToUpper(s[:1]) + s[1:]
 }

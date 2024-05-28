@@ -65,7 +65,7 @@ func Default() image.Image {
 
 	i, err := defaultMat.ToImage()
 	if err != nil {
-		notify.Warn("Splash: Failed to convert splash image (%v)", err)
+		notify.Warn("[Splash] Failed to convert splash image (%v)", err)
 		return defaultPNG
 	}
 	defaultImg = i
@@ -84,7 +84,7 @@ func Device() image.Image {
 
 	i, err := deviceMat.ToImage()
 	if err != nil {
-		notify.Warn("Splash: Failed to convert splash image (%v)", err)
+		notify.Warn("[Splash] Failed to convert splash image (%v)", err)
 		return defaultPNG
 	}
 	deviceImg = i
@@ -111,7 +111,7 @@ func DeviceRGBA() *image.RGBA {
 
 	i, err := deviceMat.ToImage()
 	if err != nil {
-		notify.Warn("Splash: Failed to convert splash image (%v)", err)
+		notify.Warn("[Splash] Failed to convert splash image (%v)", err)
 		return defaultPNG
 	}
 	deviceRGBA = AsRGBA(i)
@@ -130,7 +130,7 @@ func Invalid() image.Image {
 
 	i, err := invalidMat.ToImage()
 	if err != nil {
-		notify.Warn("Splash: Failed to convert splash image (%v)", err)
+		notify.Warn("[Splash] Failed to convert splash image (%v)", err)
 		return defaultPNG
 	}
 	invalidImg = i
@@ -149,7 +149,7 @@ func InvalidRGBA() *image.RGBA {
 
 	i, err := invalidMat.ToImage()
 	if err != nil {
-		notify.Warn("Splash: Failed to convert splash image (%v)", err)
+		notify.Warn("[Splash] Failed to convert splash image (%v)", err)
 		return defaultPNG
 	}
 	invalidRGBA = AsRGBA(i)
@@ -168,7 +168,7 @@ func Loading() image.Image {
 
 	i, err := loadingMat.ToImage()
 	if err != nil {
-		notify.Warn("Splash: Failed to convert splash image (%v)", err)
+		notify.Warn("[Splash] Failed to convert splash image (%v)", err)
 		return defaultPNG
 	}
 	loadingImg = i

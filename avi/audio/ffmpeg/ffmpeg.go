@@ -37,7 +37,7 @@ func (d *Device) Close() {
 		return
 	}
 
-	notify.System("Audio Input: Closing %s (ffmpeg)", d.name)
+	notify.System("[Audio Input] Closing %s (ffmpeg)", d.name)
 
 	d.cancel()
 }
@@ -77,7 +77,7 @@ func (d *Device) Start(ctx malgo.Context, w io.ReadWriter) error {
 
 	d.active = true
 
-	defer notify.Debug("Audio Input: Started %s", d)
+	defer notify.Debug("[Audio Input] Started %s", d)
 
 	go func() {
 		buf := make([]byte, 2646)

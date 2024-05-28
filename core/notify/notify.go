@@ -87,7 +87,7 @@ func Dedup(r nrgba.NRGBA, format string, a ...interface{}) {
 }
 
 func Error(format string, a ...interface{}) {
-	feed.log(nrgba.DarkRed, true, false, false, format, a...)
+	feed.log(nrgba.Pinkity, true, false, false, format, a...)
 }
 
 func FeedStrings() (s []string) {
@@ -119,8 +119,18 @@ func Last() Post {
 	return feed.logs[len(feed.logs)-1]
 }
 
+func LastNStrings(n int) (s []string) {
+	for i := len(feed.logs) - 1; i >= 0 && i > len(feed.logs)-1-n; i-- {
+		if feed.logs[i].count > 1 {
+			continue
+		}
+		s = append([]string{feed.logs[i].msg}, s...)
+	}
+	return
+}
+
 func Missed(event interface{}, window string) {
-	Debug("UI: Missed %T event (%s)", event, window)
+	Debug("[UI] Missed %T event (%s)", event, window)
 }
 
 func (p *Post) String() string {
@@ -154,7 +164,23 @@ func Unique(c nrgba.NRGBA, format string, a ...interface{}) {
 }
 
 func Warn(format string, a ...interface{}) {
-	feed.log(nrgba.Pinkity, true, false, false, format, a...)
+	feed.log(nrgba.PastelCoral, true, false, false, format, a...)
+}
+
+func Replace(prefix string, log func(format string, a ...interface{}), format string, a ...interface{}) {
+	log(format, a...)
+
+	n := 0
+	for i := len(feed.logs) - 1; i >= 0; i-- {
+		p := feed.logs[i]
+		if strings.HasPrefix(p.orig, prefix) {
+			n++
+		}
+		if n == 2 {
+			feed.logs = append(feed.logs[:i], feed.logs[i+1:]...)
+			return
+		}
+	}
 }
 
 func (d *debugger) Fatal(v ...interface{})                 {} //d.ftl("%s", fmt.Sprint(v...)) }

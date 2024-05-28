@@ -4,7 +4,7 @@ import "testing"
 
 func TestNewAudioCaptureDevice(t *testing.T) {
 	for index := 0; index < 10; index++ {
-		d, err := NewAudioCaptureDevice(index)
+		d, err := AudioCaptureDevice(index)
 		if err != nil {
 			continue
 		}
@@ -19,37 +19,9 @@ func TestNewAudioCaptureDevice(t *testing.T) {
 	}
 }
 
-func TestNewAudioVideoCaptureDevice(t *testing.T) {
-	for index := 0; index < 10; index++ {
-		a, v, err := NewAudioVideoCaptureDevice(index)
-		if err != nil {
-			println(err.Error())
-			continue
-		}
-
-		println(index, "how", a == nil, v == nil)
-
-		println("Audio")
-		println("\tName:", a.Name)
-		println("\t\t* Index:       ", a.Index)
-		println("\t\t* WaveInID:    ", a.WaveInID)
-		println("\t\t* Description: ", a.Description)
-		println("\t\t* Type:         ", a.Path.Type)
-		println("\t\t* VendorID:     ", a.Path.VendorID)
-		println("Video")
-		println("\tName:", v.Name)
-		println("\t\t* Index:       ", v.Index)
-		println("\t\t* WaveInID:    ", v.WaveInID)
-		println("\t\t* Description: ", v.Description)
-		println("\t\t* Type:         ", v.Path.Type)
-		println("\t\t* VendorID:     ", v.Path.VendorID)
-		println()
-	}
-}
-
 func TestNewVideoCaptureDevice(t *testing.T) {
 	for index := 0; index < 10; index++ {
-		d, err := NewVideoCaptureDevice(index)
+		d, err := VideoCaptureDevice(index)
 		if err != nil {
 			continue
 		}

@@ -2,12 +2,25 @@ const urlWS = "ws://127.0.0.1:17069/ws";
 const urlHTTP = "http://127.0.0.1:17069/http";
 
 const cached = {
-    messages: {
-        ready: `UniteHUD`,
+    banners: {
+        title: `UniteHUD`,
     },
-    images: {
-        regis: ['assets/img/regice.png', 'assets/img/regirock.png', 'assets/img/registeel.png'],
-    }
+    assets: {
+        get img() { return 'assets/img/sprites'; },
+    },
+    img: {
+        objectives: {
+            get top() { return `${cached.assets.img}/regieleki.png`; },
+            get central() { return `${cached.assets.img}/rayquaza.png`; },
+            get bottom() {
+                return [
+                    `${cached.assets.img}/regice.png`,
+                    `${cached.assets.img}/regirock.png`,
+                    `${cached.assets.img}/registeel.png`,
+                ];
+            },
+        },
+    },
 }
 
 const sync = function(func, delay) {
@@ -40,57 +53,56 @@ var intervals = {
 var prev = {
     "profile": "player",
     "version": "debug",
-    "started": true,
+    "ready": true,
     "seconds": 10 * 60,
-    "purple": { "value": 0, "kos": 0 },
-    "orange": { "value": 0, "kos": 0 },
+    "purple": { "value": 0, "kos": 0, "surrendered": false },
+    "orange": { "value": 0, "kos": 0, "surrendered": false },
     "self": { "value": 0, "kos": 0 },
     "stacks": 0,
     "regis": ["none", "none", "none"], // purple, orange, none.
     "bottom": [], // {"name": "registeel", "team": "purple"}
+    "events": [],
+    "debug": false,
 };
 
 
 function animate() {
     if (intervals.should.shake) {
-        $('.error').css('animation', 'shake 1s cubic-bezier(.36,.07,.19,.97) both');
+        $('.unitehud-banner-label').css('animation', 'shake 1s cubic-bezier(.36,.07,.19,.97) both');
     } else {
-        $('.error').css('animation', 'none');
+        $('.unitehud-banner-label').css('animation', 'none');
     }
 
     if (intervals.should.spin) {
-        $('.logo').css('animation', 'rotate-center 1s cubic-bezier(.36,.07,.19,.97) both');
+        $('.banner-logo').css('animation', 'rotate-center 1s cubic-bezier(.36,.07,.19,.97) both');
     } else {
-        $('.logo').css('animation', 'none');
+        $('.banner-logo').css('animation', 'none');
     }
 }
 
 function clear(err = '') {
-    $('.error').css('opacity', '.9');
-    $('.error').html(err);
-    if (err.includes(cached.messages.ready)) {
-        $('.error').css('opacity', .25);
+    $('.unitehud-banner-label').html(err);
+
+    $('.hud-banner').css('opacity', '.5');
+    if (err.includes(cached.banners.title)) {
+        $('.unitehud-banner-label').css('opacity', .25);
+    } else {
+        $('.debug-banner-labels').css('opacity', 0);
+        $('.debug-banner.banner').css('opacity', 0);
     }
 
-    $('.purple').css('opacity', 0);
-    $('.orange').css('opacity', 0);
-    $('.self').css('opacity', 0);
-    $('.objectives-top').css('opacity', 0);
-    $('.objectives-bottom').css('opacity', 0);
-    $('.objectives-central').css('opacity', 0);
-
-    $(`.objectives-central-1 .objectives-central-circle-purple`).css('opacity', 0);
-    $(`.objectives-central-1 .objectives-central-circle-orange`).css('opacity', 0);
-    $(`.objectives-central-1 .objectives-central-circle-none`).css('opacity', 1);
-    $(`.objectives-central-img-1`).css('opacity', .75);
+    $('.team-score-container').css('opacity', 0);
+    $('.objectives-container').css('opacity', 0);
+    $(`.objectives-circle.orange`).css('opacity', 0);
+    $(`.objectives-circle.purple`).css('opacity', 0);
+    $(`.objectives-circle.none`).css('opacity', 1);
 
     for (var i = 1; i <= 3; i++) {
-        $(`.objectives-bottom-${i} .objectives-bottom-circle-purple`).css('opacity', 0);
-        $(`.objectives-bottom-${i} .objectives-bottom-circle-orange`).css('opacity', 0);
-        $(`.objectives-bottom-img-${i}`).attr('src', cached.images.regis[i]);
-        $(`.objectives-bottom-img-${i}`).css('opacity', .75);
-
-        $(`.objectives-img-${i}`).css('opacity', .75);
+        $(`.objectives-${i}.bottom`).filter("img").attr('src', cached.img.objectives.bottom[i]);
+        $(`.objectives-${i}`).filter("img").css('opacity', .75);
+        if (i == 1) {
+            $(`.objectives-${i}.central`).filter("img").css('opacity', .75);
+        }
     }
 }
 
@@ -117,75 +129,115 @@ function http() {
         success: function(data, status) {
             render(data);
         },
-        error: error(),
+        error: error,
     });
 };
 
 // Successfully connected to the UniteHUD application.
 async function render(data) {
-    // User has not pressed "start".
-    if (!data.started) {
-        return error(`Press Start`);
+    if (data.debug) {
+        debug.events.add(data.events);
+    } else {
+        $('.debug-banner-labels').css('opacity', 0);
+        $('.debug-banner.banner').css('opacity', 0);
     }
 
-    // User has presseed "start", awaiting match detection.
-    if (data.seconds == 0) {
-        return clear(`${cached.messages.ready} <span>${data.version}</span>`);
+    // User has not pressed "start".
+    if (!data.ready) {
+        return clear(`Press Start`);
     }
 
     // Render HUD.
     {
-        $('.error').html('');
-        $('.purple').css('opacity', 1);
-        $('.orange').css('opacity', 1);
-        $('.objectives-top').css('opacity', 1);
-        $('.objectives-bottom').css('opacity', 1);
-        $('.objectives-central').css('opacity', 1);
+        $('.unitehud-banner-label').html('');
+
+        // Match started
+        if (data.match && !prev.match) {
+            $('.hud-container').css('opacity', '0').animate(
+                properties = {
+                    opacity: '1',
+                },
+                duration = 10 * 1000,
+                complete = () => {}
+            );
+            prev.match = data.match;
+        }
+
+        // Match ended fade away.
+        if (!data.match && prev.match) {
+            $('.hud-container').animate(
+                properties = {
+                    opacity: '0',
+                },
+                duration = 10 * 1000,
+                complete = () => {}
+            );
+            prev.match = data.match;
+        }
+
+
+        // $('.team-score-container').css('opacity', 1);
+        // $('.objectives-container').css('opacity', 1);
+
+        // User has presseed "start", awaiting match detection.
+        if (data.seconds == 0) {
+            return clear(`${cached.banners.title} <span>${data.version}</span>`);
+        }
     }
 
     // Render scores.
     {
-        if (data.purple.value == -1) {
-            $('.purplescore').html(`<div class="animated">SND</div>`);
-        } else {
-            var pspan = "";
+
+        // Render purple score.
+        {
+            var phtml = `<div class="animated">${data.purple.value}</div>`;
             var p = data.regis.filter(x => x === "purple").length;
             if (p > 0) {
-                pspan = ` <span><i>max ${data.purple.value + p* 20}</i></span>`;
+                phtml = `<div class="animated">${data.purple.value}</div> <span><i>max ${data.purple.value + p * 20}</i></span>`;
             }
-            $('.purplescore').html(`<div class="animated">${data.purple.value}</div>${pspan}`);
+            if (data.purple.surrendered) {
+                phtml = `<div class="animated">SND</div>`;
+            }
+            $('.team-score.purple').html(phtml);
+
+            // Check if purple team scored. 
+            if (prev.purple && prev.purple.value != data.purple.value) {
+                $('.team-score.purple .animated').css('animation', 'scored 1s cubic-bezier(.36,.07,.19,.97) both');
+                prev.purple.value = data.purple.value;
+            } else {
+                $('.team-score.purple .animated').css('animation', 'none');
+            }
         }
 
-        if (data.orange.value == -1) {
-            $('.orangescore').html(`<div class="animated">SND</div>`);
-        } else {
-            var ospan = "";
+        // Render orange score.
+        {
+            var ohtml = `<div class="animated">${data.orange.value}</div>`;
             var o = data.regis.filter(x => x === "orange").length;
             if (o > 0) {
-                ospan = ` <span><i>max ${data.orange.value + o * 20}</i></span>`;
+                ohtml = `<div class="animated">${data.orange.value}</div><span><i>max ${data.orange.value + o * 20}</i></span>`;
             }
-            $('.orangescore').html(`<div class="animated">${data.orange.value}</div>${ospan}`);
-        }
+            if (data.orange.surrendered) {
+                ohtml = `<div class="animated">SND</div>`;
+            }
+            $('.team-score.orange').html(`${ohtml}`);
 
-        // Check if orange team scored.
-        if (prev.orange && prev.orange.value != data.orange.value) {
-            $('.orangescore .animated').css('animation', 'scored 1s cubic-bezier(.36,.07,.19,.97) both');
-            prev.orange.value = data.orange.value;
-        } else {
-            $('.orangescore .animated').css('animation', 'none');
-        }
-
-        // Check if purple team scored. 
-        if (prev.purple && prev.purple.value != data.purple.value) {
-            $('.purplescore .animated').css('animation', 'scored 1s cubic-bezier(.36,.07,.19,.97) both');
-            prev.purple.value = data.purple.value;
-        } else {
-            $('.purplescore .animated').css('animation', 'none');
+            // Check if orange team scored.
+            if (prev.orange && prev.orange.value != data.orange.value) {
+                $('.team-score.orange .animated').css('animation', 'scored 1s cubic-bezier(.36,.07,.19,.97) both');
+                prev.orange.value = data.orange.value;
+            } else {
+                $('.team-score.orange .animated').css('animation', 'none');
+            }
         }
     }
 
     // Render top objectives.
     {
+        $('div')
+            .filter('.hud-container.objectives-container.top')
+            .children('img')
+            .attr('src', cached.img.objectives.top);
+
         var elekis = {
             "none": ["none", "orange", "purple"],
             "purple": ["purple", "orange", "none"],
@@ -196,83 +248,102 @@ async function render(data) {
             i = parseInt(i);
 
             if (data.regis[i] == "none") {
-                $(`.objectives-img-${i+1}`).css('opacity', .75);
-                $(`.objectives-img-${i+1}`).css('animation', 'none');
+                $(`.objectives-${i+1}.top`).filter("img").css({
+                    'opacity': .75,
+                    'animation': 'none'
+                });
             } else {
-                $(`.objectives-img-${i+1}`).css('opacity', 1);
-                $(`.objectives-img-${i+1}`).css('animation', 'secured 1s cubic-bezier(.36,.07,.19,.97) both');
+                $(`.objectives-${i+1}.top`).filter("img").css({
+                    'opacity': 1,
+                    'animation': 'secured 1s cubic-bezier(.36,.07,.19,.97) both'
+                });
 
                 if (data.regis[i] != prev.regis[i]) {
-                    $(`.${data.regis[i]}score span`).css('animation', 'scored 1s cubic-bezier(.36,.07,.19,.97) both');
+                    $(`.${data.regis[i]}-score span`).css('animation', 'scored 1s cubic-bezier(.36,.07,.19,.97) both');
                     prev.regis[i] = data.regis[i];
                 }
             }
 
-            $(`.objectives-${i+1} .objectives-circle-${elekis[data.regis[i]][0]}`).css('opacity', 1);
-            $(`.objectives-${i+1} .objectives-circle-${elekis[data.regis[i]][1]}`).css('opacity', 0);
-            $(`.objectives-${i+1} .objectives-circle-${elekis[data.regis[i]][2]}`).css('opacity', 0);
+            $(`.objectives-${i+1}.top .objectives-circle.${elekis[data.regis[i]][0]}`).css('opacity', 1);
+            $(`.objectives-${i+1}.top .objectives-circle.${elekis[data.regis[i]][1]}`).css('opacity', 0);
+            $(`.objectives-${i+1}.top .objectives-circle.${elekis[data.regis[i]][2]}`).css('opacity', 0);
         }
     }
 
     // Render central objectives.
     {
-        $(`.objectives-central-1 .objectives-central-circle-purple`).css('opacity', 0);
-        $(`.objectives-central-1 .objectives-central-circle-orange`).css('opacity', 0);
-        $(`.objectives-central-1 .objectives-central-circle-none`).css('opacity', 1);
+        $('div')
+            .filter('.hud-container.objectives-container.central')
+            .children('img')
+            .attr('src', cached.img.objectives.central);
 
         if (data.rayquaza) {
-            $(`.objectives-central-1 .objectives-central-circle-none`).css('opacity', 0);
-            $(`.objectives-central-1 .objectives-central-circle-${data.rayquaza}`).css('opacity', 1);
-            $(`.objectives-central-img-1`).css('opacity', 1);
-            $(`.objectives-central-img-1`).css('animation', 'secured 1s cubic-bezier(.36,.07,.19,.97) both');
+            $(`.objectives-1.central .objectives-circle.none`).css('opacity', 0);
+            $(`.objectives-1.central .objectives-circle.${data.rayquaza}`).css('opacity', 1);
+            $(`.objectives-1.central`).filter("img").css({
+                'opacity': 1,
+                'animation': 'secured 1s cubic-bezier(.36,.07,.19,.97) both'
+            });
         } else {
-            $(`.objectives-central-img-1`).css('opacity', .75);
-            $(`.objectives-central-img-1`).css('animation', 'none');
+            $(`.objectives-1.central .objectives-circle.purple`).css('opacity', 0);
+            $(`.objectives-1.central .objectives-circle.orange`).css('opacity', 0);
+            $(`.objectives-1.central .objectives-circle.none`).css('opacity', 1);
+            $(`.objectives-1.central`).filter("img").css({
+                'opacity': .75,
+                'animation': 'none'
+            });
         }
     }
 
     // Render bottom objectives.
     {
         for (var i = 0; i < 3; i++) {
-            $(`.objectives-bottom-${i+1} .objectives-bottom-circle-purple`).css('opacity', 0);
-            $(`.objectives-bottom-${i+1} .objectives-bottom-circle-orange`).css('opacity', 0);
-            $(`.objectives-bottom-${i+1} .objectives-bottom-circle-none`).css('opacity', 0);
+            $(`.objectives-${i+1}.bottom .objectives-circle.purple`).css('opacity', 0);
+            $(`.objectives-${i+1}.bottom .objectives-circle.orange`).css('opacity', 0);
+            $(`.objectives-${i+1}.bottom .objectives-circle.none`).css('opacity', 0);
 
             if (data.bottom.length <= i) {
-                $(`.objectives-bottom-${i+1} .objectives-bottom-circle-purple`).css('opacity', 0);
-                $(`.objectives-bottom-${i+1} .objectives-bottom-circle-orange`).css('opacity', 0);
-                $(`.objectives-bottom-${i+1} .objectives-bottom-circle-none`).css('opacity', 1);
-                $(`.objectives-bottom-img-${i+1}`).attr('src', cached.images.regis[i]);
-                $(`.objectives-bottom-img-${i+1}`).css('opacity', .75);
-                $(`.objectives-bottom-img-${i+1}`).css('animation', 'none');
+                $(`.objectives-${i+1}.bottom .objectives-circle.purple`).css('opacity', 0);
+                $(`.objectives-${i+1}.bottom .objectives-circle.orange`).css('opacity', 0);
+                $(`.objectives-${i+1}.bottom .objectives-circle.none`).css('opacity', 1);
+
+                $(`.objectives-${i+1}.bottom`).filter("img").attr('src', cached.img.objectives.bottom[i]).css({
+                    'opacity': .75,
+                    'animation': 'none'
+                });
             } else {
                 var obj = data.bottom[i];
-                $(`.objectives-bottom-${i+1} .objectives-bottom-circle-${obj.team}`).css('opacity', 1);
-                $(`.objectives-bottom-img-${i+1}`).attr('src', `assets/img/${obj.name}.png`);
-                $(`.objectives-bottom-img-${i+1}`).css('opacity', '1');
-                $(`.objectives-bottom-img-${i+1}`).css('animation', 'secured 1s cubic-bezier(.36,.07,.19,.97) both');
+                $(`.objectives-${i+1}.bottom .objectives-circle.${obj.team}`).css('opacity', 1);
+
+                $(`.objectives-${i+1}.bottom`).filter("img").attr('src', `${cached.assets}/${obj.name}.png`).css({
+                    'opacity': 1,
+                    'animation': 'secured 1s cubic-bezier(.36,.07,.19,.97) both'
+                });
             }
         }
     }
 }
 
+
 // WebSocket connection handler.
 function websocket() {
     var ws = new WebSocket(urlWS);
-    ws.onmessage = function(event) {
+
+    ws.onmessage = (event) => {
         render(JSON.parse(event.data));
         ws.close();
     };
-    ws.onerror = error;
 
-    // setTimeout(() => {
-    //     if (ws.readyState == WebSocket.CONNECTING) {
-    //         ws.close();
-    //     }
-    // }, 500);
+    ws.onerror = error;
 }
 
 $(document).ready(() => {
+    var opacity = $('.hud-banner').css('opacity');
+    $('.hud-banner').css('opacity', '0').animate(
+        properties = { opacity: opacity, },
+        duration = 5 * 1000,
+        complete = () => { clear(); }
+    );
     clear();
 
     switch (true) {
@@ -302,18 +373,21 @@ const debug = {
         return debug.data = {
             "profile": "player",
             "version": debug,
-            "started": true,
+            "ready": true,
             "seconds": 10 * 60,
-            "purple": { "value": 0, "kos": 0 },
-            "orange": { "value": 0, "kos": 0 },
+            "purple": { "value": 0, "kos": 0, "surrendered": false },
+            "orange": { "value": 0, "kos": 0, "surrendered": false },
             "self": { "value": 0, "kos": 0 },
             "stacks": 0,
             "regis": ["none", "none", "none"], // purple, orange, none.
             "bottom": [], // {"name": "registeel", "team": "purple"}
+            "events": [],
+            "debug": true,
+            "match": true,
         };
     },
-    started: {
-        get toggle() { return debug.data.started = !debug.data.started; },
+    ready: {
+        get toggle() { return debug.data.ready = !debug.data.ready; },
     },
     time: {
         get finalstretch() { return debug.data.seconds = 120; },
@@ -323,8 +397,8 @@ const debug = {
         get orange() { return debug.data.orange.value += Math.floor(Math.random() * 100); },
     },
     surrender: {
-        get purple() { return debug.data.purple.value = -1; },
-        get orange() { return debug.data.orange.value = -1; },
+        get purple() { return debug.data.purple.surrender = true; },
+        get orange() { return debug.data.orange.surrender = true; },
     },
     objectives: {
         top: {
@@ -342,5 +416,81 @@ const debug = {
             get orange() { return debug.data.rayquaza = "orange"; },
             get clear() { return debug.data.rayquaza = ""; },
         },
+    },
+    events: {
+        add: (events) => {
+            const max = 10;
+
+            $('.debug-banner-labels').css('opacity', .9);
+            $('.debug-banner.banner').css('opacity', .9);
+
+            const unique = events
+                .filter(event => !prev.events.includes(event))
+                .filter(event => !event.includes("[UI]") && (event.includes("[Purple]") || event.includes("[Orange]") || event.includes("[Game]") || event.includes("[Self]")));
+            if (unique.length == 0) {
+                return;
+            }
+            if (unique == prev.events) {
+                return;
+            }
+
+
+            prev.events.push(...unique);
+            prev.events = prev.events.slice(-25);
+
+            unique.forEach((event) => {
+                var img = "";
+                // if (event.includes("[Purple] +")) {
+                //     img = `<img class="debug-label-banner-logo" src="assets/img/aeos-purple.png">`
+                // } else if (event.includes("[Orange] +")) {
+                //     img = `<img class="debug-label-banner-logo" src="assets/img/aeos-orange.png">`
+                // } else if (event.includes("[Purple] [Self] +")) {
+                //     img = `<img class="debug-label-banner-logo" src="assets/img/aeos-purple.png">`
+                // } else if (event.includes(" Regielekis")) {
+                //     img = `<img class="debug-label-banner-logo" src="assets/img/pokemonunite.png">`
+                // } else if (event.includes(" Regieleki ")) {
+                //     img = `<img class="debug-label-banner-logo" src="assets/img/regieleki.png">`
+                // } else if (event.includes(" Registeel ")) {
+                //     img = `<img class="debug-label-banner-logo" src="assets/img/registeel.png">`
+                // } else if (event.includes(" Regice ")) {
+                //     img = `<img class="debug-label-banner-logo" src="assets/img/regice.png">`
+                // } else if (event.includes(" Regirock ")) {
+                //     img = `<img class="debug-label-banner-logo" src="assets/img/regirock.png">`
+                // } else if (event.includes("Defeated")) {
+                //     img = `<img class="debug-label-banner-logo" src="assets/img/unscored.png">`
+                // } else if (event.includes("[Self]")) {
+                //     img = `<img class="debug-label-banner-logo" src="assets/img/unscored.png">`
+                // } else if (event.includes(" Rayquaza ")) {
+                //     img = `<img class="debug-label-banner-logo" src="assets/img/rayquaza.png">`
+                // } else if (event.includes("[Game]")) {
+                //     img = `<img class="debug-label-banner-logo" src="assets/img/pokemonunite.png">`
+                // } else if (event.includes("[Purple]")) {
+                //     img = `<img class="debug-label-banner-logo" src="assets/img/ko_purple.png">`
+                // } else if (event.includes("[Orange]")) {
+                //     img = `<img class="debug-label-banner-logo" src="assets/img/ko_orange.png">`
+                // }
+                // img = ``;
+
+                $(`.debug-banner-labels`).append(`<li style="opacity:0">${img} ${event}</li>`);
+
+                const size = $(`.debug-banner-labels`).children().length;
+                if (size > max) {
+                    var rem = size - max;
+                    $(`.debug-banner-labels`).children('li').each(function() {
+                        if (rem > 0) {
+                            this.remove();
+                        }
+                        rem--;
+                    });
+                }
+
+                $(`.debug-banner-labels`).children('li').each(function() {
+                    const child = $(this);
+                    child.animate({
+                        opacity: '.9'
+                    }, 750, () => {});
+                });
+            });
+        }
     },
 };

@@ -15,22 +15,6 @@ import (
 	"github.com/pidgy/unitehud/gui/ux/decorate"
 )
 
-var (
-	ColorDisabled = nrgba.PastelRed.Color()
-	ColorEnabled  = nrgba.PastelGreen.Color()
-)
-
-type Widget struct {
-	Items         []*Item
-	Callback      func(item *Item, this *Widget) (check bool)
-	WidthModifier int
-	Radio         bool
-	TextSize      float32
-	Theme         *material.Theme
-
-	liststyle material.ListStyle
-}
-
 type Item struct {
 	Text     string
 	Hint     string
@@ -45,6 +29,17 @@ type Item struct {
 	check material.CheckBoxStyle
 
 	hovered bool
+}
+
+type Widget struct {
+	Items         []*Item
+	Callback      func(item *Item, this *Widget) (check bool)
+	WidthModifier int
+	Radio         bool
+	TextSize      float32
+	Theme         *material.Theme
+
+	liststyle material.ListStyle
 }
 
 func (item *Item) hint(gtx layout.Context, theme *material.Theme) (layout.Dimensions, bool) {
@@ -107,11 +102,11 @@ func (list *Widget) defaultCheckBox(i *Item) {
 	}
 
 	if i.Callback == nil {
-		i.Callback = i.defaultCallback
+		i.Callback = func(this *Item) {}
 	}
 
 	if i.DisabledCallback == nil {
-		i.DisabledCallback = i.defaultDisabledCallback
+		i.DisabledCallback = func(this *Item) { i.Checked.Value = false }
 	}
 
 	i.check = material.CheckBox(list.Theme, &i.Checked, i.Text)
@@ -172,7 +167,7 @@ func (list *Widget) draw(gtx layout.Context, item *Item) layout.Dimensions {
 		item.check.Color = nrgba.DarkSeafoam.Color()
 	}
 	if item.Disabled || item.Text == "Disabled" {
-		item.check.Color = ColorDisabled
+		item.check.Color = nrgba.PastelRed.Color()
 	}
 	switch {
 	case item.Checked.Hovered(): //, item.Checked.Focused():
@@ -217,7 +212,3 @@ func (list *Widget) unhovered(i *Item) {
 	i.hovered = false
 	cursor.Is(pointer.CursorDefault)
 }
-
-func (_ *Item) defaultCallback(_ *Item) {}
-
-func (i *Item) defaultDisabledCallback(_ *Item) { i.Checked.Value = false }

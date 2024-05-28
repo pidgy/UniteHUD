@@ -29,7 +29,7 @@ func BackgroundTitleBar(gtx layout.Context, size image.Point) {
 }
 
 func Border(gtx layout.Context) layout.Dimensions {
-	if server.Started() {
+	if server.Ready() {
 		return ColorBox(gtx, image.Pt(gtx.Constraints.Max.X, 1), nrgba.NRGBA(config.Current.Theme.BordersActive).Alpha(255))
 	}
 	return ColorBox(gtx, image.Pt(gtx.Constraints.Max.X, 1), nrgba.NRGBA(config.Current.Theme.BordersIdle).Alpha(255))

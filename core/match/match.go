@@ -81,7 +81,7 @@ func MatchesWithAcceptance(matrix gocv.Mat, img image.Image, templates []*templa
 		defer results[i].Close()
 
 		if template.Mat.Rows() > matrix.Rows() || template.Mat.Cols() > matrix.Cols() {
-			notify.Error("Detect: Match is outside the configured selection area")
+			notify.Error("[Detect] Match is outside the configured selection area")
 
 			if config.Current.Record {
 				// dev.Capture(img, region, team.Time.Name, "missed-"+template.Name, false, template.Value)
@@ -95,7 +95,7 @@ func MatchesWithAcceptance(matrix gocv.Mat, img image.Image, templates []*templa
 
 	for i, mat := range results {
 		if mat.Empty() {
-			notify.Warn("Detect: Empty result for %s", templates[i].Truncated())
+			notify.Warn("[Detect] Empty result for %s", templates[i].Truncated())
 			continue
 		}
 

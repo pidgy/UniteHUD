@@ -10,13 +10,13 @@ import (
 const (
 	Title          = "UniteHUD"
 	Version        = "v" + VersionNoV
-	VersionNoV     = "3.2.3"
+	VersionNoV     = "3.3.0"
 	TitleVersion   = Title + " " + Version
 	AssetDirectory = `assets`
 )
 
 var (
-	DebugMode = strings.Contains(strings.ToLower(os.Args[0]), "debug") || strings.Contains(strings.ToLower(os.Args[0]), "test")
+	DebugMode = strings.Contains(strings.ToLower(os.Args[0]), "debug")
 	Uptime    = time.Now()
 
 	dir = ""

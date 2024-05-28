@@ -26,7 +26,7 @@ func init() {
 
 			windows, _, err := list()
 			if err != nil {
-				notify.Warn("Window: Failed to list windows (%v)", err)
+				notify.Warn("[Window] Failed to list windows (%v)", err)
 				continue
 			}
 
@@ -129,7 +129,7 @@ func Open() error {
 		}
 	}
 
-	notify.Error("Window: Failed to find \"%s\"", config.Current.Video.Capture.Window.Name)
+	notify.Error("[Window] Failed to find \"%s\"", config.Current.Video.Capture.Window.Name)
 
 	config.Current.Video.Capture.Window.Lost = config.Current.Video.Capture.Window.Name
 	config.Current.Video.Capture.Window.Name = config.MainDisplay
@@ -158,7 +158,7 @@ func Reattach() error {
 		if win == config.Current.Video.Capture.Window.Lost {
 			config.Current.Video.Capture.Window.Name = win
 
-			notify.Announce("Window: Found \"%s\" window", config.Current.Video.Capture.Window.Name)
+			notify.Announce("[Window] Found \"%s\" window", config.Current.Video.Capture.Window.Name)
 			config.Current.Video.Capture.Window.Lost = ""
 			attempts = 0
 

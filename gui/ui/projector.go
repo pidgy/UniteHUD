@@ -79,7 +79,7 @@ func (g *GUI) projector(onclose func()) {
 
 	err := electron.Open()
 	if err != nil {
-		notify.Error("UI: Failed to render overlay (%v)", err)
+		notify.Error("[UI] Failed to render overlay (%v)", err)
 		return
 	}
 	defer electron.Close()
@@ -109,7 +109,7 @@ func (g *GUI) projector(onclose func()) {
 
 		switch event := ui.window.NextEvent().(type) {
 		case system.DestroyEvent:
-			notify.System("UI: Closing Projector...")
+			notify.System("[UI] Closing Projector...")
 			return
 		case system.StageEvent:
 			if !ui.visibility.seen {
@@ -263,7 +263,7 @@ func (ui *projector) fullscreen() {
 
 	err := wapi.SetThreadExecutionState(t, wapi.ThreadExecutionStateContinuous)
 	if err != nil {
-		notify.Warn("UI: Projector failed to set thread execution state (%v)", err)
+		notify.Warn("[UI] Projector failed to set thread execution state (%v)", err)
 	}
 }
 
@@ -317,7 +317,7 @@ func (g *GUI) projectorUI() *projector {
 
 func (ui *projector) setWindowPos(shift image.Point) {
 	if ui.dimensions.fullscreened || ui.hwnd == 0 || ui.dimensions.moving {
-		notify.Warn("UI: Failed to set overlay position")
+		notify.Warn("[UI] Failed to set overlay position")
 		return
 	}
 

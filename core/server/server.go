@@ -29,10 +29,11 @@ const Address = "127.0.0.1:17069"
 type game struct {
 	Bottom    []objective `json:"bottom"`
 	Config    bool        `json:"config"`
+	Debug     bool        `json:"debug"`
 	Defeated  []int       `json:"defeated"`
 	Energy    int         `json:"balls"`
 	Events    []string    `json:"events"`
-	Match     bool        `json:"match"`
+	InMatch   bool        `json:"match"`
 	Orange    *score      `json:"orange"`
 	Purple    *score      `json:"purple"`
 	Platform  string      `json:"platform"`
@@ -41,7 +42,7 @@ type game struct {
 	Seconds   int         `json:"seconds"`
 	Self      *score      `json:"self"`
 	Stacks    int         `json:"stacks"`
-	Started   bool        `json:"started"`
+	Ready     bool        `json:"ready"`
 	Version   string      `json:"version"`
 
 	lastSecondsUpdate time.Time
@@ -84,9 +85,9 @@ func Bottom() []objective {
 }
 
 func Clear() {
-	started := current.game.Started
+	started := current.game.Ready
 	current.game = reset()
-	current.game.Started = started
+	current.game.Ready = started
 }
 
 func Clock() string {
@@ -99,7 +100,7 @@ func Clients() int {
 
 	for c := range current.clients {
 		if time.Since(current.clients[c]) > time.Second*5 {
-			notify.Feed(nrgba.Slate, "Server: Client disconnected (%s)", c)
+			notify.Feed(nrgba.Slate, "[Server] Client disconnected (%s)", c)
 			delete(current.clients, c)
 		}
 	}
@@ -135,6 +136,11 @@ func KOs(t *team.Team) int {
 	}
 }
 
+var track struct {
+	ws   []byte
+	http []byte
+}
+
 func Open() error {
 	http.Handle("/stream", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, ok := current.client(r)
@@ -163,19 +169,23 @@ func Open() error {
 
 				img, err := video.Capture()
 				if err != nil {
-					notify.Error("Server: /stream (%v)", err)
+					notify.Error("[Server] /stream (%v)", err)
 					return true
 				}
 
 				n, err := io.WriteString(w, boundary)
-				if err != nil || n != len(boundary) {
-					notify.Error("Server: /stream (%v)", err)
+				if err != nil {
+					notify.Error("[Server] /stream (%v)", err)
+					return true
+				}
+				if n != len(boundary) {
+					notify.Error("[Server] /stream (failed to add boundary header)")
 					return true
 				}
 
 				err = enc.Encode(w, img)
 				if err != nil {
-					notify.Error("Server: /stream (%v)", err)
+					notify.Error("[Server] /stream (%v)", err)
 					return true
 				}
 
@@ -189,19 +199,14 @@ func Open() error {
 		}).Stop()
 	}))
 
-	var cached struct {
-		ws   []byte
-		http []byte
-	}
-
-	var err error
-
 	http.Handle("/ws", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var err error
+
 		now, ok := current.client(r)
 		if ok {
-			cached.ws, err = json.Marshal(current.game)
+			track.ws, err = json.Marshal(current.game)
 			if err != nil {
-				notify.Error("Server: Failed to create WebSocket response (%v)", err)
+				notify.Error("[Server] Failed to create WebSocket response (%v)", err)
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -212,51 +217,55 @@ func Open() error {
 			InsecureSkipVerify: true,
 		})
 		if err != nil {
-			notify.Error("Server: WebSocket connection failed (%v)", err)
+			notify.Error("[Server] WebSocket connection failed (%v)", err)
 			return
 		}
 		defer c.Close(websocket.StatusNormalClosure, "cross origin WebSocket accepted")
 
 		current.game.Platform = config.Current.Device
-		current.game.Events = state.Strings(time.Second * 5)
+		current.game.Events = notify.LastNStrings(10)
+		current.game.Debug = global.DebugMode
 
-		err = c.Write(context.Background(), websocket.MessageText, cached.ws)
+		err = c.Write(context.Background(), websocket.MessageText, track.ws)
 		if err != nil {
-			notify.Error("Server: Failed to send WebSocket response (%v)", err)
+			notify.Error("[Server] Failed to send WebSocket response (%v)", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
-		if current.game.Started {
-			current.tx += len(cached.ws)
+		if current.game.Ready {
+			current.tx += len(track.ws)
 			current.duration += time.Since(now)
 			current.requests++
 		}
 	}))
 
 	http.HandleFunc("/http", func(w http.ResponseWriter, r *http.Request) {
+		var err error
+
 		now, ok := current.client(r)
 		if ok {
-			cached.http, err = json.Marshal(current.game)
+			track.http, err = json.Marshal(current.game)
 			if err != nil {
-				notify.Error("Server: Failed to create HTTP response (%v)", err)
+				notify.Error("[Server] Failed to create HTTP response (%v)", err)
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
 		}
 
 		current.game.Platform = config.Current.Device
-		current.game.Events = state.Strings(time.Second * 5)
+		current.game.Events = notify.LastNStrings(10)
+		current.game.Debug = global.DebugMode
 
-		_, err := w.Write(cached.http)
+		_, err = w.Write(track.http)
 		if err != nil {
-			notify.Error("Server: Failed to send HTTP response (%v)", err)
+			notify.Error("[Server] Failed to send HTTP response (%v)", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
-		if current.game.Started {
-			current.tx += len(cached.http)
+		if current.game.Ready {
+			current.tx += len(track.http)
 			current.duration += time.Since(now)
 			current.requests++
 		}
@@ -265,7 +274,7 @@ func Open() error {
 	go http.ListenAndServe(Address, nil)
 
 	state.Add(state.ServerStarted, Clock(), -1)
-	notify.System("Server: Listening on %s", Address)
+	notify.System("[Server] Listening on %s", Address)
 
 	go metrics()
 
@@ -275,13 +284,13 @@ func Open() error {
 func metrics() {
 	for ; ; time.Sleep(time.Minute * 30) {
 		if current.requests < 2 {
-			notify.System("Server: Awaiting connection...")
+			notify.System("[Server] Awaiting connection...")
 			continue
 		}
 
-		if current.game.Started {
+		if current.game.Ready {
 			notify.System(
-				"Server: Averaging %s / %.1fkB latency",
+				"[Detect] Averaging %s / %.1fkB latency",
 				current.duration/time.Duration(current.requests),
 				float64(current.tx)/float64(current.requests)/1000,
 			)
@@ -290,7 +299,7 @@ func metrics() {
 }
 
 func Match() bool {
-	return current.game.Match
+	return current.game.InMatch
 }
 
 func Objectives(t *team.Team) (regielekis, regices, regirocks, registeels, rayquazas int) {
@@ -305,6 +314,9 @@ func Rayquaza() string {
 	return current.game.Rayquaza
 }
 
+func Ready() bool {
+	return current.game.Ready
+}
 func RegielekiAdv() *team.Team {
 	p := 0
 	o := 0
@@ -389,12 +401,12 @@ func ScoreString(t *team.Team) string {
 	switch t {
 	case team.Purple:
 		if current.game.Purple.Surrendered {
-			return fmt.Sprintf("%d (SND)", current.game.Purple.Value)
+			return fmt.Sprintf("[SND] %d", current.game.Purple.Value)
 		}
 		return fmt.Sprintf("%d", current.game.Purple.Value)
 	case team.Orange:
 		if current.game.Orange.Surrendered {
-			return fmt.Sprintf("%d (SND)", current.game.Orange.Value)
+			return fmt.Sprintf("[SND] %d", current.game.Orange.Value)
 		}
 		return fmt.Sprintf("%d", current.game.Orange.Value)
 	}
@@ -421,21 +433,21 @@ func SetBottomObjective(t *team.Team, name string, n int) {
 	switch {
 	// Illegal.
 	case len(current.Bottom) < n:
-		notify.Warn("Server: %s illegal operation (no index)", op)
+		notify.Warn("[Server] %s illegal operation (no index)", op)
 
 	// Remove.
 	case len(current.Bottom) == n+1 && current.Bottom[n].Team == t.Name && current.Bottom[n].Name == o.Name:
 		// Remove last objective.
 		current.Bottom = current.Bottom[:n]
-		notify.Unique(t.NRGBA, "Server: %s removed", op)
+		notify.Unique(t.NRGBA, "[Server] %s removed", op)
 
 	// Add.
 	case len(current.Bottom) == n:
 		current.Bottom = append(current.Bottom, o)
-		notify.Unique(t.NRGBA, "Server: %s secured", op)
+		notify.Unique(t.NRGBA, "[Server] %s secured", op)
 	case len(current.Bottom) > n+1 && current.Bottom[n].Team != t.Name:
 		current.Bottom[n] = o
-		notify.Unique(t.NRGBA, "Server: %s secure replaced", op)
+		notify.Unique(t.NRGBA, "[Server] %s secure replaced", op)
 
 		// Overwrite.
 	case len(current.Bottom) == n+1 && current.Bottom[n].Team == t.Name && current.Bottom[n].Name != o.Name:
@@ -446,7 +458,7 @@ func SetBottomObjective(t *team.Team, name string, n int) {
 	case len(current.Bottom) == n+1 && current.Bottom[n].Team != t.Name:
 		// Overwrite last objective.
 		current.Bottom[n] = o
-		notify.Unique(t.NRGBA, "Server: %s secure replaced", op)
+		notify.Unique(t.NRGBA, "[Server] %s secure replaced", op)
 	}
 }
 
@@ -472,11 +484,11 @@ func SetKO(t *team.Team) {
 }
 
 func SetMatchStarted() {
-	current.game.Match = true
+	current.game.InMatch = true
 }
 
 func SetMatchStopped() {
-	current.game.Match = false
+	current.game.InMatch = false
 }
 
 func SetRayquaza(t *team.Team) {
@@ -510,15 +522,15 @@ func SetRegielekiAt(t *team.Team, n int) {
 
 	switch {
 	case n != 0 && current.game.Regilekis[n-1] == team.None.Name:
-		notify.Warn("Server: %s illegal operation (missing previous)", op)
+		notify.Warn("[Server] %s illegal operation (missing previous)", op)
 	case current.game.Regilekis[n] != t.Name:
-		notify.Unique(t.NRGBA, "Server: %s secure replaced", op)
+		notify.Unique(t.NRGBA, "[Server] %s secure replaced", op)
 		current.game.Regilekis[n] = t.Name
 	case n+1 == len(current.game.Regilekis) || current.game.Regilekis[n+1] == team.None.Name:
-		notify.Unique(t.NRGBA, "Server: %s reset", op)
+		notify.Unique(t.NRGBA, "[Server] %s reset", op)
 		current.game.Regilekis[n] = team.None.Name
 	default:
-		notify.Warn("Server: %s illegal operation", op)
+		notify.Warn("[Server] %s illegal operation", op)
 	}
 }
 
@@ -560,7 +572,7 @@ func SetScore(t *team.Team, v int) {
 		case team.Orange.Name:
 			current.game.Orange.Value += s.Value
 		default:
-			notify.Error("Server: Received first goal from an unknown team")
+			notify.Error("[Server] Received first goal from an unknown team")
 		}
 	}
 }
@@ -574,13 +586,13 @@ func SetScoreSurrendered(t *team.Team) {
 	}
 }
 
-func SetStarted() {
-	current.game.Started = true
+func SetReady() {
+	current.game.Ready = true
 	state.Add(state.ServerStarted, Clock(), -1)
 }
 
-func SetStopped() {
-	current.game.Started = false
+func SetNotReady() {
+	current.game.Ready = false
 	state.Add(state.ServerStopped, Clock(), -1)
 }
 
@@ -588,17 +600,13 @@ func SetTime(minutes, seconds int) {
 	current.game.lastSecondsUpdate = time.Now()
 
 	if minutes+seconds == 0 {
-		current.game.Match = false
+		current.game.InMatch = false
 		return
 	}
 
-	current.game.Match = true
+	current.game.InMatch = true
 
 	current.game.Seconds = minutes*60 + seconds
-}
-
-func Started() bool {
-	return current.game.Started
 }
 
 func (i *info) client(r *http.Request) (time.Time, bool) {
@@ -609,10 +617,10 @@ func (i *info) client(r *http.Request) (time.Time, bool) {
 
 	// then, ok := i.clients[c]
 	// if !ok {
-	// 	notify.System("Server: Client connected (%s)", c)
+	// 	notify.System("[Server] Client connected (%s)", c)
 	// }
 	// if time.Since(then) < time.Second/2 {
-	// 	notify.Warn("Server: Ignoring spurious requests (%s)", c)
+	// 	notify.Warn("[Server] Ignoring spurious requests (%s)", c)
 	// 	return then, false
 	// }
 

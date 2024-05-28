@@ -50,6 +50,8 @@ type configure struct {
 	constraints image.Rectangle
 	inset       image.Point
 
+	hidePreview bool
+
 	cursor bool
 	since  time.Time
 
@@ -150,7 +152,7 @@ func (g *GUI) configure() {
 			fps, p := device.FPS()
 
 			decorate.Background(gtx)
-			decorate.Label(&ui.footer.api, "API: %s", device.APIName(device.API(config.Current.Video.Capture.Device.API)))
+			decorate.Label(&ui.footer.api, "API: %s", device.APIHumanName(device.API(config.Current.Video.Capture.Device.API)))
 			decorate.Label(&ui.footer.cpu, g.performance.cpu)
 			decorate.Label(&ui.footer.ram, g.performance.ram)
 			decorate.Label(&ui.footer.hz, "%s Hz", g.hz)
@@ -363,12 +365,9 @@ func (g *GUI) configure() {
 			}
 
 			switch {
-			case window.Lost():
-				config.Current.Video.Capture.Window.Lost = ""
-				ui.groups.videos.monitor.populate(true)
-				fallthrough
-			default:
-				ui.img = splash.Default()
+			case ui.hidePreview:
+				ui.img = splash.Device()
+
 			case device.IsActive(), monitor.IsDisplay(), window.IsOpen():
 				var err error
 
@@ -383,6 +382,13 @@ func (g *GUI) configure() {
 				if ok && rgba == nil {
 					ui.img = splash.Device()
 				}
+			case window.Lost():
+				config.Current.Video.Capture.Window.Lost = ""
+				ui.groups.videos.monitor.populate(true)
+				fallthrough
+			default:
+				ui.img = splash.Default()
+
 			}
 
 			for _, e := range gtx.Events(g) {
@@ -427,7 +433,9 @@ func (g *GUI) configureUI() *configure {
 	ui.groups.areas = g.areas(g.nav.Collection)
 	ui.groups.audios = g.audios(ui.listTextSize)
 	ui.groups.videos = g.videos(ui.listTextSize)
-	ui.groups.videos.onevent = func() {}
+	ui.groups.videos.onevent = func(b bool) {
+		ui.hidePreview = b
+	}
 	ui.groups.threshold = 120
 	ui.groups.ticks = ui.groups.threshold
 
@@ -461,7 +469,7 @@ func (g *GUI) configureUI() *configure {
 
 					err := config.Current.Save()
 					if err != nil {
-						notify.Warn("UI: Failed to save UniteHUD configuration (%v)", err)
+						notify.Warn("[UI] Failed to save UniteHUD configuration (%v)", err)
 					}
 
 					g.next(is.MainMenu)
@@ -564,11 +572,11 @@ func (g *GUI) configureUI() *configure {
 
 					err := config.Current.Save()
 					if err != nil {
-						notify.Error("UI: Failed to save UniteHUD configuration (%v)", err)
+						notify.Error("[UI] Failed to save UniteHUD configuration (%v)", err)
 						return
 					}
 
-					notify.System("UI: Configuration saved to " + config.Current.File())
+					notify.System("[UI] Configuration saved to " + config.Current.File())
 				}),
 				OnToastNo(this.Deactivate),
 			)
@@ -627,20 +635,20 @@ func (g *GUI) configureUI() *configure {
 
 			err := exec.Command("C:\\Windows\\system32\\notepad.exe", config.Current.File()).Run()
 			if err != nil {
-				notify.Error("UI: Failed to open \"%s\" (%v)", config.Current.File(), err)
+				notify.Error("[UI] Failed to open \"%s\" (%v)", config.Current.File(), err)
 				return
 			}
 
 			// Called once window is closed.
 			err = config.Load(config.Current.Device)
 			if err != nil {
-				notify.Error("UI: Failed to reload \"%s\" (%v)", config.Current.File(), err)
+				notify.Error("[UI] Failed to reload \"%s\" (%v)", config.Current.File(), err)
 				return
 			}
 
 			err = config.Current.Save()
 			if err != nil {
-				notify.Error("UI: Failed to save \"%s\" (%v)", config.Current.File(), err)
+				notify.Error("[UI] Failed to save \"%s\" (%v)", config.Current.File(), err)
 				return
 			}
 
@@ -666,7 +674,7 @@ func (g *GUI) configureUI() *configure {
 
 					err := config.Current.Reset()
 					if err != nil {
-						notify.Warn("UI: Failed to reset %s configuration (%v)", config.Current.Device, err)
+						notify.Warn("[UI] Failed to reset %s configuration (%v)", config.Current.Device, err)
 					}
 
 					config.Current.Reload()
@@ -684,7 +692,7 @@ func (g *GUI) configureUI() *configure {
 
 					g.next(is.MainMenu)
 
-					notify.Announce("UI: Reset UniteHUD %s configuration", config.Current.Device)
+					notify.Announce("[UI] Reset UniteHUD %s configuration", config.Current.Device)
 				}),
 				OnToastNo(this.Deactivate),
 			)
@@ -740,7 +748,7 @@ func (g *GUI) configureUI() *configure {
 	ui.groups.videos.monitor.populate(false)
 	ui.groups.videos.apis.populate(false)
 
-	ui.buttons.menu.settings.Click(ui.buttons.menu.settings)
+	// ui.buttons.menu.settings.Click(ui.buttons.menu.settings)
 
 	return ui
 }

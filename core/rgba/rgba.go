@@ -16,6 +16,7 @@ var (
 	Black          = RGBA{R: 0, G: 0, B: 0, A: 255}
 	BloodOrange    = RGBA{R: 252, G: 72, B: 35, A: 255}
 	CoolBlue       = RGBA{R: 71, G: 163, B: 255, A: 255}
+	CoralRed       = RGBA{R: 196, G: 90, B: 90, A: 255}
 	DarkRed        = RGBA{R: 166, G: 43, B: 53, A: 255}
 	DarkSeafoam    = RGBA{R: 46, G: 204, B: 113, A: 255}
 	DarkYellow     = RGBA{R: 204, G: 204, B: 0, A: 255}
@@ -45,6 +46,7 @@ var (
 	Orange         = RGBA{R: 255, G: 165, B: 0, A: 255}
 	PastelBabyBlue = RGBA{R: 112, G: 170, B: 204, A: 255}
 	PastelBlue     = RGBA{R: 130, G: 130, B: 223, A: 255}
+	PastelCoral    = RGBA{255, 173, 195, 255}
 	PastelGreen    = RGBA{R: 117, G: 199, B: 135, A: 255}
 	PastelOrange   = RGBA{R: 231, G: 137, B: 99, A: 255}
 	PastelRed      = RGBA{R: 245, G: 95, B: 95, A: 255}

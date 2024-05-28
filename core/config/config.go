@@ -27,9 +27,10 @@ import (
 )
 
 const (
-	MainDisplay          = "Main Display"
-	ProjectorWindow      = "UniteHUD Projector"
-	NoVideoCaptureDevice = -1
+	MainDisplay            = "Main Display"
+	ProjectorWindow        = "UniteHUD Projector"
+	NoVideoCaptureDevice   = -1
+	DefaultVideoCaptureAPI = "Any"
 
 	DeviceSwitch     = "switch"
 	DeviceMobile     = "mobile"
@@ -103,6 +104,7 @@ type Config struct {
 				Index int
 				API   string
 				FPS   int
+				Name  string
 			}
 			Window struct {
 				Name string
@@ -174,6 +176,9 @@ func (c Config) Eq(c2 Config) bool {
 }
 
 func (c *Config) File() string {
+	if len(os.Args) > 1 && strings.HasSuffix(os.Args[1], ".unitehud") {
+		return os.Args[1]
+	}
 	return fmt.Sprintf("config-%s.unitehud", strings.ReplaceAll(global.Version, ".", "-"))
 }
 
@@ -598,7 +603,7 @@ func Load(device string) error {
 
 	defer validate()
 
-	notify.System("[Config] Loading %s profile (%s)", device, Current.File())
+	notify.System("[Config] Loading %s profile (%s)", Current.Device, Current.File())
 
 	ok := open()
 	if !ok {
@@ -611,6 +616,7 @@ func Load(device string) error {
 
 		Current.Video.Capture.Window.Name = MainDisplay
 		Current.Video.Capture.Device.Index = NoVideoCaptureDevice
+		Current.Video.Capture.Device.API = DefaultVideoCaptureAPI
 
 		Current.Device = DeviceSwitch
 		Current.SetDefaultTheme()

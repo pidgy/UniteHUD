@@ -79,7 +79,7 @@ var UI *GUI
 func New() *GUI {
 	err := wapi.SetProcessDPIAwareness(wapi.PerMonitorAware)
 	if err != nil {
-		notify.Warn("UI: Failed to set DPI awareness, %v", err)
+		notify.Warn("[UI] Failed to set DPI awareness, %v", err)
 	}
 
 	min := image.Pt(1100, 700)
@@ -87,7 +87,7 @@ func New() *GUI {
 
 	is.Now = is.Loading
 
-	notify.System("UI: Generating")
+	notify.System("[UI] Generating")
 
 	UI = &GUI{
 		window: app.NewWindow(app.Title(global.Title), app.Decorated(false)),
@@ -143,7 +143,7 @@ func New() *GUI {
 		},
 	)
 
-	notify.System("UI: Using %dx%d resolution", max.X, max.Y)
+	notify.System("[UI] Using %dx%d resolution", max.X, max.Y)
 
 	go UI.loading()
 
@@ -172,7 +172,7 @@ func (g *GUI) Open() {
 		for is.Now != is.Closing {
 			switch is.Now {
 			case is.Loading:
-				notify.Debug("UI: Loading...")
+				notify.Debug("[UI] Loading...")
 			case is.MainMenu:
 				g.main()
 			case is.Configuring:
@@ -261,7 +261,7 @@ func (g *GUI) minimize() {
 }
 
 func (g *GUI) next(i is.What) {
-	notify.Debug("UI: Next state set to \"%s\"", i)
+	notify.Debug("[UI] Next state set to \"%s\"", i)
 	is.Now = i
 }
 
@@ -280,19 +280,19 @@ func (g *GUI) proc() {
 		ram := process.RAM()
 		if ram > peak.ram+100 {
 			peak.ram = ram
-			notify.Warn("UI: RAM Usage: %.0fMB", peak.ram)
+			notify.Replace("[UI] RAM", notify.Warn, "[UI] RAM Usage: %.0fMB", peak.ram)
 		}
 		g.performance.ram = fmt.Sprintf("RAM %.0f%s", ram, "MB")
 		go stats.RAM(ram)
 
 		cpu, err := process.CPU()
 		if err != nil {
-			notify.Error("Process: Failed to monitor CPU/RAM (%v)", err)
+			notify.Error("[Process] Failed to monitor CPU/RAM (%v)", err)
 			continue
 		}
 		if cpu > peak.cpu+10 {
 			peak.cpu = cpu
-			notify.Warn("UI: CPU Usage: %.1f%s", peak.cpu, "%")
+			notify.Replace("[UI] CPU Usage", notify.Warn, "[UI] CPU Usage: %.1f%s", peak.cpu, "%")
 		}
 		g.performance.cpu = fmt.Sprintf("CPU %.1f%s", cpu, "%")
 		go stats.CPU(cpu)

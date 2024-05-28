@@ -571,7 +571,7 @@ func (g *GUI) settingsUI() *settings {
 	ui.sections.theme.warning.(*button.Widget).Click = func(this *button.Widget) {
 		defer this.Deactivate()
 
-		notify.Debug("UI: Setting default theme")
+		notify.Debug("[UI] Setting default theme")
 		config.Current.SetDefaultTheme()
 
 		ui.sections.theme.widget.(*colorpicker.Widget).ApplyDefaults()

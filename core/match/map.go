@@ -74,7 +74,7 @@ func goals(matrix gocv.Mat, img *image.RGBA) (Goals, bool) {
 
 		for i := range results {
 			if results[i].Empty() {
-				notify.Warn("Detect: Empty result for %s", templates[i].Truncated())
+				notify.Warn("[Detect] Empty result for %s", templates[i].Truncated())
 				continue
 			}
 

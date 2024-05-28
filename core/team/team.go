@@ -81,7 +81,7 @@ var (
 
 		// Greater than 1s to reduce duplication errors.
 		// Less than 2s to avoid missing difficult capture windows.
-		Delay: time.Millisecond * 1750,
+		Delay: time.Millisecond * 1850,
 	}
 	// Purple represents the standard Team for the Purple side.
 	Purple = &Team{

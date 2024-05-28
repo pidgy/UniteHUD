@@ -4,13 +4,9 @@
 <head>
     <title>UniteHUD Client</title>
 
-    <script type="text/javascript" src="assets/js/jquery-3.7.0.min.js" onload="try { 
-        window.$ = window.jQuery = module.exports;
-        }
-        catch{ 
-            console.info('[UniteHUD] Non-electron browser detected')
-            }"></script>
+    <script type="text/javascript" src="assets/js/jquery-3.7.0.min.js" onload="try {window.$=window.jQuery=module.exports;}catch{console.info('[UniteHUD] Non-electron browser detected') }"></script>
     <script type="text/javascript" src="assets/js/main.js"></script>
+    <script type="text/javascript" src="assets/js/obs.js"></script>
 
     <link rel="stylesheet" href="assets/css/animation.css">
     <link rel="stylesheet" href="assets/css/style.css">
@@ -25,83 +21,92 @@
 </head>
 
 <body>
-    <div class="score-container purple">
-        <div class="score-bg purplescore-bg"></div>
-        <div class="purplescore teamscore"></div>
+    <div class="hud-container team-score-container purple">
+        <div class="team-score-bg purple"></div>
+        <div class="team-score purple"></div>
     </div>
 
-    <div class="score-container orange">
-        <div class="score-bg orangescore-bg"></div>
-        <div class="orangescore teamscore"></div>
+    <div class="hud-container team-score-container orange">
+        <div class="team-score-bg orange"></div>
+        <div class="team-score orange"></div>
     </div>
 
-    <div class="objectives-top">
-        <img class="objectives-img objectives-img-1" src="assets/img/regieleki.png">
+    <div class="hud-container objectives-container top">
+        <img class="objectives objectives-1 top" src="assets/img/objective.png">
 
-        <div class="objectives-n objectives-1">
-            <div class="objectives-circle-purple"></div>
-            <div class="objectives-circle-orange"></div>
-            <div class="objectives-circle-none"></div>
+        <div class="objectives-circle-container objectives-1 top">
+            <div class="objectives-circle purple"></div>
+            <div class="objectives-circle orange"></div>
+            <div class="objectives-circle none"></div>
         </div>
 
-        <img class="objectives-img objectives-img-2" src="assets/img/regieleki.png">
+        <img class="objectives objectives-2 top" src="assets/img/objective.png">
 
-        <div class="objectives-n objectives-2">
-            <div class="objectives-circle-purple"></div>
-            <div class="objectives-circle-orange"></div>
-            <div class="objectives-circle-none"></div>
+        <div class="objectives-circle-container objectives-2 top">
+            <div class="objectives-circle purple"></div>
+            <div class="objectives-circle orange"></div>
+            <div class="objectives-circle none"></div>
         </div>
 
-        <img class="objectives-img objectives-img-3" src="assets/img/regieleki.png">
+        <img class="objectives objectives-3 top" src="assets/img/objective.png">
 
-        <div class="objectives-n objectives-3">
-            <div class="objectives-circle-purple"></div>
-            <div class="objectives-circle-orange"></div>
-            <div class="objectives-circle-none"></div>
-        </div>
-    </div>
-
-    <div class="objectives-bottom">
-        <img class="objectives-bottom-img objectives-bottom-img-1" src="assets/img/objective.png">
-
-        <div class="objectives-bottom-n objectives-bottom-1">
-            <div class="objectives-bottom-circle-none"></div>
-            <div class="objectives-bottom-circle-purple"></div>
-            <div class="objectives-bottom-circle-orange"></div>
-        </div>
-
-        <img class="objectives-bottom-img objectives-bottom-img-2" src="assets/img/objective.png">
-
-        <div class="objectives-bottom-n objectives-bottom-2">
-            <div class="objectives-bottom-circle-none"></div>
-            <div class="objectives-bottom-circle-purple"></div>
-            <div class="objectives-bottom-circle-orange"></div>
-        </div>
-
-        <img class="objectives-bottom-img objectives-bottom-img-3" src="assets/img/objective.png">
-
-        <div class="objectives-bottom-n objectives-bottom-3">
-            <div class="objectives-bottom-circle-none"></div>
-            <div class="objectives-bottom-circle-purple"></div>
-            <div class="objectives-bottom-circle-orange"></div>
+        <div class="objectives-circle-container objectives-3 top">
+            <div class="objectives-circle purple"></div>
+            <div class="objectives-circle orange"></div>
+            <div class="objectives-circle none"></div>
         </div>
     </div>
 
-    <div class="objectives-central">
-        <img class="objectives-central-img objectives-central-img-1" src="assets/img/rayquaza.png">
+    <div class="hud-container objectives-container bottom">
+        <img class="objectives objectives-1 bottom" src="assets/img/objective.png">
 
-        <div class="objectives-central-n objectives-central-1">
-            <div class="objectives-central-circle-purple"></div>
-            <div class="objectives-central-circle-orange"></div>
-            <div class="objectives-central-circle-none"></div>
+        <div class="objectives-circle-container objectives-1 bottom">
+            <div class="objectives-circle none"></div>
+            <div class="objectives-circle purple"></div>
+            <div class="objectives-circle orange"></div>
+        </div>
+
+        <img class="objectives objectives-2 bottom" src="assets/img/objective.png">
+
+        <div class="objectives-circle-container objectives-2 bottom">
+            <div class="objectives-circle none"></div>
+            <div class="objectives-circle purple"></div>
+            <div class="objectives-circle orange"></div>
+        </div>
+
+        <img class="objectives objectives-3 bottom" src="assets/img/objective.png">
+
+        <div class="objectives-circle-container objectives-3 bottom">
+            <div class="objectives-circle none"></div>
+            <div class="objectives-circle purple"></div>
+            <div class="objectives-circle orange"></div>
         </div>
     </div>
 
-    <p class="error">Connecting...</p>
-    <div class="banner">
-        <table class="banner-table">
+    <div class="hud-container objectives-container central">
+        <img class="objectives objectives-1 central" src="assets/img/objective.png">
+
+        <div class="objectives-circle-container objectives-1 central">
+            <div class="objectives-circle purple"></div>
+            <div class="objectives-circle orange"></div>
+            <div class="objectives-circle none"></div>
+        </div>
+    </div>
+
+    <p class="hud-banner unitehud-banner-label banner-label">Connecting...</p>
+    <div class="hud-banner unitehud-banner banner">
+        <table class="unitehud-banner-table">
             <td>
-                <img class="logo" src="assets/img/icon.png">
+                <img class="unitehud-banner-logo banner-logo" src="assets/img/icon.png">
+            </td>
+        </table>
+    </div>
+
+    <ul class="debug-banner-labels"></ul>
+    <div class="debug-banner banner">
+        <table class="debug-banner-table">
+            <td>
+                <img class="debug-banner-logo banner-logo" src="assets/img/debug-icon.png">
             </td>
         </table>
     </div>

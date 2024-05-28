@@ -25,7 +25,7 @@ import (
 var sigq = make(chan os.Signal, 1)
 
 func init() {
-	notify.Announce("UniteHUD: Initializing...")
+	notify.Announce("[UniteHUD] Initializing...")
 }
 
 func kill(errs ...error) {
@@ -37,11 +37,11 @@ func kill(errs ...error) {
 
 			err := config.Current.Save()
 			if err != nil {
-				notify.Warn("UniteHUD: Failed to save crash log (%v)", err)
+				notify.Warn("[UniteHUD] Failed to save crash log (%v)", err)
 			}
 		}
 
-		notify.Warn("UniteHUD: Crashed (%v)", err)
+		notify.Warn("[UniteHUD] Crashed (%v)", err)
 	}
 
 	report := make(chan bool)
@@ -60,12 +60,12 @@ func kill(errs ...error) {
 
 				err := save.Logs(notify.FeedStrings(), stats.Lines(), stats.Counts())
 				if err != nil {
-					notify.Warn("UniteHUD: Failed to save logs (%v)", err)
+					notify.Warn("[UniteHUD] Failed to save logs (%v)", err)
 				}
 
 				err = save.OpenLogDirectory()
 				if err != nil {
-					notify.Error("UniteHUD: Failed to open log directory (%v)", err)
+					notify.Error("[UniteHUD] Failed to open log directory (%v)", err)
 					return
 				}
 			},
@@ -79,7 +79,7 @@ func signals() {
 	signal.Notify(sigq, os.Interrupt)
 	<-sigq
 
-	notify.Announce("UniteHUD: Closing...")
+	notify.Announce("[UniteHUD] Closing...")
 
 	video.Close()
 	audio.Close()
@@ -88,7 +88,7 @@ func signals() {
 
 	err := save.Logs(notify.FeedStrings(), stats.Lines(), stats.Counts())
 	if err != nil {
-		notify.Warn("UniteHUD: Failed to save logs (%v)", err)
+		notify.Warn("[UniteHUD] Failed to save logs (%v)", err)
 	}
 
 	os.Exit(0)
@@ -99,41 +99,41 @@ func main() {
 
 	err := process.Start()
 	if err != nil {
-		notify.Warn("UniteHUD: Failed to stop previous process (%v)", err)
+		notify.Warn("[UniteHUD] Failed to stop previous process (%v)", err)
 	}
 
 	err = config.Load(config.Current.Device)
 	if err != nil {
-		notify.Warn("UniteHUD: Failed to load %s (%v)", config.Current.File(), err)
+		notify.Warn("[UniteHUD] Failed to load %s (%v)", config.Current.File(), err)
 	}
 
 	err = video.Open()
 	if err != nil {
-		notify.Warn("UniteHUD: Failed to open video (%v)", err)
+		notify.Warn("[UniteHUD] Failed to open video (%v)", err)
 	}
 
 	err = audio.Open()
 	if err != nil {
-		notify.Warn("UniteHUD: Failed to open audio session (%v)", err)
+		notify.Warn("[UniteHUD] Failed to open audio session (%v)", err)
 	}
 
 	err = server.Open()
 	if err != nil {
-		notify.Warn("UniteHUD: Failed to start server (%v)", err)
+		notify.Warn("[UniteHUD] Failed to start server (%v)", err)
 	}
 
 	err = tray.Open(global.Title, global.TitleVersion, ui.UI.Close)
 	if err != nil {
-		notify.Warn("UniteHUD: Failed to open system tray (%v)", err)
+		notify.Warn("[UniteHUD] Failed to open system tray (%v)", err)
 	}
 
 	go discord.Connect()
 
-	notify.Debug("UniteHUD: Server Address (%s)", server.Address)
-	notify.Debug("UniteHUD: Recording (%t)", config.Current.Record)
-	notify.Debug("UniteHUD: Platform (%s)", config.Current.Device)
-	notify.Debug("UniteHUD: Assets (%s)", config.Current.Assets())
-	notify.Debug("UniteHUD: Match Threshold: (%.0f%%)", config.Current.Acceptance*100)
+	notify.Debug("[UniteHUD] Server Address (%s)", server.Address)
+	notify.Debug("[UniteHUD] Recording (%t)", config.Current.Record)
+	notify.Debug("[UniteHUD] Platform (%s)", config.Current.Device)
+	notify.Debug("[UniteHUD] Assets (%s)", config.Current.Assets())
+	notify.Debug("[UniteHUD] Match Threshold: (%.0f%%)", config.Current.Acceptance*100)
 
 	go detect.Clock()
 	go detect.Energy()
@@ -149,5 +149,5 @@ func main() {
 
 	go signals()
 
-	notify.Announce("UniteHUD: Initialized")
+	notify.Announce("[UniteHUD] Initialized")
 }

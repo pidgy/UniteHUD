@@ -25,14 +25,14 @@ func Check() {
 	b := &bytes.Buffer{}
 	h, err := http.NewRequest(http.MethodGet, fmt.Sprintf("https://unitehud.dev/update.json?v=%s", global.VersionNoV), b)
 	if err != nil {
-		notify.Error("Failed to check for updates (%v)", err)
+		notify.Error("[Update] Failed to check for updates (%v)", err)
 		return
 	}
 	h.Header.Set("User-Agent", fmt.Sprintf("UniteHUD-Updater/%s", global.VersionNoV))
 
 	r, err := http.DefaultClient.Do(h)
 	if err != nil {
-		notify.Error("Failed to check for updates (%v)", err)
+		notify.Error("[Update] Failed to check for updates (%v)", err)
 		return
 	}
 	defer r.Body.Close()
@@ -66,7 +66,7 @@ func Check() {
 
 	switch {
 	case v1.LessThan(v2):
-		notify.System("[Update] %s is available for download (http://unitehud.dev)", q.Latest)
+		notify.System("[Update] %s is now available for download (http://unitehud.dev)", q.Latest)
 
 		desktop.Notification("UniteHUD %s", q.Latest).
 			Says("An update is available for UniteHUD").

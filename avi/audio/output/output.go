@@ -67,7 +67,7 @@ func (d *Device) Close() {
 		return
 	}
 
-	notify.System("Audio Output: Closing %s", d.name)
+	notify.System("[Audio Output] Closing %s", d.name)
 
 	close(d.closingq)
 	<-d.closedq
@@ -87,12 +87,12 @@ func (d *Device) Start(mctx malgo.Context, r io.ReadWriter) error {
 		return errors.Wrap(fmt.Errorf("already active"), d.name)
 	}
 
-	defer notify.Debug("Audio Output: Started %s", d.Name())
+	defer notify.Debug("[Audio Output] Started %s", d.Name())
 
 	errq := make(chan error)
 
 	go func() {
-		defer notify.Debug("Audio Output: Closed %s", d.Name())
+		defer notify.Debug("[Audio Output] Closed %s", d.Name())
 
 		d.closingq = make(chan bool)
 		d.closedq = make(chan bool)
@@ -117,7 +117,7 @@ func (d *Device) Start(mctx malgo.Context, r io.ReadWriter) error {
 						d.reconnects++
 						return
 					}
-					notify.Warn("Audio Output: Playback error (%v)", errors.Wrap(err, d.name))
+					notify.Warn("[Audio Output] Playback error (%v)", errors.Wrap(err, d.name))
 				}
 			},
 		}
@@ -137,7 +137,7 @@ func (d *Device) Start(mctx malgo.Context, r io.ReadWriter) error {
 		defer func() {
 			err := device.Stop()
 			if err != nil {
-				notify.Error("Audio Output: Failed to stop device (%v)", err)
+				notify.Error("[Audio Output] Failed to stop device (%v)", err)
 				return
 			}
 		}()
@@ -160,14 +160,14 @@ func (d *Device) Type() device.Type {
 func Devices(ctx *malgo.AllocatedContext) (playbacks []*Device) {
 	d, err := ctx.Devices(malgo.Playback)
 	if err != nil {
-		notify.Error("Audio Output: Failed to find devices (%v)", err)
+		notify.Error("[Audio Output] Failed to find devices (%v)", err)
 		return nil
 	}
 
 	for _, info := range d {
 		full, err := ctx.DeviceInfo(malgo.Playback, info.ID, malgo.Shared)
 		if err != nil {
-			notify.Warn("Audio Output: Failed to find device information for %s (%v)", info.ID, err)
+			notify.Warn("[Audio Output] Failed to find device information for %s (%v)", info.ID, err)
 		}
 
 		playbacks = append(playbacks, &Device{

@@ -106,9 +106,7 @@ public:
         goto failed;
     }
 
-    if (IS_ERROR(CoInitializeEx(NULL, COINIT_MULTITHREADED))) {
-      goto failed;
-    }
+    CoInitializeEx(NULL, COINIT_SPEED_OVER_MEMORY);
 
     _result = CoCreateInstance(
       CLSID_SystemDeviceEnum, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_dev));

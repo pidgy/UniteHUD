@@ -59,7 +59,7 @@ func Active() bool {
 
 func Close() {
 	if !active {
-		notify.Warn("Overlay Window: Failed to close (inactive)")
+		notify.Warn("[Overlay Window] Failed to close (inactive)")
 		return
 	}
 	active = false
@@ -67,13 +67,13 @@ func Close() {
 
 	err := closeWindow()
 	if err != nil {
-		notify.Error("Overlay Window: Failed to close (%v)", err)
+		notify.Error("[Overlay Window] Failed to close (%v)", err)
 		return
 	}
 
 	err = closeApp()
 	if err != nil {
-		notify.Error("Overlay Engine: Failed to close (%v)", err)
+		notify.Error("[Overlay Engine] Failed to close (%v)", err)
 		return
 	}
 }
@@ -89,7 +89,7 @@ func Follow(hwnd uintptr, parent bool) {
 
 		_, _, err := wapi.GetWindowRect.Call(hwnd, uintptr(unsafe.Pointer(r)))
 		if err != syscall.Errno(0) {
-			notify.Error("Overlay Window: Failed to match overlay position (%v)", err)
+			notify.Error("[Overlay Window] Failed to match overlay position (%v)", err)
 			return
 		}
 
@@ -106,19 +106,19 @@ func Follow(hwnd uintptr, parent bool) {
 	err := window.SetBounds(b)
 	if err != nil {
 		if active {
-			notify.Debug("Overlay Window: Failed to set bounds (%v)", err)
+			notify.Debug("[Overlay Window] Failed to set bounds (%v)", err)
 		}
 	}
 
 	if !hidden {
 		err = window.MoveTop()
 		if err != nil {
-			notify.Debug("Overlay Window: Failed to move on top (%v)", err)
+			notify.Debug("[Overlay Window] Failed to move on top (%v)", err)
 		}
 
 		err = window.Show()
 		if err != nil {
-			notify.Debug("Overlay Window: Failed to show (%v)", err)
+			notify.Debug("[Overlay Window] Failed to show (%v)", err)
 		}
 	}
 }
@@ -128,7 +128,7 @@ func Hide() {
 
 	err := window.Hide()
 	if err != nil {
-		notify.Error("Overlay Window: Failed to hide (%v)", err)
+		notify.Error("[Overlay Window] Failed to hide (%v)", err)
 	}
 }
 
@@ -141,13 +141,13 @@ func Open() error {
 
 	err := openApp()
 	if err != nil {
-		notify.Error("Overlay Engine: Failed to open (%v)", err)
+		notify.Error("[Overlay Engine] Failed to open (%v)", err)
 		return err
 	}
 
 	err = openWindow()
 	if err != nil {
-		notify.Error("Overlay Window: Failed to open (%v)", err)
+		notify.Error("[Overlay Window] Failed to open (%v)", err)
 		return err
 	}
 
@@ -161,13 +161,13 @@ func Show() {
 
 	err := window.Show()
 	if err != nil {
-		notify.Error("Overlay Window: Failed to show (%v)", err)
+		notify.Error("[Overlay Window] Failed to show (%v)", err)
 	}
 }
 
 func closeApp() error {
-	notify.Debug("Overlay Engine: Closing...")
-	defer notify.Debug("Overlay Engine: Closed...")
+	notify.Debug("[Overlay Engine] Closing...")
+	defer notify.Debug("[Overlay Engine] Closed...")
 
 	go app.Stop()
 	go app.Close()
@@ -181,8 +181,8 @@ func closeApp() error {
 }
 
 func closeWindow() error {
-	notify.Debug("Overlay Window: Closing...")
-	defer notify.Debug("Overlay Window: Closed...")
+	notify.Debug("[Overlay Window] Closing...")
+	defer notify.Debug("[Overlay Window] Closed...")
 
 	err := window.UpdateCustomOptions(astilectron.WindowCustomOptions{MinimizeOnClose: astikit.BoolPtr(false)})
 	if err != nil {
@@ -198,12 +198,12 @@ func closeWindow() error {
 }
 
 func openApp() error {
-	notify.Debug("Overlay Engine: Opening...")
+	notify.Debug("[Overlay Engine] Opening...")
 
 	var err error
 
 	app, err = astilectron.New(
-		notify.Debugger("Overlay Engine: "),
+		notify.Debugger("[Overlay Engine] "),
 		astilectron.Options{
 			AppName:            title,
 			CustomElectronPath: filepath.Join(global.WorkingDirectory(), global.AssetDirectory, "electron", "vendor", "electron-windows-amd64", "UniteHUD Overlay.exe"),
@@ -222,7 +222,7 @@ func openApp() error {
 	app.HandleSignals()
 
 	// closed := func(e astilectron.Event) (deleteListener bool) {
-	// 	notify.Debug("Overlay Engine: %s", e.Name)
+	// 	notify.Debug("[Overlay Engine] %s", e.Name)
 	// 	return false
 	// }
 
@@ -230,7 +230,7 @@ func openApp() error {
 	// app.On(astilectron.EventNameAppCmdQuit, closed)
 	// app.On(astilectron.EventNameAppClose, closed)
 	app.On(astilectron.EventNameAppEventReady, func(e astilectron.Event) (deleteListener bool) {
-		notify.Debug("Overlay Engine: event, %s", e.Name)
+		notify.Debug("[Overlay Engine] event, %s", e.Name)
 		return false
 	})
 
@@ -240,7 +240,7 @@ func openApp() error {
 	}
 
 	go func() {
-		defer notify.Debug("Overlay App: Exiting main loop")
+		defer notify.Debug("[Overlay App] Exiting main loop")
 		app.Wait()
 	}()
 
@@ -248,8 +248,8 @@ func openApp() error {
 }
 
 func openWindow() error {
-	notify.Debug("Overlay Window: Opening window...")
-	defer notify.Debug("Overlay Window: Opened window")
+	notify.Debug("[Overlay Window] Opening window...")
+	defer notify.Debug("[Overlay Window] Opened window")
 
 	var err error
 
@@ -292,12 +292,12 @@ func openWindow() error {
 		},
 	)
 	if err != nil {
-		notify.Error("Overlay Window: Failed to open (%v)", err)
+		notify.Error("[Overlay Window] Failed to open (%v)", err)
 		return err
 	}
 
 	// ev := func(e astilectron.Event, b bool) (deleteListener bool) {
-	// 	notify.Debug("Overlay Window: %s", e.Name)
+	// 	notify.Debug("[Overlay Window] %s", e.Name)
 	// 	active.window = b
 	// 	return false
 	// }

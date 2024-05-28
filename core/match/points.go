@@ -85,7 +85,7 @@ func (m *Match) first(matrix gocv.Mat) (Result, int) {
 
 		for i := range results {
 			if results[i].Empty() {
-				notify.Warn("Detect: Empty result for %s", templates[i].Truncated())
+				notify.Warn("[Detect] Empty result for %s", templates[i].Truncated())
 				continue
 			}
 
@@ -193,7 +193,7 @@ func (m *Match) regular(matrix gocv.Mat) (Result, int) {
 
 		for i := range results {
 			if results[i].Empty() {
-				notify.Warn("Detect: Empty result for %s", templates[i].Truncated())
+				notify.Warn("[Detect] Empty result for %s", templates[i].Truncated())
 				continue
 			}
 
@@ -262,13 +262,13 @@ func (m *Match) validate(matrix gocv.Mat, value int) (Result, int) {
 	switch ok, reason := m.Team.Duplicate.Of(latest); {
 	case latest.Overrides(m.Team.Duplicate):
 		latest.Counted = true
-		notify.Debug("Detect: [%s] [%s] [Override] %s", server.Clock(), m.Team, reason)
+		notify.Debug("[Detect] [%s] [%s] [Override] [%s] +%d", server.Clock(), m.Team, reason, value)
 		return Override, value
 	case ok:
-		notify.Debug("Detect: [%s] [%s] [Duplicate] %s", server.Clock(), m.Team, reason)
+		notify.Debug("[Detect] [%s] [%s] [Duplicate] [%s] +%d", server.Clock(), m.Team, reason, value)
 		return Duplicate, value
 	case latest.Potential:
-		notify.Debug("Detect: [%s] [%s] [Potential Duplicate] %s", server.Clock(), m.Team, reason)
+		notify.Debug("[Detect] [%s] [%s] [Potential Duplicate] [%s] +%d", server.Clock(), m.Team, reason, value)
 		fallthrough
 	default:
 		latest.Counted = true

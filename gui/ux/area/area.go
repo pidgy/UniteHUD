@@ -373,6 +373,6 @@ func (c *Capture) Rectangle() image.Rectangle {
 }
 
 func (c *Capture) reset() {
-	notify.Debug("UI: Resetting %s capture area %s", c.Option, c.DefaultBase)
+	notify.Debug("[UI] Resetting %s capture area %s", c.Option, c.DefaultBase)
 	c.Base = c.DefaultBase
 }

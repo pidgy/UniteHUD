@@ -151,7 +151,7 @@ func Open() {
 			bottomDisplays++
 			name = display("Bottom Display", bottomDisplays)
 		default:
-			notify.Error("Video: Failed to locate display #%d [%s] relative to %s [%s]", i, r, config.MainDisplay, m)
+			notify.Error("[Video] Failed to locate display #%d [%s] relative to %s [%s]", i, r, config.MainDisplay, m)
 			continue
 		}
 

@@ -12,7 +12,7 @@ import (
 
 func TestStatus(t *testing.T) {
 	is.Now = is.MainMenu
-	server.SetStarted()
+	server.SetReady()
 	server.SetMatchStarted()
 
 	server.SetTime(9, 45)

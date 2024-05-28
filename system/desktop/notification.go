@@ -43,7 +43,7 @@ func (n *Factory) Send() {
 
 	err := n.toast.Push()
 	if err != nil {
-		notify.Warn("System: Failed to send desktop notification (%v)", err)
+		notify.Warn("[System] Failed to send desktop notification (%v)", err)
 	}
 }
 

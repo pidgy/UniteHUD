@@ -121,8 +121,8 @@ func (l *Loop) start() {
 	go func() {
 		defer close(l.syncq)
 
-		notify.Debug("FPS: Loop starting at %d FPS/%dms", l.FPS, l.interval.Milliseconds())
-		defer notify.Debug("FPS: Stopping loop at %d FPS/%dms", l.FPS, l.interval.Milliseconds())
+		notify.Debug("[FPS] Loop starting at %d FPS/%dms", l.FPS, l.interval.Milliseconds())
+		defer notify.Debug("[FPS] Stopping loop at %d FPS/%dms", l.FPS, l.interval.Milliseconds())
 
 		for ; !l.stop; time.Sleep(l.interval) {
 			close := l.render()

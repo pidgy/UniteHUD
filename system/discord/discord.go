@@ -49,13 +49,13 @@ func Connect() {
 
 func Close() {
 	rpc.cleanup()
-	notify.Feed(nrgba.Discord, "Discord: Connection closed")
+	notify.Feed(nrgba.Discord, "[Discord] Connection closed")
 }
 
 func reconnect() {
 	err := rpc.error()
 	if err != nil {
-		notify.Warn("Discord: Disconnected (%v)", err)
+		notify.Warn("[Discord] Disconnected (%v)", err)
 	}
 
 	if config.Current.Advanced.Discord.Disabled && rpc.conn != nil {
@@ -70,17 +70,17 @@ func reconnect() {
 		}
 		wait = wait << 1
 
-		notify.Feed(nrgba.Discord, "Discord: Connecting...")
+		notify.Feed(nrgba.Discord, "[Discord] Connecting...")
 
 		if retries++; retries == 5 {
-			notify.Warn("Discord: Failed to connect, disabling RPC")
+			notify.Warn("[Discord] Failed to connect, disabling RPC")
 			config.Current.Advanced.Discord.Disabled = true
 			continue
 		}
 
 		rpc, err = connect()
 		if err != nil {
-			notify.Warn("Discord: Failed to connect (%v)", err)
+			notify.Warn("[Discord] Failed to connect (%v)", err)
 			continue
 		}
 
@@ -88,11 +88,11 @@ func reconnect() {
 
 		err = rpc.error()
 		if err != nil {
-			notify.Warn("Discord: Failed to connect (%v)", err)
+			notify.Warn("[Discord] Failed to connect (%v)", err)
 			continue
 		}
 
-		notify.Feed(nrgba.Discord, "Discord: Connected")
+		notify.Feed(nrgba.Discord, "[Discord] Connected")
 	}
 }
 
@@ -143,7 +143,7 @@ func status() activity {
 	case is.Loading:
 		a.State = "Starting"
 	case is.MainMenu:
-		if !server.Started() {
+		if !server.Ready() {
 			a.State = "Ready to capture scores"
 		}
 

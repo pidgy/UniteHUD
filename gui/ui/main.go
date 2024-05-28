@@ -158,11 +158,11 @@ func (g *GUI) main() {
 	g.nav.Open()
 
 	if config.Current.Crashed != "" {
-		notify.Warn("Crash: %s", config.Current.Crashed)
+		notify.Warn("[Crash] %s", config.Current.Crashed)
 
 		err := save.Logs(notify.FeedStrings(), stats.Lines(), stats.Counts())
 		if err != nil {
-			notify.Warn("UI: Failed to save logs (%v)", err)
+			notify.Warn("[UI] Failed to save logs (%v)", err)
 		}
 
 		g.ToastYesNo(
@@ -172,7 +172,7 @@ func (g *GUI) main() {
 				func() {
 					err := save.Open()
 					if err != nil {
-						notify.Error("UI: Failed to open save directory (%v)", err)
+						notify.Error("[UI] Failed to open save directory (%v)", err)
 						return
 					}
 				},
@@ -181,7 +181,7 @@ func (g *GUI) main() {
 		)
 		err = config.Current.Reset()
 		if err != nil {
-			notify.Warn("UI: Failed to reset configuration (%v)", err)
+			notify.Warn("[UI] Failed to reset configuration (%v)", err)
 		}
 	}
 
@@ -203,7 +203,7 @@ func (g *GUI) main() {
 		switch event := g.window.NextEvent().(type) {
 		case system.StageEvent:
 			ui.stage = event.Stage
-			notify.Debug("UI: Main stage: %s", ui.stage)
+			notify.Debug("[UI] Main stage: %s", ui.stage)
 		case system.DestroyEvent:
 			g.next(is.Closing)
 			return
@@ -622,16 +622,16 @@ func (g *GUI) mainUI() *main {
 			detect.Pause()
 			server.Clear()
 			team.Clear()
-			server.SetStopped()
+			server.SetNotReady()
 
 			err := save.Logs(notify.FeedStrings(), stats.Lines(), stats.Counts())
 			if err != nil {
-				notify.Warn("UI: Failed to save logs (%v)", err)
+				notify.Warn("[UI] Failed to save logs (%v)", err)
 			}
 
 			tray.SetStartStopTitle("Start")
 
-			notify.Announce("UI: Stopped %s", global.Title)
+			notify.Announce("[UI] Stopped %s", global.Title)
 		},
 	}
 
@@ -667,20 +667,20 @@ func (g *GUI) mainUI() *main {
 			state.Clear()
 			stats.Clear()
 			team.Clear()
-			server.SetStarted()
+			server.SetReady()
 
 			tray.SetStartStopTitle("Stop")
 
 			g.Running = true
 
-			notify.Announce("UI: Started %s", global.Title)
+			notify.Announce("[UI] Started %s", global.Title)
 		},
 	}
 
 	ui.textblocks.feed, err = textblock.New(g.nav.Collection.Cascadia(), 75)
 	if err != nil {
 		ui.textblocks.feed = &textblock.Widget{}
-		notify.Warn("UI: Failed to load font: (%v)", err)
+		notify.Warn("[UI] Failed to load font: (%v)", err)
 	}
 
 	ui.buttons.projector = &button.ImageWidget{
@@ -939,7 +939,7 @@ func (g *GUI) mainUI() *main {
 				OnToastOK(func() {
 					err = open.Run(filepath.Join(global.WorkingDirectory(), "www"))
 					if err != nil {
-						notify.Error("UI: Failed to open www/ directory: %v", err)
+						notify.Error("[UI] Failed to open www/ directory: %v", err)
 						return
 					}
 				}),
@@ -959,7 +959,7 @@ func (g *GUI) mainUI() *main {
 			defer this.Deactivate()
 
 			notify.CLS()
-			notify.System("UI: Cleared")
+			notify.System("[UI] Cleared")
 		},
 	}
 
@@ -979,9 +979,9 @@ func (g *GUI) mainUI() *main {
 			}
 
 			if g.performance.eco {
-				notify.System("UI: Resource saver has been enabled")
+				notify.System("[UI] Resource saver has been enabled")
 			} else {
-				notify.System("UI: Resource saver has been disabled")
+				notify.System("[UI] Resource saver has been disabled")
 			}
 		},
 	}
@@ -998,12 +998,12 @@ func (g *GUI) mainUI() *main {
 
 			err = save.Logs(notify.FeedStrings(), stats.Lines(), stats.Counts())
 			if err != nil {
-				notify.Warn("UI: Failed to save logs (%v)", err)
+				notify.Warn("[UI] Failed to save logs (%v)", err)
 			}
 
 			err := save.Open()
 			if err != nil {
-				notify.Warn("UI: Failed to open: %s (%v)", save.Directory, err)
+				notify.Warn("[UI] Failed to open: %s (%v)", save.Directory, err)
 			}
 		},
 	}
@@ -1020,12 +1020,12 @@ func (g *GUI) mainUI() *main {
 			description := "Record and save captured events on your computer?"
 			yes := func() {
 				config.Current.Record = true
-				notify.System("UI: Recording captured events in %s", save.Directory)
+				notify.System("[UI] Recording captured events in %s", save.Directory)
 				this.Text = "■"
 
 				err := save.Logs(notify.FeedStrings(), stats.Lines(), stats.Counts())
 				if err != nil {
-					notify.Warn("UI: Failed to save logs (%v)", err)
+					notify.Warn("[UI] Failed to save logs (%v)", err)
 				}
 			}
 
@@ -1033,17 +1033,17 @@ func (g *GUI) mainUI() *main {
 				title = "Stop"
 				description = "Stop recording captured events?"
 				yes = func() {
-					notify.System("UI: Saved captured events in %s", save.Directory)
+					notify.System("[UI] Saved captured events in %s", save.Directory)
 					this.Text = "🎬"
 
 					err := save.Open()
 					if err != nil {
-						notify.Error("UI: Failed to open \"%s\" (%v)", save.Directory, err)
+						notify.Error("[UI] Failed to open \"%s\" (%v)", save.Directory, err)
 					}
 
 					err = save.Logs(notify.FeedStrings(), stats.Lines(), stats.Counts())
 					if err != nil {
-						notify.Warn("UI: Failed to save logs (%v)", err)
+						notify.Warn("[UI] Failed to save logs (%v)", err)
 					}
 
 					config.Current.Record = false
@@ -1068,14 +1068,14 @@ func (g *GUI) mainUI() *main {
 			exe := "C:\\Windows\\system32\\notepad.exe"
 			err := exec.Command(exe, config.Current.File()).Run()
 			if err != nil {
-				notify.Error("UI: Failed to open \"%s\" (%v)", config.Current.File(), err)
+				notify.Error("[UI] Failed to open \"%s\" (%v)", config.Current.File(), err)
 				return
 			}
 
 			// Called once window is closed.
 			err = config.Load(config.Current.Device)
 			if err != nil {
-				notify.Error("UI: Failed to reload \"%s\" (%v)", config.Current.File(), err)
+				notify.Error("[UI] Failed to reload \"%s\" (%v)", config.Current.File(), err)
 				return
 			}
 		},

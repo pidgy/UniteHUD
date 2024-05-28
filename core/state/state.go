@@ -81,9 +81,9 @@ func (e EventType) String() string {
 	case Nothing:
 		return "Nothing"
 	case PreScore:
-		return "Pre score"
+		return "Pre-score"
 	case PostScore:
-		return "Post score"
+		return "Post-score"
 	case Killed:
 		return "Defeated"
 	case KilledWithPoints:
@@ -91,29 +91,29 @@ func (e EventType) String() string {
 	case KilledWithoutPoints:
 		return "Defeated without points"
 	case MatchStarting:
-		return "Match Starting"
+		return "Match starting"
 	case MatchEnding:
 		return "Match Ending"
 	case HoldingEnergy:
-		return "Holding Energy"
+		return "[Self] Holding energy"
 	case PurpleBaseOpen:
-		return "Purple Open"
+		return "[Purple] Base open"
 	case OrangeBaseOpen:
-		return "Orange Open"
+		return "[Orange] Base open"
 	case PurpleBaseClosed:
-		return "Purple Closed"
+		return "[Purple] Closed"
 	case OrangeBaseClosed:
-		return "Orange Cclosed"
+		return "[Orange] Closed"
 	case PurpleScore:
-		return "Purple Scored"
+		return "[Purple] Scored"
 	case OrangeScore:
-		return "Orange Scored"
+		return "[Orange] Scored"
 	case FirstScored:
 		return "First score"
 	case OrangeScoreMissed:
-		return "Orange score missed"
+		return "[Orange] Score missed"
 	case PurpleScoreMissed:
-		return "Purple score missed"
+		return "[Purple] Score missed"
 	case RegielekiSecurePurple:
 		return "[Purple] Regieleki"
 	case RegielekiSecureOrange:
@@ -131,7 +131,7 @@ func (e EventType) String() string {
 	case RegisteelSecureOrange:
 		return "[Orange] Registeel"
 	case PressButtonToScore:
-		return "Press button to score"
+		return `Help Text: "Press Button to Score"`
 	case ScoreOverride:
 		return "Override"
 	case ObjectivePresent:
@@ -157,9 +157,9 @@ func (e EventType) String() string {
 	case RayquazaSecureOrange:
 		return "[Orange] Rayquaza"
 	case SurrenderPurple:
-		return "[Purple] Surrender"
+		return "[Purple] Surrendered"
 	case SurrenderOrange:
-		return "[Orange] Surrender"
+		return "[Orange] Surrendered"
 	default:
 		return fmt.Sprintf("Unknown State: %d", e.Int())
 	}
@@ -216,11 +216,19 @@ func (e *Event) Eq(e2 *Event) bool {
 }
 
 func (e *Event) String() string {
-	return fmt.Sprintf("[%02d:%02d:%02d] [Event] [%s] %s", e.Time.Hour(), e.Time.Minute(), e.Time.Second(), e.Clock, e.EventType)
+	s := fmt.Sprintf("[%02d:%02d:%02d] [Event] [%s] %s", e.Time.Hour(), e.Time.Minute(), e.Time.Second(), e.Clock, e.EventType)
+	if e.Value > 0 {
+		s = fmt.Sprintf("%s %d", s, e.Value)
+	}
+	return s
 }
 
 func (e *Event) Strip() string {
-	return fmt.Sprintf("[%s] %s", e.Clock, e.EventType)
+	s := fmt.Sprintf("[%s] %s", e.Clock, e.EventType)
+	if e.Value > 0 {
+		s = fmt.Sprintf("%s %d", s, e.Value)
+	}
+	return s
 }
 
 func (this EventType) Before(that EventType) bool {
