@@ -2,12 +2,14 @@ package tray
 
 import (
 	"os"
+	"time"
 
 	"github.com/rupor-github/win-gpg-agent/systray"
 	"github.com/skratchdot/open-golang/open"
 
 	"github.com/pidgy/unitehud/avi/img"
 	"github.com/pidgy/unitehud/core/notify"
+	"github.com/pidgy/unitehud/system/process"
 	"github.com/pidgy/unitehud/system/wapi"
 )
 
@@ -23,10 +25,11 @@ var (
 var menu = struct {
 	visible bool
 
-	header,
-	website,
-	startstop,
-	quit toggle
+	header    toggle
+	website   toggle
+	startstop toggle
+	cpu, ram  toggle
+	quit      toggle
 
 	startstopq chan bool
 	errorq     chan error
@@ -51,9 +54,19 @@ func Open(title, version string, exit func()) error {
 
 	go systray.Run(func() {
 		menu.header = header(title, version)
+		menu.cpu = cpu()
+		menu.ram = ram()
 		menu.website = website()
 		menu.startstop = startstop()
+
 		menu.quit = quit()
+
+		go func() {
+			for ; ; time.Sleep(time.Second) {
+				menu.cpu.event()
+				menu.ram.event()
+			}
+		}()
 
 		menu.errorq <- nil
 
@@ -96,25 +109,16 @@ func StartStopEvent() bool {
 	}
 }
 
-func quit() toggle {
-	notify.Debug("[Tray] Adding Quit")
+func cpu() toggle {
+	notify.Debug("[Tray] Adding CPU")
 
 	systray.AddSeparator()
 
 	return toggle{
-		MenuItem: systray.AddMenuItem("Quit UniteHUD", "Close UniteHUD"),
-		event:    func() { os.Exit(0) },
-	}
-}
-
-func startstop() toggle {
-	notify.Debug("[Tray] Adding Start/Stop")
-
-	systray.AddSeparator()
-
-	return toggle{
-		MenuItem: systray.AddMenuItem("Start", "Start capturing events"),
-		event:    func() { menu.startstopq <- true },
+		MenuItem: systray.AddMenuItem("CPU 0%", "CPU"),
+		event: func() {
+			menu.cpu.SetTitle(process.CPU.String())
+		},
 	}
 }
 
@@ -134,6 +138,39 @@ func header(title, version string) toggle {
 			notify.Debug("[Tray] Raising hwnd: %d", hwnd)
 			wapi.RaiseWindow(hwnd)
 		},
+	}
+}
+
+func quit() toggle {
+	notify.Debug("[Tray] Adding Quit")
+
+	systray.AddSeparator()
+
+	return toggle{
+		MenuItem: systray.AddMenuItem("Quit UniteHUD", "Close UniteHUD"),
+		event:    func() { os.Exit(0) },
+	}
+}
+
+func ram() toggle {
+	notify.Debug("[Tray] Adding RAM")
+
+	return toggle{
+		MenuItem: systray.AddMenuItem("RAM 0MB", "RAM"),
+		event: func() {
+			menu.ram.SetTitle(process.RAM.String())
+		},
+	}
+}
+
+func startstop() toggle {
+	notify.Debug("[Tray] Adding Start/Stop")
+
+	systray.AddSeparator()
+
+	return toggle{
+		MenuItem: systray.AddMenuItem("Start", "Start capturing events"),
+		event:    func() { menu.startstopq <- true },
 	}
 }
 

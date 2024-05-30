@@ -22,7 +22,6 @@ import (
 	"github.com/pidgy/unitehud/gui/is"
 	"github.com/pidgy/unitehud/gui/ux/decorate"
 	"github.com/pidgy/unitehud/system/tray"
-	"github.com/pidgy/unitehud/system/wapi"
 )
 
 type loading struct {
@@ -67,9 +66,10 @@ func (g *GUI) loading() {
 	for is.Now == is.Loading {
 		switch event := g.window.NextEvent().(type) {
 		case app.ViewEvent:
-			g.HWND = event.HWND
-			tray.SetHWND(g.HWND)
-			wapi.SetWindowDarkMode(g.HWND)
+			if event.HWND != 0 {
+				g.HWND = event.HWND
+				tray.SetHWND(g.HWND)
+			}
 		case system.DestroyEvent:
 			g.next(is.Closing)
 			return

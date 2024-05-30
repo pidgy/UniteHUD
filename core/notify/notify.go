@@ -124,7 +124,7 @@ func LastNStrings(n int) (s []string) {
 		if feed.logs[i].count > 1 {
 			continue
 		}
-		s = append([]string{feed.logs[i].msg}, s...)
+		s = append(s, feed.logs[i].msg)
 	}
 	return
 }

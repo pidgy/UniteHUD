@@ -53,8 +53,8 @@ type GUI struct {
 	}
 
 	performance struct {
-		cpu, ram, uptime string
-		eco              bool
+		uptime string
+		eco    bool
 	}
 
 	previous struct {
@@ -119,14 +119,10 @@ func New() *GUI {
 		hz: fps.NewHz(),
 
 		performance: struct {
-			cpu,
-			ram,
 			uptime string
 
 			eco bool
 		}{
-			cpu:    "0%",
-			ram:    "0MB",
 			uptime: "00:00",
 
 			eco: true,
@@ -277,25 +273,17 @@ func (g *GUI) proc() {
 	for ; is.Now != is.Closing; time.Sleep(time.Second) {
 		g.performance.uptime = process.Uptime()
 
-		ram := process.RAM()
-		if ram > peak.ram+100 {
-			peak.ram = ram
+		if process.RAM.Float64() > peak.ram+100 {
+			peak.ram = process.RAM.Float64()
 			notify.Replace("[UI] RAM", notify.Warn, "[UI] RAM Usage: %.0fMB", peak.ram)
 		}
-		g.performance.ram = fmt.Sprintf("RAM %.0f%s", ram, "MB")
-		go stats.RAM(ram)
+		go stats.RAM(process.RAM.Float64())
 
-		cpu, err := process.CPU()
-		if err != nil {
-			notify.Error("[Process] Failed to monitor CPU/RAM (%v)", err)
-			continue
-		}
-		if cpu > peak.cpu+10 {
-			peak.cpu = cpu
+		if process.CPU.Float64() > peak.cpu+10 {
+			peak.cpu = process.CPU.Float64()
 			notify.Replace("[UI] CPU Usage", notify.Warn, "[UI] CPU Usage: %.1f%s", peak.cpu, "%")
 		}
-		g.performance.cpu = fmt.Sprintf("CPU %.1f%s", cpu, "%")
-		go stats.CPU(cpu)
+		go stats.CPU(process.CPU.Float64())
 	}
 }
 

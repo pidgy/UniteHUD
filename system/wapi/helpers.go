@@ -136,7 +136,10 @@ func ObjectSelect(hwnd1, hwnd2 uintptr) {
 }
 
 func RaiseWindow(hwnd uintptr) {
-	go BringWindowToTop.Call(hwnd)
+	ShowWindow.Call(hwnd, ShowWindowFlags.ShowMinimized)
+	ShowWindow.Call(hwnd, ShowWindowFlags.Restore)
+
+	// go BringWindowToTop.Call(hwnd)
 }
 
 func SetWindowDarkMode(hwnd uintptr) {
@@ -151,6 +154,10 @@ func SetWindowPosNone(hwnd uintptr, pt image.Point, size image.Point) {
 
 func SetWindowPosNoSize(hwnd uintptr, pt image.Point) {
 	helpSetWindowPos(hwnd, pt, image.Pt(0, 0), SetWindowPosFlags.NoSize)
+}
+
+func SetWindowPosNoSizeNoMoveShowWindow(hwnd uintptr) {
+	helpSetWindowPos(hwnd, image.Pt(0, 0), image.Pt(0, 0), SetWindowPosFlags.NoSize|SetWindowPosFlags.NoMove|SetWindowPosFlags.ShowWindow)
 }
 
 func SetWindowPosHide(hwnd uintptr, pt image.Point, size image.Point) {

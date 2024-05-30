@@ -34,6 +34,7 @@ import (
 	"github.com/pidgy/unitehud/gui/ux/button"
 	"github.com/pidgy/unitehud/gui/ux/decorate"
 	"github.com/pidgy/unitehud/gui/ux/title"
+	"github.com/pidgy/unitehud/system/process"
 )
 
 type footer struct {
@@ -153,8 +154,8 @@ func (g *GUI) configure() {
 
 			decorate.Background(gtx)
 			decorate.Label(&ui.footer.api, "API: %s", device.APIHumanName(device.API(config.Current.Video.Capture.Device.API)))
-			decorate.Label(&ui.footer.cpu, g.performance.cpu)
-			decorate.Label(&ui.footer.ram, g.performance.ram)
+			decorate.Label(&ui.footer.cpu, process.CPU.String())
+			decorate.Label(&ui.footer.ram, process.RAM.String())
 			decorate.Label(&ui.footer.hz, "%s Hz", g.hz)
 			decorate.Label(&ui.footer.fps, "%.0f FPS", fps)
 			decorate.LabelColor(&ui.footer.fps, nrgba.Percent(p).Color())

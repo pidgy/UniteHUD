@@ -241,13 +241,14 @@ p[class~=unitehud-banner-label] {
 }
 
 ul[class=debug-banner-labels] {
-    position: fixed;
+    /* position: fixed; */
     font-size: 15px;
-    top: -15px;
-    right: 60px;
-    min-width: 25%;
-    max-width: 25%;
+    /* top: -15px; */
+    /* right: 60px; */
+    min-width: 100%;
+    max-width: 100%;
     list-style: none;
+    padding-inline-start: 0px;
 }
 
 ul[class=debug-banner-labels] li {
@@ -258,4 +259,18 @@ ul[class=debug-banner-labels] li {
 
 table[class=debug-banner-table] {
     column-gap: 10px;
+}
+
+div[class=float-top-right] {
+    position: absolute;
+    top: 0px;
+    right: 0px;
+    width: 25%;
+    max-height: 25%;
+    background: transparent;
+    overflow-x: none;
+    overflow-y: scroll;
+    margin: 0px;
+    flex-direction: column-reverse;
+    right: -17px;
 }

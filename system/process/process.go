@@ -12,6 +12,7 @@ import (
 
 	"golang.org/x/sys/windows"
 
+	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/global"
 )
 
@@ -23,42 +24,18 @@ type Process struct {
 	Exe      string
 }
 
+type Stat struct {
+	value float64
+	label string
+}
+
 var (
 	handle syscall.Handle
-	memory runtime.MemStats
 
-	ctime, etime, ktime, utime syscall.Filetime
-	prev, usage                = ctime.Nanoseconds(), ktime.Nanoseconds() + utime.Nanoseconds()
-	cpus                       = float64(runtime.NumCPU()) - 2
+	CPU, RAM = Stat{0, "CPU 0%"}, Stat{0, "RAM 0MB"}
 )
 
-func CPU() (float64, error) {
-	err := syscall.GetProcessTimes(handle, &ctime, &etime, &ktime, &utime)
-	if err != nil {
-		return 0.0, err
-	}
-
-	now := time.Now().UnixNano()
-	diff := now - prev
-
-	current := ktime.Nanoseconds() + utime.Nanoseconds()
-	diff2 := current - usage
-
-	prev = now
-	usage = current
-
-	return (100 * float64(diff2) / float64(diff)) / cpus, nil
-}
-
-func Memory() runtime.MemStats {
-	return memory
-}
-
-func RAM() float64 {
-	memory = runtime.MemStats{}
-	runtime.ReadMemStats(&memory)
-	return float64(memory.Sys) / 1024 / 1024
-}
+func init() { go poll() }
 
 func Start() error {
 	err := replace()
@@ -72,6 +49,14 @@ func Start() error {
 	}
 
 	return nil
+}
+
+func (s *Stat) String() string {
+	return s.label
+}
+
+func (s *Stat) Float64() float64 {
+	return s.value
 }
 
 func Uptime() string {
@@ -146,6 +131,39 @@ func kill(exe string) error {
 	}
 
 	return nil
+}
+
+func poll() {
+	cpus := float64(runtime.NumCPU()) - 2
+	prev, usage := int64(0), int64(0)
+
+	t := time.NewTicker(time.Second * 5)
+	for range t.C {
+		var ctime, etime, ktime, utime syscall.Filetime
+		err := syscall.GetProcessTimes(handle, &ctime, &etime, &ktime, &utime)
+		if err != nil {
+			notify.Error("[Process] Failed to poll process statistics (%v)", err)
+			return
+		}
+
+		now := time.Now().UnixNano()
+		diff := now - prev
+
+		current := ktime.Nanoseconds() + utime.Nanoseconds()
+		diff2 := current - usage
+
+		prev = now
+		usage = current
+
+		CPU.value = ((100 * float64(diff2) / float64(diff)) / cpus)
+		CPU.label = fmt.Sprintf("CPU %.1f%s", CPU.value, "%")
+
+		memory := runtime.MemStats{}
+		runtime.ReadMemStats(&memory)
+
+		RAM.value = float64(memory.Sys) / 1024 / 1024
+		RAM.label = fmt.Sprintf("RAM %.1fMB", RAM.value)
+	}
 }
 
 func replace() error {

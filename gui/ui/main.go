@@ -46,6 +46,7 @@ import (
 	"github.com/pidgy/unitehud/system/desktop"
 	"github.com/pidgy/unitehud/system/desktop/clicked"
 	"github.com/pidgy/unitehud/system/discord"
+	"github.com/pidgy/unitehud/system/process"
 	"github.com/pidgy/unitehud/system/save"
 	"github.com/pidgy/unitehud/system/tray"
 )
@@ -213,9 +214,9 @@ func (g *GUI) main() {
 			g.dimensions.size = event.Size
 
 			decorate.Background(gtx)
-			decorate.Label(&ui.labels.cpu, g.performance.cpu)
+			decorate.Label(&ui.labels.cpu, process.CPU.String())
 			decorate.Label(&ui.labels.cpuGraph, stats.CPUGraph())
-			decorate.Label(&ui.labels.ram, g.performance.ram)
+			decorate.Label(&ui.labels.ram, process.RAM.String())
 			decorate.Label(&ui.labels.ramGraph, stats.RAMGraph())
 			decorate.Label(&ui.labels.holding, ui.labels.holding.Text)
 			decorate.ForegroundAlt(&ui.labels.cpuGraph.Color)

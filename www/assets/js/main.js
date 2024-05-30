@@ -149,10 +149,10 @@ async function render(data) {
 
     // Render HUD.
     {
-        $('.unitehud-banner-label').html('');
-
         // Match started
         if (data.match && !prev.match) {
+            $('.unitehud-banner-label').html('');
+
             $('.hud-container').css('opacity', '0').animate(
                 properties = {
                     opacity: '1',
@@ -160,6 +160,7 @@ async function render(data) {
                 duration = 10 * 1000,
                 complete = () => {}
             );
+
             prev.match = data.match;
         }
 
@@ -172,12 +173,9 @@ async function render(data) {
                 duration = 10 * 1000,
                 complete = () => {}
             );
+
             prev.match = data.match;
         }
-
-
-        // $('.team-score-container').css('opacity', 1);
-        // $('.objectives-container').css('opacity', 1);
 
         // User has presseed "start", awaiting match detection.
         if (data.seconds == 0) {
@@ -315,7 +313,7 @@ async function render(data) {
                 var obj = data.bottom[i];
                 $(`.objectives-${i+1}.bottom .objectives-circle.${obj.team}`).css('opacity', 1);
 
-                $(`.objectives-${i+1}.bottom`).filter("img").attr('src', `${cached.assets}/${obj.name}.png`).css({
+                $(`.objectives-${i+1}.bottom`).filter("img").attr('src', `${cached.assets.img}/${obj.name}.png`).css({
                     'opacity': 1,
                     'animation': 'secured 1s cubic-bezier(.36,.07,.19,.97) both'
                 });
@@ -418,78 +416,132 @@ const debug = {
         },
     },
     events: {
+        get generate() {
+            return debug.events.add([
+                "[19:53:18] [Detect] [09:56] [Self] Holding 2 points",
+                "[19:53:25] [Detect] [09:48] [Self] Holding 4 points",
+                "[19:53:31] [Detect] [09:45] [Self] Holding 6 points",
+                "[19:53:39] [Detect] [09:34] [Orange] [First] +4",
+                "[19:53:42] [Detect] [09:34] [Purple] +2",
+                "[19:53:44] [Detect] [09:34] [Self] Holding 11 points",
+                "[19:53:45] [Detect] [09:34] [Purple] [Potential Duplicate] [max-gt-91] +2",
+                "[19:53:45] [Detect] [09:34] [Purple] +2",
+                "[19:53:49] [Detect] [09:24] [Purple] +5",
+                "[19:53:52] [Detect] [09:21] [Orange] +5",
+                "[19:53:59] [Detect] [09:20] [Orange] [Potential Duplicate] [long-delay] +5",
+                "[19:53:59] [Detect] [09:20] [Orange] +5",
+                "[19:54:00] [Detect] [09:13] [Purple] [Potential Duplicate] [long-delay] +5",
+                "[19:54:00] [Detect] [09:13] [Purple] +5",
+                "[19:54:03] [Detect] [09:11] [Purple] [Duplicate] [max-gt-91] +5",
+                "[19:54:03] [Detect] [09:11] [Purple] [Duplicate] +5",
+                "[19:54:14] [Detect] [08:59] [Self] Holding 16 points",
+                "[19:54:29] [Detect] [08:49] [Self] Holding 17 points",
+                "[19:54:38] [Detect] [08:34] [Orange] +14",
+                "[19:54:41] [Detect] [08:34] [Orange] +26",
+                "[19:54:41] [Detect] [08:34] [Self] Score option present (17)",
+                "[19:54:44] [Detect] [08:34] [Self] Holding 0 points",
+                "[19:54:44] [Detect] [08:34] [Orange] +19",
+                "[19:54:45] [Detect] [08:34] [Self] +17 Confirming points scored 0s ago",
+                "[19:54:45] [Detect] [08:34] [Purple] [Self] +17",
+                "[19:54:48] [Detect] [08:25] [Purple] +8",
+                "[19:54:51] [Detect] [08:23] [Purple] +27",
+                "[19:54:53] [Detect] [08:19] [Purple] +1",
+                "[19:54:56] [Detect] [08:17] [Purple] [Potential Duplicate] [max-gt-91] +1",
+                "[19:54:56] [Detect] [08:17] [Purple] +1",
+                "[19:54:58] [Detect] [08:15] [Purple] [Duplicate] [max-gt-91] +1",
+                "[19:54:58] [Detect] [08:15] [Purple] [Duplicate] +1",
+                "[19:55:01] [Detect] [08:12] [Self] Holding 5 points",
+                "[19:55:09] [Detect] [08:10] [Self] Holding 10 points",
+                "[19:55:31] [Detect] [07:45] [Self] Holding 15 points",
+                "[19:55:35] [Detect] [07:38] [Self] Holding 17 points",
+                "[19:56:01] [Detect] [07:12] [Self] Holding 21 points",
+                "[19:56:36] [Detect] [06:37] [Purple] +6",
+                "[19:56:39] [Detect] [06:37] [Purple] [Missed] +0",
+                "[19:56:41] [Detect] [06:37] [Self] Holding 26 points",
+                "[19:56:41] [Detect] [06:37] [Purple] +24",
+                "[19:56:44] [Detect] [06:29] [Self] Score option present (26)",
+                "[20:03:26] [Detect] [Game] Match ended",
+                "[20:03:26] [Detect] [Purple] 238 [+0 Regielekis] [+0 Regices] [+0 Regirocks] [+0 Registeels] [+0 Rayquazas]",
+                "[20:03:26] [Detect] [Orange] 251 [+2 Regielekis] [+0 Regices] [+1 Regirock] [+1 Registeel] [+0 Rayquazas]",
+                "[20:03:26] [Detect] [Self] 97",
+                "[20:03:35] [UI] Main stage: StageRunning",
+                "[20:03:36] [UI] Main stage: StageInactive",
+                "[20:20:42] [Detect] Averaging 157.322µs / 0.9kB latency",
+                "[20:25:46] [Stats] Matched image template statistics",
+            ]);
+        },
         add: (events) => {
-            const max = 10;
-
             $('.debug-banner-labels').css('opacity', .9);
             $('.debug-banner.banner').css('opacity', .9);
 
             const unique = events
                 .filter(event => !prev.events.includes(event))
-                .filter(event => !event.includes("[UI]") && (event.includes("[Purple]") || event.includes("[Orange]") || event.includes("[Game]") || event.includes("[Self]")));
-            if (unique.length == 0) {
+                .filter(event => !event.includes("[UI]") && !event.includes(" Holding ") && !event.includes(" Confirming ") &&
+                    (event.includes("[Purple]") || event.includes("[Orange]") || event.includes("[Game]") || event.includes("[Self]")));
+            if (!unique || unique.length == 0) {
                 return;
             }
-            if (unique == prev.events) {
+            if (unique.toString() == prev.events.toString()) {
                 return;
             }
-
 
             prev.events.push(...unique);
-            prev.events = prev.events.slice(-25);
+            prev.events = prev.events.slice(-1000);
 
             unique.forEach((event) => {
                 var img = "";
-                // if (event.includes("[Purple] +")) {
-                //     img = `<img class="debug-label-banner-logo" src="assets/img/aeos-purple.png">`
-                // } else if (event.includes("[Orange] +")) {
-                //     img = `<img class="debug-label-banner-logo" src="assets/img/aeos-orange.png">`
-                // } else if (event.includes("[Purple] [Self] +")) {
-                //     img = `<img class="debug-label-banner-logo" src="assets/img/aeos-purple.png">`
-                // } else if (event.includes(" Regielekis")) {
-                //     img = `<img class="debug-label-banner-logo" src="assets/img/pokemonunite.png">`
-                // } else if (event.includes(" Regieleki ")) {
-                //     img = `<img class="debug-label-banner-logo" src="assets/img/regieleki.png">`
-                // } else if (event.includes(" Registeel ")) {
-                //     img = `<img class="debug-label-banner-logo" src="assets/img/registeel.png">`
-                // } else if (event.includes(" Regice ")) {
-                //     img = `<img class="debug-label-banner-logo" src="assets/img/regice.png">`
-                // } else if (event.includes(" Regirock ")) {
-                //     img = `<img class="debug-label-banner-logo" src="assets/img/regirock.png">`
-                // } else if (event.includes("Defeated")) {
-                //     img = `<img class="debug-label-banner-logo" src="assets/img/unscored.png">`
-                // } else if (event.includes("[Self]")) {
-                //     img = `<img class="debug-label-banner-logo" src="assets/img/unscored.png">`
-                // } else if (event.includes(" Rayquaza ")) {
-                //     img = `<img class="debug-label-banner-logo" src="assets/img/rayquaza.png">`
-                // } else if (event.includes("[Game]")) {
-                //     img = `<img class="debug-label-banner-logo" src="assets/img/pokemonunite.png">`
-                // } else if (event.includes("[Purple]")) {
-                //     img = `<img class="debug-label-banner-logo" src="assets/img/ko_purple.png">`
-                // } else if (event.includes("[Orange]")) {
-                //     img = `<img class="debug-label-banner-logo" src="assets/img/ko_orange.png">`
-                // }
-                // img = ``;
+                /*
+                if (event.includes("[Purple] +")) {
+                    img = `<img class="debug-label-banner-logo" src="assets/img/aeos-purple.png">`
+                } else if (event.includes("[Orange] +")) {
+                    img = `<img class="debug-label-banner-logo" src="assets/img/aeos-orange.png">`
+                } else if (event.includes("[Purple] [Self] +")) {
+                    img = `<img class="debug-label-banner-logo" src="assets/img/aeos-purple.png">`
+                } else if (event.includes(" Regielekis")) {
+                    img = `<img class="debug-label-banner-logo" src="assets/img/pokemonunite.png">`
+                } else if (event.includes(" Regieleki ")) {
+                    img = `<img class="debug-label-banner-logo" src="assets/img/regieleki.png">`
+                } else if (event.includes(" Registeel ")) {
+                    img = `<img class="debug-label-banner-logo" src="assets/img/registeel.png">`
+                } else if (event.includes(" Regice ")) {
+                    img = `<img class="debug-label-banner-logo" src="assets/img/regice.png">`
+                } else if (event.includes(" Regirock ")) {
+                    img = `<img class="debug-label-banner-logo" src="assets/img/regirock.png">`
+                } else if (event.includes("Defeated")) {
+                    img = `<img class="debug-label-banner-logo" src="assets/img/unscored.png">`
+                } else if (event.includes("[Self]")) {
+                    img = `<img class="debug-label-banner-logo" src="assets/img/unscored.png">`
+                } else if (event.includes(" Rayquaza ")) {
+                    img = `<img class="debug-label-banner-logo" src="assets/img/rayquaza.png">`
+                } else if (event.includes("[Game]")) {
+                    img = `<img class="debug-label-banner-logo" src="assets/img/pokemonunite.png">`
+                } else if (event.includes("[Purple]")) {
+                    img = `<img class="debug-label-banner-logo" src="assets/img/ko_purple.png">`
+                } else if (event.includes("[Orange]")) {
+                    img = `<img class="debug-label-banner-logo" src="assets/img/ko_orange.png">`
+                }
+                img = ``;
+                */
 
                 $(`.debug-banner-labels`).append(`<li style="opacity:0">${img} ${event}</li>`);
 
-                const size = $(`.debug-banner-labels`).children().length;
-                if (size > max) {
-                    var rem = size - max;
-                    $(`.debug-banner-labels`).children('li').each(function() {
-                        if (rem > 0) {
-                            this.remove();
-                        }
-                        rem--;
-                    });
-                }
+                // const size = $(`.debug-banner-labels`).children().length;
+                // if (size > max) {
+                //     var rem = size - max;
+                //     $(`.debug-banner-labels`).children('li').each(function() {
+                //         if (rem > 0) {
+                //             this.remove();
+                //         }
+                //         rem--;
+                //     });
+                // }
 
                 $(`.debug-banner-labels`).children('li').each(function() {
                     const child = $(this);
                     child.animate({
                         opacity: '.9'
                     }, 750, () => {});
-                });
+                }).promise().done($('.float-top-right').scrollTop($('.float-top-right')[0].scrollHeight));
             });
         }
     },

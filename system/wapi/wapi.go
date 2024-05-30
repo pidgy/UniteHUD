@@ -174,12 +174,16 @@ var (
 		None,
 		NoSize,
 		Hide,
-		Show uintptr
+		Show,
+		NoMove,
+		ShowWindow uintptr
 	}{
-		None:   0x0000,
-		NoSize: 0x0001,
-		Hide:   0x0080,
-		Show:   0x0040,
+		None:       0x0000,
+		NoSize:     0x0001,
+		Hide:       0x0080,
+		Show:       0x0040,
+		NoMove:     0x0002,
+		ShowWindow: 0x0040,
 	}
 	ShowWindowFlags = struct {
 		Hide,
@@ -195,7 +199,7 @@ var (
 		ShowNA,
 		Restore,
 		ShowDefault,
-		ForceMinimize uint
+		ForceMinimize uintptr
 	}{
 		Hide:            0,
 		Normal:          1,
