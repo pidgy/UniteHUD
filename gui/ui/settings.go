@@ -43,11 +43,13 @@ type section struct {
 type settings struct {
 	hwnd uintptr
 
+	ops op.Ops
+
 	bar *title.Widget
 
 	windows struct {
-		parent  *GUI
-		current *app.Window
+		parent *GUI
+		this   *app.Window
 	}
 
 	state struct {
@@ -81,15 +83,13 @@ func (g *GUI) settings(onclose func()) *settings {
 	go func() {
 		defer onclose()
 
+		ui.windows.parent.setInsetRight(ui.dimensions.width)
+		defer ui.windows.parent.unsetInsetRight(ui.dimensions.width)
+
 		ui.state.open = true
 		defer func() {
 			ui.state.open = false
 		}()
-
-		ui.windows.current.Perform(system.ActionRaise)
-
-		ui.windows.parent.setInsetRight(ui.dimensions.width)
-		defer ui.windows.parent.unsetInsetRight(ui.dimensions.width)
 
 		sections := []*section{
 			ui.sections.header,
@@ -102,10 +102,8 @@ func (g *GUI) settings(onclose func()) *settings {
 			ui.sections.themes,
 		}
 
-		var ops op.Ops
-
 		for {
-			switch event := ui.windows.current.NextEvent().(type) {
+			switch event := ui.windows.this.NextEvent().(type) {
 			case system.DestroyEvent:
 				return
 			case app.ViewEvent:
@@ -113,7 +111,7 @@ func (g *GUI) settings(onclose func()) *settings {
 				ui.windows.parent.attachWindowRight(ui.hwnd, ui.dimensions.width)
 			case system.FrameEvent:
 				if !ui.state.open {
-					go ui.windows.current.Perform(system.ActionClose)
+					go ui.windows.this.Perform(system.ActionClose)
 				}
 
 				if ui.dimensions.resize {
@@ -121,7 +119,7 @@ func (g *GUI) settings(onclose func()) *settings {
 					ui.windows.parent.attachWindowRight(ui.hwnd, ui.dimensions.width)
 				}
 
-				gtx := layout.NewContext(&ops, event)
+				gtx := layout.NewContext(&ui.ops, event)
 
 				ui.bar.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 					decorate.List(&ui.list)
@@ -132,7 +130,7 @@ func (g *GUI) settings(onclose func()) *settings {
 					})
 				})
 
-				ui.windows.current.Invalidate()
+				ui.windows.this.Invalidate()
 				event.Frame(gtx.Ops)
 			default:
 				notify.Missed(event, "Settings")
@@ -148,6 +146,7 @@ func (g *GUI) settingsUI() *settings {
 
 	ui.dimensions.width = 350
 	ui.dimensions.height = 700
+	ui.dimensions.resize = true
 
 	ui.windows.parent = g
 
@@ -156,12 +155,12 @@ func (g *GUI) settingsUI() *settings {
 		fonts.NewCollection(),
 		nil,
 		nil,
-		func() { ui.windows.current.Perform(system.ActionClose) },
+		func() { ui.windows.this.Perform(system.ActionClose) },
 	)
 	ui.bar.NoTip = true
 	ui.bar.NoDrag = true
 
-	ui.windows.current = app.NewWindow(
+	ui.windows.this = app.NewWindow(
 		app.Title("Settings"),
 		app.Size(unit.Dp(ui.dimensions.width), unit.Dp(ui.dimensions.height)),
 		app.MinSize(unit.Dp(ui.dimensions.width), unit.Dp(ui.dimensions.height)),
@@ -592,7 +591,7 @@ func (g *GUI) settingsUI() *settings {
 			&checklist.Item{
 				Text: name,
 				Callback: func(this *checklist.Item) {
-					println(this.Text)
+					// println(this.Text)
 				},
 			},
 		)
@@ -709,7 +708,7 @@ func (s *section) footer(inset layout.Inset) []layout.FlexChild {
 
 func (s *settings) close() {
 	if s != nil {
-		go s.windows.current.Perform(system.ActionClose)
+		go s.windows.this.Perform(system.ActionClose)
 	}
 }
 

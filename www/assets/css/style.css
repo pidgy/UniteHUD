@@ -266,11 +266,12 @@ div[class=float-top-right] {
     top: 0px;
     right: 0px;
     width: 25%;
-    max-height: 25%;
+    max-height: 10%;
     background: transparent;
     overflow-x: none;
     overflow-y: scroll;
     margin: 0px;
     flex-direction: column-reverse;
     right: -17px;
+    color: rgba(255, 255, 255, .5);
 }

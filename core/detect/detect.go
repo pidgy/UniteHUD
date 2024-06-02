@@ -171,13 +171,7 @@ func Energy() {
 		if points != team.Energy.Holding {
 			threshold = 2
 		}
-		/*
-			if team.Energy.Holding == 0 {
-				threshold = 3
-			} else if team.Energy.Holding != 0 && points != team.Energy.Holding {
-				threshold = 2
-			}
-		*/
+
 		if assured[points] == threshold {
 			assured = make(map[int]int)
 		}
@@ -328,7 +322,7 @@ func Preview() {
 		notify.Preview = img
 
 		if config.Current.Video.Capture.Window.Name != window && config.Current.Video.Capture.Device.Index != device {
-			notify.System("[Detect] Input resolution calculated (%dpx, %dpx)", img.Bounds().Max.X, img.Bounds().Max.Y)
+			notify.System("[Detect] %dx%d input resolution calculated", img.Bounds().Max.X, img.Bounds().Max.Y)
 		}
 
 		window = config.Current.Video.Capture.Window.Name

@@ -10,6 +10,7 @@ import (
 	"gioui.org/app"
 	"gioui.org/io/system"
 	"gioui.org/layout"
+	"gioui.org/unit"
 
 	"github.com/pidgy/unitehud/avi/video/fps"
 	"github.com/pidgy/unitehud/avi/video/monitor"
@@ -47,6 +48,7 @@ type GUI struct {
 		shift image.Point
 
 		smoothing int // Redraw every other frame to reduce shakiness.
+		threshold int // Redraw every other frame to reduce shakiness.
 
 		fullscreen,
 		resizing bool
@@ -101,6 +103,7 @@ func New() *GUI {
 			shift image.Point
 
 			smoothing int
+			threshold int
 
 			fullscreen,
 			resizing bool
@@ -110,6 +113,7 @@ func New() *GUI {
 			min,
 			image.Pt(0, 0),
 			0,
+			2,
 			false,
 			false,
 		},
@@ -146,6 +150,12 @@ func New() *GUI {
 	return UI
 }
 
+func Close() {
+	if UI != nil {
+		UI.Close()
+	}
+}
+
 func (g *GUI) OnClose(fn func()) *GUI {
 	g.onClose = fn
 	return g
@@ -161,9 +171,7 @@ func (g *GUI) Open() {
 	go func() {
 		g.open = true
 
-		defer func() {
-			g.onClose()
-		}()
+		defer g.onClose()
 
 		for is.Now != is.Closing {
 			switch is.Now {
@@ -232,7 +240,7 @@ func (g *GUI) frame(gtx layout.Context, e system.FrameEvent) {
 
 	p, ok := g.nav.Dragging()
 	if ok {
-		g.setWindowPos(p)
+		g.moveWindow(p)
 		return
 	}
 
@@ -240,31 +248,63 @@ func (g *GUI) frame(gtx layout.Context, e system.FrameEvent) {
 }
 
 func (g *GUI) maximize() {
+	size := g.squeeze()
+
 	g.previous.position = g.position()
 	g.previous.size = g.dimensions.size
 
-	left := image.Pt(0, 0).Add(image.Pt(g.inset.left, 0))
-	right := g.dimensions.max.Sub(image.Pt(g.inset.left+g.inset.right+1, 0))
-	wapi.SetWindowPosShow(g.HWND, left, right)
-
-	//g.window.Perform(system.ActionCenter)
-
 	g.dimensions.fullscreen = true
+	g.nav.NoDrag = true
+
+	wapi.SetWindowPosShow(
+		g.HWND,
+		image.Pt(0, 0).Add(image.Pt(g.inset.left, 0)),
+		size,
+	)
 }
 
 func (g *GUI) minimize() {
 	g.window.Perform(system.ActionMinimize)
 }
 
-func (g *GUI) next(i is.What) {
-	notify.Debug("[UI] Next state set to \"%s\"", i)
-	is.Now = i
+func (g *GUI) moveWindow(shift image.Point) {
+	if g.dimensions.fullscreen || g.HWND == 0 || g.dimensions.resizing {
+		return
+	}
+	g.dimensions.resizing = true
+
+	go func() {
+		defer func() { g.dimensions.resizing = false }()
+
+		if shift.Eq(g.dimensions.shift) {
+			return
+		}
+
+		pos := g.position().Add(shift)
+		if !pos.In(image.Rectangle{Min: image.Pt(0, 0).Sub(g.dimensions.size), Max: g.dimensions.max.Add(g.dimensions.size)}) {
+			return
+		}
+
+		g.dimensions.shift = shift
+
+		if g.dimensions.smoothing == g.dimensions.threshold {
+			wapi.MoveWindowNoSize(g.HWND, pos)
+
+			g.dimensions.smoothing = 0
+		}
+		g.dimensions.smoothing++
+	}()
 }
 
 func (g *GUI) position() image.Point {
 	r := &wapi.Rect{}
 	wapi.GetWindowRect.Call(g.HWND, uintptr(unsafe.Pointer(r)))
 	return image.Pt(int(r.Left), int(r.Top))
+}
+
+func (g *GUI) next(i is.What) {
+	notify.Debug("[UI] Next state set to \"%s\"", i)
+	is.Now = i
 }
 
 func (g *GUI) proc() {
@@ -299,7 +339,7 @@ func (g *GUI) setInsetLeft(left int) {
 	g.inset.left += left
 
 	if g.dimensions.fullscreen {
-		g.maximize()
+		g.squeeze()
 		return
 	}
 
@@ -310,14 +350,16 @@ func (g *GUI) setInsetLeft(left int) {
 		pos.X += g.inset.left - pos.X
 	}
 
-	wapi.SetWindowPosShow(g.HWND, pos, g.dimensions.size)
+	if g.dimensions.smoothing == g.dimensions.threshold {
+		wapi.MoveWindowNoSize(g.HWND, pos)
+	}
 }
 
 func (g *GUI) setInsetRight(right int) {
 	g.inset.right += right
 
 	if g.dimensions.fullscreen {
-		g.maximize()
+		g.squeeze()
 		return
 	}
 
@@ -329,62 +371,62 @@ func (g *GUI) setInsetRight(right int) {
 		pos.X -= size - g.dimensions.max.X
 	}
 
-	wapi.SetWindowPosShow(g.HWND, pos, g.dimensions.size)
+	if g.dimensions.smoothing == g.dimensions.threshold {
+		wapi.MoveWindowNoSize(g.HWND, pos)
+	}
 }
 
-func (g *GUI) setWindowPos(shift image.Point) {
-	if g.dimensions.fullscreen || g.HWND == 0 || g.dimensions.resizing {
-		return
+func (g *GUI) squeeze() image.Point {
+	size := g.dimensions.max.Sub(image.Pt(g.inset.left+g.inset.right+1, 0))
+	g.window.Option(app.MinSize(unit.Dp(size.X), unit.Dp(size.Y)))
+
+	if g.dimensions.fullscreen {
+		wapi.SetWindowPosShow(
+			g.HWND,
+			image.Pt(0, 0).Add(image.Pt(g.inset.left, 0)),
+			size,
+		)
 	}
-	g.dimensions.resizing = true
 
-	go func() {
-		defer func() { g.dimensions.resizing = false }()
-
-		if shift.Eq(g.dimensions.shift) {
-			return
-		}
-
-		pos := g.position().Add(shift)
-		if !pos.In(image.Rectangle{Min: image.Pt(0, 0).Sub(g.dimensions.size), Max: g.dimensions.max.Add(g.dimensions.size)}) {
-			return
-		}
-
-		g.dimensions.shift = shift
-
-		if g.dimensions.smoothing == 2 {
-			wapi.SetWindowPosNoSize(g.HWND, pos)
-			g.dimensions.smoothing = 0
-		}
-		g.dimensions.smoothing++
-	}()
+	return size
 }
 
 func (g *GUI) unmaximize() {
-	wapi.SetWindowPosShow(g.HWND, g.previous.position, g.previous.size)
+	g.window.Option(app.MinSize(unit.Dp(g.dimensions.min.X), unit.Dp(g.dimensions.min.Y)))
 	g.dimensions.fullscreen = false
+	g.nav.NoDrag = false
+
+	wapi.SetWindowPosShow(
+		g.HWND,
+		g.previous.position,
+		g.previous.size,
+	)
 }
 
 func (g *GUI) unsetInsetLeft(left int) {
 	g.inset.left -= left
 
 	if g.dimensions.fullscreen {
-		g.maximize()
+		g.squeeze()
 		return
 	}
 
-	wapi.SetWindowPosShow(g.HWND, g.position(), g.dimensions.size)
+	if g.dimensions.smoothing == g.dimensions.threshold {
+		wapi.MoveWindowNoSize(g.HWND, g.position())
+	}
 }
 
 func (g *GUI) unsetInsetRight(right int) {
 	g.inset.right -= right
 
 	if g.dimensions.fullscreen {
-		g.maximize()
+		g.squeeze()
 		return
 	}
 
-	wapi.SetWindowPosShow(g.HWND, g.position(), g.dimensions.size)
+	if g.dimensions.smoothing == g.dimensions.threshold {
+		wapi.MoveWindowNoSize(g.HWND, g.position())
+	}
 }
 
 func max(i, j int) int {

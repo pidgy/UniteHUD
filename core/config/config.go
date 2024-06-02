@@ -32,9 +32,13 @@ const (
 	NoVideoCaptureDevice   = -1
 	DefaultVideoCaptureAPI = "Any"
 
-	DeviceSwitch     = "switch"
-	DeviceMobile     = "mobile"
 	DeviceBluestacks = "bluestacks"
+	DeviceMobile     = "mobile"
+	DeviceSwitch     = "switch"
+)
+
+var (
+	first = false
 )
 
 type Config struct {
@@ -90,7 +94,9 @@ type Config struct {
 
 	Crashed string
 
-	Device string
+	Gaming struct {
+		Device string
+	}
 
 	Scale float64
 	Shift Shift
@@ -182,6 +188,10 @@ func (c *Config) File() string {
 	return fmt.Sprintf("config-%s.unitehud", strings.ReplaceAll(global.Version, ".", "-"))
 }
 
+func (c *Config) IsNew() bool {
+	return first
+}
+
 func (c *Config) Reload() {
 	validate()
 }
@@ -198,11 +208,11 @@ func (c *Config) Reset() error {
 		return err
 	}
 
-	return Load(c.Device)
+	return Load(c.Gaming.Device)
 }
 
 func (c *Config) Save() error {
-	notify.System("[Config] Saving %s profile (%s)", c.Device, c.File())
+	notify.System("[Config] Saving %s profile (%s)", c.Gaming.Device, c.File())
 
 	f, err := os.Create(c.File())
 	if err != nil {
@@ -377,41 +387,44 @@ func (c *Config) UnsetHiddenThemes() {
 		notify.System("[Config] Default themes applied to %s", strings.Join(applied, ", "))
 	}
 }
+func (c *Config) deviceAsset(dir, file string) string {
+	return filepath.Join(c.deviceAssets(), dir, file)
+}
 
 func (c *Config) deviceAssets() string {
-	return filepath.Join(global.WorkingDirectory(), global.AssetDirectory, "device", c.Device)
+	return filepath.Join(global.WorkingDirectory(), global.AssetDirectory, "device", c.Gaming.Device)
 }
 
 func (c *Config) loadDeviceAssets() {
 	c.filenames = map[string]map[string][]filter.Filter{
 		"goals": {
 			team.Game.Name: {
-				filter.New(team.Game, Current.deviceAssets()+"/game/purple_base_open.png", state.PurpleBaseOpen.Int(), false),
-				filter.New(team.Game, Current.deviceAssets()+"/game/orange_base_open.png", state.OrangeBaseOpen.Int(), false),
-				filter.New(team.Game, Current.deviceAssets()+"/game/purple_base_closed.png", state.PurpleBaseClosed.Int(), false),
-				filter.New(team.Game, Current.deviceAssets()+"/game/orange_base_closed.png", state.OrangeBaseClosed.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "purple_base_open.png"), state.PurpleBaseOpen.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "orange_base_open.png"), state.OrangeBaseOpen.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "purple_base_closed.png"), state.PurpleBaseClosed.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "orange_base_closed.png"), state.OrangeBaseClosed.Int(), false),
 			},
 		},
 		"killed": {
 			team.Game.Name: {
-				filter.New(team.Game, Current.deviceAssets()+"/game/killed.png", state.Killed.Int(), false),
-				filter.New(team.Game, Current.deviceAssets()+"/game/killed_with_points.png", state.KilledWithPoints.Int(), false),
-				filter.New(team.Game, Current.deviceAssets()+"/game/killed_without_points.png", state.KilledWithoutPoints.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "killed.png"), state.Killed.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "killed_with_points.png"), state.KilledWithPoints.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "killed_without_points.png"), state.KilledWithoutPoints.Int(), false),
 			},
 		},
 		"secure": {
 			team.Game.Name: {
-				filter.New(team.Game, Current.deviceAssets()+"/game/rayquaza_ally.png", state.RayquazaSecurePurple.Int(), false),
-				filter.New(team.Game, Current.deviceAssets()+"/game/rayquaza_enemy.png", state.RayquazaSecureOrange.Int(), false),
-				filter.New(team.Game, Current.deviceAssets()+"/game/regieleki_ally.png", state.RegielekiSecurePurple.Int(), false),
-				filter.New(team.Game, Current.deviceAssets()+"/game/regieleki_enemy.png", state.RegielekiSecureOrange.Int(), false),
-				filter.New(team.Game, Current.deviceAssets()+"/game/regice_ally.png", state.RegiceSecurePurple.Int(), false),
-				filter.New(team.Game, Current.deviceAssets()+"/game/regice_enemy.png", state.RegiceSecureOrange.Int(), false),
-				filter.New(team.Game, Current.deviceAssets()+"/game/regice_enemy_alt.png", state.RegiceSecureOrange.Int(), false),
-				filter.New(team.Game, Current.deviceAssets()+"/game/regirock_ally.png", state.RegirockSecurePurple.Int(), false),
-				filter.New(team.Game, Current.deviceAssets()+"/game/regirock_enemy.png", state.RegirockSecureOrange.Int(), false),
-				filter.New(team.Game, Current.deviceAssets()+"/game/registeel_ally.png", state.RegisteelSecurePurple.Int(), false),
-				filter.New(team.Game, Current.deviceAssets()+"/game/registeel_enemy.png", state.RegisteelSecureOrange.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "rayquaza_ally.png"), state.RayquazaSecurePurple.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "rayquaza_enemy.png"), state.RayquazaSecureOrange.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "regieleki_ally.png"), state.RegielekiSecurePurple.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "regieleki_enemy.png"), state.RegielekiSecureOrange.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "regice_ally.png"), state.RegiceSecurePurple.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "regice_enemy.png"), state.RegiceSecureOrange.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "regice_enemy_alt.png"), state.RegiceSecureOrange.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "regirock_ally.png"), state.RegirockSecurePurple.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "regirock_enemy.png"), state.RegirockSecureOrange.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "registeel_ally.png"), state.RegisteelSecurePurple.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "registeel_enemy.png"), state.RegisteelSecureOrange.Int(), false),
 			},
 		},
 		"ko": {
@@ -424,35 +437,35 @@ func (c *Config) loadDeviceAssets() {
 		},
 		"objective": {
 			team.Game.Name: {
-				filter.New(team.Game, Current.deviceAssets()+"/game/objective.png", state.ObjectivePresent.Int(), false),
-				filter.New(team.Game, Current.deviceAssets()+"/game/objective_half.png", state.ObjectivePresent.Int(), false),
-				filter.New(team.Game, Current.deviceAssets()+"/game/objective_orange_base.png", state.ObjectiveReachedOrange.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "objective.png"), state.ObjectivePresent.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "objective_half.png"), state.ObjectivePresent.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "objective_orange_base.png"), state.ObjectiveReachedOrange.Int(), false),
 			},
 		},
 		"starting": {
 			team.Game.Name: {
-				filter.New(team.Game, Current.deviceAssets()+"/game/vs.png", state.MatchStarting.Int(), false),
-				filter.New(team.Game, Current.deviceAssets()+"/game/vs_alt.png", state.MatchStarting.Int(), false),
+				// filter.New(team.Game, c.deviceAsset(team.Game.Name, "vs.png"), state.MatchStarting.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "vs_alt.png"), state.MatchStarting.Int(), false),
 			},
 		},
 		"ending": {
 			team.Game.Name: {
-				filter.New(team.Game, Current.deviceAssets()+"/game/end.png", state.MatchEnding.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "end.png"), state.MatchEnding.Int(), false),
 			},
 		},
 		"surrender": {
 			team.Game.Name: {
-				filter.New(team.Game, Current.deviceAssets()+"/game/surrender_enemy.png", state.SurrenderOrange.Int(), false),
-				filter.New(team.Game, Current.deviceAssets()+"/game/surrender_ally.png", state.SurrenderPurple.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "surrender_enemy.png"), state.SurrenderOrange.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "surrender_ally.png"), state.SurrenderPurple.Int(), false),
 			},
 		},
 		"scoring": {
 			team.Game.Name: {
-				filter.New(team.Game, Current.deviceAssets()+"/game/pre_scoring_alt_alt.png", state.PreScore.Int(), false),
-				filter.New(team.Game, Current.deviceAssets()+"/game/pre_scoring_alt.png", state.PreScore.Int(), false),
-				filter.New(team.Game, Current.deviceAssets()+"/game/pre_scoring.png", state.PreScore.Int(), false),
-				filter.New(team.Game, Current.deviceAssets()+"/game/post_scoring.png", state.PostScore.Int(), false),
-				filter.New(team.Game, Current.deviceAssets()+"/game/press_button_to_score.png", state.PressButtonToScore.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "pre_scoring_alt_alt.png"), state.PreScore.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "pre_scoring_alt.png"), state.PreScore.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "pre_scoring.png"), state.PreScore.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "post_scoring.png"), state.PostScore.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "press_button_to_score.png"), state.PressButtonToScore.Int(), false),
 			},
 		},
 		"scored": {
@@ -598,27 +611,30 @@ func Load(device string) error {
 	}()
 
 	if device == "" {
-		Current.Device = DeviceSwitch
+		Current.Gaming.Device = DeviceSwitch
 	}
 
 	defer validate()
 
-	notify.System("[Config] Loading %s profile (%s)", Current.Device, Current.File())
+	notify.System("[Config] Loading %s profile (%s)", Current.Gaming.Device, Current.File())
 
 	ok := open()
 	if !ok {
+		first = true
+
 		Current = Config{
 			Scale:      1,
 			Shift:      Shift{},
 			Acceptance: .91,
-			Device:     DeviceSwitch,
 		}
+
+		Current.Gaming.Device = DeviceSwitch
 
 		Current.Video.Capture.Window.Name = MainDisplay
 		Current.Video.Capture.Device.Index = NoVideoCaptureDevice
 		Current.Video.Capture.Device.API = DefaultVideoCaptureAPI
 
-		Current.Device = DeviceSwitch
+		Current.Gaming.Device = DeviceSwitch
 		Current.SetDefaultTheme()
 
 		Current.setDefaultAreas()
@@ -660,8 +676,8 @@ func TemplatesFirstRound(t1 []*template.Template) []*template.Template {
 }
 
 func open() bool {
-	if Current.Device == "" {
-		Current.Device = DeviceSwitch
+	if Current.Gaming.Device == "" {
+		Current.Gaming.Device = DeviceSwitch
 	}
 
 	b, err := os.ReadFile(Current.File())
@@ -669,17 +685,17 @@ func open() bool {
 		return false
 	}
 
-	c := Config{
-		Device: DeviceSwitch,
-	}
+	c := Config{}
+
+	c.Gaming.Device = DeviceSwitch
 
 	err = json.Unmarshal(b, &c)
 	if err != nil {
 		return false
 	}
 
-	if c.Device == "" {
-		c.Device = DeviceSwitch
+	if c.Gaming.Device == "" {
+		c.Gaming.Device = DeviceSwitch
 	}
 
 	c.loadDeviceAssets()

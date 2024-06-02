@@ -155,14 +155,23 @@ func poll() {
 		prev = now
 		usage = current
 
-		CPU.value = ((100 * float64(diff2) / float64(diff)) / cpus)
-		CPU.label = fmt.Sprintf("CPU %.1f%s", CPU.value, "%")
+		v := ((100 * float64(diff2) / float64(diff)) / cpus)
+		if v > 0 {
+			CPU.value = v
+			CPU.label = fmt.Sprintf("CPU %.1f%s", CPU.value, "%")
+		}
 
 		memory := runtime.MemStats{}
 		runtime.ReadMemStats(&memory)
 
-		RAM.value = float64(memory.Sys) / 1024 / 1024
-		RAM.label = fmt.Sprintf("RAM %.1fMB", RAM.value)
+		v = float64(memory.Sys) / 1024 / 1024
+		if v > 1000 {
+			RAM.value = v / 1000
+			RAM.label = fmt.Sprintf("RAM %.1fGB", RAM.value)
+		} else {
+			RAM.value = v
+			RAM.label = fmt.Sprintf("RAM %.1fMB", RAM.value)
+		}
 	}
 }
 

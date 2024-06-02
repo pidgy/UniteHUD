@@ -21,10 +21,10 @@ const (
 )
 
 var (
-	current *session
+	Current *Session
 )
 
-type session struct {
+type Session struct {
 	input, output device.Device
 
 	buffer io.ReadWriter
@@ -63,7 +63,7 @@ func Open() error {
 		notify.Warn("[Audio] Failed to create output (%v)", err)
 	}
 
-	current = &session{
+	Current = &Session{
 		input:  in,
 		output: out,
 
@@ -82,120 +82,120 @@ func Close() {
 	notify.System("[Audio] Closing...")
 	defer notify.Debug("[Audio] Closed")
 
-	if current == nil {
+	if Current == nil {
 		return
 	}
 
-	current.input.Close()
-	current.output.Close()
+	Current.input.Close()
+	Current.output.Close()
 
-	current.context.Free()
+	Current.context.Free()
 }
 
 func Input(name string) (err error) {
-	if current == nil {
+	if Current == nil {
 		return nil
 	}
 
-	in, err := input.New(current.context, name)
+	in, err := input.New(Current.context, name)
 	if err != nil {
 		return err
 	}
 
-	current.input.Close()
-	current.output.Close()
+	Current.input.Close()
+	Current.output.Close()
 
-	current.input = in
+	Current.input = in
 	config.Current.Audio.Capture.Device.Name = in.Name()
 
 	return Start()
 }
 
 func Inputs() []*input.Device {
-	if current == nil {
+	if Current == nil {
 		return nil
 	}
 
-	return input.Devices(current.context)
+	return input.Devices(Current.context)
 }
 
 func Label() string {
-	if current == nil {
+	if Current == nil {
 		return "🔈 Audio Disabled"
 	}
 
 	speakers := []string{"🎤", "🔊"}
 
-	if current.input.IsDisabled() {
+	if Current.input.IsDisabled() {
 		speakers[0] = "🎤"
 	}
 
-	if current.output.IsDisabled() {
+	if Current.output.IsDisabled() {
 		speakers[1] = "🔈"
 	}
 
-	return fmt.Sprintf("%s %s → %s %s", speakers[0], strings.Split(current.input.Name(), " (")[0], speakers[1], strings.Split(current.output.Name(), " (")[0])
+	return fmt.Sprintf("%s %s → %s %s", speakers[0], strings.Split(Current.input.Name(), " (")[0], speakers[1], strings.Split(Current.output.Name(), " (")[0])
 }
 
 func Output(name string) (err error) {
-	if current == nil {
+	if Current == nil {
 		return nil
 	}
 
-	out, err := output.New(current.context, name)
+	out, err := output.New(Current.context, name)
 	if err != nil {
 		return err
 	}
 
-	current.input.Close()
-	current.output.Close()
+	Current.input.Close()
+	Current.output.Close()
 
-	current.output = out
+	Current.output = out
 	config.Current.Audio.Playback.Device.Name = out.Name()
 
 	return Start()
 }
 
 func Outputs() []*output.Device {
-	if current == nil {
+	if Current == nil {
 		return nil
 	}
 
-	return output.Devices(current.context)
+	return output.Devices(Current.context)
 }
 
 func Restart() {
-	current.input.Close()
-	current.output.Close()
+	Current.input.Close()
+	Current.output.Close()
 
-	in, err := input.New(current.context, config.Current.Audio.Capture.Device.Name)
+	in, err := input.New(Current.context, config.Current.Audio.Capture.Device.Name)
 	if err != nil {
 		notify.Warn("[Audio] Failed to create input (%v)", err)
 	}
 
-	out, err := output.New(current.context, config.Current.Audio.Playback.Device.Name)
+	out, err := output.New(Current.context, config.Current.Audio.Playback.Device.Name)
 	if err != nil {
 		notify.Warn("[Audio] Failed to create output (%v)", err)
 	}
 
-	current.input = in
-	current.output = out
+	Current.input = in
+	Current.output = out
 }
 
 func Start() error {
-	if current.input.IsDisabled() || current.output.IsDisabled() {
+	if Current.input.IsDisabled() || Current.output.IsDisabled() {
 		notify.System("[Audio] Disabled")
 		return nil
 	}
 
-	notify.System("[Audio] Starting %s", current)
+	notify.System("[Audio] Starting %s", Current)
 
-	err := current.input.Start(current.context.Context, current.buffer)
+	err := Current.input.Start(Current.context.Context, Current.buffer)
 	if err != nil {
 		return err
 	}
 
-	err = current.output.Start(current.context.Context, current.buffer)
+	err = Current.output.Start(Current.context.Context, Current.buffer)
 	if err != nil {
 		return err
 	}
@@ -203,6 +203,6 @@ func Start() error {
 	return nil
 }
 
-func (s *session) String() string {
+func (s *Session) String() string {
 	return fmt.Sprintf("%s -> %s", s.input, s.output)
 }

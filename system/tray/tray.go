@@ -1,15 +1,22 @@
 package tray
 
 import (
+	"fmt"
 	"os"
+	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/rupor-github/win-gpg-agent/systray"
 	"github.com/skratchdot/open-golang/open"
 
+	"github.com/pidgy/unitehud/avi/audio"
 	"github.com/pidgy/unitehud/avi/img"
+	"github.com/pidgy/unitehud/avi/video"
+	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/system/process"
+	"github.com/pidgy/unitehud/system/save"
 	"github.com/pidgy/unitehud/system/wapi"
 )
 
@@ -26,16 +33,17 @@ var menu = struct {
 	visible bool
 
 	header    toggle
+	logs      toggle
 	website   toggle
 	startstop toggle
-	cpu, ram  toggle
-	quit      toggle
+	hide      toggle
+	exit      toggle
 
+	eventq     chan func()
 	startstopq chan bool
-	errorq     chan error
 }{
-	startstopq: make(chan bool, 1),
-	errorq:     make(chan error),
+	eventq:     make(chan func(), 1024),
+	startstopq: make(chan bool, 1024),
 }
 
 func Close() {
@@ -48,77 +56,151 @@ func Close() {
 	systray.Quit()
 }
 
-func Open(title, version string, exit func()) error {
+func Open(title, version string, onExit func()) error {
 	notify.Debug("[Tray] Opening...")
-	defer notify.Debug("[Tray] Opened")
 
-	go systray.Run(func() {
-		menu.header = header(title, version)
-		menu.cpu = cpu()
-		menu.ram = ram()
-		menu.website = website()
-		menu.startstop = startstop()
-
-		menu.quit = quit()
-
-		go func() {
-			for ; ; time.Sleep(time.Second) {
-				menu.cpu.event()
-				menu.ram.event()
-			}
-		}()
-
-		menu.errorq <- nil
-
-		menu.visible = true
-
-		for {
-			select {
-			case <-menu.header.ClickedCh:
-				menu.header.event()
-			case <-menu.website.ClickedCh:
-				menu.website.event()
-			case <-menu.startstop.ClickedCh:
-				menu.startstop.event()
-			case <-menu.quit.ClickedCh:
-				menu.quit.event()
-			}
+	go func() {
+		for hwnd == 0 {
+			time.Sleep(time.Second)
 		}
-	}, nil, func(s systray.SessionEvent) { notify.System("[Tray] Session Event \"%s\"", s) })
 
-	return <-menu.errorq
+		systray.Run(
+			func() { // OnReady.
+				menu.header = header(title, version)
+				proc()
+				configuration()
+				menu.logs = logs()
+				menu.hide = hide()
+				menu.startstop = startstop()
+				menu.website = website()
+				menu.exit = exit()
+
+				menu.visible = true
+
+				notify.Debug("[Tray] Opened")
+
+				for {
+					select {
+					case fn := <-menu.eventq:
+						fn()
+					case <-menu.header.ClickedCh:
+						menu.header.event()
+					case <-menu.website.ClickedCh:
+						menu.website.event()
+					case <-menu.startstop.ClickedCh:
+						menu.startstop.event()
+					case <-menu.hide.ClickedCh:
+						menu.hide.event()
+					case <-menu.exit.ClickedCh:
+						menu.exit.event()
+					}
+				}
+			},
+			func() { // OnExit.
+				notify.Warn("[Tray] Exiting...")
+			},
+
+			func(s systray.SessionEvent) { // OnSessionEvent.
+				notify.System("[Tray] SessionEvent: %s", s)
+			},
+		)
+	}()
+
+	return nil
 }
 
 func SetHWND(h uintptr) {
 	hwnd = uintptr(h)
 }
 
-func SetStartStopDisabled()      { menu.startstop.Disable() }
-func SetStartStopEnabled()       { menu.startstop.Enable() }
-func SetStartStopTitle(t string) { menu.startstop.SetTitle(t) }
+func SetStartStopDisabled() {
+	menu.eventq <- func() {
+		menu.startstop.Disable()
+	}
+}
+
+func SetStartStopEnabled() {
+	menu.eventq <- func() {
+		menu.startstop.Enable()
+	}
+}
+
+func SetStartStopTitle(t string) {
+	menu.eventq <- func() {
+		menu.startstop.SetTitle(t)
+	}
+}
+
 func StartStopEvent() bool {
-	if !menu.visible {
+	okq := make(chan bool)
+
+	select {
+	case menu.eventq <- func() {
+		if !menu.visible {
+			okq <- false
+			return
+		}
+
+		select {
+		case <-menu.startstopq:
+			okq <- menu.startstopq != nil
+		default:
+			okq <- false
+		}
+	}:
+	default:
 		return false
 	}
 
+	t := time.NewTimer(time.Second)
 	select {
-	case <-menu.startstopq:
-		return menu.startstopq != nil
-	default:
+	case ok := <-okq:
+		if !t.Stop() {
+			<-t.C
+		}
+		return ok
+	case <-t.C:
 		return false
 	}
 }
 
-func cpu() toggle {
-	notify.Debug("[Tray] Adding CPU")
+func configuration() {
+	systray.AddSeparator()
+
+	m := systray.AddMenuItem("Configuration", "View current UniteHUD configuration")
+	m.AddSubMenuItem(fmt.Sprintf("Device > %s", strings.Title(config.Current.Gaming.Device)), "").Disable()
+
+	vtitle := m.AddSubMenuItem("Video > Unknown", "")
+	vtitle.Disable()
+	// vname := m.AddSubMenuItem(" Unknown", "")
+	// vname.Disable()
+
+	atitle := m.AddSubMenuItem(fmt.Sprintf("Audio > Unknown"), "")
+	atitle.Disable()
+
+	go func() {
+		for ; ; time.Sleep(time.Second) {
+			switch {
+			case video.Active(video.Device, ""):
+				vtitle.SetTitle(fmt.Sprintf("Video > %s", config.Current.Video.Capture.Device.Name))
+			case video.Active(video.Monitor, ""), video.Active(video.Window, ""):
+				vtitle.SetTitle(fmt.Sprintf("Video > %s", config.Current.Video.Capture.Window.Name))
+			}
+
+			atitle.SetTitle(fmt.Sprintf("Audio > %s", audio.Current))
+		}
+	}()
+	// p.AddSubMenuItem(config.Current.Device, "")
+}
+
+func exit() toggle {
+	notify.Debug("[Tray] Adding Exit")
 
 	systray.AddSeparator()
 
 	return toggle{
-		MenuItem: systray.AddMenuItem("CPU 0%", "CPU"),
-		event: func() {
-			menu.cpu.SetTitle(process.CPU.String())
-		},
+		MenuItem: systray.AddMenuItem("Exit UniteHUD", "Quit the program"),
+		event:    func() { os.Exit(0) },
 	}
 }
 
@@ -129,38 +211,92 @@ func header(title, version string) toggle {
 	systray.SetTitle(title)
 	systray.SetTooltip(version)
 
-	t := systray.AddMenuItem(version, "Open UniteHUD")
-	t.SetIcon(img.IconBytes("icon-bg.ico"))
+	m := systray.AddMenuItem(version, "Open UniteHUD")
+	m.SetIcon(img.IconBytes("icon-bg.ico"))
 
 	return toggle{
-		MenuItem: t,
+		MenuItem: m,
 		event: func() {
 			notify.Debug("[Tray] Raising hwnd: %d", hwnd)
-			wapi.RaiseWindow(hwnd)
+
+			wapi.ShowWindowMinimizedRestore(hwnd)
+
+			menu.hide.SetTitle("Hide")
+			menu.hide.Enable()
 		},
 	}
 }
 
-func quit() toggle {
-	notify.Debug("[Tray] Adding Quit")
-
+func hide() toggle {
 	systray.AddSeparator()
 
 	return toggle{
-		MenuItem: systray.AddMenuItem("Quit UniteHUD", "Close UniteHUD"),
-		event:    func() { os.Exit(0) },
+		MenuItem: systray.AddMenuItem("Hide", "Minimize to system tray"),
+		event: func() {
+			notify.Debug("[Tray] Hiding/Showing hwnd: %d", hwnd)
+
+			wapi.ShowWindowHide(hwnd)
+			menu.hide.Disable()
+		},
 	}
 }
 
-func ram() toggle {
-	notify.Debug("[Tray] Adding RAM")
+func logs() toggle {
+	notify.Debug("[Tray] Adding Logs")
+
+	systray.AddSeparator()
+
+	mi := systray.AddMenuItem("Files", "View present and historical logs")
+	view := mi.AddSubMenuItem("View Log File", "View active log file")
+	open := mi.AddSubMenuItem("Open Log Directory", "View historical logs")
+	conf := mi.AddSubMenuItem("View Config File", "View current configuration")
+
+	go func() {
+		for {
+			select {
+			case <-open.ClickedCh:
+				err := save.Open()
+				if err != nil {
+					notify.Error("[Tray] Failed to open log directory (%v)", err)
+				}
+			case <-view.ClickedCh:
+				err := save.OpenCurrentLog()
+				if err != nil {
+					notify.Error("[Tray] Failed to open log directory (%v)", err)
+				}
+			case <-conf.ClickedCh:
+				err := exec.Command("C:\\Windows\\system32\\notepad.exe", config.Current.File()).Run()
+				if err != nil {
+					notify.Error("[UI] Failed to open \"%s\" (%v)", config.Current.File(), err)
+					return
+				}
+			}
+		}
+	}()
 
 	return toggle{
-		MenuItem: systray.AddMenuItem("RAM 0MB", "RAM"),
-		event: func() {
-			menu.ram.SetTitle(process.RAM.String())
-		},
+		MenuItem: mi,
+		event:    func() {},
 	}
+}
+
+func proc() {
+	notify.Debug("[Tray] Adding CPU")
+
+	systray.AddSeparator()
+
+	cpu := systray.AddMenuItem("CPU 0%", "CPU")
+	cpu.Disable()
+
+	ram := systray.AddMenuItem("RAM 0MB", "RAM")
+	ram.Disable()
+
+	go func() {
+		for ; ; time.Sleep(time.Second) {
+			ram.SetTitle(process.RAM.String())
+			cpu.SetTitle(process.CPU.String())
+		}
+	}()
 }
 
 func startstop() toggle {

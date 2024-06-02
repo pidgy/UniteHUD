@@ -411,6 +411,7 @@ func (g *GUI) videos(text float32) *videos {
 				}
 
 				go func() {
+					config.Current.Video.Capture.Device.API = config.DefaultVideoCaptureAPI
 					config.Current.Video.Capture.Device.Index = i.Value
 					config.Current.Video.Capture.Device.Name = i.Text
 
@@ -576,15 +577,15 @@ func (g *GUI) videos(text float32) *videos {
 			Items: []*checklist.Item{
 				{
 					Text:    strings.Title(config.DeviceSwitch),
-					Checked: widget.Bool{Value: config.Current.Device == config.DeviceSwitch},
+					Checked: widget.Bool{Value: config.Current.Gaming.Device == config.DeviceSwitch},
 				},
 				{
 					Text:    strings.Title(config.DeviceMobile),
-					Checked: widget.Bool{Value: config.Current.Device == config.DeviceMobile},
+					Checked: widget.Bool{Value: config.Current.Gaming.Device == config.DeviceMobile},
 				},
 				{
 					Text:    strings.Title(config.DeviceBluestacks),
-					Checked: widget.Bool{Value: config.Current.Device == config.DeviceBluestacks},
+					Checked: widget.Bool{Value: config.Current.Gaming.Device == config.DeviceBluestacks},
 				},
 			},
 			Callback: func(i *checklist.Item, l *checklist.Widget) (check bool) {
@@ -595,24 +596,24 @@ func (g *GUI) videos(text float32) *videos {
 					}
 					item.Checked.Value = true
 
-					config.Current.Device = strings.ToLower(item.Text)
+					config.Current.Gaming.Device = strings.ToLower(item.Text)
 
 					err := config.Current.Save()
 					if err != nil {
-						notify.Error("[UI] Failed to load %s configuration", config.Current.Device)
+						notify.Error("[UI] Failed to load %s configuration", config.Current.Gaming.Device)
 						return false
 					}
 
-					err = config.Load(config.Current.Device)
+					err = config.Load(config.Current.Gaming.Device)
 					if err != nil {
-						notify.Error("[UI] Failed to load %s configuration", config.Current.Device)
+						notify.Error("[UI] Failed to load %s configuration", config.Current.Gaming.Device)
 						return false
 					}
 
 					time.AfterFunc(time.Second, func() {
 						err := config.Current.Save()
 						if err != nil {
-							notify.Error("[UI] Failed to save %s configuration", config.Current.Device)
+							notify.Error("[UI] Failed to save %s configuration", config.Current.Gaming.Device)
 						}
 					})
 				}

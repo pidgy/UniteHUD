@@ -259,19 +259,23 @@ func (m *Match) validate(matrix gocv.Mat, value int) (Result, int) {
 		}
 	}()
 
-	switch ok, reason := m.Team.Duplicate.Of(latest); {
+	switch is, reason := m.Team.Duplicate.Of(latest); {
 	case latest.Overrides(m.Team.Duplicate):
 		latest.Counted = true
 		notify.Debug("[Detect] [%s] [%s] [Override] [%s] +%d", server.Clock(), m.Team, reason, value)
+
 		return Override, value
-	case ok:
+	case is:
 		notify.Debug("[Detect] [%s] [%s] [Duplicate] [%s] +%d", server.Clock(), m.Team, reason, value)
+
 		return Duplicate, value
 	case latest.Potential:
 		notify.Debug("[Detect] [%s] [%s] [Potential Duplicate] [%s] +%d", server.Clock(), m.Team, reason, value)
+
 		fallthrough
 	default:
 		latest.Counted = true
+
 		return Found, value
 	}
 }

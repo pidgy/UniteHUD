@@ -49,6 +49,7 @@ import (
 	"github.com/pidgy/unitehud/system/process"
 	"github.com/pidgy/unitehud/system/save"
 	"github.com/pidgy/unitehud/system/tray"
+	"github.com/pidgy/unitehud/system/wapi"
 )
 
 type main struct {
@@ -168,7 +169,7 @@ func (g *GUI) main() {
 
 		g.ToastYesNo(
 			"Configuration Reset",
-			fmt.Sprintf("Recent crash detected. View log directory?"),
+			"Recent crash detected. View log directory?",
 			OnToastYes(
 				func() {
 					err := save.Open()
@@ -184,6 +185,17 @@ func (g *GUI) main() {
 		if err != nil {
 			notify.Warn("[UI] Failed to reset configuration (%v)", err)
 		}
+	}
+
+	if config.Current.IsNew() {
+		notify.Announce("[System] Thanks for installing %s! Configure your video capture by selecting the ⚙ Settings option in the title bar!", global.TitleVersion)
+		// g.ToastNewsletter(
+		// 	global.TitleVersion,
+		// 	Bulletin{
+		// 		Title: "Welcome to UniteHUD!",
+		// 	},
+		// 	OnToastOK(func() {}),
+		// )
 	}
 
 	for is.Now == is.MainMenu {
@@ -560,7 +572,15 @@ func (g *GUI) main() {
 							g.next(is.Closing)
 						}
 					default:
-
+						switch event.Name {
+						case key.NameEscape:
+							if !g.dimensions.fullscreen {
+								break
+							}
+							fallthrough
+						case key.NameF11:
+							g.nav.Resize()
+						}
 					}
 				}
 			}
@@ -1074,7 +1094,7 @@ func (g *GUI) mainUI() *main {
 			}
 
 			// Called once window is closed.
-			err = config.Load(config.Current.Device)
+			err = config.Load(config.Current.Gaming.Device)
 			if err != nil {
 				notify.Error("[UI] Failed to reload \"%s\" (%v)", config.Current.File(), err)
 				return
@@ -1190,4 +1210,6 @@ func (g *GUI) once(ui *main) {
 			}
 		}
 	}()
+
+	go wapi.SetWindowLongPtrA.Call(g.HWND, wapi.GetWindowLongFlags.Style, wapi.WindowStyleFlags.OverlappedWindow)
 }

@@ -32,8 +32,8 @@ type preview struct {
 	bar *title.Widget
 
 	windows struct {
-		parent  *GUI
-		current *app.Window
+		parent *GUI
+		this   *app.Window
 	}
 
 	state struct {
@@ -110,7 +110,7 @@ func (g *GUI) preview(a *areas, onclose func()) *preview {
 			}
 		}()
 
-		ui.windows.current.Perform(system.ActionRaise)
+		ui.windows.this.Perform(system.ActionRaise)
 
 		ui.windows.parent.setInsetLeft(ui.dimensions.width)
 		defer ui.windows.parent.unsetInsetLeft(ui.dimensions.width)
@@ -118,7 +118,7 @@ func (g *GUI) preview(a *areas, onclose func()) *preview {
 		var ops op.Ops
 
 		for {
-			switch event := ui.windows.current.NextEvent().(type) {
+			switch event := ui.windows.this.NextEvent().(type) {
 			case system.DestroyEvent:
 				ui.state.open = false
 				return
@@ -127,7 +127,7 @@ func (g *GUI) preview(a *areas, onclose func()) *preview {
 				ui.windows.parent.attachWindowLeft(ui.hwnd, ui.dimensions.width)
 			case system.FrameEvent:
 				if !ui.state.open {
-					go ui.windows.current.Perform(system.ActionClose)
+					go ui.windows.this.Perform(system.ActionClose)
 				}
 
 				if ui.dimensions.resize {
@@ -258,7 +258,7 @@ func (g *GUI) preview(a *areas, onclose func()) *preview {
 					)
 				})
 
-				ui.windows.current.Invalidate()
+				ui.windows.this.Invalidate()
 
 				event.Frame(gtx.Ops)
 			default:
@@ -275,10 +275,11 @@ func (g *GUI) previewUI() *preview {
 
 	ui.dimensions.width = 350
 	ui.dimensions.height = 700
+	ui.dimensions.resize = true
 
 	ui.windows.parent = g
 
-	ui.windows.current = app.NewWindow(
+	ui.windows.this = app.NewWindow(
 		app.Title("Preview"),
 		app.Size(unit.Dp(ui.dimensions.width), unit.Dp(ui.dimensions.height)),
 		app.MinSize(unit.Dp(ui.dimensions.width), unit.Dp(ui.dimensions.height)),
@@ -291,7 +292,7 @@ func (g *GUI) previewUI() *preview {
 		fonts.NewCollection(),
 		nil,
 		nil,
-		func() { ui.windows.current.Perform(system.ActionClose) },
+		func() { ui.windows.this.Perform(system.ActionClose) },
 	)
 	ui.bar.NoTip = true
 	ui.bar.NoDrag = true
@@ -326,7 +327,7 @@ func (g *GUI) previewUI() *preview {
 
 func (p *preview) close() {
 	if p != nil {
-		p.windows.current.Perform(system.ActionClose)
+		p.windows.this.Perform(system.ActionClose)
 	}
 }
 

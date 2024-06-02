@@ -8,7 +8,7 @@ import (
 	"github.com/pidgy/unitehud/core/notify"
 )
 
-const delay = time.Millisecond * 2000
+const delay = time.Millisecond * 2200
 
 type Duplicate struct {
 	Value int
@@ -68,13 +68,14 @@ func (d *Duplicate) Of(d2 *Duplicate) (bool, string) {
 	if d.Value != d2.Value {
 		return false, "inequality"
 	}
-	d2.Potential = true
 
 	delta := d2.Time.Sub(d.Time)
-	if delta > delay*2 {
+	if delta > delay {
+		d2.Potential = true
 		return false, "long-delay"
 	}
 	if delta < delay && d.Value != -1 && d.Value == d2.Value && d.Counted {
+		d2.Potential = true
 		return true, "short-delay,positive-equality,counted"
 	}
 
@@ -84,8 +85,12 @@ func (d *Duplicate) Of(d2 *Duplicate) (bool, string) {
 	gocv.MatchTemplate(d.region, d2.region, &mat, gocv.TmCcoeffNormed, gocv.NewMat())
 
 	_, maxc, _, _ := gocv.MinMaxLoc(mat)
+	if maxc > 0.91 {
+		d2.Potential = true
+		return true, "max-gt-91"
+	}
 
-	return maxc > 0.91, "max-gt-91"
+	return false, ""
 }
 
 func (d *Duplicate) Overrides(prev *Duplicate) bool {

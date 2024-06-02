@@ -16,7 +16,7 @@ import (
 	"github.com/pidgy/unitehud/global"
 )
 
-const maxX = 10
+const maxX = 100000
 
 var (
 	averages = make(map[string]int)
@@ -118,6 +118,9 @@ func Counts() map[string]int {
 }
 
 func CPU(v float64) {
+	if v < 0 {
+		return
+	}
 	statsq <- func() {
 		if len(cpus) == maxX {
 			cpus = append(cpus[:1], round(v))
@@ -128,11 +131,13 @@ func CPU(v float64) {
 }
 
 func CPUGraph() string {
-	return asciigraph.Plot(cpus, []asciigraph.Option{
+	return asciigraph.Plot(cpus,
+		asciigraph.LowerBound(0),
+		asciigraph.UpperBound(100),
 		asciigraph.Height(5),
 		asciigraph.Width(20),
 		asciigraph.Precision(0),
-	}...)
+	)
 }
 
 func Data() {
@@ -245,12 +250,16 @@ func Lines() []string {
 }
 
 func RAM(v float64) {
+	if v < 0 {
+		return
+	}
+
 	statsq <- func() {
 		if v == rams[len(rams)-1] {
 			return
 		}
 
-		if len(cpus) == maxX {
+		if len(rams) == maxX {
 			rams = append(rams[:1], round(v))
 		} else {
 			rams = append(rams, round(v))
@@ -259,11 +268,13 @@ func RAM(v float64) {
 }
 
 func RAMGraph() string {
-	return asciigraph.Plot(rams, []asciigraph.Option{
+	return asciigraph.Plot(rams,
+		asciigraph.LowerBound(0),
+		asciigraph.UpperBound(1000),
 		asciigraph.Height(5),
 		asciigraph.Width(20),
 		asciigraph.Precision(0),
-	}...)
+	)
 }
 
 func clear() {

@@ -224,9 +224,9 @@ var (
 		SysMenu,
 		ThickFrame,
 		Tiled,
-		Visible uint32
+		Visible uintptr
 
-		OverlappedWindow uint32
+		OverlappedWindow uintptr
 	}{
 		Caption:     0x00C00000,
 		MinimizeBox: 0x00020000,
@@ -265,6 +265,7 @@ var (
 	ReleaseDC                    = user32.MustFindProc("ReleaseDC")
 	SetForegroundWindow          = user32.MustFindProc("SetForegroundWindow")
 	SetThreadDpiAwarenessContext = user32.MustFindProc("GetThreadDpiAwarenessContext")
+	SetWindowLongPtrA            = user32.MustFindProc("SetWindowLongPtrA")
 	SetWindowLongPtrW            = user32.MustFindProc("SetWindowLongPtrW")
 	SetWindowPlacement           = user32.MustFindProc("SetWindowPlacement")
 	SetWindowPos                 = user32.MustFindProc("SetWindowPos")

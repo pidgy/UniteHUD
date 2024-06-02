@@ -38,15 +38,17 @@ import (
 )
 
 type footer struct {
-	api,
-	log,
-	cpu,
-	ram,
-	fps,
-	hz material.LabelStyle
+	api material.LabelStyle
+	log material.LabelStyle
+	cpu material.LabelStyle
+	ram material.LabelStyle
+	fps material.LabelStyle
+	hz  material.LabelStyle
 }
 
 type configure struct {
+	ops op.Ops
+
 	img         image.Image
 	constraints image.Rectangle
 	inset       image.Point
@@ -68,28 +70,28 @@ type configure struct {
 
 	buttons struct {
 		menu struct {
-			home,
-			settings,
-			save,
-			hide,
-			capture,
-			preview,
-			file,
-			reset *button.Widget
+			home     *button.Widget
+			settings *button.Widget
+			save     *button.Widget
+			hide     *button.Widget
+			capture  *button.Widget
+			preview  *button.Widget
+			file     *button.Widget
+			reset    *button.Widget
 		}
 	}
 
 	labels struct {
 		audio struct {
-			in,
+			in  material.LabelStyle
 			out material.LabelStyle
 		}
 
 		video struct {
-			device,
-			monitor,
-			window,
-			api material.LabelStyle
+			device  material.LabelStyle
+			monitor material.LabelStyle
+			window  material.LabelStyle
+			api     material.LabelStyle
 		}
 	}
 
@@ -98,8 +100,7 @@ type configure struct {
 		*videos
 		*areas
 
-		ticks,
-		threshold int
+		ticks, threshold int
 	}
 
 	*footer
@@ -111,8 +112,8 @@ func (g *GUI) configure() {
 	defer g.nav.OnClose(ui.buttons.menu.home.Click).Then()
 
 	defer g.nav.Remove(g.nav.Add(ui.buttons.menu.home))
-	defer g.nav.Remove(g.nav.Add(ui.buttons.menu.save))
 	defer g.nav.Remove(g.nav.Add(ui.buttons.menu.settings))
+	defer g.nav.Remove(g.nav.Add(ui.buttons.menu.save))
 	defer g.nav.Remove(g.nav.Add(ui.buttons.menu.preview))
 	defer g.nav.Remove(g.nav.Add(ui.buttons.menu.hide))
 	defer g.nav.Remove(g.nav.Add(ui.buttons.menu.capture))
@@ -123,8 +124,6 @@ func (g *GUI) configure() {
 	g.window.Perform(system.ActionRaise)
 
 	var lastpos image.Point
-
-	var ops op.Ops
 
 	for is.Now == is.Configuring {
 		if ui.groups.ticks++; ui.groups.ticks > ui.groups.threshold {
@@ -139,7 +138,7 @@ func (g *GUI) configure() {
 			ui.buttons.menu.home.Click(ui.buttons.menu.home)
 			g.next(is.Closing)
 		case system.FrameEvent:
-			gtx := layout.NewContext(&ops, event)
+			gtx := layout.NewContext(&ui.ops, event)
 			op.InvalidateOp{At: gtx.Now}.Add(gtx.Ops)
 
 			if !g.dimensions.size.Eq(event.Size) || !g.position().Eq(lastpos) {
@@ -641,7 +640,7 @@ func (g *GUI) configureUI() *configure {
 			}
 
 			// Called once window is closed.
-			err = config.Load(config.Current.Device)
+			err = config.Load(config.Current.Gaming.Device)
 			if err != nil {
 				notify.Error("[UI] Failed to reload \"%s\" (%v)", config.Current.File(), err)
 				return
@@ -666,7 +665,7 @@ func (g *GUI) configureUI() *configure {
 		Disabled:        false,
 		OnHoverHint:     func() { g.nav.Tip("Reset configuration") },
 		Click: func(this *button.Widget) {
-			g.ToastYesNo("Reset", fmt.Sprintf("Reset %s configuration?", config.Current.Device),
+			g.ToastYesNo("Reset", fmt.Sprintf("Reset %s configuration?", config.Current.Gaming.Device),
 				OnToastYes(func() {
 					defer this.Deactivate()
 					defer server.Clear()
@@ -675,7 +674,7 @@ func (g *GUI) configureUI() *configure {
 
 					err := config.Current.Reset()
 					if err != nil {
-						notify.Warn("[UI] Failed to reset %s configuration (%v)", config.Current.Device, err)
+						notify.Warn("[UI] Failed to reset %s configuration (%v)", config.Current.Gaming.Device, err)
 					}
 
 					config.Current.Reload()
@@ -693,7 +692,7 @@ func (g *GUI) configureUI() *configure {
 
 					g.next(is.MainMenu)
 
-					notify.Announce("[UI] Reset UniteHUD %s configuration", config.Current.Device)
+					notify.Announce("[UI] Reset UniteHUD %s configuration", config.Current.Gaming.Device)
 				}),
 				OnToastNo(this.Deactivate),
 			)
@@ -749,7 +748,7 @@ func (g *GUI) configureUI() *configure {
 	ui.groups.videos.monitor.populate(false)
 	ui.groups.videos.apis.populate(false)
 
-	// ui.buttons.menu.settings.Click(ui.buttons.menu.settings)
+	ui.buttons.menu.settings.Click(ui.buttons.menu.settings)
 
 	return ui
 }

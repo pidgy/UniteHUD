@@ -209,6 +209,8 @@ func (list *Widget) radio(item *Item) {
 }
 
 func (list *Widget) unhovered(i *Item) {
+	if i.hovered {
+		cursor.Is(pointer.CursorDefault)
+	}
 	i.hovered = false
-	cursor.Is(pointer.CursorDefault)
 }

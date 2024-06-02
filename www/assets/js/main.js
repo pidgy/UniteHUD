@@ -178,9 +178,10 @@ async function render(data) {
         }
 
         // User has presseed "start", awaiting match detection.
-        if (data.seconds == 0) {
+        if (data.seconds == 0 && prev.seconds != 0) {
             return clear(`${cached.banners.title} <span>${data.version}</span>`);
         }
+        prev.seconds = data.seconds;
     }
 
     // Render scores.

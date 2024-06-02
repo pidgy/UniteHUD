@@ -222,7 +222,7 @@ func Open() error {
 		}
 		defer c.Close(websocket.StatusNormalClosure, "cross origin WebSocket accepted")
 
-		current.game.Platform = config.Current.Device
+		current.game.Platform = config.Current.Gaming.Device
 		current.game.Events = notify.LastNStrings(10)
 		current.game.Debug = global.DebugMode
 
@@ -253,7 +253,7 @@ func Open() error {
 			}
 		}
 
-		current.game.Platform = config.Current.Device
+		current.game.Platform = config.Current.Gaming.Device
 		current.game.Events = notify.LastNStrings(10)
 		current.game.Debug = global.DebugMode
 
@@ -401,12 +401,12 @@ func ScoreString(t *team.Team) string {
 	switch t {
 	case team.Purple:
 		if current.game.Purple.Surrendered {
-			return fmt.Sprintf("[SND] %d", current.game.Purple.Value)
+			return fmt.Sprintf("%d [SND]", current.game.Purple.Value)
 		}
 		return fmt.Sprintf("%d", current.game.Purple.Value)
 	case team.Orange:
 		if current.game.Orange.Surrendered {
-			return fmt.Sprintf("[SND] %d", current.game.Orange.Value)
+			return fmt.Sprintf("%d [SND]", current.game.Orange.Value)
 		}
 		return fmt.Sprintf("%d", current.game.Orange.Value)
 	}

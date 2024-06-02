@@ -62,7 +62,7 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 
 	dst, err := src.Compatible()
 	if err != nil {
-		return nil, fmt.Errorf("could not create compatible DC (%d)", getLastError())
+		return nil, fmt.Errorf("could not create compatible DC (%d)", lastError())
 	}
 	defer dst.Delete()
 
@@ -163,16 +163,6 @@ func Open() {
 	set(sourcesTmp, displaysTmp, boundsTmp)
 }
 
-func createCompatibleDC(hdc uintptr) uintptr {
-	ret, _, _ := wapi.CreateCompatibleDC.Call(uintptr(hdc))
-	return ret
-}
-
-func deleteObject(hObject uintptr) bool {
-	ret, _, _ := wapi.DeleteObject.Call(hObject)
-	return ret != 0
-}
-
 func dims() image.Rectangle {
 	mutex.RLock()
 	defer mutex.RUnlock()
@@ -188,24 +178,9 @@ func display(name string, count int) string {
 	return fmt.Sprintf("%s %d", name, count)
 }
 
-func getDC(hwnd uintptr) uintptr {
-	ret, _, _ := wapi.GetDC.Call(uintptr(hwnd))
-	return ret
-}
-
-func getLastError() uint32 {
+func lastError() uint32 {
 	ret, _, _ := wapi.GetLastError.Call()
 	return uint32(ret)
-}
-
-func releaseDC(hwnd uintptr, hdc uintptr) bool {
-	ret, _, _ := wapi.ReleaseDC.Call(uintptr(hwnd), uintptr(hdc))
-	return ret != 0
-}
-
-func selectObject(hdc, hgdiobj uintptr) uintptr {
-	ret, _, _ := wapi.SelectObject.Call(uintptr(hdc), uintptr(hgdiobj))
-	return ret
 }
 
 func set(s []string, d map[string]int, b map[string]image.Rectangle) {

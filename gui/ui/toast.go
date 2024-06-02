@@ -96,6 +96,7 @@ func (g *GUI) toast(header, msg string, width, height float32) *toast {
 
 	t.label = material.Label(t.bar.Collection.Calibri().Theme, toastTextSize, titleFirstWord(msg))
 	t.label.Alignment = text.Middle
+
 	return t
 }
 
@@ -118,6 +119,100 @@ func (g *GUI) ToastErrorf(format string, a ...interface{}) {
 	g.ToastError(fmt.Errorf(format, a...))
 }
 
+type Bulletin struct {
+	Title string
+
+	Topics []struct {
+		Subtitle string
+		Points   []string
+	}
+}
+
+func (g *GUI) ToastNewsletter(header string, bulletin Bulletin, ok OnToastOK) {
+	t := g.toast(header, "", float32(720), float32(500))
+	if t == nil {
+		return
+	}
+
+	go func() {
+		notify.Debug("[UI] Toast: Opening Newsletter (active: %t)", g.previous.toast.active)
+		defer notify.Debug("[UI] Toast: Closing Newsletter (active: %t)", g.previous.toast.active)
+		defer t.close()
+
+		okButton := &button.Widget{
+			Text:            "OK",
+			TextSize:        unit.Sp(16),
+			Font:            t.bar.Collection.Calibri(),
+			Pressed:         nrgba.Transparent80,
+			Released:        nrgba.DarkGray,
+			Size:            image.Pt(96, 32),
+			TextInsetBottom: -2,
+
+			Click: func(this *button.Widget) {
+				defer this.Deactivate()
+
+				if ok != nil {
+					ok()
+				}
+
+				t.window.Perform(system.ActionClose)
+			},
+		}
+
+		for e := t.window.NextEvent(); ; e = t.window.NextEvent() {
+			if _, ok := e.(system.DestroyEvent); ok {
+				t.window.Perform(system.ActionClose)
+				return
+			}
+
+			event, ok := e.(system.FrameEvent)
+			if !ok {
+				notify.Missed(event, "ToastOk")
+				continue
+			}
+
+			gtx := layout.NewContext(&t.ops, event)
+
+			t.bar.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+				return decorate.BackgroundAlt(gtx, func(gtx layout.Context) layout.Dimensions {
+					return layout.Flex{
+						Axis:      layout.Vertical,
+						Alignment: layout.Middle,
+					}.Layout(gtx,
+						layout.Rigid(layout.Spacer{Height: 10}.Layout),
+
+						layout.Flexed(.5, func(gtx layout.Context) layout.Dimensions {
+							decorate.Label(&t.label, t.label.Text)
+							return layout.Center.Layout(gtx, t.label.Layout)
+						}),
+
+						layout.Flexed(.5, func(gtx layout.Context) layout.Dimensions {
+							return layout.Flex{
+								Axis: layout.Horizontal,
+							}.Layout(gtx,
+								layout.Rigid(layout.Spacer{Width: 5}.Layout),
+
+								layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+									return layout.Center.Layout(gtx, okButton.Layout)
+								}),
+
+								layout.Rigid(layout.Spacer{Width: 5}.Layout),
+							)
+						}),
+
+						layout.Rigid(layout.Spacer{Height: 2}.Layout),
+					)
+				})
+			})
+
+			t.window.Perform(system.ActionCenter)
+			t.window.Perform(system.ActionRaise)
+			t.window.Invalidate()
+			event.Frame(gtx.Ops)
+		}
+	}()
+}
+
 func (g *GUI) ToastOK(header, msg string, ok OnToastOK) {
 	t := g.toast(header, msg, float32(400), float32(125))
 	if t == nil {
@@ -125,8 +220,8 @@ func (g *GUI) ToastOK(header, msg string, ok OnToastOK) {
 	}
 
 	go func() {
-		notify.Debug("[UI] Opening Ok (active: %t)", g.previous.toast.active)
-		defer notify.Debug("[UI] Closing Ok (active: %t)", g.previous.toast.active)
+		notify.Debug("[UI] Toast: Opening Ok (active: %t)", g.previous.toast.active)
+		defer notify.Debug("[UI] Toast: Closing Ok (active: %t)", g.previous.toast.active)
 		defer t.close()
 
 		okButton := &button.Widget{
@@ -214,8 +309,8 @@ func (g *GUI) ToastSplash(header, msg string, img image.Image) waiter {
 	defer c.ready()
 
 	go func() {
-		notify.Debug("[UI] Opening Splash (active: %t)", g.previous.toast.active)
-		defer notify.Debug("[UI] Closing Splash (active: %t)", g.previous.toast.active)
+		notify.Debug("[UI] Toast: Opening Splash (active: %t)", g.previous.toast.active)
+		defer notify.Debug("[UI] Toast: Closing Splash (active: %t)", g.previous.toast.active)
 		defer c.toast.close()
 
 		c.toast.bar.Hide = true
@@ -273,8 +368,8 @@ func (g *GUI) ToastYesNo(header, msg string, y OnToastYes, n OnToastNo) {
 	}
 
 	go func() {
-		notify.Debug("[UI] Opening Yes/No (active: %t)", g.previous.toast.active)
-		defer notify.Debug("[UI] Closing Yes/No (active: %t)", g.previous.toast.active)
+		notify.Debug("[UI] Toast: Opening Yes/No (active: %t)", g.previous.toast.active)
+		defer notify.Debug("[UI] Toast: Closing Yes/No (active: %t)", g.previous.toast.active)
 		defer t.close()
 
 		yButton := &button.Widget{

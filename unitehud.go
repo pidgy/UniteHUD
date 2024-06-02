@@ -83,7 +83,7 @@ func signals() {
 
 	video.Close()
 	audio.Close()
-	ui.UI.Close()
+	ui.Close()
 	tray.Close()
 
 	err := save.Logs(notify.FeedStrings(), stats.Lines(), stats.Counts())
@@ -102,7 +102,7 @@ func main() {
 		notify.Warn("[UniteHUD] Failed to stop previous process (%v)", err)
 	}
 
-	err = config.Load(config.Current.Device)
+	err = config.Load(config.Current.Gaming.Device)
 	if err != nil {
 		notify.Warn("[UniteHUD] Failed to load %s (%v)", config.Current.File(), err)
 	}
@@ -122,7 +122,7 @@ func main() {
 		notify.Warn("[UniteHUD] Failed to start server (%v)", err)
 	}
 
-	err = tray.Open(global.Title, global.TitleVersion, ui.UI.Close)
+	err = tray.Open(global.Title, global.TitleVersion, ui.Close)
 	if err != nil {
 		notify.Warn("[UniteHUD] Failed to open system tray (%v)", err)
 	}
@@ -131,7 +131,7 @@ func main() {
 
 	notify.Debug("[UniteHUD] Server Address (%s)", server.Address)
 	notify.Debug("[UniteHUD] Recording (%t)", config.Current.Record)
-	notify.Debug("[UniteHUD] Platform (%s)", config.Current.Device)
+	notify.Debug("[UniteHUD] Platform (%s)", config.Current.Gaming.Device)
 	notify.Debug("[UniteHUD] Assets (%s)", config.Current.Assets())
 	notify.Debug("[UniteHUD] Match Threshold: (%.0f%%)", config.Current.Acceptance*100)
 

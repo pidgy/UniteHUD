@@ -15,11 +15,9 @@ import (
 	"github.com/pidgy/unitehud/core/notify"
 )
 
-var Empty = image.NewRGBA(image.Rect(0, 0, 128, 128))
-
-var (
-	cache = []*cached{}
-)
+type PNGPool struct {
+	sync *sync.Pool
+}
 
 type cached struct {
 	name  string
@@ -27,32 +25,24 @@ type cached struct {
 	bytes []byte
 }
 
-func NRGBA(mat gocv.Mat) (*image.NRGBA, error) {
-	i, err := mat.ToImage()
-	if err != nil {
-		return nil, err
-	}
+var (
+	Empty = image.NewRGBA(image.Rect(0, 0, 128, 128))
 
-	img, ok := i.(*image.NRGBA)
-	if !ok {
-		return nil, err
-	}
+	cache = []*cached{}
+)
 
-	return img, nil
-}
-
-func RGBA(mat gocv.Mat) (*image.RGBA, error) {
-	i, err := mat.ToImage()
-	if err != nil {
-		return nil, err
+func NewPNGPool() *PNGPool {
+	p := &PNGPool{
+		sync: &sync.Pool{
+			New: func() any {
+				return new(png.EncoderBuffer)
+			},
+		},
 	}
-
-	switch img := i.(type) {
-	case *image.RGBA:
-		return img, nil
-	default:
-		return nil, fmt.Errorf("failed to convert %T to an rgba image", i)
+	for i := 0; i < 4096; i++ {
+		p.Put(new(png.EncoderBuffer))
 	}
+	return p
 }
 
 func Icon(name string) image.Image {
@@ -120,22 +110,32 @@ func IconBytes(name string) []byte {
 	return c.bytes
 }
 
-type PNGPool struct {
-	sync *sync.Pool
+func NRGBA(mat gocv.Mat) (*image.NRGBA, error) {
+	i, err := mat.ToImage()
+	if err != nil {
+		return nil, err
+	}
+
+	img, ok := i.(*image.NRGBA)
+	if !ok {
+		return nil, err
+	}
+
+	return img, nil
 }
 
-func NewPNGPool() *PNGPool {
-	p := &PNGPool{
-		sync: &sync.Pool{
-			New: func() any {
-				return new(png.EncoderBuffer)
-			},
-		},
+func RGBA(mat gocv.Mat) (*image.RGBA, error) {
+	i, err := mat.ToImage()
+	if err != nil {
+		return nil, err
 	}
-	for i := 0; i < 4096; i++ {
-		p.Put(new(png.EncoderBuffer))
+
+	switch img := i.(type) {
+	case *image.RGBA:
+		return img, nil
+	default:
+		return nil, fmt.Errorf("failed to convert %T to an rgba image", i)
 	}
-	return p
 }
 
 func (p *PNGPool) Get() *png.EncoderBuffer {

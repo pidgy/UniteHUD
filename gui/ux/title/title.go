@@ -36,9 +36,9 @@ type Widget struct {
 	Title      string
 	Collection fonts.Collection
 
-	NoTip,
-	NoDrag,
-	Hide,
+	NoTip       bool
+	NoDrag      bool
+	Hide        bool
 	HideButtons bool
 
 	*decorations
@@ -64,9 +64,9 @@ type decorations struct {
 	}
 
 	buttons struct {
-		minimize,
-		resize,
-		close *button.Widget
+		minimize *button.Widget
+		resize   *button.Widget
+		close    *button.Widget
 
 		custom []*button.Widget
 		open   bool
@@ -77,12 +77,11 @@ type decorations struct {
 	}
 
 	dragging struct {
-		is,
-		was bool
+		is bool
 
-		first,
-		last,
-		diff f32.Point
+		first f32.Point
+		last  f32.Point
+		diff  f32.Point
 	}
 }
 
@@ -258,23 +257,22 @@ func (b *Widget) Layout(gtx layout.Context, content layout.Widget) layout.Dimens
 			continue
 		}
 
-		if b.dragging.is {
-			if b.NoDrag {
-				cursor.Is(pointer.CursorNotAllowed)
-			} else {
-				cursor.Is(pointer.CursorPointer)
-			}
-			b.dragging.was = true
-		} else if b.dragging.was {
-			b.dragging.was = false
-			cursor.Is(pointer.CursorDefault)
-		}
-
 		switch e.Kind {
 		case pointer.Enter, pointer.Move:
+		case pointer.Leave:
+			// cursor.Is(pointer.CursorDefault)
 		case pointer.Press:
+			if b.NoDrag {
+				cursor.Is(pointer.CursorNotAllowed)
+				continue
+			}
+
+			cursor.Is(pointer.CursorGrab)
+
 			b.dragging.first = e.Position
 		case pointer.Release:
+			cursor.Is(pointer.CursorDefault)
+
 			b.dragging.is = false
 
 			b.dragging.last = e.Position
@@ -287,6 +285,13 @@ func (b *Widget) Layout(gtx layout.Context, content layout.Widget) layout.Dimens
 			}
 			b.decorations.clicked.last = time.Now()
 		case pointer.Drag:
+			if b.NoDrag {
+				cursor.Is(pointer.CursorNotAllowed)
+				continue
+			}
+
+			cursor.Is(pointer.CursorGrabbing)
+
 			if b.dragging.last.Round().Eq(e.Position.Round()) {
 				break
 			}

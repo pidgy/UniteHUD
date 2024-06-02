@@ -95,9 +95,17 @@ func Logs(feeds, lines []string, templates map[string]int) error {
 func Open() error {
 	d, err := createAllIfNotExist()
 	if err != nil {
-		return fmt.Errorf("save: failed to open %s: %v", Directory, err)
+		return fmt.Errorf("save: failed to create %s: %v", Directory, err)
 	}
 	return open.Run(d)
+}
+
+func OpenCurrentLog() error {
+	d, err := createAllIfNotExist()
+	if err != nil {
+		return fmt.Errorf("save: failed to create directory: %s: %v", Directory, err)
+	}
+	return open.Run(fmt.Sprintf("%s/%s/%s", d, Directory, log))
 }
 
 func OpenLogDirectory() error {

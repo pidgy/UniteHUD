@@ -108,14 +108,16 @@ func (b *Widget) Layout(gtx layout.Context) layout.Dimensions {
 
 				if b.Disabled {
 					cursor.Is(pointer.CursorNotAllowed)
-					continue
+					break
 				}
+
 				cursor.Is(pointer.CursorPointer)
 			case pointer.Release:
 				if b.Disabled {
 					cursor.Is(pointer.CursorNotAllowed)
 					continue
 				}
+
 				cursor.Is(pointer.CursorPointer)
 
 				if b.hover && b.Click != nil {
@@ -196,7 +198,7 @@ func (b *Widget) uniform(gtx layout.Context) layout.Dimensions {
 	if !b.active {
 		col = b.Released
 	}
-	if b.hover {
+	if b.hover && !b.Disabled {
 		col = b.Pressed
 	}
 

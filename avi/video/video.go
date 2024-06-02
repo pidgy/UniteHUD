@@ -21,11 +21,13 @@ const (
 func Active(i Input, name string) bool {
 	switch i {
 	case Device:
-		return device.IsActive() && device.ActiveName() == name
+		return device.IsActive() && (name == device.ActiveName() || name == "")
 	case Monitor:
-		return !device.IsActive() && monitor.Active(name)
-	default:
+		return !device.IsActive() && (monitor.Active(name) || name == "")
+	case Window:
 		return !device.IsActive() && window.IsOpen()
+	default:
+		return false
 	}
 }
 

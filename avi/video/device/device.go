@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
 	"gocv.io/x/gocv"
 
 	"github.com/pidgy/unitehud/avi/device"
@@ -16,7 +17,6 @@ import (
 	"github.com/pidgy/unitehud/avi/video/monitor"
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/notify"
-	"github.com/pkg/errors"
 )
 
 type cache struct {
@@ -227,7 +227,7 @@ func capture() error {
 
 	api := gocv.VideoCaptureAPI(API(config.Current.Video.Capture.Device.API))
 
-	notify.Debug("[Video] Capturing %s with %s API", active.name, api.String())
+	notify.Debug("[Video] Capturing %s with %s API", active.name, config.Current.Video.Capture.Device.API)
 
 	device, err := gocv.OpenVideoCaptureWithAPI(active.index, api)
 	if err != nil {
@@ -329,7 +329,7 @@ func (d *dev) reset() {
 
 	config.Current.Video.Capture.Window.Name = config.MainDisplay
 	config.Current.Video.Capture.Device.Index = config.NoVideoCaptureDevice
-	config.Current.Video.Capture.Device.API = "Any"
+	config.Current.Video.Capture.Device.API = config.DefaultVideoCaptureAPI
 
 	notify.System("[Video] Capturing %s", config.Current.Video.Capture.Window.Name)
 

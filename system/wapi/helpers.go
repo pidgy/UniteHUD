@@ -131,15 +131,21 @@ func EnumerateWindows(callback func(h uintptr, p uintptr) uintptr) error {
 	return nil
 }
 
+func MoveWindowNoSize(hwnd uintptr, pos image.Point) {
+	MoveWindow.Call(hwnd, uintptr(pos.X), uintptr(pos.Y), 0, 0, uintptr(1))
+}
+
 func ObjectSelect(hwnd1, hwnd2 uintptr) {
 	SelectObject.Call(hwnd1, hwnd2)
 }
 
-func RaiseWindow(hwnd uintptr) {
+func ShowWindowMinimizedRestore(hwnd uintptr) {
 	ShowWindow.Call(hwnd, ShowWindowFlags.ShowMinimized)
 	ShowWindow.Call(hwnd, ShowWindowFlags.Restore)
+}
 
-	// go BringWindowToTop.Call(hwnd)
+func ShowWindowHide(hwnd uintptr) {
+	ShowWindow.Call(hwnd, ShowWindowFlags.Hide)
 }
 
 func SetWindowDarkMode(hwnd uintptr) {
