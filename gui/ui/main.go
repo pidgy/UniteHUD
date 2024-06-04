@@ -193,6 +193,8 @@ func (g *GUI) main() {
 		// )
 	}
 
+	tray.SetStartStopTitle("Start")
+
 	for is.Now == is.MainMenu {
 		if !g.open {
 			time.Sleep(time.Millisecond * 10)
@@ -715,164 +717,166 @@ func (g *GUI) mainUI() *main {
 		},
 	}
 
-	ui.labels.audio = material.Caption(g.nav.Collection.NotoSans().Theme, audio.Label())
-	ui.labels.audio.Color = nrgba.Slate.Color()
-	ui.labels.audio.Alignment = text.Middle
-	ui.labels.audio.Font.Weight = font.ExtraBold
+	{
+		ui.labels.audio = material.Caption(g.nav.Collection.NotoSans().Theme, audio.Label())
+		ui.labels.audio.Color = nrgba.Slate.Color()
+		ui.labels.audio.Alignment = text.Middle
+		ui.labels.audio.Font.Weight = font.ExtraBold
 
-	ui.labels.discord = material.Caption(g.nav.Collection.NotoSans().Theme, "👾 Discord Disabled")
-	ui.labels.discord.Color = nrgba.Discord.Color()
-	ui.labels.audio.Alignment = text.Middle
-	ui.labels.discord.Font.Weight = font.ExtraBold
+		ui.labels.discord = material.Caption(g.nav.Collection.NotoSans().Theme, "👾 Discord Disabled")
+		ui.labels.discord.Color = nrgba.Discord.Color()
+		ui.labels.audio.Alignment = text.Middle
+		ui.labels.discord.Font.Weight = font.ExtraBold
 
-	ui.labels.warning = material.Caption(g.nav.Collection.NotoSans().Theme, "⚠ CPU")
-	ui.labels.warning.Color = nrgba.Yellow.Alpha(200).Color()
-	ui.labels.audio.Alignment = text.Middle
-	ui.labels.warning.Font.Weight = font.ExtraBold
+		ui.labels.warning = material.Caption(g.nav.Collection.NotoSans().Theme, "⚠ CPU")
+		ui.labels.warning.Color = nrgba.Yellow.Alpha(200).Color()
+		ui.labels.audio.Alignment = text.Middle
+		ui.labels.warning.Font.Weight = font.ExtraBold
 
-	ui.labels.window = material.Caption(g.nav.Collection.Calibri().Theme, "")
-	ui.labels.window.Color = nrgba.PastelGreen.Color()
-	ui.labels.window.Alignment = text.Middle
-	ui.labels.window.Font.Weight = font.Medium
-	ui.labels.window.TextSize = unit.Sp(14)
+		ui.labels.window = material.Caption(g.nav.Collection.Calibri().Theme, "")
+		ui.labels.window.Color = nrgba.PastelGreen.Color()
+		ui.labels.window.Alignment = text.Middle
+		ui.labels.window.Font.Weight = font.Medium
+		ui.labels.window.TextSize = unit.Sp(14)
 
-	ui.labels.cpu = material.H5(g.nav.Collection.Calibri().Theme, "")
-	ui.labels.cpu.Alignment = text.Middle
-	ui.labels.cpu.TextSize = unit.Sp(14)
+		ui.labels.cpu = material.H5(g.nav.Collection.Calibri().Theme, "")
+		ui.labels.cpu.Alignment = text.Middle
+		ui.labels.cpu.TextSize = unit.Sp(14)
 
-	ui.labels.cpuGraph = material.H5(g.nav.Collection.Cascadia().Theme, "")
-	ui.labels.cpuGraph.Color = nrgba.Gray.Color()
-	ui.labels.cpuGraph.TextSize = unit.Sp(9)
+		ui.labels.cpuGraph = material.H5(g.nav.Collection.Cascadia().Theme, "")
+		ui.labels.cpuGraph.Color = nrgba.Gray.Color()
+		ui.labels.cpuGraph.TextSize = unit.Sp(9)
 
-	ui.labels.ram = material.H5(g.nav.Collection.Calibri().Theme, "")
-	ui.labels.ram.Alignment = text.Middle
-	ui.labels.ram.TextSize = unit.Sp(14)
+		ui.labels.ram = material.H5(g.nav.Collection.Calibri().Theme, "")
+		ui.labels.ram.Alignment = text.Middle
+		ui.labels.ram.TextSize = unit.Sp(14)
 
-	ui.labels.ramGraph = material.H5(g.nav.Collection.Cascadia().Theme, "")
-	ui.labels.ramGraph.Color = nrgba.Gray.Color()
-	ui.labels.ramGraph.TextSize = unit.Sp(9)
+		ui.labels.ramGraph = material.H5(g.nav.Collection.Cascadia().Theme, "")
+		ui.labels.ramGraph.Color = nrgba.Gray.Color()
+		ui.labels.ramGraph.TextSize = unit.Sp(9)
 
-	ui.labels.holding = material.H5(g.nav.Collection.Calibri().Theme, "")
-	ui.labels.holding.Color = nrgba.Gold.Color()
-	ui.labels.holding.Alignment = text.Middle
-	ui.labels.holding.TextSize = unit.Sp(14)
+		ui.labels.holding = material.H5(g.nav.Collection.Calibri().Theme, "")
+		ui.labels.holding.Color = nrgba.Gold.Color()
+		ui.labels.holding.Alignment = text.Middle
+		ui.labels.holding.TextSize = unit.Sp(14)
 
-	ui.labels.connectedClients = material.H5(g.nav.Collection.Calibri().Theme, "")
-	ui.labels.connectedClients.Alignment = text.Middle
-	ui.labels.connectedClients.TextSize = unit.Sp(14)
+		ui.labels.connectedClients = material.H5(g.nav.Collection.Calibri().Theme, "")
+		ui.labels.connectedClients.Alignment = text.Middle
+		ui.labels.connectedClients.TextSize = unit.Sp(14)
 
-	ui.labels.symbol = material.H5(g.nav.Collection.Calibri().Theme, "")
-	ui.labels.symbol.Alignment = text.Middle
-	ui.labels.symbol.TextSize = unit.Sp(16)
-	ui.labels.symbol.Font.Weight = font.ExtraBold
-	ui.labels.symbol.Color = nrgba.Slate.Color()
+		ui.labels.symbol = material.H5(g.nav.Collection.Calibri().Theme, "")
+		ui.labels.symbol.Alignment = text.Middle
+		ui.labels.symbol.TextSize = unit.Sp(16)
+		ui.labels.symbol.Font.Weight = font.ExtraBold
+		ui.labels.symbol.Color = nrgba.Slate.Color()
 
-	ui.labels.acronym = material.H5(g.nav.Collection.Calibri().Theme, "IDLE")
-	ui.labels.acronym.Alignment = text.Middle
-	ui.labels.acronym.TextSize = unit.Sp(14)
-	ui.labels.acronym.Color = nrgba.Slate.Color()
+		ui.labels.acronym = material.H5(g.nav.Collection.Calibri().Theme, "IDLE")
+		ui.labels.acronym.Alignment = text.Middle
+		ui.labels.acronym.TextSize = unit.Sp(14)
+		ui.labels.acronym.Color = nrgba.Slate.Color()
 
-	ui.labels.hz = material.H5(g.nav.Collection.Calibri().Theme, "0 FPS")
-	ui.labels.hz.Alignment = text.Middle
-	ui.labels.hz.TextSize = unit.Sp(14)
+		ui.labels.hz = material.H5(g.nav.Collection.Calibri().Theme, "0 FPS")
+		ui.labels.hz.Alignment = text.Middle
+		ui.labels.hz.TextSize = unit.Sp(14)
 
-	ui.labels.purpleScore = material.H5(g.nav.Collection.Calibri().Theme, "0")
-	ui.labels.purpleScore.Color = team.Purple.NRGBA.Color()
-	ui.labels.purpleScore.Alignment = text.Middle
-	ui.labels.purpleScore.TextSize = unit.Sp(14)
+		ui.labels.purpleScore = material.H5(g.nav.Collection.Calibri().Theme, "0")
+		ui.labels.purpleScore.Color = team.Purple.NRGBA.Color()
+		ui.labels.purpleScore.Alignment = text.Middle
+		ui.labels.purpleScore.TextSize = unit.Sp(14)
 
-	ui.labels.orangeScore = material.H5(g.nav.Collection.Calibri().Theme, "0")
-	ui.labels.orangeScore.Color = team.Orange.NRGBA.Color()
-	ui.labels.orangeScore.Alignment = text.Middle
-	ui.labels.orangeScore.TextSize = unit.Sp(14)
+		ui.labels.orangeScore = material.H5(g.nav.Collection.Calibri().Theme, "0")
+		ui.labels.orangeScore.Color = team.Orange.NRGBA.Color()
+		ui.labels.orangeScore.Alignment = text.Middle
+		ui.labels.orangeScore.TextSize = unit.Sp(14)
 
-	ui.labels.selfScore = material.H5(g.nav.Collection.Calibri().Theme, "0")
-	ui.labels.selfScore.Color = team.Self.NRGBA.Color()
-	ui.labels.selfScore.Alignment = text.Middle
-	ui.labels.selfScore.TextSize = unit.Sp(14)
+		ui.labels.selfScore = material.H5(g.nav.Collection.Calibri().Theme, "0")
+		ui.labels.selfScore.Color = team.Self.NRGBA.Color()
+		ui.labels.selfScore.Alignment = text.Middle
+		ui.labels.selfScore.TextSize = unit.Sp(14)
 
-	ui.labels.clock = material.H5(g.nav.Collection.Calibri().Theme, "00:00")
-	ui.labels.clock.Alignment = text.Middle
-	ui.labels.clock.TextSize = unit.Sp(14)
+		ui.labels.clock = material.H5(g.nav.Collection.Calibri().Theme, "00:00")
+		ui.labels.clock.Alignment = text.Middle
+		ui.labels.clock.TextSize = unit.Sp(14)
 
-	ui.screens.purple = &screen.Widget{
-		Border:      true,
-		BorderColor: team.Purple.NRGBA,
-		Image:       notify.PurpleScore,
+		ui.screens.purple = &screen.Widget{
+			Border:      true,
+			BorderColor: team.Purple.NRGBA,
+			Image:       notify.PurpleScore,
+		}
+
+		ui.screens.orange = &screen.Widget{
+			Border:      true,
+			BorderColor: team.Orange.NRGBA,
+			Image:       notify.OrangeScore,
+		}
+
+		ui.screens.aeos = &screen.Widget{
+			Border:      true,
+			BorderColor: team.Energy.NRGBA,
+			Image:       notify.Energy,
+		}
+
+		ui.screens.time = &screen.Widget{
+			Border:      true,
+			BorderColor: team.Time.NRGBA,
+			Image:       notify.Time,
+		}
+
+		ui.labels.regielekis, ui.labels.regielekiUnderlines = []material.LabelStyle{
+			material.H5(g.nav.Collection.Calibri().Theme, "E"),
+			material.H5(g.nav.Collection.Calibri().Theme, "E"),
+			material.H5(g.nav.Collection.Calibri().Theme, "E"),
+		}, []material.LabelStyle{
+			material.H5(g.nav.Collection.Calibri().Theme, "_"),
+			material.H5(g.nav.Collection.Calibri().Theme, "_"),
+			material.H5(g.nav.Collection.Calibri().Theme, "_"),
+		}
+
+		for i := range ui.labels.regielekis {
+			ui.labels.regielekis[i].Color = team.None.Color()
+			ui.labels.regielekis[i].Alignment = text.Middle
+			ui.labels.regielekis[i].TextSize = unit.Sp(14)
+
+			ui.labels.regielekiUnderlines[i].Color = team.None.Color()
+			ui.labels.regielekiUnderlines[i].Alignment = ui.labels.regielekis[i].Alignment
+			ui.labels.regielekiUnderlines[i].TextSize = unit.Sp(18)
+			ui.labels.regielekiUnderlines[i].Font.Weight = font.Bold
+		}
+
+		ui.labels.regiBottoms, ui.labels.regiBottomUnderlines = []material.LabelStyle{
+			material.H5(g.nav.Collection.Calibri().Theme, "R"),
+			material.H5(g.nav.Collection.Calibri().Theme, "R"),
+			material.H5(g.nav.Collection.Calibri().Theme, "R"),
+		}, []material.LabelStyle{
+			material.H5(g.nav.Collection.Calibri().Theme, "_"),
+			material.H5(g.nav.Collection.Calibri().Theme, "_"),
+			material.H5(g.nav.Collection.Calibri().Theme, "_"),
+		}
+
+		for i := range ui.labels.regiBottoms {
+			ui.labels.regiBottoms[i].Color = team.None.Color()
+			ui.labels.regiBottoms[i].Alignment = text.Middle
+			ui.labels.regiBottoms[i].TextSize = unit.Sp(14)
+
+			ui.labels.regiBottomUnderlines[i].Color = ui.labels.regiBottoms[i].Color
+			ui.labels.regiBottomUnderlines[i].Alignment = ui.labels.regiBottoms[i].Alignment
+			ui.labels.regiBottomUnderlines[i].TextSize = unit.Sp(18)
+			ui.labels.regiBottomUnderlines[i].Font.Weight = font.Bold
+		}
+
+		ui.labels.uptime = material.H5(g.nav.Collection.Calibri().Theme, g.performance.uptime)
+		ui.labels.uptime.Color = nrgba.DreamyPurple.Color()
+		ui.labels.uptime.Alignment = text.Middle
+		ui.labels.uptime.TextSize = unit.Sp(14)
+
+		ui.labels.version = material.H5(g.nav.Collection.Calibri().Theme, global.Version)
+		ui.labels.version.Color = nrgba.Gray.Color()
+		ui.labels.version.Alignment = text.Middle
+		ui.labels.version.TextSize = unit.Sp(14)
+
+		ui.spinners.run = spinner.Running()
+		ui.spinners.stop = spinner.Stopped()
 	}
-
-	ui.screens.orange = &screen.Widget{
-		Border:      true,
-		BorderColor: team.Orange.NRGBA,
-		Image:       notify.OrangeScore,
-	}
-
-	ui.screens.aeos = &screen.Widget{
-		Border:      true,
-		BorderColor: team.Energy.NRGBA,
-		Image:       notify.Energy,
-	}
-
-	ui.screens.time = &screen.Widget{
-		Border:      true,
-		BorderColor: team.Time.NRGBA,
-		Image:       notify.Time,
-	}
-
-	ui.labels.regielekis, ui.labels.regielekiUnderlines = []material.LabelStyle{
-		material.H5(g.nav.Collection.Calibri().Theme, "E"),
-		material.H5(g.nav.Collection.Calibri().Theme, "E"),
-		material.H5(g.nav.Collection.Calibri().Theme, "E"),
-	}, []material.LabelStyle{
-		material.H5(g.nav.Collection.Calibri().Theme, "_"),
-		material.H5(g.nav.Collection.Calibri().Theme, "_"),
-		material.H5(g.nav.Collection.Calibri().Theme, "_"),
-	}
-
-	for i := range ui.labels.regielekis {
-		ui.labels.regielekis[i].Color = team.None.Color()
-		ui.labels.regielekis[i].Alignment = text.Middle
-		ui.labels.regielekis[i].TextSize = unit.Sp(14)
-
-		ui.labels.regielekiUnderlines[i].Color = team.None.Color()
-		ui.labels.regielekiUnderlines[i].Alignment = ui.labels.regielekis[i].Alignment
-		ui.labels.regielekiUnderlines[i].TextSize = unit.Sp(18)
-		ui.labels.regielekiUnderlines[i].Font.Weight = font.Bold
-	}
-
-	ui.labels.regiBottoms, ui.labels.regiBottomUnderlines = []material.LabelStyle{
-		material.H5(g.nav.Collection.Calibri().Theme, "R"),
-		material.H5(g.nav.Collection.Calibri().Theme, "R"),
-		material.H5(g.nav.Collection.Calibri().Theme, "R"),
-	}, []material.LabelStyle{
-		material.H5(g.nav.Collection.Calibri().Theme, "_"),
-		material.H5(g.nav.Collection.Calibri().Theme, "_"),
-		material.H5(g.nav.Collection.Calibri().Theme, "_"),
-	}
-
-	for i := range ui.labels.regiBottoms {
-		ui.labels.regiBottoms[i].Color = team.None.Color()
-		ui.labels.regiBottoms[i].Alignment = text.Middle
-		ui.labels.regiBottoms[i].TextSize = unit.Sp(14)
-
-		ui.labels.regiBottomUnderlines[i].Color = ui.labels.regiBottoms[i].Color
-		ui.labels.regiBottomUnderlines[i].Alignment = ui.labels.regiBottoms[i].Alignment
-		ui.labels.regiBottomUnderlines[i].TextSize = unit.Sp(18)
-		ui.labels.regiBottomUnderlines[i].Font.Weight = font.Bold
-	}
-
-	ui.labels.uptime = material.H5(g.nav.Collection.Calibri().Theme, g.performance.uptime)
-	ui.labels.uptime.Color = nrgba.DreamyPurple.Color()
-	ui.labels.uptime.Alignment = text.Middle
-	ui.labels.uptime.TextSize = unit.Sp(14)
-
-	ui.labels.version = material.H5(g.nav.Collection.Calibri().Theme, global.Version)
-	ui.labels.version.Color = nrgba.Gray.Color()
-	ui.labels.version.Alignment = text.Middle
-	ui.labels.version.TextSize = unit.Sp(14)
-
-	ui.spinners.run = spinner.Running()
-	ui.spinners.stop = spinner.Stopped()
 
 	ui.nav.settings = &button.Widget{
 		Text:            "⚙",
@@ -887,8 +891,7 @@ func (g *GUI) mainUI() *main {
 		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
-			tray.SetStartStopTitle("Stop")
-
+			tray.SetStartStopTitle("Start")
 			ui.buttons.projector.Click(ui.buttons.projector)
 		},
 	}
