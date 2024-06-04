@@ -71,7 +71,6 @@ type GUI struct {
 	}
 
 	resizeToMax,
-	firstOpen bool
 
 	hz *fps.Hz
 }

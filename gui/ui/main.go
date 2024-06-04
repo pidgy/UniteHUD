@@ -151,11 +151,6 @@ func (g *GUI) main() {
 	// defer g.nav.Remove(g.nav.Add(ui.nav.file))
 
 	g.window.Perform(system.ActionRaise)
-	if !g.firstOpen {
-		g.firstOpen = true
-		g.window.Perform(system.ActionCenter)
-		g.window.Perform(system.ActionUnmaximize)
-	}
 
 	g.nav.Open()
 
@@ -892,6 +887,8 @@ func (g *GUI) mainUI() *main {
 		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
+			tray.SetStartStopTitle("Stop")
+
 			ui.buttons.projector.Click(ui.buttons.projector)
 		},
 	}
@@ -1202,6 +1199,9 @@ func (g *GUI) once(ui *main) {
 			unit.Dp(g.dimensions.max.Y),
 		),
 	)
+
+	g.window.Perform(system.ActionCenter)
+	g.window.Perform(system.ActionUnmaximize)
 
 	go func() {
 		for ; ; time.Sleep(time.Second / 3) {

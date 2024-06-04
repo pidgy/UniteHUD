@@ -10,7 +10,7 @@ import (
 const (
 	Title          = "UniteHUD"
 	Version        = "v" + VersionNoV
-	VersionNoV     = "3.5.0"
+	VersionNoV     = "3.5.1"
 	TitleVersion   = Title + " " + Version
 	AssetDirectory = `assets`
 )
