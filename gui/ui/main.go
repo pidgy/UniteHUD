@@ -122,7 +122,7 @@ type main struct {
 	}
 }
 
-var trayIsSetup bool
+var once bool
 
 func (g *GUI) main() {
 	ui := g.mainUI()
@@ -717,6 +717,7 @@ func (g *GUI) mainUI() *main {
 		},
 	}
 
+	// Labels.
 	{
 		ui.labels.audio = material.Caption(g.nav.Collection.NotoSans().Theme, audio.Label())
 		ui.labels.audio.Color = nrgba.Slate.Color()
@@ -1182,10 +1183,10 @@ func (g *GUI) mainUI() *main {
 }
 
 func (g *GUI) once(ui *main) {
-	if trayIsSetup {
+	if once {
 		return
 	}
-	trayIsSetup = true
+	once = true
 
 	g.window.Option(
 		app.Title(global.Title),
