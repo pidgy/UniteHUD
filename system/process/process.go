@@ -30,23 +30,23 @@ type Stat struct {
 }
 
 var (
-	handle syscall.Handle
-
 	CPU, RAM = Stat{0, "CPU 0%"}, Stat{0, "RAM 0MB"}
 )
 
-func init() { go poll() }
+func init() {}
 
-func Start() error {
+func Open() error {
 	err := replace()
 	if err != nil {
 		return err
 	}
 
-	handle, err = syscall.GetCurrentProcess()
+	h, err := syscall.GetCurrentProcess()
 	if err != nil {
 		return err
 	}
+
+	go poll(h)
 
 	return nil
 }
@@ -133,38 +133,39 @@ func kill(exe string) error {
 	return nil
 }
 
-func poll() {
+func poll(h syscall.Handle) {
 	cpus := float64(runtime.NumCPU()) - 2
 	prev, usage := int64(0), int64(0)
 
-	t := time.NewTicker(time.Second * 5)
-	for range t.C {
+	cpu := func() {
 		var ctime, etime, ktime, utime syscall.Filetime
-		err := syscall.GetProcessTimes(handle, &ctime, &etime, &ktime, &utime)
+
+		err := syscall.GetProcessTimes(h, &ctime, &etime, &ktime, &utime)
 		if err != nil {
 			notify.Error("[Process] Failed to poll process statistics (%v)", err)
 			return
 		}
 
 		now := time.Now().UnixNano()
-		diff := now - prev
 
 		current := ktime.Nanoseconds() + utime.Nanoseconds()
-		diff2 := current - usage
+		delta := 100 * float64(current-usage) / float64(now-prev)
 
 		prev = now
 		usage = current
 
-		v := ((100 * float64(diff2) / float64(diff)) / cpus)
+		v := delta / cpus
 		if v > 0 {
 			CPU.value = v
 			CPU.label = fmt.Sprintf("CPU %.1f%s", CPU.value, "%")
 		}
+	}
 
+	ram := func() {
 		memory := runtime.MemStats{}
 		runtime.ReadMemStats(&memory)
 
-		v = float64(memory.Sys) / 1024 / 1024
+		v := float64(memory.Sys) / 1024 / 1024
 		if v > 1000 {
 			RAM.value = v / 1000
 			RAM.label = fmt.Sprintf("RAM %.1fGB", RAM.value)
@@ -172,6 +173,11 @@ func poll() {
 			RAM.value = v
 			RAM.label = fmt.Sprintf("RAM %.1fMB", RAM.value)
 		}
+	}
+
+	for ; ; time.Sleep(time.Second * 2) {
+		cpu()
+		ram()
 	}
 }
 

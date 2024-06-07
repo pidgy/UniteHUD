@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 	"time"
 
@@ -60,6 +61,8 @@ func Open(title, version string, onExit func()) error {
 	notify.Debug("[Tray] Opening...")
 
 	go func() {
+		runtime.LockOSThread()
+
 		for hwnd == 0 {
 			time.Sleep(time.Second)
 		}
@@ -175,7 +178,7 @@ func configuration() {
 	// vname := m.AddSubMenuItem(" Unknown", "")
 	// vname.Disable()
 
-	atitle := m.AddSubMenuItem(fmt.Sprintf("Audio > Unknown"), "")
+	atitle := m.AddSubMenuItem("Audio > Unknown", "")
 	atitle.Disable()
 
 	go func() {
@@ -190,7 +193,29 @@ func configuration() {
 			atitle.SetTitle(fmt.Sprintf("Audio > %s", audio.Current))
 		}
 	}()
-	// p.AddSubMenuItem(config.Current.Device, "")
+
+	conf := m.AddSubMenuItem("Open File (Read Only)", "View current configuration file")
+
+	go func() {
+		for range conf.ClickedCh {
+			path, err := config.Current.SaveTemp()
+			if err != nil {
+				notify.Error("[UI] Failed to create \"%s\" (%v)", path, err)
+				continue
+			}
+
+			err = exec.Command("C:\\Windows\\system32\\notepad.exe", path).Run()
+			if err != nil {
+				notify.Error("[UI] Failed to open \"%s\" (%v)", path, err)
+				continue
+			}
+
+			err = os.Remove(path)
+			if err != nil {
+				notify.Error("[UI] Failed to delete \"%s\" (%v)", path, err)
+			}
+		}
+	}()
 }
 
 func exit() toggle {
@@ -246,10 +271,9 @@ func logs() toggle {
 
 	systray.AddSeparator()
 
-	mi := systray.AddMenuItem("Files", "View present and historical logs")
-	view := mi.AddSubMenuItem("View Log File", "View active log file")
-	open := mi.AddSubMenuItem("Open Log Directory", "View historical logs")
-	conf := mi.AddSubMenuItem("View Config File", "View current configuration")
+	mi := systray.AddMenuItem("Logs", "View present and historical logs")
+	view := mi.AddSubMenuItem("Open File", "View active log file")
+	open := mi.AddSubMenuItem("Open Directory", "View historical logs")
 
 	go func() {
 		for {
@@ -263,12 +287,6 @@ func logs() toggle {
 				err := save.OpenCurrentLog()
 				if err != nil {
 					notify.Error("[Tray] Failed to open log directory (%v)", err)
-				}
-			case <-conf.ClickedCh:
-				err := exec.Command("C:\\Windows\\system32\\notepad.exe", config.Current.File()).Run()
-				if err != nil {
-					notify.Error("[UI] Failed to open \"%s\" (%v)", config.Current.File(), err)
-					return
 				}
 			}
 		}

@@ -3,6 +3,7 @@ package notify
 import (
 	"fmt"
 	"image"
+	"regexp"
 	"strings"
 	"time"
 
@@ -14,12 +15,11 @@ type (
 	Post struct {
 		nrgba.NRGBA
 		time.Time
+		Hidden bool
 
-		msg    string
-		orig   string
-		count  int
-		dedup  bool
-		unique bool
+		msg   string
+		orig  string
+		count int
 	}
 )
 
@@ -90,6 +90,23 @@ func Error(format string, a ...interface{}) {
 	feed.log(nrgba.Pinkity, true, false, false, format, a...)
 }
 
+func Feed(color nrgba.NRGBA, format string, a ...interface{}) {
+	feed.log(color, true, false, false, format, a...)
+}
+
+func FeedReplace(color nrgba.NRGBA, r *regexp.Regexp, format string, a ...interface{}) {
+	defer Feed(color, format, a...)
+
+	max := 20
+	for i := len(feed.logs) - 1; i >= 0 && max >= 0; i-- {
+		if r.MatchString(feed.logs[i].orig) {
+			feed.logs[i].Hidden = true
+			return
+		}
+		max--
+	}
+}
+
 func FeedStrings() (s []string) {
 	for _, p := range Feeds() {
 		s = append(s, p.String())
@@ -99,10 +116,6 @@ func FeedStrings() (s []string) {
 
 func Feeds() []Post {
 	return feed.logs
-}
-
-func Feed(r nrgba.NRGBA, format string, a ...interface{}) {
-	feed.log(r, true, false, false, format, a...)
 }
 
 func Iter(i int) (string, int) {
@@ -151,22 +164,6 @@ func Remove(r string) {
 	feed.logs = logs
 }
 
-func System(format string, a ...interface{}) {
-	feed.log(nrgba.White, true, false, true, format, a...)
-}
-
-func SystemAppend(format string, a ...interface{}) {
-	feed.log(nrgba.System, false, false, false, format, a...)
-}
-
-func Unique(c nrgba.NRGBA, format string, a ...interface{}) {
-	feed.log(c, true, false, true, format, a...)
-}
-
-func Warn(format string, a ...interface{}) {
-	feed.log(nrgba.PastelCoral, true, false, false, format, a...)
-}
-
 func Replace(prefix string, log func(format string, a ...interface{}), format string, a ...interface{}) {
 	log(format, a...)
 
@@ -183,6 +180,22 @@ func Replace(prefix string, log func(format string, a ...interface{}), format st
 	}
 }
 
+func System(format string, a ...interface{}) {
+	feed.log(nrgba.White, true, false, true, format, a...)
+}
+
+func SystemAppend(format string, a ...interface{}) {
+	feed.log(nrgba.System, false, false, false, format, a...)
+}
+
+func Unique(c nrgba.NRGBA, format string, a ...interface{}) {
+	feed.log(c, true, false, true, format, a...)
+}
+
+func Warn(format string, a ...interface{}) {
+	feed.log(nrgba.PastelCoral, true, false, false, format, a...)
+}
+
 func (d *debugger) Fatal(v ...interface{})                 {} //d.ftl("%s", fmt.Sprint(v...)) }
 func (d *debugger) Fatalf(format string, v ...interface{}) {} //d.ftl(format, v...) }
 func (d *debugger) Print(v ...interface{})                 {} //d.fmt("%s", fmt.Sprint(v...)) }
@@ -193,10 +206,8 @@ func (n *notify) log(r nrgba.NRGBA, clock, dedup, unique bool, format string, a 
 		NRGBA: r,
 		Time:  time.Now(),
 
-		orig:   fmt.Sprintf(format, a...),
-		count:  1,
-		dedup:  dedup,
-		unique: unique,
+		orig:  fmt.Sprintf(format, a...),
+		count: 1,
 	}
 
 	if global.DebugMode {

@@ -16,7 +16,7 @@ import (
 	"github.com/pidgy/unitehud/global"
 )
 
-func (m *Match) points(matrix gocv.Mat) (Result, int) {
+func (m *Match) points(matrix gocv.Mat) Result {
 	switch m.Team.Name {
 	case team.Purple.Name, team.Orange.Name:
 		return m.regular(matrix)
@@ -28,12 +28,15 @@ func (m *Match) points(matrix gocv.Mat) (Result, int) {
 		return m.first(matrix)
 	}
 
-	return Invalid, 0
+	return Invalid
 }
 
-func (m *Match) first(matrix gocv.Mat) (Result, int) {
+func (m *Match) first(matrix gocv.Mat) Result {
+	r := NotFound
+
 	if m.Team.Duplicate.Counted {
-		return Duplicate, -1
+		m.Numeric = -1
+		return Duplicate
 	}
 
 	inset := 0
@@ -72,7 +75,8 @@ func (m *Match) first(matrix gocv.Mat) (Result, int) {
 
 		for i, template := range templates {
 			if template.Mat.Cols() > region.Cols() || template.Mat.Rows() > region.Rows() {
-				return Invalid, -1
+				m.Numeric = -1
+				return Invalid
 			}
 
 			mat := gocv.NewMat()
@@ -123,7 +127,9 @@ func (m *Match) first(matrix gocv.Mat) (Result, int) {
 		}
 	}
 
-	return sliceToValue(points)
+	r, m.Numeric = sliceToValue(points)
+
+	return r
 
 	// TODO: Do we need to validate?
 	//
@@ -135,7 +141,9 @@ func (m *Match) first(matrix gocv.Mat) (Result, int) {
 	// return m.validate(matrix, p)
 }
 
-func (m *Match) regular(matrix gocv.Mat) (Result, int) {
+func (m *Match) regular(matrix gocv.Mat) Result {
+	r := NotFound
+
 	m.Points = []image.Point{image.Pt(0, 0), image.Pt(0, 0), image.Pt(0, 0)}
 
 	inset := 0
@@ -180,7 +188,8 @@ func (m *Match) regular(matrix gocv.Mat) (Result, int) {
 
 		for i, template := range templates {
 			if template.Mat.Cols() > region.Cols() || template.Mat.Rows() > region.Rows() {
-				return Invalid, -1
+				m.Numeric = -1
+				return Invalid
 			}
 
 			mat := gocv.NewMat()
@@ -239,20 +248,20 @@ func (m *Match) regular(matrix gocv.Mat) (Result, int) {
 		}
 	}
 
-	r, p := sliceToValue(points)
+	r, m.Numeric = sliceToValue(points)
 	if r != Found {
-		return r, p
+		return r
 	}
 
-	return m.validate(matrix, p)
+	return m.validate(matrix)
 }
 
-func (m *Match) validate(matrix gocv.Mat, value int) (Result, int) {
-	if value < 0 || value > 120 {
-		return Invalid, value
+func (m *Match) validate(matrix gocv.Mat) Result {
+	if m.Numeric < 0 || m.Numeric > 120 {
+		return Invalid
 	}
 
-	latest := duplicate.New(value, matrix, m.Team.Comparable(matrix))
+	latest := duplicate.New(m.Numeric, matrix, m.Team.Comparable(matrix))
 	defer func() {
 		if latest.Counted {
 			m.Team.Duplicate = latest
@@ -262,21 +271,21 @@ func (m *Match) validate(matrix gocv.Mat, value int) (Result, int) {
 	switch is, reason := m.Team.Duplicate.Of(latest); {
 	case latest.Overrides(m.Team.Duplicate):
 		latest.Counted = true
-		notify.Debug("[Detect] [%s] [%s] [Override] [%s] +%d", server.Clock(), m.Team, reason, value)
+		notify.Debug("[Detect] [%s] [%s] [Override] [%s] +%d", server.Clock(), m.Team, reason, m.Numeric)
 
-		return Override, value
+		return Override
 	case is:
-		notify.Debug("[Detect] [%s] [%s] [Duplicate] [%s] +%d", server.Clock(), m.Team, reason, value)
+		notify.Debug("[Detect] [%s] [%s] [Duplicate] [%s] +%d", server.Clock(), m.Team, reason, m.Numeric)
 
-		return Duplicate, value
+		return Duplicate
 	case latest.Potential:
-		notify.Debug("[Detect] [%s] [%s] [Potential Duplicate] [%s] +%d", server.Clock(), m.Team, reason, value)
+		notify.Debug("[Detect] [%s] [%s] [Potential Duplicate] [%s] +%d", server.Clock(), m.Team, reason, m.Numeric)
 
 		fallthrough
 	default:
 		latest.Counted = true
 
-		return Found, value
+		return Found
 	}
 }
 

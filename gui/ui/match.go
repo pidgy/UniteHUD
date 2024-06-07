@@ -2,7 +2,6 @@ package ui
 
 import (
 	"fmt"
-	"strings"
 
 	"gocv.io/x/gocv"
 
@@ -85,14 +84,14 @@ func (g *GUI) matchKOs(a *area.Widget) (bool, error) {
 	}
 	defer matrix.Close()
 
-	_, r, e := match.Matches(matrix, img, config.Current.TemplatesKO(team.Game.Name))
+	m, r := match.Matches(matrix, img, config.Current.TemplatesKO(team.Game.Name))
 	if r != match.Found {
 		a.NRGBA = area.Miss
-		a.Subtext = strings.Title(r.String())
+		a.Subtext = r.String()
 		return false, nil
 	}
 	a.NRGBA = area.Match
-	a.Subtext = state.EventType(e).String()
+	a.Subtext = state.EventType(m.Numeric).String()
 
 	return r == match.Found, nil
 }
@@ -114,14 +113,43 @@ func (g *GUI) matchObjectives(a *area.Widget) (bool, error) {
 	}
 	defer matrix.Close()
 
-	_, r, e := match.Matches(matrix, img, config.Current.TemplatesSecure(team.Game.Name))
+	m, r := match.Matches(matrix, img, config.Current.TemplatesSecure(team.Game.Name))
 	if r != match.Found {
 		a.NRGBA = area.Miss
-		a.Subtext = strings.Title(r.String())
+		a.Subtext = r.String()
 		return false, nil
 	}
 	a.NRGBA = area.Match
-	a.Subtext = state.EventType(e).String()
+	a.Subtext = state.EventType(m.Numeric).String()
+
+	return r == match.Found, nil
+}
+
+func (g *GUI) matchPressButtonToScore(a *area.Widget) (bool, error) {
+	if !g.Preview {
+		a.NRGBA = area.Locked
+		return false, nil
+	}
+
+	img, err := video.CaptureRect(a.Rectangle())
+	if err != nil {
+		return false, err
+	}
+
+	matrix, err := gocv.ImageToMatRGB(img)
+	if err != nil {
+		return false, err
+	}
+	defer matrix.Close()
+
+	a.NRGBA = area.Miss
+
+	_, r := match.SelfScoreIndicator(matrix, img)
+	if r == match.Found {
+		a.NRGBA = area.Match
+	}
+
+	a.Subtext = r.String()
 
 	return r == match.Found, nil
 }
@@ -144,22 +172,22 @@ func (g *GUI) matchScore(a *area.Widget) (bool, error) {
 	defer matrix.Close()
 
 	for _, t := range config.Current.TemplatesScoredAll() {
-		_, r, score := match.Matches(matrix, img, t)
+		m, r := match.Matches(matrix, img, t)
 		switch r {
 		case match.Found, match.Duplicate:
 			a.NRGBA = area.Match
-			a.Subtext = fmt.Sprintf("%d", score)
+			a.Subtext = fmt.Sprintf("%d", m.Numeric)
 
 			return true, nil
 		case match.NotFound:
 			a.NRGBA = area.Miss
-			a.Subtext = fmt.Sprintf("%s", strings.Title(r.String()))
+			a.Subtext = fmt.Sprintf("%s", r.String())
 		case match.Missed:
 			a.NRGBA = nrgba.DarkerYellow.Alpha(0x99)
-			a.Subtext = fmt.Sprintf("%d?", score)
+			a.Subtext = fmt.Sprintf("%d?", m.Numeric)
 		case match.Invalid:
 			a.NRGBA = area.Miss
-			a.Subtext = fmt.Sprintf("%s", strings.Title(r.String()))
+			a.Subtext = fmt.Sprintf("%s", r.String())
 		}
 	}
 
@@ -184,14 +212,15 @@ func (g *GUI) matchState(a *area.Widget) (bool, error) {
 	defer matrix.Close()
 
 	templates := append(config.Current.TemplatesStarting(), append(config.Current.TemplatesEnding(), config.Current.TemplatesSurrender()...)...)
-	_, r, e := match.Matches(matrix, img, templates)
+
+	m, r := match.Matches(matrix, img, templates)
 	if r == match.Found {
-		a.Subtext = state.EventType(e).String()
+		a.Subtext = state.EventType(m.Numeric).String()
 		a.NRGBA = area.Match
 		return true, nil
 	}
 
-	a.Subtext = strings.Title(r.String())
+	a.Subtext = r.String()
 	a.NRGBA = area.Miss
 
 	switch {

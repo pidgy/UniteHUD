@@ -1,6 +1,8 @@
 package textblock
 
 import (
+	"image"
+
 	"gioui.org/io/pointer"
 	"gioui.org/layout"
 	"gioui.org/text"
@@ -67,6 +69,9 @@ func (t *Widget) Layout(gtx layout.Context, posts []notify.Post) layout.Dimensio
 			Left:   unit.Dp(5),
 		}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 			return t.list.Layout(gtx, len(posts), func(gtx layout.Context, index int) layout.Dimensions {
+				if posts[index].Hidden {
+					return layout.Dimensions{Size: image.Pt(0, 0)}
+				}
 				t.label.Text = posts[index].String()
 				t.label.Color = posts[index].Alpha(alpha(index+1, len(posts))).Color()
 				t.label.Alignment = text.Start

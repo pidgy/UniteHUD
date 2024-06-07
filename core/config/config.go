@@ -189,7 +189,10 @@ func (c *Config) File() string {
 }
 
 func (c *Config) IsNew() bool {
-	return first
+	is := first
+	first = false
+
+	return is
 }
 
 func (c *Config) Reload() {
@@ -208,7 +211,7 @@ func (c *Config) Reset() error {
 		return err
 	}
 
-	return Load(c.Gaming.Device)
+	return Open(c.Gaming.Device)
 }
 
 func (c *Config) Save() error {
@@ -234,17 +237,34 @@ func (c *Config) Save() error {
 	return nil
 }
 
-func (c *Config) Scoring() image.Rectangle {
-	return image.Rectangle{
-		Min: image.Pt(c.XY.Energy.Min.X-50, c.XY.Energy.Min.Y),
-		Max: image.Pt(c.XY.Energy.Max.X+50, c.XY.Energy.Max.Y+100),
+func (c *Config) SaveTemp() (string, error) {
+	path := filepath.Join(os.TempDir(), c.File())
+
+	notify.Debug("[Config] Saving temporary %s profile (%s)", c.Gaming.Device, path)
+
+	f, err := os.Create(path)
+	if err != nil {
+		return path, err
 	}
+	defer f.Close()
+
+	b, err := json.Marshal(c)
+	if err != nil {
+		return path, err
+	}
+
+	_, err = f.Write(sort.JSON(b))
+	if err != nil {
+		return path, err
+	}
+
+	return path, nil
 }
 
 func (c *Config) ScoringOption() image.Rectangle {
 	return image.Rectangle{
-		Min: image.Pt(c.XY.Energy.Min.X-100, c.XY.Energy.Min.Y-100),
-		Max: image.Pt(c.XY.Energy.Max.X+100, c.XY.Energy.Max.Y-100),
+		Min: image.Pt(c.XY.Energy.Min.X, c.XY.Energy.Min.Y),
+		Max: image.Pt(c.XY.Energy.Max.X, c.XY.Energy.Max.Y-75),
 	}
 }
 
@@ -461,11 +481,12 @@ func (c *Config) loadDeviceAssets() {
 		},
 		"scoring": {
 			team.Game.Name: {
-				filter.New(team.Game, c.deviceAsset(team.Game.Name, "pre_scoring_alt_alt.png"), state.PreScore.Int(), false),
-				filter.New(team.Game, c.deviceAsset(team.Game.Name, "pre_scoring_alt.png"), state.PreScore.Int(), false),
-				filter.New(team.Game, c.deviceAsset(team.Game.Name, "pre_scoring.png"), state.PreScore.Int(), false),
-				filter.New(team.Game, c.deviceAsset(team.Game.Name, "post_scoring.png"), state.PostScore.Int(), false),
-				filter.New(team.Game, c.deviceAsset(team.Game.Name, "press_button_to_score.png"), state.PressButtonToScore.Int(), false),
+				// filter.New(team.Game, c.deviceAsset(team.Game.Name, "pre_scoring_alt_alt.png"), state.PreScore.Int(), false),
+				// filter.New(team.Game, c.deviceAsset(team.Game.Name, "pre_scoring_alt.png"), state.PreScore.Int(), false),
+				// filter.New(team.Game, c.deviceAsset(team.Game.Name, "pre_scoring.png"), state.PreScore.Int(), false),
+				// filter.New(team.Game, c.deviceAsset(team.Game.Name, "post_scoring.png"), state.PostScore.Int(), false),
+				// filter.New(team.Game, c.deviceAsset(team.Game.Name, "press_button_to_score.png"), state.PressButtonToScore.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "press_button_to_score_alt.png"), state.SelfScoreIndicator.Int(), false),
 			},
 		},
 		"scored": {
@@ -601,7 +622,7 @@ func (c *Config) setDefaultAreas() {
 	c.XY.KOs = image.Rect(730, 130, 1160, 310)
 }
 
-func Load(device string) error {
+func Open(device string) error {
 	defer func() {
 		r := recover()
 		if r != nil {
@@ -618,29 +639,36 @@ func Load(device string) error {
 
 	notify.System("[Config] Loading %s profile (%s)", Current.Gaming.Device, Current.File())
 
-	ok := open()
-	if !ok {
-		first = true
+	Current = Config{
+		Scale:      1,
+		Shift:      Shift{},
+		Acceptance: .91,
+	}
+	defer Current.loadDeviceAssets()
 
-		Current = Config{
-			Scale:      1,
-			Shift:      Shift{},
-			Acceptance: .91,
+	Current.Gaming.Device = DeviceSwitch
+	Current.Video.Capture.Window.Name = MainDisplay
+	Current.Video.Capture.Device.Index = NoVideoCaptureDevice
+	Current.Video.Capture.Device.API = DefaultVideoCaptureAPI
+	Current.Gaming.Device = DeviceSwitch
+	Current.SetDefaultTheme()
+	Current.setDefaultAreas()
+	Current.setDefaultAdvancedSettings()
+
+	b, err := os.ReadFile(Current.File())
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return err
 		}
 
-		Current.Gaming.Device = DeviceSwitch
+		first = true
 
-		Current.Video.Capture.Window.Name = MainDisplay
-		Current.Video.Capture.Device.Index = NoVideoCaptureDevice
-		Current.Video.Capture.Device.API = DefaultVideoCaptureAPI
+		b = []byte("{}")
+	}
 
-		Current.Gaming.Device = DeviceSwitch
-		Current.SetDefaultTheme()
-
-		Current.setDefaultAreas()
-		Current.setDefaultAdvancedSettings()
-
-		Current.loadDeviceAssets()
+	err = json.Unmarshal(b, &Current)
+	if err != nil {
+		return err
 	}
 
 	if Current.Video.Capture.Window.Name == "" {
@@ -656,12 +684,7 @@ func Load(device string) error {
 		Current.Video.Capture.Device.FPS = 60
 	}
 
-	err := Current.Save()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return Current.Save()
 }
 
 func TemplatesFirstRound(t1 []*template.Template) []*template.Template {
@@ -673,36 +696,6 @@ func TemplatesFirstRound(t1 []*template.Template) []*template.Template {
 		t2 = append(t2, t)
 	}
 	return t2
-}
-
-func open() bool {
-	if Current.Gaming.Device == "" {
-		Current.Gaming.Device = DeviceSwitch
-	}
-
-	b, err := os.ReadFile(Current.File())
-	if err != nil {
-		return false
-	}
-
-	c := Config{}
-
-	c.Gaming.Device = DeviceSwitch
-
-	err = json.Unmarshal(b, &c)
-	if err != nil {
-		return false
-	}
-
-	if c.Gaming.Device == "" {
-		c.Gaming.Device = DeviceSwitch
-	}
-
-	c.loadDeviceAssets()
-
-	Current = c
-
-	return true
 }
 
 func recovered(r interface{}) {

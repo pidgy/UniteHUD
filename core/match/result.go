@@ -5,15 +5,15 @@ type Result int
 func (r Result) String() string {
 	switch r {
 	case Duplicate:
-		return "duplicate"
+		return "Duplicate"
 	case Invalid:
-		return "invalid"
+		return "Invalid"
 	case Missed:
-		return "missed"
+		return "Missed"
 	case NotFound:
-		return "not found"
+		return "Not Found"
 	case Found:
-		return "found"
+		return "Found"
 	}
-	return "unknown"
+	return "Unknown"
 }

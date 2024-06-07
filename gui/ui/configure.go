@@ -349,6 +349,7 @@ func (g *GUI) configure() {
 					// ui.groups.areas.ko,
 					ui.groups.areas.objective,
 					ui.groups.areas.state,
+					ui.groups.areas.pressButtonToScore,
 				} {
 					err := area.Layout(gtx, g.nav.Collection, ui.constraints, ui.img, ui.inset)
 					if err != nil {
@@ -640,7 +641,7 @@ func (g *GUI) configureUI() *configure {
 			}
 
 			// Called once window is closed.
-			err = config.Load(config.Current.Gaming.Device)
+			err = config.Open(config.Current.Gaming.Device)
 			if err != nil {
 				notify.Error("[UI] Failed to reload \"%s\" (%v)", config.Current.File(), err)
 				return

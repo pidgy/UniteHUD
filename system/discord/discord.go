@@ -39,17 +39,15 @@ var (
 	}
 )
 
-func Connect() {
-	t := time.NewTicker(time.Second * 5)
-	update()
-	for range t.C {
-		update()
-	}
-}
-
 func Close() {
 	rpc.cleanup()
 	notify.Feed(nrgba.Discord, "[Discord] Connection closed")
+}
+
+func Open() error {
+	go spin()
+
+	return nil
 }
 
 func reconnect() {
@@ -186,7 +184,7 @@ func status() activity {
 
 		switch event.EventType {
 		case state.HoldingEnergy, state.OrangeScoreMissed, state.PurpleScoreMissed,
-			state.PressButtonToScore, state.PreScore, state.PostScore, state.Nothing:
+			state.SelfScoreIndicator, state.PreScore, state.PostScore, state.Nothing:
 		case state.MatchStarting:
 			a.Timestamps = timestamps{}
 			a.Details = "UniteHUD - Match Starting"
@@ -238,17 +236,19 @@ func status() activity {
 	return a
 }
 
-func update() {
-	reconnect()
+func spin() {
+	for ; ; time.Sleep(time.Second * 5) {
+		reconnect()
 
-	Activity = status()
+		Activity = status()
 
-	rpc.send(frame{
-		Cmd: commandSetActivity,
-		Args: args{
-			Pid:      os.Getpid(),
-			Activity: Activity,
-		},
-		Nonce: uuid.New().String(),
-	})
+		rpc.send(frame{
+			Cmd: commandSetActivity,
+			Args: args{
+				Pid:      os.Getpid(),
+				Activity: Activity,
+			},
+			Nonce: uuid.New().String(),
+		})
+	}
 }

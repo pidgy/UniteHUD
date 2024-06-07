@@ -79,6 +79,7 @@ func (g *GUI) preview(a *areas, onclose func()) *preview {
 			a.score.Capture,
 			a.state.Capture,
 			a.time.Capture,
+			a.pressButtonToScore.Capture,
 		}
 
 		// Ordered by least widest.

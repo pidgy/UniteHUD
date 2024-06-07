@@ -24,10 +24,11 @@ import (
 type areas struct {
 	energy *area.Widget
 	// ko        *area.Widget
-	objective *area.Widget
-	score     *area.Widget
-	state     *area.Widget
-	time      *area.Widget
+	objective          *area.Widget
+	score              *area.Widget
+	state              *area.Widget
+	time               *area.Widget
+	pressButtonToScore *area.Widget
 }
 
 type audios struct {
@@ -247,7 +248,7 @@ func (g *GUI) areas(collection fonts.Collection) *areas {
 			Hidden: true,
 
 			Text:    "State",
-			Subtext: strings.Title(match.NotFound.String()),
+			Subtext: match.NotFound.String(),
 			Theme:   collection.Calibri().Theme,
 			NRGBA:   area.Locked.Alpha(0),
 			Match:   g.matchState,
@@ -259,6 +260,26 @@ func (g *GUI) areas(collection fonts.Collection) *areas {
 				File:        "state_area.png",
 				Base:        video.StateArea(),
 				DefaultBase: video.StateArea(),
+			},
+		},
+
+		pressButtonToScore: &area.Widget{
+			Hidden: true,
+
+			Text:          "Self-Score",
+			TextAlignLeft: true,
+			Theme:         collection.Calibri().Theme,
+			Min:           config.Current.ScoringOption().Min,
+			Max:           config.Current.ScoringOption().Max,
+			NRGBA:         area.Locked,
+			Match:         g.matchPressButtonToScore,
+			Cooldown:      team.Purple.Delay,
+
+			Capture: &area.Capture{
+				Option:      "Self-Score",
+				File:        "self_score_area.png",
+				Base:        config.Current.ScoringOption(),
+				DefaultBase: config.Current.ScoringOption(),
 			},
 		},
 	}
@@ -604,7 +625,7 @@ func (g *GUI) videos(text float32) *videos {
 						return false
 					}
 
-					err = config.Load(config.Current.Gaming.Device)
+					err = config.Open(config.Current.Gaming.Device)
 					if err != nil {
 						notify.Error("[UI] Failed to load %s configuration", config.Current.Gaming.Device)
 						return false

@@ -43,7 +43,7 @@ const (
 	PurpleScoreMissed
 	RegielekiSecureOrange
 	RegielekiSecurePurple
-	PressButtonToScore
+	SelfScoreIndicator
 	ScoreOverride
 	ObjectivePresent
 	ObjectiveReachedOrange
@@ -130,8 +130,8 @@ func (e EventType) String() string {
 		return "[Purple] Registeel"
 	case RegisteelSecureOrange:
 		return "[Orange] Registeel"
-	case PressButtonToScore:
-		return `Help Text: "Press Button to Score"`
+	case SelfScoreIndicator:
+		return `Self-Score Indicator"`
 	case ScoreOverride:
 		return "Override"
 	case ObjectivePresent:
@@ -381,7 +381,7 @@ func Strings(since time.Duration) []string {
 
 func (this EventType) Team() *team.Team {
 	switch this {
-	case PressButtonToScore, PreScore, PostScore, Killed, KilledWithPoints, KilledWithoutPoints, HoldingEnergy:
+	case SelfScoreIndicator, PreScore, PostScore, Killed, KilledWithPoints, KilledWithoutPoints, HoldingEnergy:
 		return team.Self
 	case OrangeScore, RegielekiSecureOrange, RegiceSecureOrange, RegirockSecureOrange, RegisteelSecureOrange, RayquazaSecureOrange:
 		return team.Orange

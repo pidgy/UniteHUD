@@ -27,6 +27,11 @@ type Team struct {
 	Delay      time.Duration
 }
 
+const (
+	delay      = time.Millisecond * 1850
+	acceptance = .84
+)
+
 var (
 	// Energy represents the number of balls held by self.
 	Energy = &Team{
@@ -41,6 +46,7 @@ var (
 		Acceptance: .8,
 		Delay:      time.Second,
 	}
+
 	First = &Team{
 		Name:  "first",
 		title: "First",
@@ -51,6 +57,7 @@ var (
 		Acceptance: .64,
 		Delay:      time.Second,
 	}
+
 	Game = &Team{
 		Name:  "game",
 		title: "Game",
@@ -61,6 +68,7 @@ var (
 		Delay:      time.Second * 2,
 		Acceptance: .8,
 	}
+
 	None = &Team{
 		Name:  "none",
 		title: "None",
@@ -69,6 +77,7 @@ var (
 
 		Duplicate: duplicate.New(-1, gocv.NewMat(), gocv.NewMat()),
 	}
+
 	// Orange represents the standard Team for the Orange side.
 	Orange = &Team{
 		Name:  "orange",
@@ -77,12 +86,13 @@ var (
 		NRGBA:     nrgba.Orange,
 		Duplicate: duplicate.New(-1, gocv.NewMat(), gocv.NewMat()),
 
-		Acceptance: .84,
+		Acceptance: acceptance,
 
 		// Greater than 1s to reduce duplication errors.
 		// Less than 2s to avoid missing difficult capture windows.
-		Delay: time.Millisecond * 1850,
+		Delay: delay,
 	}
+
 	// Purple represents the standard Team for the Purple side.
 	Purple = &Team{
 		Name:  "purple",
@@ -91,9 +101,10 @@ var (
 		NRGBA:     nrgba.Purple,
 		Duplicate: duplicate.New(-1, gocv.NewMat(), gocv.NewMat()),
 
-		Acceptance: Orange.Acceptance,
-		Delay:      Orange.Delay,
+		Acceptance: acceptance,
+		Delay:      delay,
 	}
+
 	// Self represents a wrapper Team for the Purple side.
 	Self = &Team{
 		Name:  "self",
@@ -103,8 +114,10 @@ var (
 		Duplicate: duplicate.New(-1, gocv.NewMat(), gocv.NewMat()),
 
 		Acceptance: .75,
-		Delay:      time.Second / 4,
+		// Delay:      time.Second / 4,
+		Delay: time.Millisecond * 500,
 	}
+
 	Time = &Team{
 		Name:  "time",
 		title: "Time",
@@ -115,22 +128,10 @@ var (
 		Acceptance: .8,
 		Delay:      time.Second,
 	}
-
-	Teams = []*Team{Orange, Purple, Self, Energy, Game, Time, First}
-
-	nameOf = map[string]*Team{
-		Orange.Name: Orange,
-		Purple.Name: Purple,
-		Self.Name:   Self,
-		Energy.Name: Energy,
-		Game.Name:   Game,
-		Time.Name:   Time,
-		First.Name:  First,
-	}
 )
 
 func Clear() {
-	for _, t := range Teams {
+	for _, t := range []*Team{Orange, Purple, Self, Energy, Game, Time, First} {
 		t.Holding = 0
 		t.Duplicate = duplicate.New(-1, gocv.NewMat(), gocv.NewMat())
 		t.Killed = time.Time{}
@@ -183,6 +184,20 @@ func (t *Team) String() string {
 	return t.title
 }
 
+var nameOf = map[string]*Team{
+	Orange.Name: Orange,
+	Purple.Name: Purple,
+	Self.Name:   Self,
+	Energy.Name: Energy,
+	Game.Name:   Game,
+	Time.Name:   Time,
+	First.Name:  First,
+}
+
 func Delay(team string) time.Duration {
 	return nameOf[team].Delay
+}
+
+func By(name string) *Team {
+	return nameOf[name]
 }

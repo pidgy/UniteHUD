@@ -25,13 +25,12 @@ import (
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/rgba/nrgba"
 	"github.com/pidgy/unitehud/global"
+	"github.com/pidgy/unitehud/gui/cursor"
 	"github.com/pidgy/unitehud/gui/ux/button"
 	"github.com/pidgy/unitehud/gui/ux/decorate"
 	"github.com/pidgy/unitehud/gui/ux/title"
 	"github.com/pidgy/unitehud/system/wapi"
 )
-
-const alpha = 150
 
 var (
 	Locked = nrgba.Black
@@ -130,9 +129,9 @@ func (a *Widget) Layout(gtx layout.Context, collection fonts.Collection, capture
 		Max: a.Max.Add(image.Pt(0, title.Height)),
 	}
 
-	if a.Hidden {
-		return nil
-	}
+	// if a.Hidden {
+	// 	return nil
+	// }
 
 	if a.baseMinY == 0 {
 		a.baseMinY = capture.Min.Y
@@ -176,15 +175,38 @@ func (a *Widget) Layout(gtx layout.Context, collection fonts.Collection, capture
 
 		switch e.Kind {
 		case pointer.Enter:
+			if a.Hidden {
+				cursor.Is(pointer.CursorNotAllowed)
+				continue
+			}
+
+			cursor.Is(pointer.CursorPointer)
+
 			a.Focus = true
 			a.NRGBA = Locked
 			a.NRGBA.A = 0
 		case pointer.Leave:
+			cursor.Is(pointer.CursorDefault)
+
+			if a.Hidden {
+				continue
+			}
+
 			a.Focus = false
-			a.NRGBA.A = alpha
+			a.NRGBA.A = a.opacity()
 		case pointer.Cancel:
 		case pointer.Press:
+			if a.Hidden {
+				cursor.Is(pointer.CursorNotAllowed)
+				continue
+			}
+
+			cursor.Is(pointer.CursorCrosshair)
 		case pointer.Release:
+			if a.Hidden {
+				continue
+			}
+
 			if a.Drag {
 				a.Drag = false
 
@@ -213,11 +235,22 @@ func (a *Widget) Layout(gtx layout.Context, collection fonts.Collection, capture
 				a.lastRelease = time.Now()
 			}
 		case pointer.Move:
+			if a.Hidden {
+				continue
+			}
+
 			if !a.Drag {
 				break
 			}
+
 			fallthrough
 		case pointer.Drag:
+			if a.Hidden {
+				continue
+			}
+
+			cursor.Is(pointer.CursorCrosshair)
+
 			a.Drag = true
 
 			e.Position.Y -= float32(title.Height)
@@ -234,7 +267,7 @@ func (a *Widget) Layout(gtx layout.Context, collection fonts.Collection, capture
 			area := rect.Push(gtx.Ops)
 			defer area.Pop()
 
-			paint.ColorOp{Color: a.Alpha(alpha).Color()}.Add(gtx.Ops)
+			paint.ColorOp{Color: a.Alpha(a.opacity()).Color()}.Add(gtx.Ops)
 			paint.PaintOp{}.Add(gtx.Ops)
 
 			return layout.Dimensions{Size: rect.Max.Sub(rect.Min)}
@@ -249,24 +282,24 @@ func (a *Widget) Layout(gtx layout.Context, collection fonts.Collection, capture
 	}.Add(gtx.Ops)
 	area.Pop()
 
-	if !a.Hidden {
-		layout.Inset{
-			Left: unit.Dp(rect.Min.X),
-			Top:  unit.Dp(rect.Min.Y),
-		}.Layout(
-			gtx,
-			func(gtx layout.Context) layout.Dimensions {
-				return widget.Border{
-					Color: a.Alpha(255).Color(),
-					Width: unit.Dp(2),
-				}.Layout(
-					gtx,
-					func(gtx layout.Context) layout.Dimensions {
-						defer rect.Push(gtx.Ops).Pop()
-						return layout.Dimensions{Size: rect.Max.Sub(rect.Min)}
-					})
-			})
-	}
+	// if !a.Hidden {
+	layout.Inset{
+		Left: unit.Dp(rect.Min.X),
+		Top:  unit.Dp(rect.Min.Y),
+	}.Layout(
+		gtx,
+		func(gtx layout.Context) layout.Dimensions {
+			return widget.Border{
+				Color: a.Alpha(a.opacity()).Color(),
+				Width: unit.Dp(2),
+			}.Layout(
+				gtx,
+				func(gtx layout.Context) layout.Dimensions {
+					defer rect.Push(gtx.Ops).Pop()
+					return layout.Dimensions{Size: rect.Max.Sub(rect.Min)}
+				})
+		})
+	// }
 
 	layout.Inset{
 		Left: unit.Dp(rect.Min.X),
@@ -293,6 +326,47 @@ func (a *Widget) Layout(gtx layout.Context, collection fonts.Collection, capture
 	)
 
 	return
+}
+
+func (c *Capture) Open() error {
+	img, err := video.CaptureRect(c.Base)
+	if err != nil {
+		return fmt.Errorf("Failed to capture %s (%v)", c.File, err)
+	}
+
+	matrix, err := gocv.ImageToMatRGB(img)
+	if err != nil {
+		return fmt.Errorf("Failed to create %s (%v)", c.File, err)
+	}
+	defer matrix.Close()
+
+	if !gocv.IMWrite(c.File, matrix) {
+		return fmt.Errorf("Failed to save %s (%v)", c.File, err)
+	}
+
+	argv, err := syscall.UTF16PtrFromString(os.Getenv("windir") + "\\system32\\cmd.exe /C " + fmt.Sprintf("\"%s\\%s\"", global.WorkingDirectory(), c.File))
+	if err != nil {
+		return fmt.Errorf("Failed to open %s (%v)", c.File, err)
+	}
+
+	var sI syscall.StartupInfo
+	var pI syscall.ProcessInformation
+
+	err = syscall.CreateProcess(nil, argv, nil, nil, true, wapi.CreateProcessFlags.NoWindow, nil, nil, &sI, &pI)
+	if err != nil {
+		return fmt.Errorf("Failed to open %s (%v)", c.File, err)
+	}
+
+	return nil
+}
+
+func (c *Capture) Rectangle() image.Rectangle {
+	return c.Base
+}
+
+func (c *Capture) reset() {
+	notify.Debug("[UI] Resetting %s capture area %s", c.Option, c.DefaultBase)
+	c.Base = c.DefaultBase
 }
 
 func (a *Widget) Reset() {
@@ -336,43 +410,12 @@ func (a *Widget) match() error {
 	return a.matched.err
 }
 
-func (c *Capture) Open() error {
-	img, err := video.CaptureRect(c.Base)
-	if err != nil {
-		return fmt.Errorf("Failed to capture %s (%v)", c.File, err)
+func (a *Widget) opacity() uint8 {
+	alpha := uint8(150)
+
+	if a.Hidden {
+		return alpha / 8
 	}
 
-	matrix, err := gocv.ImageToMatRGB(img)
-	if err != nil {
-		return fmt.Errorf("Failed to create %s (%v)", c.File, err)
-	}
-	defer matrix.Close()
-
-	if !gocv.IMWrite(c.File, matrix) {
-		return fmt.Errorf("Failed to save %s (%v)", c.File, err)
-	}
-
-	argv, err := syscall.UTF16PtrFromString(os.Getenv("windir") + "\\system32\\cmd.exe /C " + fmt.Sprintf("\"%s\\%s\"", global.WorkingDirectory(), c.File))
-	if err != nil {
-		return fmt.Errorf("Failed to open %s (%v)", c.File, err)
-	}
-
-	var sI syscall.StartupInfo
-	var pI syscall.ProcessInformation
-
-	err = syscall.CreateProcess(nil, argv, nil, nil, true, wapi.CreateProcessFlags.NoWindow, nil, nil, &sI, &pI)
-	if err != nil {
-		return fmt.Errorf("Failed to open %s (%v)", c.File, err)
-	}
-
-	return nil
-}
-
-func (c *Capture) Rectangle() image.Rectangle {
-	return c.Base
-}
-
-func (c *Capture) reset() {
-	notify.Debug("[UI] Resetting %s capture area %s", c.Option, c.DefaultBase)
-	c.Base = c.DefaultBase
+	return alpha
 }

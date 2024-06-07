@@ -102,7 +102,7 @@ type main struct {
 	buttons struct {
 		start,
 		stop *button.Widget
-		projector *button.ImageWidget
+		settingsImage *button.ImageWidget
 	}
 
 	textblocks struct {
@@ -499,9 +499,9 @@ func (g *GUI) main() {
 								dims := layout.Inset{
 									Top: unit.Dp(60),
 								}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-									ui.buttons.projector.SetImage(notify.Preview)
+									ui.buttons.settingsImage.SetImage(notify.Preview)
 									return layout.UniformInset(unit.Dp(5)).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-										return ui.buttons.projector.Layout(g.nav.Collection.Cascadia().Theme, gtx)
+										return ui.buttons.settingsImage.Layout(g.nav.Collection.Cascadia().Theme, gtx)
 									})
 								})
 
@@ -701,7 +701,7 @@ func (g *GUI) mainUI() *main {
 		notify.Warn("[UI] Failed to load font: (%v)", err)
 	}
 
-	ui.buttons.projector = &button.ImageWidget{
+	ui.buttons.settingsImage = &button.ImageWidget{
 		HintEvent: func() { g.nav.Tip("Open a projector window") },
 
 		Widget: &screen.Widget{
@@ -893,14 +893,14 @@ func (g *GUI) mainUI() *main {
 			defer this.Deactivate()
 
 			tray.SetStartStopTitle("Start")
-			ui.buttons.projector.Click(ui.buttons.projector)
+			ui.buttons.settingsImage.Click(ui.buttons.settingsImage)
 		},
 	}
 
 	ui.nav.client = &button.Widget{
 		Text:        "📺",
 		Font:        g.nav.Collection.NishikiTeki(),
-		OnHoverHint: ui.buttons.projector.HintEvent,
+		OnHoverHint: ui.buttons.settingsImage.HintEvent,
 		Pressed:     nrgba.Discord.Alpha(100),
 		TextSize:    unit.Sp(16),
 
@@ -1095,7 +1095,7 @@ func (g *GUI) mainUI() *main {
 			}
 
 			// Called once window is closed.
-			err = config.Load(config.Current.Gaming.Device)
+			err = config.Open(config.Current.Gaming.Device)
 			if err != nil {
 				notify.Error("[UI] Failed to reload \"%s\" (%v)", config.Current.File(), err)
 				return

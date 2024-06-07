@@ -138,8 +138,7 @@ func SelfScore(matrix gocv.Mat, img image.Image) (*Match, Result) {
 			templates = append(templates, t)
 		}
 	}
-	m, r, _ := Matches(matrix, img, templates)
-	return m, r
+	return Matches(matrix, img, templates)
 }
 
 func SelfScored(matrix gocv.Mat, img image.Image) (*Match, Result) {
@@ -149,29 +148,26 @@ func SelfScored(matrix gocv.Mat, img image.Image) (*Match, Result) {
 			templates = append(templates, t)
 		}
 	}
-	m, r, _ := Matches(matrix, img, templates)
-	return m, r
+	return Matches(matrix, img, templates)
 }
 
 func SelfScoring(matrix gocv.Mat, img image.Image) (*Match, Result) {
 	templates := []*template.Template{}
 	for _, t := range config.Current.TemplatesScoring(team.Game.Name) {
 		e := state.EventType(t.Value)
-		if e == state.PreScore || e == state.PressButtonToScore {
+		if e == state.PreScore || e == state.SelfScoreIndicator {
 			templates = append(templates, t)
 		}
 	}
-	m, r, _ := Matches(matrix, img, templates)
-	return m, r
+	return Matches(matrix, img, templates)
 }
 
-func SelfScoreOption(matrix gocv.Mat, img image.Image) (*Match, Result) {
+func SelfScoreIndicator(matrix gocv.Mat, img image.Image) (*Match, Result) {
 	templates := []*template.Template{}
 	for _, t := range config.Current.TemplatesScoring(team.Game.Name) {
-		if state.EventType(t.Value) == state.PressButtonToScore {
+		if state.EventType(t.Value) == state.SelfScoreIndicator {
 			templates = append(templates, t)
 		}
 	}
-	m, r, _ := MatchesWithAcceptance(matrix, img, templates, .85)
-	return m, r
+	return MatchesWithAcceptance(matrix, img, templates, .85)
 }

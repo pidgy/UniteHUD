@@ -542,7 +542,7 @@ const debug = {
                     child.animate({
                         opacity: '.9'
                     }, 750, () => {});
-                }).promise().done($('.float-top-right').scrollTop($('.float-top-right')[0].scrollHeight));
+                }).promise().done($('.debug-top-right').scrollTop($('.debug-top-right')[0].scrollHeight));
             });
         }
     },

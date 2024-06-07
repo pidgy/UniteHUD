@@ -28,53 +28,6 @@ func init() {
 	notify.Announce("[UniteHUD] Initializing...")
 }
 
-func kill(errs ...error) {
-	defer close(sigq)
-
-	for i, err := range errs {
-		if i == 0 {
-			config.Current.Report(errs[i].Error())
-
-			err := config.Current.Save()
-			if err != nil {
-				notify.Warn("[UniteHUD] Failed to save crash log (%v)", err)
-			}
-		}
-
-		notify.Warn("[UniteHUD] Crashed (%v)", err)
-	}
-
-	report := make(chan bool)
-
-	ui.UI.ToastYesNo(
-		"Crashed",
-		"UniteHUD has crashed. Open log directory?",
-		ui.OnToastYes(
-			func() {
-				close(report)
-			},
-		),
-		ui.OnToastNo(
-			func() {
-				defer close(report)
-
-				err := save.Logs(notify.FeedStrings(), stats.Lines(), stats.Counts())
-				if err != nil {
-					notify.Warn("[UniteHUD] Failed to save logs (%v)", err)
-				}
-
-				err = save.OpenLogDirectory()
-				if err != nil {
-					notify.Error("[UniteHUD] Failed to open log directory (%v)", err)
-					return
-				}
-			},
-		),
-	)
-
-	<-report
-}
-
 func signals() {
 	signal.Notify(sigq, os.Interrupt)
 	<-sigq
@@ -97,12 +50,12 @@ func signals() {
 func main() {
 	defer ui.New().OnClose(func() { close(sigq) }).Open()
 
-	err := process.Start()
+	err := process.Open()
 	if err != nil {
 		notify.Warn("[UniteHUD] Failed to stop previous process (%v)", err)
 	}
 
-	err = config.Load(config.Current.Gaming.Device)
+	err = config.Open(config.Current.Gaming.Device)
 	if err != nil {
 		notify.Warn("[UniteHUD] Failed to load %s (%v)", config.Current.File(), err)
 	}
@@ -127,7 +80,10 @@ func main() {
 		notify.Warn("[UniteHUD] Failed to open system tray (%v)", err)
 	}
 
-	go discord.Connect()
+	err = discord.Open()
+	if err != nil {
+		notify.Warn("[UniteHUD] Failed to open Discord RPC (%v)", err)
+	}
 
 	notify.Debug("[UniteHUD] Server Address (%s)", server.Address)
 	notify.Debug("[UniteHUD] Recording (%t)", config.Current.Record)
@@ -137,11 +93,11 @@ func main() {
 
 	go detect.Clock()
 	go detect.Energy()
-	go detect.PressButtonToScore()
 	go detect.Preview()
 	go detect.Defeated()
 	go detect.Objectives()
 	go detect.States()
+	go detect.Scores(team.Self.Name)
 	go detect.Scores(team.Purple.Name)
 	go detect.Scores(team.Orange.Name)
 	go detect.Scores(team.First.Name)

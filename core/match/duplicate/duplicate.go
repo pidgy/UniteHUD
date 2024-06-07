@@ -8,7 +8,7 @@ import (
 	"github.com/pidgy/unitehud/core/notify"
 )
 
-const delay = time.Millisecond * 2200
+const delay = time.Millisecond * 4000
 
 type Duplicate struct {
 	Value int
@@ -53,30 +53,35 @@ func (d *Duplicate) Close() {
 
 func (d *Duplicate) Of(d2 *Duplicate) (bool, string) {
 	if d.Value == 0 || d2.Value == 0 {
-		return false, "zero-equality"
+		return false, "Zero Equality"
+	}
+
+	if d.Value == -1 {
+		return false, "Negative Comparison"
 	}
 
 	if d == nil || d2 == nil {
-		return false, "nil-equality"
+		return false, "Nil Equality"
 	}
 
 	if d.Empty() || d2.Empty() {
-		return false, "empty-equality"
+		return false, "Empty Equality"
 	}
 
 	// Fallacy to think we'll capture the same values everytime... maybe one day?
 	if d.Value != d2.Value {
-		return false, "inequality"
+		return false, "Inequality"
 	}
 
 	delta := d2.Time.Sub(d.Time)
 	if delta > delay {
 		d2.Potential = true
-		return false, "long-delay"
+		return false, "Long Delay"
 	}
-	if delta < delay && d.Value != -1 && d.Value == d2.Value && d.Counted {
+
+	if d.Counted {
 		d2.Potential = true
-		return true, "short-delay,positive-equality,counted"
+		return true, "Counted"
 	}
 
 	mat := gocv.NewMat()
@@ -87,7 +92,7 @@ func (d *Duplicate) Of(d2 *Duplicate) (bool, string) {
 	_, maxc, _, _ := gocv.MinMaxLoc(mat)
 	if maxc > 0.91 {
 		d2.Potential = true
-		return true, "max-gt-91"
+		return true, "Min. Acceptance"
 	}
 
 	return false, ""

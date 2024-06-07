@@ -10,7 +10,6 @@ import (
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/rgba"
-	"github.com/pidgy/unitehud/core/state"
 	"github.com/pidgy/unitehud/core/stats"
 	"github.com/pidgy/unitehud/core/team"
 	"github.com/pidgy/unitehud/core/template"
@@ -23,6 +22,8 @@ type Match struct {
 	Accepted float32
 
 	Points []image.Point
+
+	Numeric int
 }
 
 const (
@@ -65,11 +66,11 @@ func (m *Match) AsImage(mat gocv.Mat, points int) (image.Image, error) {
 	return crop, nil
 }
 
-func Matches(matrix gocv.Mat, img image.Image, templates []*template.Template) (*Match, Result, int) {
+func Matches(matrix gocv.Mat, img image.Image, templates []*template.Template) (*Match, Result) {
 	return MatchesWithAcceptance(matrix, img, templates, config.Current.Acceptance)
 }
 
-func MatchesWithAcceptance(matrix gocv.Mat, img image.Image, templates []*template.Template, acceptance float32) (*Match, Result, int) {
+func MatchesWithAcceptance(matrix gocv.Mat, img image.Image, templates []*template.Template, acceptance float32) (*Match, Result) {
 	results := make([]gocv.Mat, len(templates))
 
 	m := &Match{
@@ -110,31 +111,31 @@ func MatchesWithAcceptance(matrix gocv.Mat, img image.Image, templates []*templa
 
 		go stats.Collect(m.Template.Truncated(), maxv)
 
-		r, p := m.process(matrix)
-
-		return m, r, p
+		return m, m.process(matrix)
 	}
 
-	return m, NotFound, 0
+	return m, NotFound
 }
 
-func (m *Match) process(matrix gocv.Mat) (Result, int) {
+func (m *Match) process(matrix gocv.Mat) Result {
 	switch m.Template.Category {
 	case "killed":
-		return Found, team.Energy.Holding
+		m.Numeric = team.Energy.Holding
+		return Found
 	case "scored": // Orange, Purple scoring.
 		crop := m.Team.Crop(m.Point)
 		if crop.Min.X < 0 || crop.Min.Y < 0 || crop.Max.X > matrix.Cols() || crop.Max.Y > matrix.Rows() {
-			return Invalid, 0
+			return Invalid
 		}
 
 		return m.points(matrix.Region(crop))
-	case "scoring": // Self scoring.
-		return Found, m.Template.Value // Use team.Energy.Holding.
-	case "game":
-		return Found, state.EventType(m.Template.Value).Int()
+	case "scoring", "game": // Self scoring.
+		// TODO: Do we need to wrap?
+		// return Found, state.EventType(m.Template.Value).Int()
+		fallthrough
 	default:
-		return Found, m.Template.Value
+		m.Numeric = m.Template.Value // Use team.Energy.Holding.
+		return Found
 	}
 }
 

@@ -261,7 +261,7 @@ table[class=debug-banner-table] {
     column-gap: 10px;
 }
 
-div[class=float-top-right] {
+div[class=debug-top-right] {
     position: absolute;
     top: 0px;
     right: 0px;
