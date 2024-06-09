@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/signal"
 
+	"github.com/pidgy/unitehud/app"
 	"github.com/pidgy/unitehud/avi/audio"
 	"github.com/pidgy/unitehud/avi/video"
 	"github.com/pidgy/unitehud/core/config"
@@ -13,7 +14,6 @@ import (
 	"github.com/pidgy/unitehud/core/server"
 	"github.com/pidgy/unitehud/core/stats"
 	"github.com/pidgy/unitehud/core/team"
-	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/gui/ui"
 	"github.com/pidgy/unitehud/system/discord"
 	"github.com/pidgy/unitehud/system/process"
@@ -75,7 +75,7 @@ func main() {
 		notify.Warn("[UniteHUD] Failed to start server (%v)", err)
 	}
 
-	err = tray.Open(global.Title, global.TitleVersion, ui.Close)
+	err = tray.Open(app.Title, app.TitleVersion, ui.Close)
 	if err != nil {
 		notify.Warn("[UniteHUD] Failed to open system tray (%v)", err)
 	}

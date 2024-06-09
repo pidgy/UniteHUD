@@ -1,4 +1,4 @@
-package global
+package app
 
 import (
 	"os"
@@ -10,7 +10,7 @@ import (
 const (
 	Title          = "UniteHUD"
 	Version        = "v" + VersionNoV
-	VersionNoV     = "3.7.1"
+	VersionNoV     = "3.8.0"
 	TitleVersion   = Title + " " + Version
 	AssetDirectory = `assets`
 )

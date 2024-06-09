@@ -9,11 +9,11 @@ import (
 	"github.com/guptarohit/asciigraph"
 	"github.com/olekukonko/tablewriter"
 
+	"github.com/pidgy/unitehud/app"
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/rgba/nrgba"
 	"github.com/pidgy/unitehud/core/team"
-	"github.com/pidgy/unitehud/global"
 )
 
 const maxX = 100000
@@ -210,7 +210,7 @@ func Lines() []string {
 
 		// Use frequencies to see all images sent to be matched, or use matches to
 		// only see matched images.
-		if global.DebugMode {
+		if app.DebugMode {
 			for n := range frequencies {
 				if frequencies[n] < 1 {
 					continue

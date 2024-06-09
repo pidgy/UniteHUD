@@ -17,6 +17,7 @@ import (
 	"gioui.org/widget/material"
 	"gocv.io/x/gocv"
 
+	"github.com/pidgy/unitehud/app"
 	"github.com/pidgy/unitehud/avi/video"
 	"github.com/pidgy/unitehud/avi/video/device"
 	"github.com/pidgy/unitehud/avi/video/monitor"
@@ -24,7 +25,6 @@ import (
 	"github.com/pidgy/unitehud/core/fonts"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/rgba/nrgba"
-	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/gui/cursor"
 	"github.com/pidgy/unitehud/gui/ux/button"
 	"github.com/pidgy/unitehud/gui/ux/decorate"
@@ -344,7 +344,7 @@ func (c *Capture) Open() error {
 		return fmt.Errorf("Failed to save %s (%v)", c.File, err)
 	}
 
-	argv, err := syscall.UTF16PtrFromString(os.Getenv("windir") + "\\system32\\cmd.exe /C " + fmt.Sprintf("\"%s\\%s\"", global.WorkingDirectory(), c.File))
+	argv, err := syscall.UTF16PtrFromString(os.Getenv("windir") + "\\system32\\cmd.exe /C " + fmt.Sprintf("\"%s\\%s\"", app.WorkingDirectory(), c.File))
 	if err != nil {
 		return fmt.Errorf("Failed to open %s (%v)", c.File, err)
 	}

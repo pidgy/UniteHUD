@@ -6,6 +6,7 @@ import (
 
 	"gocv.io/x/gocv"
 
+	"github.com/pidgy/unitehud/app"
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/match/duplicate"
 	"github.com/pidgy/unitehud/core/notify"
@@ -13,7 +14,6 @@ import (
 	"github.com/pidgy/unitehud/core/stats"
 	"github.com/pidgy/unitehud/core/team"
 	"github.com/pidgy/unitehud/core/template"
-	"github.com/pidgy/unitehud/global"
 )
 
 func (m *Match) points(matrix gocv.Mat) Result {
@@ -154,7 +154,7 @@ func (m *Match) regular(matrix gocv.Mat) Result {
 	points := []int{-1, -1}
 	// rects := []image.Rectangle{{}, {}}
 
-	if server.IsFinalStretch() || global.DebugMode {
+	if server.IsFinalStretch() || app.DebugMode {
 		mins = []int{math.MaxInt32, math.MaxInt32, math.MaxInt32}
 		maxs = []float32{0, 0, 0}
 		lefts = []int{math.MaxInt32, math.MaxInt32, math.MaxInt32}

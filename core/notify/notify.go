@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pidgy/unitehud/app"
 	"github.com/pidgy/unitehud/core/rgba/nrgba"
-	"github.com/pidgy/unitehud/global"
 )
 
 type (
@@ -68,7 +68,7 @@ func CLS() {
 }
 
 func Debug(format string, a ...interface{}) {
-	if !global.DebugMode {
+	if !app.DebugMode {
 		return
 	}
 
@@ -210,7 +210,7 @@ func (n *notify) log(r nrgba.NRGBA, clock, dedup, unique bool, format string, a 
 		count: 1,
 	}
 
-	if global.DebugMode {
+	if app.DebugMode {
 		fmt.Printf(format+"\n", a...)
 	}
 

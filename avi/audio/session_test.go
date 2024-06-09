@@ -13,7 +13,7 @@ func TestFFMPEG(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	Current.input = ffmpeg.New("Digital Audio Interface (2- USB Digital Audio)")
+	Current.Input = ffmpeg.New("Digital Audio Interface (2- USB Digital Audio)")
 	// err = Input("Digital Audio Interface (2- USB Digital Audio)")
 	// if err != nil {
 	// 	t.Fatal(err)

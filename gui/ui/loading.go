@@ -14,10 +14,10 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 
+	app1 "github.com/pidgy/unitehud/app"
 	"github.com/pidgy/unitehud/avi/img/splash"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/rgba/nrgba"
-	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/gui/cursor"
 	"github.com/pidgy/unitehud/gui/is"
 	"github.com/pidgy/unitehud/gui/ux/decorate"
@@ -41,7 +41,7 @@ func (g *GUI) loading() {
 	height := 440
 
 	g.window.Option(
-		app.Title(global.Title),
+		app.Title(app1.Title),
 		app.Size(unit.Dp(width), unit.Dp(height)),
 		app.MaxSize(unit.Dp(width), unit.Dp(height)),
 		app.MinSize(unit.Dp(width), unit.Dp(height)),

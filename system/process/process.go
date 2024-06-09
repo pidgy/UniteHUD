@@ -12,8 +12,8 @@ import (
 
 	"golang.org/x/sys/windows"
 
+	"github.com/pidgy/unitehud/app"
 	"github.com/pidgy/unitehud/core/notify"
-	"github.com/pidgy/unitehud/global"
 )
 
 const TH32CSSnapProcess = 0x00000002
@@ -60,7 +60,7 @@ func (s *Stat) Float64() float64 {
 }
 
 func Uptime() string {
-	u := time.Time{}.Add(time.Since(global.Uptime))
+	u := time.Time{}.Add(time.Since(app.Uptime))
 	return fmt.Sprintf("%02d:%02d:%02d", u.Hour(), u.Minute(), u.Second())
 }
 

@@ -26,6 +26,7 @@ type Device interface {
 	Name() string
 	Start(malgo.Context, io.ReadWriter) error
 	Type() Type
+	String() string
 }
 
 func Is(d Device, name string) bool {

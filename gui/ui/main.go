@@ -22,6 +22,7 @@ import (
 	"gioui.org/widget/material"
 	"github.com/skratchdot/open-golang/open"
 
+	app1 "github.com/pidgy/unitehud/app"
 	"github.com/pidgy/unitehud/avi/audio"
 	"github.com/pidgy/unitehud/avi/video/device"
 	"github.com/pidgy/unitehud/avi/video/monitor"
@@ -35,7 +36,6 @@ import (
 	"github.com/pidgy/unitehud/core/stats"
 	"github.com/pidgy/unitehud/core/stats/history"
 	"github.com/pidgy/unitehud/core/team"
-	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/gui/is"
 	"github.com/pidgy/unitehud/gui/ux/button"
 	"github.com/pidgy/unitehud/gui/ux/decorate"
@@ -184,9 +184,9 @@ func (g *GUI) main() {
 
 	if config.Current.IsNew() {
 		g.ToastNewsletter(
-			global.TitleVersion,
+			app1.TitleVersion,
 			Bulletin{
-				Title: fmt.Sprintf("Welcome to %s!", global.TitleVersion),
+				Title: fmt.Sprintf("Welcome to %s!", app1.TitleVersion),
 				Topics: []struct {
 					Subtitle string
 					Points   []string
@@ -215,7 +215,7 @@ func (g *GUI) main() {
 					},
 				},
 			},
-			OnToastOK(func() {}),
+			OnToastOK(nil),
 		)
 	}
 
@@ -314,8 +314,8 @@ func (g *GUI) main() {
 
 						switch {
 						case device.IsActive():
-							fps, p := device.FPS()
-							ui.labels.window.Color = nrgba.Percent(p).Color()
+							fps := device.FPS()
+							ui.labels.window.Color = nrgba.Percent(fps / float64(config.Current.Video.Capture.Device.FPS)).Color()
 							ui.labels.window.Text = fmt.Sprintf("📺 %s %.0fFPS", device.Name(config.Current.Video.Capture.Device.Index), fps)
 						case window.IsOpen(), monitor.IsDisplay():
 							ui.labels.window.Text = fmt.Sprintf("📺 %s", config.Current.Video.Capture.Window.Name)
@@ -675,7 +675,7 @@ func (g *GUI) mainUI() *main {
 
 			tray.SetStartStopTitle("Start")
 
-			notify.Announce("[UI] Stopped %s", global.Title)
+			notify.Announce("[UI] Stopped %s", app1.Title)
 		},
 	}
 
@@ -717,7 +717,7 @@ func (g *GUI) mainUI() *main {
 
 			g.Running = true
 
-			notify.Announce("[UI] Started %s", global.Title)
+			notify.Announce("[UI] Started %s", app1.Title)
 		},
 	}
 
@@ -896,7 +896,7 @@ func (g *GUI) mainUI() *main {
 		ui.labels.uptime.Alignment = text.Middle
 		ui.labels.uptime.TextSize = unit.Sp(14)
 
-		ui.labels.version = material.H5(g.nav.Collection.Calibri().Theme, global.Version)
+		ui.labels.version = material.H5(g.nav.Collection.Calibri().Theme, app1.Version)
 		ui.labels.version.Color = nrgba.Gray.Color()
 		ui.labels.version.Alignment = text.Middle
 		ui.labels.version.TextSize = unit.Sp(14)
@@ -985,7 +985,7 @@ func (g *GUI) mainUI() *main {
 
 			g.ToastOK("Overlay", `Drag "UniteHUD Client.html" into OBS.`,
 				OnToastOK(func() {
-					err = open.Run(filepath.Join(global.WorkingDirectory(), "www"))
+					err = open.Run(filepath.Join(app1.WorkingDirectory(), "www"))
 					if err != nil {
 						notify.Error("[UI] Failed to open www/ directory: %v", err)
 						return
@@ -1215,7 +1215,7 @@ func (g *GUI) once(ui *main) {
 	once = true
 
 	g.window.Option(
-		app.Title(global.Title),
+		app.Title(app1.Title),
 		app.Size(
 			unit.Dp(g.dimensions.min.X),
 			unit.Dp(g.dimensions.min.Y),

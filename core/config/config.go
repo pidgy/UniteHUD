@@ -16,13 +16,13 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"gocv.io/x/gocv"
 
+	"github.com/pidgy/unitehud/app"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/rgba/nrgba"
 	"github.com/pidgy/unitehud/core/state"
 	"github.com/pidgy/unitehud/core/team"
 	"github.com/pidgy/unitehud/core/template"
 	"github.com/pidgy/unitehud/core/template/filter"
-	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/system/sort"
 )
 
@@ -169,7 +169,7 @@ func (c *Config) AssetIcon(file string) string {
 }
 
 func (c *Config) Assets() string {
-	return filepath.Join(global.WorkingDirectory(), global.AssetDirectory)
+	return filepath.Join(app.WorkingDirectory(), app.AssetDirectory)
 }
 
 func (c Config) Eq(c2 Config) bool {
@@ -187,7 +187,7 @@ func (c *Config) File() string {
 	if len(os.Args) > 1 && strings.HasSuffix(os.Args[1], ".unitehud") {
 		return os.Args[1]
 	}
-	return fmt.Sprintf("config-%s.unitehud", strings.ReplaceAll(global.Version, ".", "-"))
+	return fmt.Sprintf("config-%s.unitehud", strings.ReplaceAll(app.Version, ".", "-"))
 }
 
 func (c *Config) IsNew() bool {
@@ -414,7 +414,7 @@ func (c *Config) deviceAsset(dir, file string) string {
 }
 
 func (c *Config) deviceAssets() string {
-	return filepath.Join(global.WorkingDirectory(), global.AssetDirectory, "device", c.Gaming.Device)
+	return filepath.Join(app.WorkingDirectory(), app.AssetDirectory, "device", c.Gaming.Device)
 }
 
 func (c *Config) loadDeviceAssets() {

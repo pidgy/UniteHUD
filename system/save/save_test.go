@@ -6,12 +6,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pidgy/unitehud/app"
 	"github.com/pidgy/unitehud/core/stats"
-	"github.com/pidgy/unitehud/global"
 )
 
 func TestTemplateStatistics(t *testing.T) {
-	global.DebugMode = true
+	app.DebugMode = true
 	templateStatistics(stats.Counts())
 }
 

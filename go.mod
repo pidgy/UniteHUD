@@ -24,7 +24,7 @@ require (
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
 	github.com/tc-hib/winres v0.2.1
 	gocv.io/x/gocv v0.35.0
-	golang.org/x/sys v0.15.0
+	golang.org/x/sys v0.20.0
 	nhooyr.io/websocket v1.8.10
 )
 
@@ -32,6 +32,7 @@ require (
 	github.com/hajimehoshi/go-mp3 v0.3.4
 	github.com/hajimehoshi/oto/v2 v2.4.2
 	github.com/hashicorp/go-version v1.6.0
+	golang.org/x/text v0.16.0
 )
 
 require (
@@ -49,7 +50,7 @@ require (
 	golang.org/x/exp v0.0.0-20231127185646-65229373498e // indirect
 	golang.org/x/exp/shiny v0.0.0-20231127185646-65229373498e // indirect
 	golang.org/x/image v0.14.0 // indirect
-	golang.org/x/mod v0.14.0 // indirect
-	golang.org/x/text v0.14.0 // indirect
-	golang.org/x/tools v0.16.0 // indirect
+	golang.org/x/mod v0.17.0 // indirect
+	golang.org/x/sync v0.7.0 // indirect
+	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d // indirect
 )

@@ -15,12 +15,12 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 
+	app1 "github.com/pidgy/unitehud/app"
 	"github.com/pidgy/unitehud/avi/video/device"
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/fonts"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/rgba/nrgba"
-	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/gui/ux"
 	"github.com/pidgy/unitehud/gui/ux/button"
 	"github.com/pidgy/unitehud/gui/ux/checklist"
@@ -357,7 +357,7 @@ func (g *GUI) settingsUI() *settings {
 
 					config.Current.Advanced.Notifications.Disabled.All = false
 
-					desktop.Notification(global.Title).
+					desktop.Notification(app1.Title).
 						Says("Testing 1, 2, 3").
 						When(clicked.VisitWebsite).
 						Send()

@@ -37,6 +37,15 @@ const (
 )
 
 type (
+	Bulletin struct {
+		Title string
+
+		Topics []struct {
+			Subtitle string
+			Points   []string
+		}
+	}
+
 	toast struct {
 		g *GUI
 
@@ -52,13 +61,27 @@ type (
 	}
 
 	waiter interface {
-		close()
+		close(*GUI)
 		wait() waiter
 	}
 )
 
-func (c *closeable) close() {
-	c.toast.window.Perform(system.ActionClose)
+var (
+	active = []*toast{}
+)
+
+func (t *toast) close(g *GUI) {
+	t.window.Perform(system.ActionClose)
+
+	g.previous.toast.err = nil
+	g.previous.toast.active = false
+
+	for i := range active {
+		if t == active[i] {
+			active = append(active[:i], active[i+1:]...)
+			return
+		}
+	}
 }
 
 func (c *closeable) wait() waiter {
@@ -78,6 +101,10 @@ func (g *GUI) toast(header, msg string, width, height float32) *toast {
 	}
 	g.previous.toast.active = true
 
+	return g.toastForce(header, msg, width, height)
+}
+
+func (g *GUI) toastForce(header, msg string, width, height float32) *toast {
 	t := &toast{
 		g: g,
 
@@ -97,11 +124,9 @@ func (g *GUI) toast(header, msg string, width, height float32) *toast {
 	t.label = material.Label(t.bar.Collection.Calibri().Theme, toastTextSize, titleFirstWord(msg))
 	t.label.Alignment = text.Middle
 
-	return t
-}
+	active = append(active, t)
 
-func (t *toast) close() {
-	t.g.previous.toast.active = false
+	return t
 }
 
 func (g *GUI) ToastError(err error) {
@@ -119,17 +144,8 @@ func (g *GUI) ToastErrorf(format string, a ...interface{}) {
 	g.ToastError(fmt.Errorf(format, a...))
 }
 
-type Bulletin struct {
-	Title string
-
-	Topics []struct {
-		Subtitle string
-		Points   []string
-	}
-}
-
 func (g *GUI) ToastNewsletter(header string, bulletin Bulletin, ok OnToastOK) {
-	t := g.toast(header, bulletin.Title, float32(500), float32(400))
+	t := g.toastForce(header, bulletin.Title, float32(500), float32(400))
 	if t == nil {
 		return
 	}
@@ -139,7 +155,7 @@ func (g *GUI) ToastNewsletter(header string, bulletin Bulletin, ok OnToastOK) {
 	go func() {
 		notify.Debug("[UI] Toast: Opening Newsletter (active: %t)", g.previous.toast.active)
 		defer notify.Debug("[UI] Toast: Closing Newsletter (active: %t)", g.previous.toast.active)
-		defer t.close()
+		defer t.close(g)
 
 		okButton := &button.Widget{
 			Text:            "OK",
@@ -292,7 +308,7 @@ func (g *GUI) ToastOK(header, msg string, ok OnToastOK) {
 	go func() {
 		notify.Debug("[UI] Toast: Opening Ok (active: %t)", g.previous.toast.active)
 		defer notify.Debug("[UI] Toast: Closing Ok (active: %t)", g.previous.toast.active)
-		defer t.close()
+		defer t.close(g)
 
 		okButton := &button.Widget{
 			Text:            "OK",
@@ -370,7 +386,7 @@ func (g *GUI) ToastOK(header, msg string, ok OnToastOK) {
 
 func (g *GUI) ToastSplash(header, msg string, img image.Image) waiter {
 	c := &closeable{
-		toast: g.toast(header, msg, float32(640), float32(360)),
+		toast: g.toastForce(header, msg, float32(640), float32(360)),
 		waitq: make(chan bool),
 	}
 	if c.toast == nil {
@@ -381,7 +397,7 @@ func (g *GUI) ToastSplash(header, msg string, img image.Image) waiter {
 	go func() {
 		notify.Debug("[UI] Toast: Opening Splash (active: %t)", g.previous.toast.active)
 		defer notify.Debug("[UI] Toast: Closing Splash (active: %t)", g.previous.toast.active)
-		defer c.toast.close()
+		defer c.toast.close(g)
 
 		c.toast.bar.Hide = true
 		c.label.TextSize = toastTextSize * 1.5
@@ -440,7 +456,7 @@ func (g *GUI) ToastYesNo(header, msg string, y OnToastYes, n OnToastNo) {
 	go func() {
 		notify.Debug("[UI] Toast: Opening Yes/No (active: %t)", g.previous.toast.active)
 		defer notify.Debug("[UI] Toast: Closing Yes/No (active: %t)", g.previous.toast.active)
-		defer t.close()
+		defer t.close(g)
 
 		yButton := &button.Widget{
 			Text:            "Yes",

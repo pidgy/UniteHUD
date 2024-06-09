@@ -13,6 +13,7 @@ import (
 
 	"nhooyr.io/websocket"
 
+	"github.com/pidgy/unitehud/app"
 	"github.com/pidgy/unitehud/avi/img"
 	"github.com/pidgy/unitehud/avi/video"
 	"github.com/pidgy/unitehud/avi/video/fps"
@@ -21,7 +22,7 @@ import (
 	"github.com/pidgy/unitehud/core/rgba/nrgba"
 	"github.com/pidgy/unitehud/core/state"
 	"github.com/pidgy/unitehud/core/team"
-	"github.com/pidgy/unitehud/global"
+	"github.com/pidgy/unitehud/system/lang"
 )
 
 const Address = "127.0.0.1:17069"
@@ -163,7 +164,7 @@ func Open() error {
 		defer fps.NewLoop(&fps.LoopOptions{
 			FPS: 120,
 			On: func(min, max, avg time.Duration) (close bool) {
-				if global.DebugMode {
+				if app.DebugMode {
 					defer fmt.Printf("HTTP /stream min=%s, max=%s, avg=%s\n", min, max, avg)
 				}
 
@@ -224,7 +225,7 @@ func Open() error {
 
 		current.game.Platform = config.Current.Gaming.Device
 		current.game.Events = notify.LastNStrings(10)
-		current.game.Debug = global.DebugMode
+		current.game.Debug = app.DebugMode
 
 		err = c.Write(context.Background(), websocket.MessageText, track.ws)
 		if err != nil {
@@ -255,7 +256,7 @@ func Open() error {
 
 		current.game.Platform = config.Current.Gaming.Device
 		current.game.Events = notify.LastNStrings(10)
-		current.game.Debug = global.DebugMode
+		current.game.Debug = app.DebugMode
 
 		_, err = w.Write(track.http)
 		if err != nil {
@@ -428,7 +429,7 @@ func SetBottomObjective(t *team.Team, name string, n int) {
 		Time: time.Now().Unix(),
 	}
 
-	op := fmt.Sprintf("[%s] %s #%d", strings.Title(t.Name), strings.Title(o.Name), n+1)
+	op := fmt.Sprintf("[%s] %s #%d", lang.Title(t.Name), lang.Title(o.Name), n+1)
 
 	switch {
 	// Illegal.
@@ -518,7 +519,7 @@ func SetRegieleki(t *team.Team) {
 
 // SetRegielekiAt assumes n to be an index starting at 0.
 func SetRegielekiAt(t *team.Team, n int) {
-	op := fmt.Sprintf("[%s] Regieleki #%d", strings.Title(t.Name), n+1)
+	op := fmt.Sprintf("[%s] Regieleki #%d", lang.Title(t.Name), n+1)
 
 	switch {
 	case n != 0 && current.game.Regilekis[n-1] == team.None.Name:
@@ -651,7 +652,7 @@ func reset() *game {
 		Regilekis: []string{team.None.Name, team.None.Name, team.None.Name},
 		Rayquaza:  "",
 		Bottom:    []objective{},
-		Version:   global.Version,
+		Version:   app.Version,
 		Defeated:  []int{},
 	}
 }

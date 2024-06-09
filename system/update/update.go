@@ -8,8 +8,8 @@ import (
 
 	"github.com/hashicorp/go-version"
 
+	"github.com/pidgy/unitehud/app"
 	"github.com/pidgy/unitehud/core/notify"
-	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/system/desktop"
 	"github.com/pidgy/unitehud/system/desktop/clicked"
 )
@@ -20,15 +20,15 @@ type query struct {
 }
 
 func Check() {
-	notify.Debug("[Update] Validating %s", global.Version)
+	notify.Debug("[Update] Validating %s", app.Version)
 
 	b := &bytes.Buffer{}
-	h, err := http.NewRequest(http.MethodGet, fmt.Sprintf("https://unitehud.dev/update.json?v=%s", global.VersionNoV), b)
+	h, err := http.NewRequest(http.MethodGet, fmt.Sprintf("https://unitehud.dev/update.json?v=%s", app.VersionNoV), b)
 	if err != nil {
 		notify.Error("[Update] Failed to check for updates (%v)", err)
 		return
 	}
-	h.Header.Set("User-Agent", fmt.Sprintf("UniteHUD-Updater/%s", global.VersionNoV))
+	h.Header.Set("User-Agent", fmt.Sprintf("UniteHUD-Updater/%s", app.VersionNoV))
 
 	r, err := http.DefaultClient.Do(h)
 	if err != nil {
@@ -50,9 +50,9 @@ func Check() {
 		return
 	}
 
-	notify.Debug("[Update] Comparing %s against %s", q.Latest, global.Version)
+	notify.Debug("[Update] Comparing %s against %s", q.Latest, app.Version)
 
-	v1, err := version.NewVersion(global.Version)
+	v1, err := version.NewVersion(app.Version)
 	if err != nil {
 		notify.Error("[Update] Failed to parse global version number (%v)", err)
 		return
@@ -73,9 +73,9 @@ func Check() {
 			When(clicked.VisitWebsite).
 			Send()
 	case v2.LessThan(v1):
-		notify.System("[Update] You are running an unstable %s build", global.Version)
+		notify.System("[Update] You are running an unstable %s build", app.Version)
 	case v1.Equal(v2):
-		notify.System("[Update] You are running the latest version of UniteHUD (%s)", global.Version)
+		notify.System("[Update] You are running the latest version of UniteHUD (%s)", app.Version)
 	default:
 		notify.Warn("[Update] Unable to validate version %s ", q.Latest)
 	}

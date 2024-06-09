@@ -10,8 +10,8 @@ import (
 	"gioui.org/text"
 	"gioui.org/widget/material"
 
+	"github.com/pidgy/unitehud/app"
 	"github.com/pidgy/unitehud/core/notify"
-	"github.com/pidgy/unitehud/global"
 )
 
 type Collection map[string]*Style
@@ -93,7 +93,7 @@ func (c Collection) load(path, typeface string) *Style {
 
 	notify.Debug("[Font] Loading \"%s\"", typeface)
 
-	bytes, err := os.ReadFile(filepath.Join(global.AssetDirectory, "font", path))
+	bytes, err := os.ReadFile(filepath.Join(app.AssetDirectory, "font", path))
 	if err != nil {
 		notify.Warn("[Font] %v", err)
 		return noStyle()

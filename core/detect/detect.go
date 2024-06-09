@@ -23,6 +23,7 @@ import (
 	"github.com/pidgy/unitehud/core/team"
 	"github.com/pidgy/unitehud/system/desktop"
 	"github.com/pidgy/unitehud/system/desktop/clicked"
+	"github.com/pidgy/unitehud/system/lang"
 	"github.com/pidgy/unitehud/system/save"
 )
 
@@ -388,15 +389,15 @@ func Scores(by string) {
 			case match.Override:
 				state.Add(state.ScoreOverride, server.Clock(), m.Numeric)
 				server.SetScore(t, -t.Duplicate.Replaces)
-				notify.Feed(t.NRGBA, "[Detect] [%s] [%s] -%d (override)", server.Clock(), strings.Title(t.Name), t.Duplicate.Replaces)
+				notify.Feed(t.NRGBA, "[Detect] [%s] [%s] -%d (override)", server.Clock(), lang.Title(t.Name), t.Duplicate.Replaces)
 
 				fallthrough
 			case match.Found:
 				server.SetScore(t, m.Numeric)
 
-				title := fmt.Sprintf("[%s]", strings.Title(t.Name))
+				title := fmt.Sprintf("[%s]", lang.Title(t.Name))
 				if t.Name == team.First.Name {
-					title = fmt.Sprintf("[%s] [%s]", strings.Title(t.Alias), strings.Title(t.Name))
+					title = fmt.Sprintf("[%s] [%s]", lang.Title(t.Alias), lang.Title(t.Name))
 				}
 
 				notify.Feed(t.NRGBA, "[Detect] [%s] %s +%d", server.Clock(), title, m.Numeric)

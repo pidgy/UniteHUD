@@ -13,8 +13,10 @@ import (
 	"github.com/pidgy/unitehud/avi/audio"
 	"github.com/pidgy/unitehud/avi/img"
 	"github.com/pidgy/unitehud/avi/video"
+	"github.com/pidgy/unitehud/avi/video/device"
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/notify"
+	"github.com/pidgy/unitehud/system/lang"
 	"github.com/pidgy/unitehud/system/process"
 	"github.com/pidgy/unitehud/system/save"
 	"github.com/pidgy/unitehud/system/wapi"
@@ -166,30 +168,50 @@ func configuration() {
 	systray.AddSeparator()
 
 	m := systray.AddMenuItem("Configuration", "View current UniteHUD configuration")
-	m.AddSubMenuItem(fmt.Sprintf("Device > %s", strings.Title(config.Current.Gaming.Device)), "").Disable()
 
-	vtitle := m.AddSubMenuItem("Video > Unknown", "")
-	vtitle.Disable()
-	// vname := m.AddSubMenuItem(" Unknown", "")
-	// vname.Disable()
+	gaming := m.AddSubMenuItem("Gaming", "")
+	gdev := gaming.AddSubMenuItem("Device\tUnknown", "")
+	gdev.Disable()
 
-	atitle := m.AddSubMenuItem("Audio > Unknown", "")
-	atitle.Disable()
+	vid := m.AddSubMenuItem("Video", "")
+	vdev := vid.AddSubMenuItem("Device\tUnknown", "")
+	vdev.Disable()
+	api := vid.AddSubMenuItem("API\tUnknown", "")
+	api.Disable()
+	codec := vid.AddSubMenuItem("Codec\tUnknown", "")
+	codec.Disable()
+	fps := vid.AddSubMenuItem("FPS\t0", "")
+	fps.Disable()
+
+	aud := m.AddSubMenuItem("Audio", "")
+	audIn := aud.AddSubMenuItem("Input\tUnknown", "")
+	audIn.Disable()
+	audOut := aud.AddSubMenuItem("Output\tUnknown", "")
+	audOut.Disable()
 
 	go func() {
 		for ; ; time.Sleep(time.Second) {
+			gdev.SetTitle(fmt.Sprintf("Device\t%s", lang.Title(config.Current.Gaming.Device)))
+
 			switch {
 			case video.Active(video.Device, ""):
-				vtitle.SetTitle(fmt.Sprintf("Video > %s", config.Current.Video.Capture.Device.Name))
-			case video.Active(video.Monitor, ""), video.Active(video.Window, ""):
-				vtitle.SetTitle(fmt.Sprintf("Video > %s", config.Current.Video.Capture.Window.Name))
+				vdev.SetTitle(fmt.Sprintf("Device\t%s", config.Current.Video.Capture.Device.Name))
+			case video.Active(video.Monitor, ""):
+				vdev.SetTitle(fmt.Sprintf("Monitor\t%s", config.Current.Video.Capture.Window.Name))
+			case video.Active(video.Window, ""):
+				vdev.SetTitle(fmt.Sprintf("Window\t%s", config.Current.Video.Capture.Window.Name))
 			}
 
-			atitle.SetTitle(fmt.Sprintf("Audio > %s", audio.Current))
+			api.SetTitle(fmt.Sprintf("API\t%s", config.Current.Video.Capture.Device.API))
+			codec.SetTitle(fmt.Sprintf("Codec\t%s", config.Current.Video.Capture.Device.Codec))
+			fps.SetTitle(fmt.Sprintf("FPS\t%.1f/%d", device.FPS(), config.Current.Video.Capture.Device.FPS))
+
+			audIn.SetTitle(fmt.Sprintf("Input\t %s", audio.Current.Input))
+			audOut.SetTitle(fmt.Sprintf("Output\t%s", audio.Current.Output))
 		}
 	}()
 
-	conf := m.AddSubMenuItem("Open File (Read Only)", "View current configuration file")
+	conf := m.AddSubMenuItem("Open File\t(Read Only)", "View current configuration file")
 
 	go func() {
 		for range conf.ClickedCh {
@@ -304,16 +326,16 @@ func proc() {
 
 	systray.AddSeparator()
 
-	cpu := systray.AddMenuItem("CPU 0%", "CPU")
+	cpu := systray.AddMenuItem("CPU\t0%", "CPU")
 	cpu.Disable()
 
-	ram := systray.AddMenuItem("RAM 0MB", "RAM")
+	ram := systray.AddMenuItem("RAM\t0MB", "RAM")
 	ram.Disable()
 
 	go func() {
 		for ; ; time.Sleep(time.Second) {
-			ram.SetTitle(process.RAM.String())
-			cpu.SetTitle(process.CPU.String())
+			ram.SetTitle(strings.Replace(process.RAM.String(), " ", "\t", 1))
+			cpu.SetTitle(strings.Replace(process.CPU.String(), " ", "\t", 1))
 		}
 	}()
 }

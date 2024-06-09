@@ -13,7 +13,7 @@ import (
 	"github.com/skratchdot/open-golang/open"
 	"gocv.io/x/gocv"
 
-	"github.com/pidgy/unitehud/global"
+	"github.com/pidgy/unitehud/app"
 )
 
 const (
@@ -40,7 +40,7 @@ func Image(img image.Image, mat gocv.Mat, crop image.Rectangle, value int, team,
 		return nil
 	}
 
-	subdir := filepath.Join(global.WorkingDirectory(), saved, Directory, images, team)
+	subdir := filepath.Join(app.WorkingDirectory(), saved, Directory, images, team)
 	err := createDirIfNotExist(subdir)
 	if err != nil {
 		return fmt.Errorf("failed to create directory: %s: %v", subdir, err)
@@ -67,7 +67,7 @@ func Logs(feeds, lines []string, templates map[string]int) error {
 		return fmt.Errorf("save: failed to create directory: %s: %v", Directory, err)
 	}
 
-	dir := filepath.Join(global.WorkingDirectory(), saved, Directory, log)
+	dir := filepath.Join(app.WorkingDirectory(), saved, Directory, log)
 
 	f, err := os.OpenFile(dir, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
@@ -126,7 +126,7 @@ func createAllIfNotExist() (string, error) {
 		"/",
 		fmt.Sprintf("/%s", images),
 	} {
-		err := createDirIfNotExist(filepath.Join(global.WorkingDirectory(), saved, Directory, subdir))
+		err := createDirIfNotExist(filepath.Join(app.WorkingDirectory(), saved, Directory, subdir))
 		if err != nil {
 			return "", err
 		}
@@ -156,7 +156,7 @@ func createDirIfNotExist(subdir string) error {
 }
 
 func createTmpIfNotExist() (string, error) {
-	dir := filepath.Join(global.WorkingDirectory(), saved)
+	dir := filepath.Join(app.WorkingDirectory(), saved)
 
 	err := os.Mkdir(dir, 0755)
 	if err != nil {
@@ -200,7 +200,7 @@ func sortedJSON(r json.RawMessage) json.RawMessage {
 
 func templateStatistics(t map[string]int) error {
 	// Append and save statistics from today.
-	today := filepath.Join(global.WorkingDirectory(), saved, Directory, templates)
+	today := filepath.Join(app.WorkingDirectory(), saved, Directory, templates)
 
 	raw, err := os.ReadFile(today)
 	if err != nil {
@@ -234,7 +234,7 @@ func templateStatistics(t map[string]int) error {
 	}
 
 	// Append and save statistics from all time.
-	all := filepath.Join(global.WorkingDirectory(), saved, templates)
+	all := filepath.Join(app.WorkingDirectory(), saved, templates)
 
 	raw, err = os.ReadFile(all)
 	if err != nil {

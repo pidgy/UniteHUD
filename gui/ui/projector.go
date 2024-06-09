@@ -71,7 +71,7 @@ func (g *GUI) projector(onclose func()) {
 	defer onclose()
 
 	toast := g.ToastSplash("UniteHUD Projector", "Loading...", splash.Projector()).wait()
-	defer toast.close()
+	defer toast.close(g)
 
 	ui := g.projectorUI()
 
@@ -95,7 +95,7 @@ func (g *GUI) projector(onclose func()) {
 		},
 	}).Stop()
 
-	toast.close()
+	toast.close(g)
 
 	ui.window.Perform(system.ActionCenter)
 	ui.window.Perform(system.ActionRaise)

@@ -128,11 +128,7 @@ func (g *GUI) configure() {
 
 	for is.Now == is.Configuring {
 		if ui.groups.ticks++; ui.groups.ticks > ui.groups.threshold {
-			ui.groups.videos.window.populate(false)
-			ui.groups.videos.device.populate(false)
-			ui.groups.videos.monitor.populate(false)
-			ui.groups.videos.apis.populate(false)
-			ui.groups.videos.codecs.populate(false)
+			ui.groups.videos.populate()
 			ui.groups.ticks = 0
 		}
 
@@ -152,15 +148,15 @@ func (g *GUI) configure() {
 				ui.windows.preview.resize()
 			}
 
-			fps, p := device.FPS()
+			fps := device.FPS()
 
 			decorate.Background(gtx)
-			decorate.Label(&ui.footer.api, "API: %s", device.NewAPI(config.Current.Video.Capture.Device.API).String())
+			decorate.Label(&ui.footer.api, "API: %s", device.API(config.Current.Video.Capture.Device.API).String())
 			decorate.Label(&ui.footer.cpu, process.CPU.String())
 			decorate.Label(&ui.footer.ram, process.RAM.String())
 			decorate.Label(&ui.footer.hz, "%s Hz", g.hz)
 			decorate.Label(&ui.footer.fps, "%.0f FPS", fps)
-			decorate.LabelColor(&ui.footer.fps, nrgba.Percent(p).Color())
+			decorate.LabelColor(&ui.footer.fps, nrgba.Percent(fps/float64(config.Current.Video.Capture.Device.FPS)).Color())
 
 			g.nav.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				if ui.hideOptions {
@@ -408,7 +404,7 @@ func (g *GUI) configure() {
 				}
 			case window.Lost():
 				config.Current.Video.Capture.Window.Lost = ""
-				ui.groups.videos.monitor.populate(true)
+				ui.groups.videos.populate()
 				fallthrough
 			default:
 				ui.img = splash.Default()
@@ -710,12 +706,8 @@ func (g *GUI) configureUI() *configure {
 					ui.groups.areas.score.Min, ui.groups.areas.score.Max = config.Current.XY.Scores.Min, config.Current.XY.Scores.Max
 					ui.groups.areas.objective.Min, ui.groups.areas.objective.Max = config.Current.XY.Objectives.Min, config.Current.XY.Objectives.Max
 					// ui.groups.areas.ko.Min, ui.groups.areas.ko.Max = config.Current.XY.KOs.Min, config.Current.XY.KOs.Max
-					// ui.groups.videos.window.populate(true)
-					ui.groups.videos.device.populate(true)
-					ui.groups.videos.monitor.populate(true)
-					ui.groups.videos.window.populate(true)
-					ui.groups.videos.apis.populate(true)
-					ui.groups.videos.codecs.populate(true)
+					// ui.groups.videos.window.populate()
+					ui.groups.videos.populate()
 
 					g.next(is.MainMenu)
 
@@ -774,11 +766,7 @@ func (g *GUI) configureUI() *configure {
 	ui.footer.hz.Color = nrgba.Highlight.Color()
 	ui.footer.hz.Alignment = text.Start
 
-	ui.groups.videos.window.populate(false)
-	ui.groups.videos.device.populate(false)
-	ui.groups.videos.monitor.populate(false)
-	ui.groups.videos.apis.populate(false)
-	ui.groups.videos.codecs.populate(false)
+	ui.groups.videos.populate()
 
 	ui.buttons.menu.settings.Click(ui.buttons.menu.settings)
 

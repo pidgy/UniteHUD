@@ -12,8 +12,8 @@ import (
 	"github.com/asticode/go-astilectron"
 	"github.com/pkg/errors"
 
+	app1 "github.com/pidgy/unitehud/app"
 	"github.com/pidgy/unitehud/core/notify"
-	"github.com/pidgy/unitehud/global"
 	"github.com/pidgy/unitehud/system/wapi"
 )
 
@@ -39,7 +39,7 @@ var (
 	window         *astilectron.Window
 	active, hidden bool
 
-	html = filepath.Join(global.WorkingDirectory(), "www", "UniteHUD Client.html")
+	html = filepath.Join(app1.WorkingDirectory(), "www", "UniteHUD Client.html")
 
 	offscreen = astilectron.RectangleOptions{
 		PositionOptions: astilectron.PositionOptions{
@@ -206,10 +206,10 @@ func openApp() error {
 		notify.Debugger("[Overlay Engine] "),
 		astilectron.Options{
 			AppName:            title,
-			CustomElectronPath: filepath.Join(global.WorkingDirectory(), global.AssetDirectory, "electron", "vendor", "electron-windows-amd64", "UniteHUD Overlay.exe"),
+			CustomElectronPath: filepath.Join(app1.WorkingDirectory(), app1.AssetDirectory, "electron", "vendor", "electron-windows-amd64", "UniteHUD Overlay.exe"),
 			BaseDirectoryPath:  ".",
-			DataDirectoryPath:  filepath.Join(global.WorkingDirectory(), global.AssetDirectory, "electron"),
-			AppIconDefaultPath: filepath.Join(global.WorkingDirectory(), global.AssetDirectory, "icon", "icon.png"),
+			DataDirectoryPath:  filepath.Join(app1.WorkingDirectory(), app1.AssetDirectory, "electron"),
+			AppIconDefaultPath: filepath.Join(app1.WorkingDirectory(), app1.AssetDirectory, "icon", "icon.png"),
 			VersionElectron:    astilectron.DefaultVersionElectron,
 			VersionAstilectron: astilectron.DefaultVersionAstilectron,
 			AcceptTCPTimeout:   time.Hour * 24,
@@ -276,11 +276,11 @@ func openWindow() error {
 			Frame:     astikit.BoolPtr(false),
 			// HasShadow:              astikit.BoolPtr(false),
 
-			Icon: astikit.StrPtr(fmt.Sprintf("%s/icon/icon-browser.png", global.AssetDirectory)),
+			Icon: astikit.StrPtr(fmt.Sprintf("%s/icon/icon-browser.png", app1.AssetDirectory)),
 
 			WebPreferences: &astilectron.WebPreferences{
 				WebSecurity:             astikit.BoolPtr(false),
-				DevTools:                astikit.BoolPtr(global.DebugMode),
+				DevTools:                astikit.BoolPtr(app1.DebugMode),
 				Images:                  astikit.BoolPtr(true),
 				Javascript:              astikit.BoolPtr(true),
 				NodeIntegrationInWorker: astikit.BoolPtr(true),
