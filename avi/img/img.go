@@ -84,21 +84,22 @@ func IconBytes(name string) []byte {
 	f, err := os.Open(config.Current.AssetIcon(name))
 	if err != nil {
 		notify.Error("[Image] Failed to open image %s (%v)", name, err)
-		return []byte{}
+		return nil
 	}
 	defer f.Close()
 
 	ico, err := winres.LoadICO(f)
 	if err != nil {
 		notify.Error("[Image] Failed to decode %s (%v)", name, err)
-		return []byte{}
+		return nil
 	}
 
 	b := &bytes.Buffer{}
 
 	err = ico.SaveICO(b)
 	if err != nil {
-		notify.Warn("[Image] Failed to encode %s (%v)", name, err)
+		notify.Error("[Image] Failed to encode %s (%v)", name, err)
+		return nil
 	}
 
 	c := &cached{

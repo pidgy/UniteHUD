@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"gioui.org/app"
+	"gioui.org/font"
 	"gioui.org/io/system"
 	"gioui.org/layout"
 	"gioui.org/op"
@@ -82,11 +83,10 @@ func (g *GUI) toast(header, msg string, width, height float32) *toast {
 
 		window: app.NewWindow(
 			app.Title(header),
-			app.Size(unit.Dp(width), unit.Dp(height)),
-			app.MaxSize(unit.Dp(width), unit.Dp(height)),
-			app.MinSize(unit.Dp(width), unit.Dp(height)),
 			app.Decorated(false),
-		),
+			app.Size(unit.Dp(width), unit.Dp(height)),
+			app.MinSize(unit.Dp(width), unit.Dp(height)),
+			app.MaxSize(unit.Dp(width), unit.Dp(height))),
 	}
 	t.bar = title.New(header, fonts.NewCollection(), nil, nil, func() {
 		t.window.Perform(system.ActionClose)
@@ -129,10 +129,12 @@ type Bulletin struct {
 }
 
 func (g *GUI) ToastNewsletter(header string, bulletin Bulletin, ok OnToastOK) {
-	t := g.toast(header, "", float32(720), float32(500))
+	t := g.toast(header, bulletin.Title, float32(500), float32(400))
 	if t == nil {
 		return
 	}
+
+	t.label.TextSize = toastTextSize * 1.5
 
 	go func() {
 		notify.Debug("[UI] Toast: Opening Newsletter (active: %t)", g.previous.toast.active)
@@ -159,6 +161,57 @@ func (g *GUI) ToastNewsletter(header string, bulletin Bulletin, ok OnToastOK) {
 			},
 		}
 
+		topic := func(i int) (topics []layout.FlexChild) {
+			topics = append(topics, layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+				subtitle := material.Label(t.bar.Collection.Calibri().Theme, toastTextSize, bulletin.Topics[i].Subtitle)
+				decorate.Label(&subtitle, subtitle.Text)
+				subtitle.TextSize = toastTextSize * 1.25
+				subtitle.Font.Weight = font.ExtraBold
+				return layout.Center.Layout(gtx, subtitle.Layout)
+			}))
+
+			topics = append(topics, layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+				point := func(j int) layout.FlexChild {
+					return layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+						p := material.Label(t.bar.Collection.Calibri().Theme, toastTextSize, fmt.Sprintf("• %s", bulletin.Topics[i].Points[j]))
+						decorate.Label(&p, p.Text)
+						p.Font.Style = font.Italic
+						p.Alignment = text.Middle
+						return layout.E.Layout(gtx, p.Layout)
+					})
+				}
+
+				points := []layout.FlexChild{}
+				for j := range bulletin.Topics[i].Points {
+					points = append(points, point(j))
+				}
+
+				return layout.Flex{
+					Axis:      layout.Vertical,
+					Alignment: layout.Start,
+				}.Layout(gtx, points...)
+			}))
+
+			return append(topics, layout.Rigid(layout.Spacer{Height: 25}.Layout))
+		}
+
+		c := []layout.FlexChild{}
+		for i := range bulletin.Topics {
+			c = append(c, topic(i)...)
+		}
+
+		list := material.List(
+			t.bar.Collection.Calibri().Theme,
+			&widget.List{
+				Scrollbar: widget.Scrollbar{},
+				List: layout.List{
+					Axis:        layout.Vertical,
+					ScrollToEnd: false,
+					Alignment:   layout.Baseline,
+				},
+			},
+		)
+
 		for e := t.window.NextEvent(); ; e = t.window.NextEvent() {
 			if _, ok := e.(system.DestroyEvent); ok {
 				t.window.Perform(system.ActionClose)
@@ -179,14 +232,33 @@ func (g *GUI) ToastNewsletter(header string, bulletin Bulletin, ok OnToastOK) {
 						Axis:      layout.Vertical,
 						Alignment: layout.Middle,
 					}.Layout(gtx,
-						layout.Rigid(layout.Spacer{Height: 10}.Layout),
-
-						layout.Flexed(.5, func(gtx layout.Context) layout.Dimensions {
+						layout.Flexed(.2, func(gtx layout.Context) layout.Dimensions {
 							decorate.Label(&t.label, t.label.Text)
-							return layout.Center.Layout(gtx, t.label.Layout)
+
+							return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+								return decorate.Underline(gtx, t.label.Layout)
+							})
 						}),
 
 						layout.Flexed(.5, func(gtx layout.Context) layout.Dimensions {
+							decorate.Scrollbar(&list.ScrollbarStyle)
+							decorate.List(&list)
+
+							return decorate.UnderlineBorder(gtx, func(gtx layout.Context) layout.Dimensions {
+								return list.Layout(gtx, 1, func(gtx layout.Context, index int) layout.Dimensions {
+									return layout.Flex{
+										Axis:      layout.Vertical,
+										Alignment: layout.Middle,
+									}.Layout(gtx, c...)
+								})
+							})
+						}),
+
+						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+							return decorate.Underline(gtx, layout.Spacer{Height: 10}.Layout)
+						}),
+
+						layout.Flexed(.2, func(gtx layout.Context) layout.Dimensions {
 							return layout.Flex{
 								Axis: layout.Horizontal,
 							}.Layout(gtx,
@@ -199,8 +271,6 @@ func (g *GUI) ToastNewsletter(header string, bulletin Bulletin, ok OnToastOK) {
 								layout.Rigid(layout.Spacer{Width: 5}.Layout),
 							)
 						}),
-
-						layout.Rigid(layout.Spacer{Height: 2}.Layout),
 					)
 				})
 			})
@@ -463,5 +533,8 @@ func (g *GUI) ToastYesNo(header, msg string, y OnToastYes, n OnToastNo) {
 }
 
 func titleFirstWord(s string) string {
+	if len(s) < 1 {
+		return ""
+	}
 	return strings.ToUpper(s[:1]) + s[1:]
 }

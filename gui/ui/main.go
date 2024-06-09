@@ -183,14 +183,40 @@ func (g *GUI) main() {
 	}
 
 	if config.Current.IsNew() {
-		notify.Announce("[System] Thanks for installing %s! Configure your video capture by selecting the ⚙ Settings option in the title bar!", global.TitleVersion)
-		// g.ToastNewsletter(
-		// 	global.TitleVersion,
-		// 	Bulletin{
-		// 		Title: "Welcome to UniteHUD!",
-		// 	},
-		// 	OnToastOK(func() {}),
-		// )
+		g.ToastNewsletter(
+			global.TitleVersion,
+			Bulletin{
+				Title: fmt.Sprintf("Welcome to %s!", global.TitleVersion),
+				Topics: []struct {
+					Subtitle string
+					Points   []string
+				}{
+					{
+						Subtitle: "How to Get Started",
+						Points: []string{
+							"Configure video capture settings by selecting ⚙ from the title bar",
+							"Add the overlay HUD to OBS by selecting obs from the title bar",
+						},
+					},
+					{
+						Subtitle: "Community",
+						Points: []string{
+							"Have questions? Join the UniteHUD Discord!",
+							"Follow @UniteHUD on X to stay up to date with major highlights!",
+							"Track the open source project on github.com",
+						},
+					},
+					{
+						Subtitle: "Customize!",
+						Points: []string{
+							"Adjust the color scheme of UniteHUD from the Advanced Settings menu",
+							"Modify the overlay HUD and customize event animations for your stream",
+						},
+					},
+				},
+			},
+			OnToastOK(func() {}),
+		)
 	}
 
 	tray.SetStartStopTitle("Start")

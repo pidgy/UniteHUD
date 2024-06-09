@@ -48,6 +48,7 @@ type videos struct {
 	monitor  capture
 	platform capture
 	apis     capture
+	codecs   capture
 
 	onevent func(bool)
 }
@@ -305,19 +306,20 @@ func (g *GUI) videos(text float32) *videos {
 				v.window.populate(true)
 				v.device.populate(true)
 				v.apis.populate(true)
+				v.codecs.populate(true)
 
 				return true
 			},
 		},
 		populate: func(videoCaptureDisabledEvent bool) {
-			if videoCaptureDisabledEvent {
-				for _, item := range v.monitor.list.Items {
-					item.Checked.Value = false
-					if item.Text == config.Current.Video.Capture.Window.Name {
-						item.Checked.Value = true
-					}
-				}
-			}
+			// if videoCaptureDisabledEvent {
+			// 	for _, item := range v.monitor.list.Items {
+			// 		item.Checked.Value = false
+			// 		if item.Text == config.Current.Video.Capture.Window.Name {
+			// 			item.Checked.Value = true
+			// 		}
+			// 	}
+			// }
 
 			screens := video.Screens()
 			if len(screens) == v.monitor.len && !videoCaptureDisabledEvent {
@@ -356,6 +358,7 @@ func (g *GUI) videos(text float32) *videos {
 				defer v.monitor.populate(true)
 				defer v.device.populate(true)
 				defer v.apis.populate(true)
+				defer v.codecs.populate(true)
 
 				config.Current.Video.Capture.Window.Name = i.Text
 				if config.Current.Video.Capture.Window.Name == "" {
@@ -432,9 +435,10 @@ func (g *GUI) videos(text float32) *videos {
 				}
 
 				go func() {
-					config.Current.Video.Capture.Device.API = config.DefaultVideoCaptureAPI
 					config.Current.Video.Capture.Device.Index = i.Value
 					config.Current.Video.Capture.Device.Name = i.Text
+					config.Current.Video.Capture.Device.API = config.DefaultVideoCaptureAPI
+					config.Current.Video.Capture.Device.Codec = config.DefaultVideoCaptureCodec
 
 					err := video.Open()
 					if err != nil {
@@ -445,6 +449,7 @@ func (g *GUI) videos(text float32) *videos {
 					v.window.populate(true)
 					v.monitor.populate(true)
 					v.apis.populate(true)
+					v.codecs.populate(true)
 				}()
 
 				return true
@@ -502,6 +507,7 @@ func (g *GUI) videos(text float32) *videos {
 				if i.Text == config.Current.Video.Capture.Device.API {
 					return true
 				}
+
 				if config.Current.Video.Capture.Device.Index == config.NoVideoCaptureDevice {
 					return false
 				}
@@ -510,6 +516,7 @@ func (g *GUI) videos(text float32) *videos {
 				defer v.window.populate(true)
 				defer v.monitor.populate(true)
 				defer v.apis.populate(true)
+				defer v.codecs.populate(true)
 
 				for _, item := range this.Items {
 					item.Checked.Value = false
@@ -536,7 +543,7 @@ func (g *GUI) videos(text float32) *videos {
 							if err != nil {
 								g.ToastOK(
 									config.Current.Video.Capture.Device.Name,
-									err.Error(),
+									strings.Title(err.Error()),
 									OnToastOK(func() {
 										defer v.apis.populate(true)
 
@@ -571,20 +578,114 @@ func (g *GUI) videos(text float32) *videos {
 			},
 		},
 		populate: func(videoCaptureDisabledEvent bool) {
-			apis := device.APIs()
-			if len(apis) == 0 {
-				return
-			}
-
 			v.apis.list.Items = []*checklist.Item{}
 
 			for _, api := range device.APIs() {
 				v.apis.list.Items = append(v.apis.list.Items,
 					&checklist.Item{
 						Text:  api,
-						Value: device.API(api),
+						Value: device.NewAPI(api).Int(),
 						Checked: widget.Bool{
 							Value: api == config.Current.Video.Capture.Device.API,
+						},
+					},
+				)
+			}
+		},
+	}
+
+	v.codecs = capture{
+		list: &checklist.Widget{
+			Theme:    g.nav.Collection.NotoSans().Theme,
+			TextSize: text,
+			Items:    []*checklist.Item{},
+			Callback: func(i *checklist.Item, this *checklist.Widget) (check bool) {
+				if config.Current.Video.Capture.Device.Index == config.NoVideoCaptureDevice {
+					return false
+				}
+
+				if i.Text == config.Current.Video.Capture.Device.Codec {
+					return true
+				}
+
+				defer v.device.populate(true)
+				defer v.window.populate(true)
+				defer v.monitor.populate(true)
+				defer v.apis.populate(true)
+				defer v.codecs.populate(true)
+
+				for _, item := range this.Items {
+					item.Checked.Value = false
+				}
+				i.Checked.Value = true
+
+				// Set the Codec, restart the capture device, and verify application.
+				prev := config.Current.Video.Capture.Device
+				config.Current.Video.Capture.Device.Codec = i.Text
+
+				v.onevent(true) // Hide preview.
+
+				err := device.Restart()
+				if err != nil {
+					g.ToastOK(
+						config.Current.Video.Capture.Device.Name,
+						err.Error(),
+						OnToastOK(func() {
+							defer v.codecs.populate(true)
+
+							config.Current.Video.Capture.Device = prev
+
+							err = device.Restart()
+							if err != nil {
+								g.ToastOK(
+									config.Current.Video.Capture.Device.Name,
+									err.Error(),
+									OnToastOK(func() {
+										defer v.device.populate(true)
+										defer v.window.populate(true)
+										defer v.monitor.populate(true)
+										defer v.apis.populate(true)
+										defer v.codecs.populate(true)
+
+										v.onevent(false) // Show preview.
+									}),
+								)
+								return
+							}
+
+							v.onevent(false) // Show preview.
+						}))
+
+					return false
+				}
+
+				if config.Current.Video.Capture.Device.Codec != i.Text {
+					g.ToastOK(
+						config.Current.Video.Capture.Device.Name,
+						fmt.Sprintf("Using default codec for this device (%s)", config.Current.Video.Capture.Device.Codec),
+						OnToastOK(func() {
+							defer v.codecs.populate(true)
+							v.onevent(false) // Show preview.
+						}),
+					)
+
+					return false
+				}
+
+				v.onevent(false) // Show preview.
+
+				return true
+			},
+		},
+		populate: func(videoCaptureDisabledEvent bool) {
+			v.codecs.list.Items = []*checklist.Item{}
+
+			for _, c := range device.Codecs() {
+				v.codecs.list.Items = append(v.codecs.list.Items,
+					&checklist.Item{
+						Text: c.String(),
+						Checked: widget.Bool{
+							Value: c.String() == config.Current.Video.Capture.Device.Codec,
 						},
 					},
 				)

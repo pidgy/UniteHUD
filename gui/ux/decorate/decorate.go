@@ -114,3 +114,17 @@ func Underline(gtx layout.Context, w layout.Widget) layout.Dimensions {
 
 	return dims
 }
+
+func UnderlineBorder(gtx layout.Context, w layout.Widget) layout.Dimensions {
+	dims := w(gtx)
+
+	paint.FillShape(gtx.Ops,
+		nrgba.NRGBA(config.Current.Theme.BordersIdle).Alpha(127).Color(),
+		clip.Stroke{
+			Path:  clip.UniformRRect(image.Rect(0, dims.Size.Y, dims.Size.X, dims.Size.Y), 0).Path(gtx.Ops),
+			Width: .5,
+		}.Op(),
+	)
+
+	return dims
+}

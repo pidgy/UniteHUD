@@ -92,6 +92,7 @@ type configure struct {
 			monitor material.LabelStyle
 			window  material.LabelStyle
 			api     material.LabelStyle
+			codec   material.LabelStyle
 		}
 	}
 
@@ -130,6 +131,8 @@ func (g *GUI) configure() {
 			ui.groups.videos.window.populate(false)
 			ui.groups.videos.device.populate(false)
 			ui.groups.videos.monitor.populate(false)
+			ui.groups.videos.apis.populate(false)
+			ui.groups.videos.codecs.populate(false)
 			ui.groups.ticks = 0
 		}
 
@@ -152,7 +155,7 @@ func (g *GUI) configure() {
 			fps, p := device.FPS()
 
 			decorate.Background(gtx)
-			decorate.Label(&ui.footer.api, "API: %s", device.APIHumanName(device.API(config.Current.Video.Capture.Device.API)))
+			decorate.Label(&ui.footer.api, "API: %s", device.NewAPI(config.Current.Video.Capture.Device.API).String())
 			decorate.Label(&ui.footer.cpu, process.CPU.String())
 			decorate.Label(&ui.footer.ram, process.RAM.String())
 			decorate.Label(&ui.footer.hz, "%s Hz", g.hz)
@@ -204,7 +207,7 @@ func (g *GUI) configure() {
 							}.Layout(gtx,
 								ui.spacer(2, 0),
 
-								layout.Flexed(13, func(gtx layout.Context) layout.Dimensions {
+								layout.Flexed(12, func(gtx layout.Context) layout.Dimensions {
 									return layout.Flex{
 										Axis: layout.Vertical,
 									}.Layout(gtx,
@@ -228,7 +231,7 @@ func (g *GUI) configure() {
 
 								ui.spacer(2, 0),
 
-								layout.Flexed(13, func(gtx layout.Context) layout.Dimensions {
+								layout.Flexed(12, func(gtx layout.Context) layout.Dimensions {
 									return layout.Flex{
 										Axis: layout.Vertical,
 									}.Layout(gtx,
@@ -326,6 +329,26 @@ func (g *GUI) configure() {
 
 										layout.Flexed(.9, func(gtx layout.Context) layout.Dimensions {
 											return ui.groups.videos.apis.list.Layout(gtx)
+										}),
+									)
+								}),
+
+								ui.spacer(2, 0),
+
+								layout.Flexed(7.5, func(gtx layout.Context) layout.Dimensions {
+									return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
+										layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+											return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+												return layout.Inset{Top: unit.Dp(5)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+													return ui.labels.video.codec.Layout(gtx)
+												})
+											})
+										}),
+
+										ui.spacer(0, 1),
+
+										layout.Flexed(.9, func(gtx layout.Context) layout.Dimensions {
+											return ui.groups.videos.codecs.list.Layout(gtx)
 										}),
 									)
 								}),
@@ -690,6 +713,9 @@ func (g *GUI) configureUI() *configure {
 					// ui.groups.videos.window.populate(true)
 					ui.groups.videos.device.populate(true)
 					ui.groups.videos.monitor.populate(true)
+					ui.groups.videos.window.populate(true)
+					ui.groups.videos.apis.populate(true)
+					ui.groups.videos.codecs.populate(true)
 
 					g.next(is.MainMenu)
 
@@ -724,6 +750,10 @@ func (g *GUI) configureUI() *configure {
 	ui.labels.video.api.Color = nrgba.Highlight.Color()
 	ui.labels.video.api.Font.Weight = 100
 
+	ui.labels.video.codec = material.Label(g.nav.Collection.Calibri().Theme, unit.Sp(12), "Codec")
+	ui.labels.video.codec.Color = nrgba.Highlight.Color()
+	ui.labels.video.codec.Font.Weight = 100
+
 	ui.footer = &footer{
 		api: material.Label(g.nav.Collection.Calibri().Theme, unit.Sp(12), ""),
 		log: material.Label(g.nav.Collection.Calibri().Theme, unit.Sp(12), ""),
@@ -748,6 +778,7 @@ func (g *GUI) configureUI() *configure {
 	ui.groups.videos.device.populate(false)
 	ui.groups.videos.monitor.populate(false)
 	ui.groups.videos.apis.populate(false)
+	ui.groups.videos.codecs.populate(false)
 
 	ui.buttons.menu.settings.Click(ui.buttons.menu.settings)
 

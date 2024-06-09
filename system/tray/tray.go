@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"runtime"
 	"strings"
 	"time"
 
@@ -60,54 +59,50 @@ func Close() {
 func Open(title, version string, onExit func()) error {
 	notify.Debug("[Tray] Opening...")
 
-	go func() {
-		runtime.LockOSThread()
+	go systray.Run(
+		func() { // OnReady.
+			for hwnd == 0 {
+				time.Sleep(time.Second)
+			}
 
-		for hwnd == 0 {
-			time.Sleep(time.Second)
-		}
+			menu.header = header(title, version)
+			proc()
+			configuration()
+			menu.logs = logs()
+			menu.hide = hide()
+			menu.startstop = startstop()
+			menu.website = website()
+			menu.exit = exit()
 
-		systray.Run(
-			func() { // OnReady.
-				menu.header = header(title, version)
-				proc()
-				configuration()
-				menu.logs = logs()
-				menu.hide = hide()
-				menu.startstop = startstop()
-				menu.website = website()
-				menu.exit = exit()
+			menu.visible = true
 
-				menu.visible = true
+			notify.Debug("[Tray] Opened")
 
-				notify.Debug("[Tray] Opened")
-
-				for {
-					select {
-					case fn := <-menu.eventq:
-						fn()
-					case <-menu.header.ClickedCh:
-						menu.header.event()
-					case <-menu.website.ClickedCh:
-						menu.website.event()
-					case <-menu.startstop.ClickedCh:
-						menu.startstop.event()
-					case <-menu.hide.ClickedCh:
-						menu.hide.event()
-					case <-menu.exit.ClickedCh:
-						menu.exit.event()
-					}
+			for {
+				select {
+				case fn := <-menu.eventq:
+					fn()
+				case <-menu.header.ClickedCh:
+					menu.header.event()
+				case <-menu.website.ClickedCh:
+					menu.website.event()
+				case <-menu.startstop.ClickedCh:
+					menu.startstop.event()
+				case <-menu.hide.ClickedCh:
+					menu.hide.event()
+				case <-menu.exit.ClickedCh:
+					menu.exit.event()
 				}
-			},
-			func() { // OnExit.
-				notify.Warn("[Tray] Exiting...")
-			},
+			}
+		},
+		func() { // OnExit.
+			notify.Warn("[Tray] Exiting...")
+		},
 
-			func(s systray.SessionEvent) { // OnSessionEvent.
-				notify.System("[Tray] SessionEvent: %s", s)
-			},
-		)
-	}()
+		func(s systray.SessionEvent) { // OnSessionEvent.
+			notify.System("[Tray] SessionEvent: %s", s)
+		},
+	)
 
 	return nil
 }
@@ -232,12 +227,18 @@ func exit() toggle {
 func header(title, version string) toggle {
 	notify.Debug("[Tray] Adding Title")
 
-	systray.SetIcon(img.IconBytes("icon.ico"))
+	icon := img.IconBytes("icon.ico")
+	if icon != nil {
+		systray.SetIcon(icon)
+	}
 	systray.SetTitle(title)
 	systray.SetTooltip(version)
 
 	m := systray.AddMenuItem(version, "Open UniteHUD")
-	m.SetIcon(img.IconBytes("icon-bg.ico"))
+	iconbg := img.IconBytes("icon-bg.ico")
+	if iconbg != nil {
+		m.SetIcon(iconbg)
+	}
 
 	return toggle{
 		MenuItem: m,

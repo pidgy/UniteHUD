@@ -27,10 +27,11 @@ import (
 )
 
 const (
-	MainDisplay            = "Main Display"
-	ProjectorWindow        = "UniteHUD Projector"
-	NoVideoCaptureDevice   = -1
-	DefaultVideoCaptureAPI = "Any"
+	MainDisplay              = "Main Display"
+	ProjectorWindow          = "UniteHUD Projector"
+	NoVideoCaptureDevice     = -1
+	DefaultVideoCaptureAPI   = "Any"
+	DefaultVideoCaptureCodec = "Any"
 
 	DeviceBluestacks = "bluestacks"
 	DeviceMobile     = "mobile"
@@ -111,6 +112,7 @@ type Config struct {
 				API   string
 				FPS   int
 				Name  string
+				Codec string
 			}
 			Window struct {
 				Name string
@@ -650,6 +652,7 @@ func Open(device string) error {
 	Current.Video.Capture.Window.Name = MainDisplay
 	Current.Video.Capture.Device.Index = NoVideoCaptureDevice
 	Current.Video.Capture.Device.API = DefaultVideoCaptureAPI
+	Current.Video.Capture.Device.Codec = DefaultVideoCaptureCodec
 	Current.Gaming.Device = DeviceSwitch
 	Current.SetDefaultTheme()
 	Current.setDefaultAreas()

@@ -164,11 +164,13 @@ func (list *Widget) draw(gtx layout.Context, item *Item) layout.Dimensions {
 	}
 
 	if item.Checked.Value {
-		item.check.Color = nrgba.DarkSeafoam.Color()
+		if item.Text == "Disabled" {
+			item.check.Color = nrgba.PastelRed.Color()
+		} else {
+			item.check.Color = nrgba.DarkSeafoam.Color()
+		}
 	}
-	if item.Disabled || item.Text == "Disabled" {
-		item.check.Color = nrgba.PastelRed.Color()
-	}
+
 	switch {
 	case item.Checked.Hovered(): //, item.Checked.Focused():
 		list.hovered(gtx, item)

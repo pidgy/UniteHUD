@@ -19,33 +19,41 @@ import (
 	"github.com/pidgy/unitehud/core/notify"
 )
 
-type cache struct {
-	devices []string // [index] -> "name".
-	apis    []string // [index] -> Human-readable gocv.VideoCaptureAPI(i) name.
-}
+type (
+	API   int
+	Codec string
 
-type dev struct {
-	index           int
-	name            string
-	closeq, closedq chan bool
-	fps             float64
-	applied         properties
-}
+	dev struct {
+		index           int
+		name            string
+		closeq, closedq chan bool
+		fps             float64
+		applied         properties
+	}
 
-type properties struct {
-	resolution image.Point
+	properties struct {
+		resolution image.Point
 
-	fps,
-	bitrate float64
+		fps,
+		bitrate float64
 
-	codec,
-	backend string
+		codec   Codec
+		backend API
 
-	buffersize int
-	rgb        bool
-}
+		buffersize int
+		rgb        bool
+	}
+)
 
-const Disabled = "Disabled"
+const (
+	Disabled = "Disabled"
+
+	CodecAny  = Codec("Any")
+	CodecXRGB = Codec("XRGB")
+	CodecNV12 = Codec("NV12")
+	CodecYUY2 = Codec("YUY2")
+	CodecMJPG = Codec("MJPG")
+)
 
 var (
 	active = &dev{}
@@ -58,39 +66,58 @@ var (
 	size = mat.Size()
 	lock = &sync.RWMutex{}
 
-	cached = cache{
-		devices: make([]string, 100),
-		apis:    make([]string, int(gocv.VideoCaptureXINE)+1), // Max API value: gocv.VideoCaptureXINE.
-	}
+	cached = struct{ devices, apis []string }{make([]string, 100), make([]string, int(gocv.VideoCaptureXINE)+1)} // Max API value: gocv.VideoCaptureXINE.
 )
 
 func init() {
 	active.reset()
-	go storeAPIs()
-	go storeSources()
+
+	go func() {
+		for i := gocv.VideoCaptureAny; i < gocv.VideoCaptureXINE; i++ {
+			api := i.String()
+			if api != "" {
+				cached.apis[i] = api
+			}
+		}
+
+		for ; ; time.Sleep(time.Second * 5) {
+			d := []string{}
+			for i := 0; ; i++ {
+				n, err := device.VideoCaptureDeviceName(i)
+				if err != nil {
+					break
+				}
+				d = append(d, n)
+			}
+			cached.devices = d
+		}
+	}()
 }
 
 func ActiveName() string {
 	return active.name
 }
 
-func API(name string) int {
-	for i, api := range cached.apis {
-		if api == name {
-			return i
-		}
-	}
-	return 0
+func (a API) Float64() float64 {
+	return float64(a)
 }
 
-func APIHumanName(api int) string {
-	return apiHuman(gocv.VideoCaptureAPI(api))
+func (a API) GoCV() gocv.VideoCaptureAPI {
+	return gocv.VideoCaptureAPI(a)
+}
+
+func (a API) Int() int {
+	return int(a)
+}
+
+func (a API) String() string {
+	return strings.Title(strings.ReplaceAll(gocv.VideoCaptureAPI(a).String(), "video-capture-", ""))
 }
 
 func APIs() (apis []string) {
 	for _, api := range cached.apis {
 		if api != "" {
-			apis = append(apis, api)
+			apis = append(apis, NewAPI(api).String())
 		}
 	}
 	return
@@ -135,6 +162,23 @@ func Close() {
 	active.reset()
 }
 
+func Codecs() []Codec {
+	return append([]Codec{}, CodecAny, CodecXRGB, CodecNV12, CodecYUY2, CodecMJPG)
+}
+
+func (c Codec) FourCC(vc *gocv.VideoCapture) float64 {
+	for _, codec := range Codecs() {
+		if c == codec && c != CodecAny {
+			return vc.ToCodec(c.String())
+		}
+	}
+	return -1
+}
+
+func (c Codec) String() string {
+	return string(c)
+}
+
 func FPS() (current, quota float64) {
 	return active.fps, active.fps / active.applied.fps
 }
@@ -161,6 +205,15 @@ func Name(index int) string {
 	}
 
 	return cached.devices[index]
+}
+
+func NewAPI(name string) API {
+	for i, api := range cached.apis {
+		if api == name {
+			return API(i)
+		}
+	}
+	return 0
 }
 
 func Open() error {
@@ -216,31 +269,27 @@ func Sources() (indexes []int) {
 	return indexes
 }
 
-func apiHuman(api gocv.VideoCaptureAPI) string {
-	return strings.Title(strings.ReplaceAll(api.String(), "video-capture-", ""))
-}
-
 func capture() error {
 	if config.Current.Video.Capture.Device.API == "" {
 		config.Current.Video.Capture.Device.API = config.DefaultVideoCaptureAPI
 	}
 
-	api := gocv.VideoCaptureAPI(API(config.Current.Video.Capture.Device.API))
+	api := NewAPI(config.Current.Video.Capture.Device.API)
 
 	notify.Debug("[Video] Capturing %s with %s API", active.name, config.Current.Video.Capture.Device.API)
 
-	device, err := gocv.OpenVideoCaptureWithAPI(active.index, api)
+	device, err := gocv.OpenVideoCaptureWithAPI(active.index, api.GoCV())
 	if err != nil {
-		return errors.Errorf("this device does not support %s", apiHuman(api))
+		return errors.Errorf("this device does not support %s", api.String())
 	}
 
 	err = set(device)
 	if err != nil {
-		device.Close()
-		return errors.Wrap(err, active.name)
+		active.reset()
+		return err
 	}
 
-	config.Current.Video.Capture.Device.API = active.applied.backend
+	config.Current.Video.Capture.Device.API = active.applied.backend.String()
 
 	go func() {
 		defer close(active.closedq)
@@ -301,19 +350,18 @@ func index(name string) int {
 	return config.NoVideoCaptureDevice
 }
 
-func poll(device *gocv.VideoCapture) properties {
-	device.Get(gocv.VideoCaptureGUID)
+func poll(v *gocv.VideoCapture) properties {
 	defaults := properties{
 		resolution: image.Pt(
-			int(device.Get(gocv.VideoCaptureFrameWidth)),
-			int(device.Get(gocv.VideoCaptureFrameHeight)),
+			int(v.Get(gocv.VideoCaptureFrameWidth)),
+			int(v.Get(gocv.VideoCaptureFrameHeight)),
 		),
-		fps:        device.Get(gocv.VideoCaptureFPS),
-		codec:      device.CodecString(),
-		backend:    apiHuman(gocv.VideoCaptureAPI(device.Get(gocv.VideoCaptureBackend))),
-		bitrate:    device.Get(gocv.VideoCaptureBitrate),
-		buffersize: int(device.Get(gocv.VideoCaptureBufferSize)),
-		rgb:        bool(int(device.Get(gocv.VideoCaptureConvertRGB)) == 1),
+		fps:        v.Get(gocv.VideoCaptureFPS),
+		codec:      Codec(v.CodecString()),
+		backend:    API(v.Get(gocv.VideoCaptureBackend)),
+		bitrate:    v.Get(gocv.VideoCaptureBitrate),
+		buffersize: int(v.Get(gocv.VideoCaptureBufferSize)),
+		rgb:        bool(int(v.Get(gocv.VideoCaptureConvertRGB)) == 1),
 	}
 	return defaults
 }
@@ -330,6 +378,7 @@ func (d *dev) reset() {
 	config.Current.Video.Capture.Window.Name = config.MainDisplay
 	config.Current.Video.Capture.Device.Index = config.NoVideoCaptureDevice
 	config.Current.Video.Capture.Device.API = config.DefaultVideoCaptureAPI
+	config.Current.Video.Capture.Device.Codec = config.DefaultVideoCaptureCodec
 
 	notify.System("[Video] Capturing %s", config.Current.Video.Capture.Window.Name)
 
@@ -358,16 +407,20 @@ func set(vc *gocv.VideoCapture) error {
 	vc.Set(gocv.VideoCaptureFrameHeight, float64(required.resolution.Y))
 	vc.Set(gocv.VideoCaptureFPS, float64(config.Current.Video.Capture.Device.FPS))
 	vc.Set(gocv.VideoCaptureConvertRGB, 1)
-	vc.Set(gocv.VideoCaptureFOURCC, vc.ToCodec("MJPG"))
-	// vc.Set(gocv.VideoCaptureFOURCC, vc.ToCodec("NV12"))
+
+	four := Codec(config.Current.Video.Capture.Device.Codec).FourCC(vc)
+	if four > 0 {
+		vc.Set(gocv.VideoCaptureFOURCC, four)
+	}
+
 	active.applied = poll(vc)
 
 	if !active.applied.resolution.Eq(required.resolution) {
-		return errors.Wrapf(errors.Errorf("%s resolution", required.resolution), "failed to set property")
+		return errors.Errorf("failed to set property: resolution %s", required.resolution)
 	}
 
 	if int(active.applied.fps) != int(required.fps) {
-		return errors.Wrapf(errors.Errorf("%.0f FPS", required.fps), "failed to set property")
+		return errors.Errorf("failed to set property: %.0f FPS", required.fps)
 	}
 
 	notify.System("[Video] Configured %s", active.name)
@@ -394,29 +447,6 @@ func stop() {
 		case <-t.C:
 			notify.Error("[Video] Failed to stop %s", active.name)
 			return
-		}
-	}
-}
-
-func storeAPIs() {
-	for i := gocv.VideoCaptureAny; i < gocv.VideoCaptureXINE; i++ {
-		api := i.String()
-		if api == "" {
-			continue
-		}
-		cached.apis[i] = apiHuman(i)
-	}
-}
-
-func storeSources() {
-	var err error
-
-	for ; ; time.Sleep(time.Second * 5) {
-		for i := 0; i < 10; i++ {
-			cached.devices[i], err = device.VideoCaptureDeviceName(i)
-			if err != nil {
-				continue
-			}
 		}
 	}
 }
