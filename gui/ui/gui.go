@@ -84,7 +84,7 @@ func New() *GUI {
 	}
 
 	min := image.Pt(1100, 700)
-	max := monitor.MainResolution.Max
+	max := monitor.DefaultResolution.Max
 
 	is.Now = is.Loading
 

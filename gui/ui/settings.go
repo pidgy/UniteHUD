@@ -67,6 +67,7 @@ type settings struct {
 
 	sections struct {
 		header,
+		accessibility,
 		language,
 		video,
 		discord,
@@ -93,6 +94,7 @@ func (g *GUI) settings(onclose func()) *settings {
 
 		sections := []*section{
 			ui.sections.header,
+			ui.sections.accessibility,
 			ui.sections.language,
 			ui.sections.video,
 			ui.sections.discord,
@@ -182,6 +184,31 @@ func (g *GUI) settingsUI() *settings {
 	ui.sections.header = &section{
 		h1:          true,
 		description: material.H6(ui.bar.Collection.Calibri().Theme, "Advanced Settings"),
+	}
+
+	ui.sections.accessibility = &section{
+		title:       material.Label(ui.bar.Collection.Calibri().Theme, 14, "🦾 Accessibility"),
+		description: material.Caption(ui.bar.Collection.Calibri().Theme, "Adjust options for accessibility"),
+		widget: &checklist.Widget{
+			Theme:    ui.bar.Collection.NotoSans().Theme,
+			TextSize: 12,
+			Items: []*checklist.Item{
+				{
+					Text:    "Reduced Font Colors",
+					Checked: widget.Bool{Value: config.Current.Advanced.Accessibility.ReducedFontColors},
+					Callback: func(this *checklist.Item) {
+						config.Current.Advanced.Accessibility.ReducedFontColors = !config.Current.Advanced.Accessibility.ReducedFontColors
+					},
+				},
+				{
+					Text:    "Reduced Font Graphics",
+					Checked: widget.Bool{Value: config.Current.Advanced.Accessibility.ReducedFontGraphics},
+					Callback: func(this *checklist.Item) {
+						config.Current.Advanced.Accessibility.ReducedFontGraphics = !config.Current.Advanced.Accessibility.ReducedFontGraphics
+					},
+				},
+			},
+		},
 	}
 
 	ui.sections.language = &section{

@@ -395,7 +395,7 @@ func (g *GUI) configure() {
 				if err != nil {
 					g.ToastErrorf("Failed to capture video (%v)", err)
 					g.next(is.MainMenu)
-					return
+					break
 				}
 
 				rgba, ok := ui.img.(*image.RGBA)

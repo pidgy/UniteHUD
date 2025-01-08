@@ -52,32 +52,32 @@ func Check() {
 
 	notify.Debug("[Update] Comparing %s against %s", q.Latest, app.Version)
 
-	v1, err := version.NewVersion(app.Version)
+	local, err := version.NewVersion(app.Version)
 	if err != nil {
 		notify.Error("[Update] Failed to parse global version number (%v)", err)
 		return
 	}
 
-	v2, err := version.NewVersion(q.Latest)
+	remote, err := version.NewVersion(q.Latest)
 	if err != nil {
 		notify.Error("[Update] Failed to parse global version number (%v)", err)
 		return
 	}
 
 	switch {
-	case v1.LessThan(v2):
-		notify.System("[Update] %s is now available for download (http://unitehud.dev)", q.Latest)
+	case local.Equal(remote):
+		notify.System("[Update] You are running the latest version of UniteHUD (%s)", local)
+	case local.LessThan(remote):
+		notify.System("[Update] %s is now available for download (http://unitehud.dev)", remote)
 
-		desktop.Notification("UniteHUD %s", q.Latest).
+		desktop.Notification("UniteHUD %s", remote).
 			Says("An update is available for UniteHUD").
 			When(clicked.VisitWebsite).
 			Send()
-	case v2.LessThan(v1):
-		notify.System("[Update] You are running an unstable %s build", app.Version)
-	case v1.Equal(v2):
-		notify.System("[Update] You are running the latest version of UniteHUD (%s)", app.Version)
+	case remote.LessThan(local):
+		notify.System("[Update] You are running an unstable %s build", local)
 	default:
-		notify.Warn("[Update] Unable to validate version %s ", q.Latest)
+		notify.Warn("[Update] Unable to validate version %s ", remote)
 	}
 
 	for _, n := range q.News {

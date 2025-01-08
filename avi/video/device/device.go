@@ -149,8 +149,8 @@ func CaptureRect(r image.Rectangle) (*image.RGBA, error) {
 		return nil, nil
 	}
 
-	if !r.In(monitor.MainResolution) {
-		return nil, errors.Errorf("illegal boundaries: %s outside %s", r, monitor.MainResolution)
+	if !r.In(monitor.DefaultResolution) {
+		return nil, errors.Errorf("illegal boundaries: %s outside %s", r, monitor.DefaultResolution)
 	}
 
 	mrect := image.Rect(0, 0, size[1], size[0])

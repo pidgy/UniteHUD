@@ -96,7 +96,7 @@ func Defeated() {
 		}
 
 		if area.Empty() {
-			b := monitor.MainResolution
+			b := monitor.DefaultResolution
 			area = image.Rect(b.Max.X/3, b.Max.Y/2, b.Max.X-b.Max.X/3, b.Max.Y-b.Max.Y/3)
 		}
 
@@ -526,14 +526,14 @@ func States() {
 				regielekis, regices, regirocks, registeels, rayquazas := server.Objectives(team.Purple)
 				notify.Feed(
 					team.Purple.NRGBA,
-					"[Detect] [%s] %s [+%d %s] [+%d %s] [+%d %s] [+%d %s] [+%d Rayquazas]",
+					"[Detect] [%s] %s [+%d %s] [+%d %s] [+%d %s] [+%d %s] [+%d %s]",
 					team.Purple,
 					server.ScoreString(team.Purple),
 					regielekis, plural("Regieleki", regielekis),
 					regices, plural("Regice", regices),
 					regirocks, plural("Regirock", regirocks),
 					registeels, plural("Registeel", registeels),
-					rayquazas,
+					rayquazas, plural("Rayquaza", rayquazas),
 				)
 
 				// Orange score and objective results.
@@ -541,14 +541,14 @@ func States() {
 				regielekis, regices, regirocks, registeels, rayquazas = server.Objectives(team.Orange)
 				notify.Feed(
 					team.Orange.NRGBA,
-					"[Detect] [%s] %s [+%d %s] [+%d %s] [+%d %s] [+%d %s] [+%d Rayquazas]",
+					"[Detect] [%s] %s [+%d %s] [+%d %s] [+%d %s] [+%d %s] [+%d %s]",
 					team.Orange,
 					server.ScoreString(team.Orange),
 					regielekis, plural("Regieleki", regielekis),
 					regices, plural("Regice", regices),
 					regirocks, plural("Regirock", regirocks),
 					registeels, plural("Registeel", registeels),
-					rayquazas,
+					rayquazas, plural("Rayquaza", rayquazas),
 				)
 
 				// Self score and objective results.

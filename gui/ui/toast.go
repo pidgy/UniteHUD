@@ -27,9 +27,10 @@ import (
 )
 
 type (
-	OnToastYes func()
-	OnToastNo  func()
-	OnToastOK  func()
+	OnToastYes      func()
+	OnToastNo       func()
+	OnToastOK       func()
+	OnToastRemember func(b bool)
 )
 
 const (
@@ -53,6 +54,8 @@ type (
 		window *app.Window
 		label  material.LabelStyle
 		ops    op.Ops
+
+		forced bool
 	}
 
 	closeable struct {
@@ -114,6 +117,8 @@ func (g *GUI) toastForce(header, msg string, width, height float32) *toast {
 			app.Size(unit.Dp(width), unit.Dp(height)),
 			app.MinSize(unit.Dp(width), unit.Dp(height)),
 			app.MaxSize(unit.Dp(width), unit.Dp(height))),
+
+		forced: true,
 	}
 	t.bar = title.New(header, fonts.NewCollection(), nil, nil, func() {
 		t.window.Perform(system.ActionClose)
@@ -130,14 +135,19 @@ func (g *GUI) toastForce(header, msg string, width, height float32) *toast {
 }
 
 func (g *GUI) ToastError(err error) {
-	if g.previous.toast.err != nil && err.Error() == g.previous.toast.err.Error() && time.Since(g.previous.toast.time) < time.Second {
+	if g.previous.toast.err != nil && err.Error() == g.previous.toast.err.Error() {
 		return
 	}
 
 	g.previous.toast.err = err
 	g.previous.toast.time = time.Now()
 
-	g.ToastOK("Error", err.Error(), OnToastOK(nil))
+	t := g.toastForce("Error", err.Error(), float32(400), float32(125))
+	if t == nil {
+		return
+	}
+
+	g.toastOK2(t, OnToastOK(nil))
 }
 
 func (g *GUI) ToastErrorf(format string, a ...interface{}) {
@@ -145,7 +155,7 @@ func (g *GUI) ToastErrorf(format string, a ...interface{}) {
 }
 
 func (g *GUI) ToastNewsletter(header string, bulletin Bulletin, ok OnToastOK) {
-	t := g.toastForce(header, bulletin.Title, float32(500), float32(400))
+	t := g.toastForce(header, bulletin.Title, float32(600), float32(450))
 	if t == nil {
 		return
 	}
@@ -236,7 +246,7 @@ func (g *GUI) ToastNewsletter(header string, bulletin Bulletin, ok OnToastOK) {
 
 			event, ok := e.(system.FrameEvent)
 			if !ok {
-				notify.Missed(event, "ToastOk")
+				notify.Missed(event, "ToastNewsletter")
 				continue
 			}
 
@@ -293,7 +303,9 @@ func (g *GUI) ToastNewsletter(header string, bulletin Bulletin, ok OnToastOK) {
 
 			t.window.Perform(system.ActionCenter)
 			t.window.Perform(system.ActionRaise)
+
 			t.window.Invalidate()
+
 			event.Frame(gtx.Ops)
 		}
 	}()
@@ -304,6 +316,12 @@ func (g *GUI) ToastOK(header, msg string, ok OnToastOK) {
 	if t == nil {
 		return
 	}
+
+	g.toastOK2(t, ok)
+}
+
+func (g *GUI) toastOK2(t *toast, ok OnToastOK) {
+	first := true
 
 	go func() {
 		notify.Debug("[UI] Toast: Opening Ok (active: %t)", g.previous.toast.active)
@@ -333,6 +351,7 @@ func (g *GUI) ToastOK(header, msg string, ok OnToastOK) {
 		for e := t.window.NextEvent(); ; e = t.window.NextEvent() {
 			if _, ok := e.(system.DestroyEvent); ok {
 				t.window.Perform(system.ActionClose)
+				okButton.Click(okButton)
 				return
 			}
 
@@ -376,9 +395,14 @@ func (g *GUI) ToastOK(header, msg string, ok OnToastOK) {
 				})
 			})
 
-			t.window.Perform(system.ActionCenter)
-			t.window.Perform(system.ActionRaise)
+			if first || t.forced {
+				t.window.Perform(system.ActionCenter)
+				t.window.Perform(system.ActionRaise)
+				first = false
+			}
+
 			t.window.Invalidate()
+
 			event.Frame(gtx.Ops)
 		}
 	}()
@@ -448,15 +472,28 @@ func (g *GUI) ToastSplash(header, msg string, img image.Image) waiter {
 }
 
 func (g *GUI) ToastYesNo(header, msg string, y OnToastYes, n OnToastNo) {
-	t := g.toast(header, msg, float32(400), float32(125))
+	g.ToastYesNoRememberDecision(header, msg, "", y, n, nil)
+}
+
+func (g *GUI) ToastYesNoRememberDecision(header, msg, decision string, y OnToastYes, n OnToastNo, r OnToastRemember) {
+	h := float32(125)
+	if decision != "" {
+		h = 150
+	}
+
+	t := g.toast(header, msg, 400, h)
 	if t == nil {
 		return
 	}
+
+	first := true
 
 	go func() {
 		notify.Debug("[UI] Toast: Opening Yes/No (active: %t)", g.previous.toast.active)
 		defer notify.Debug("[UI] Toast: Closing Yes/No (active: %t)", g.previous.toast.active)
 		defer t.close(g)
+
+		check := material.CheckBox(t.bar.Collection.Calibri().Theme, &widget.Bool{}, titleFirstWord(decision))
 
 		yButton := &button.Widget{
 			Text:            "Yes",
@@ -469,6 +506,9 @@ func (g *GUI) ToastYesNo(header, msg string, y OnToastYes, n OnToastNo) {
 			Click: func(this *button.Widget) {
 				if y != nil {
 					y()
+				}
+				if r != nil {
+					r(check.CheckBox.Value)
 				}
 				t.window.Perform(system.ActionClose)
 			},
@@ -486,8 +526,23 @@ func (g *GUI) ToastYesNo(header, msg string, y OnToastYes, n OnToastNo) {
 				if n != nil {
 					n()
 				}
+				if r != nil {
+					r(check.CheckBox.Value)
+				}
 				t.window.Perform(system.ActionClose)
 			},
+		}
+
+		remember := func() layout.FlexChild {
+			if decision == "" {
+				return layout.Rigid(layout.Spacer{}.Layout)
+			}
+
+			check.Color = nrgba.Discord.Color()
+
+			return layout.Flexed(.5, func(gtx layout.Context) layout.Dimensions {
+				return layout.Center.Layout(gtx, check.Layout)
+			})
 		}
 
 		for e := t.window.NextEvent(); ; e = t.window.NextEvent() {
@@ -517,6 +572,8 @@ func (g *GUI) ToastYesNo(header, msg string, y OnToastYes, n OnToastNo) {
 							return layout.Center.Layout(gtx, t.label.Layout)
 						}),
 
+						remember(),
+
 						layout.Flexed(.5, func(gtx layout.Context) layout.Dimensions {
 							return layout.Flex{Axis: layout.Horizontal}.Layout(gtx,
 								layout.Rigid(layout.Spacer{Width: 5}.Layout),
@@ -540,9 +597,14 @@ func (g *GUI) ToastYesNo(header, msg string, y OnToastYes, n OnToastNo) {
 				})
 			})
 
-			t.window.Perform(system.ActionCenter)
-			t.window.Perform(system.ActionRaise)
+			if first {
+				t.window.Perform(system.ActionCenter)
+				t.window.Perform(system.ActionRaise)
+				first = false
+			}
+
 			t.window.Invalidate()
+
 			event.Frame(gtx.Ops)
 		}
 	}()

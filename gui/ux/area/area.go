@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"image/png"
 	"os"
 	"syscall"
 	"time"
@@ -15,7 +16,6 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
-	"gocv.io/x/gocv"
 
 	"github.com/pidgy/unitehud/app"
 	"github.com/pidgy/unitehud/avi/video"
@@ -334,14 +334,15 @@ func (c *Capture) Open() error {
 		return fmt.Errorf("Failed to capture %s (%v)", c.File, err)
 	}
 
-	matrix, err := gocv.ImageToMatRGB(img)
+	fd, err := os.Create(c.File)
+	if err != nil {
+		return err
+	}
+	defer fd.Close()
+
+	err = png.Encode(fd, img)
 	if err != nil {
 		return fmt.Errorf("Failed to create %s (%v)", c.File, err)
-	}
-	defer matrix.Close()
-
-	if !gocv.IMWrite(c.File, matrix) {
-		return fmt.Errorf("Failed to save %s (%v)", c.File, err)
 	}
 
 	argv, err := syscall.UTF16PtrFromString(os.Getenv("windir") + "\\system32\\cmd.exe /C " + fmt.Sprintf("\"%s\\%s\"", app.WorkingDirectory(), c.File))

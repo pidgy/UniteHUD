@@ -219,6 +219,29 @@ func (g *GUI) main() {
 		)
 	}
 
+	if !config.Current.Remember.Discord {
+		g.ToastYesNoRememberDecision(
+			app1.Title,
+			"Connect to Discord?",
+			"Remember this decision",
+			OnToastYes(func() {
+				config.Current.Advanced.Discord.Disabled = false
+			}),
+			OnToastNo(func() {
+				config.Current.Advanced.Discord.Disabled = true
+			}),
+			OnToastRemember(func(b bool) {
+				config.Current.Remember.Discord = true
+
+				err := config.Current.Save()
+				if err != nil {
+					notify.Error("[UI] Failed to save UniteHUD configuration (%v)", err)
+					return
+				}
+			}),
+		)
+	}
+
 	tray.SetStartStopTitle("Start")
 
 	for is.Now == is.MainMenu {
@@ -265,8 +288,7 @@ func (g *GUI) main() {
 						}
 
 						warnings, nonwarnings := []string{}, []string{}
-						switch {
-						case config.Current.Advanced.DecreasedCaptureLevel > 0:
+						if config.Current.Advanced.DecreasedCaptureLevel > 0 {
 							nonwarnings = append(warnings, fmt.Sprintf("Match Rate Factor: -%d", config.Current.Advanced.DecreasedCaptureLevel))
 						}
 
@@ -689,6 +711,8 @@ func (g *GUI) mainUI() *main {
 		Size:            ui.buttons.stop.Size,
 		TextInsetBottom: ui.buttons.stop.TextInsetBottom,
 		Click: func(this *button.Widget) {
+			config.Current.Reload()
+
 			g.Preview = false
 
 			ui.buttons.stop.Deactivate()

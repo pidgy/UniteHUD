@@ -46,6 +46,11 @@ type Config struct {
 	Acceptance float32
 
 	Advanced struct {
+		Accessibility struct {
+			ReducedFontColors   bool
+			ReducedFontGraphics bool
+		}
+
 		Stats struct {
 			Disabled bool
 		}
@@ -97,6 +102,10 @@ type Config struct {
 
 	Gaming struct {
 		Device string
+	}
+
+	Remember struct {
+		Discord bool
 	}
 
 	Scale float64
@@ -193,7 +202,6 @@ func (c *Config) File() string {
 func (c *Config) IsNew() bool {
 	is := first
 	first = false
-
 	return is
 }
 
@@ -213,7 +221,7 @@ func (c *Config) Reset() error {
 		return err
 	}
 
-	return Open(c.Gaming.Device)
+	return openNotNew(c.Gaming.Device)
 }
 
 func (c *Config) Save() error {
@@ -520,7 +528,7 @@ func (c *Config) pointFiles(t *team.Team) []filter.Filter {
 		}
 		if info.IsDir() {
 			if info.Name() != "points" {
-				notify.Warn("[Config] Skipping templates from %s%s", root, info.Name())
+				notify.Warn("[Config] Skipping templates from %s", filepath.Join(root, info.Name()))
 				return filepath.SkipDir
 			}
 		}
@@ -530,7 +538,7 @@ func (c *Config) pointFiles(t *team.Team) []filter.Filter {
 		return nil
 	})
 	if err != nil {
-		notify.Error("[Config] Failed to read from \"point\" directory \"%s\" (%v)", root, err)
+		notify.Error("[Config] Failed to read from point directory \"%s\" (%v)", root, err)
 		return nil
 	}
 
@@ -574,7 +582,7 @@ func (c *Config) scoreFiles(t *team.Team) []filter.Filter {
 		}
 		if info.IsDir() {
 			if info.Name() != "score" {
-				notify.Warn("[Config] Skipping \"%s%s\"", root, info.Name())
+				notify.Warn("[Config] Skipping %s", filepath.Join(root, info.Name()))
 				return filepath.SkipDir
 			}
 		}
@@ -666,7 +674,7 @@ func Open(device string) error {
 
 		first = true
 
-		b = []byte("{}")
+		b = json.RawMessage(`{}`)
 	}
 
 	err = json.Unmarshal(b, &Current)
@@ -701,6 +709,17 @@ func TemplatesFirstRound(t1 []*template.Template) []*template.Template {
 	return t2
 }
 
+func openNotNew(device string) error {
+	err := Open(device)
+	if err != nil {
+		return err
+	}
+
+	first = false
+
+	return nil
+}
+
 func recovered(r interface{}) {
 	s := ""
 	switch e := r.(type) {
@@ -709,10 +728,12 @@ func recovered(r interface{}) {
 	case string:
 		s = e
 	}
-	notify.Debug("[Config] Recovered from %s", s)
+	notify.Warn("[Config] Recovered from %s", s)
 }
 
 func validate() {
+	notify.System("[Config] Validating %s", Current.File())
+
 	Current.templates = map[string]map[string][]*template.Template{
 		"goals": {
 			team.Game.Name: {},
@@ -797,7 +818,7 @@ func validate() {
 		for subcategory, templates := range Current.templates[category] {
 			for _, t := range templates {
 				if t.Empty() {
-					notify.Error("[Config] Failed to read \"%s/%s\" template from file \"%s\"", category, subcategory, t.File)
+					notify.Error("[Config] Failed to read %s template from file \"%s\"", filepath.Join(category, subcategory), t.File)
 					continue
 				}
 			}

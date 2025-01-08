@@ -64,6 +64,7 @@ func reconnect() {
 
 	for wait := time.Second; rpc.conn == nil; time.Sleep(wait) {
 		if config.Current.Advanced.Discord.Disabled {
+			wait = time.Second
 			continue
 		}
 		wait = wait << 1
@@ -71,7 +72,7 @@ func reconnect() {
 		notify.Feed(nrgba.Discord, "[Discord] Connecting...")
 
 		if retries++; retries == 5 {
-			notify.Warn("[Discord] Failed to connect, disabling RPC")
+			notify.Warn("[Discord] Exhausted connection attempts. RPC has been disabled")
 			config.Current.Advanced.Discord.Disabled = true
 			continue
 		}
@@ -86,7 +87,7 @@ func reconnect() {
 
 		err = rpc.error()
 		if err != nil {
-			notify.Warn("[Discord] Failed to connect (%v)", err)
+			notify.Warn("[Discord] Handshake error (%v)", err)
 			continue
 		}
 

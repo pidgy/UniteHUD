@@ -10,8 +10,10 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 
+	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/fonts"
 	"github.com/pidgy/unitehud/core/notify"
+	"github.com/pidgy/unitehud/core/rgba/nrgba"
 	"github.com/pidgy/unitehud/gui/cursor"
 	"github.com/pidgy/unitehud/gui/ux/decorate"
 )
@@ -48,6 +50,7 @@ func New(s *fonts.Style, max int) (*Widget, error) {
 	t.font.Theme.TextSize = unit.Sp(8)
 	t.label = material.H5(t.font.Theme, "")
 	t.list.Track.MinorPadding = 0
+	t.label.Color = nrgba.White.Color()
 
 	return t, nil
 }
@@ -73,7 +76,18 @@ func (t *Widget) Layout(gtx layout.Context, posts []notify.Post) layout.Dimensio
 					return layout.Dimensions{Size: image.Pt(0, 0)}
 				}
 				t.label.Text = posts[index].String()
-				t.label.Color = posts[index].Alpha(alpha(index+1, len(posts))).Color()
+
+				a := uint8(255)
+				if !config.Current.Advanced.Accessibility.ReducedFontGraphics {
+					a = alpha(index+1, len(posts))
+				}
+
+				if !config.Current.Advanced.Accessibility.ReducedFontColors {
+					t.label.Color = posts[index].Alpha(a).Color()
+				} else {
+					t.label.Color = nrgba.White.Alpha(a).Color()
+				}
+
 				t.label.Alignment = text.Start
 				dim := t.label.Layout(gtx)
 				dim.Size.X = gtx.Constraints.Max.X

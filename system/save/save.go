@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"image"
+	"image/png"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,19 +17,20 @@ import (
 	"github.com/pidgy/unitehud/app"
 )
 
+var (
+	Directory = fmt.Sprintf("%4d-%02d-%02d", now.Year(), now.Month(), now.Day())
+)
+
 const (
 	// Directories.
 	saved  = "saved"
 	images = "img"
-
 	// Files.
 	log       = "unitehud.log"
 	templates = "templates.json"
 )
 
 var (
-	Directory = fmt.Sprintf("%4d-%02d-%02d", now.Year(), now.Month(), now.Day())
-
 	cpu, ram   *os.File
 	counts     = map[string]int64{}
 	countsLock = &sync.Mutex{}
@@ -54,8 +56,15 @@ func Image(img image.Image, mat gocv.Mat, crop image.Rectangle, value int, team,
 
 	file := name(team, subdir, clock, value)
 
-	if !gocv.IMWrite(file, mat.Region(crop)) {
-		return fmt.Errorf("failed to save image: %s", file)
+	f, err := os.Create(file)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	err = png.Encode(f, img)
+	if err != nil {
+		return fmt.Errorf("Failed to create %s (%v)", file, err)
 	}
 
 	return nil
