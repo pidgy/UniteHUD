@@ -32,7 +32,7 @@ require (
 	github.com/hajimehoshi/go-mp3 v0.3.4
 	github.com/hajimehoshi/oto/v2 v2.4.2
 	github.com/hashicorp/go-version v1.6.0
-	golang.org/x/image v0.14.0
+	golang.org/x/image v0.18.0
 	golang.org/x/text v0.16.0
 	gopkg.in/ini.v1 v1.67.0
 )
