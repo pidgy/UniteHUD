@@ -716,7 +716,7 @@ func (g *GUI) videos(text float32) *videos {
 						return false
 					}
 
-					err = config.Open(config.Current.Gaming.Device)
+					err = config.Open()
 					if err != nil {
 						notify.Error("[UI] Failed to load %s configuration", config.Current.Gaming.Device)
 						return false

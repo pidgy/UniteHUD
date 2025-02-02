@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pidgy/unitehud/app"
 	"github.com/pidgy/unitehud/core/team"
+	"github.com/pidgy/unitehud/exe"
 )
 
 type Event struct {
@@ -67,7 +67,7 @@ const (
 )
 
 var (
-	Events = []*Event{{EventType: Nothing, Time: app.Uptime}}
+	Events = []*Event{{EventType: Nothing, Time: exe.Uptime}}
 )
 
 func (e EventType) Int() int {
@@ -177,7 +177,7 @@ func Add(e EventType, clock string, points int) {
 }
 
 func Clear() {
-	Events = []*Event{{EventType: Nothing, Time: app.Uptime}}
+	Events = []*Event{{EventType: Nothing, Time: exe.Uptime}}
 }
 
 func Dump() (string, bool) {

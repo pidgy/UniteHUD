@@ -13,8 +13,9 @@ type NRGBA color.NRGBA
 const MaxAlpha = math.MaxUint8
 
 var (
+	Any = NRGBA{}
+
 	Active         = NRGBA(rgba.Active)
-	Announce       = NRGBA(rgba.Announce)
 	Background     = NRGBA(rgba.Background)
 	BackgroundAlt  = NRGBA(rgba.BackgroundAlt)
 	Black          = NRGBA(rgba.Black)
@@ -82,7 +83,6 @@ func Bool(b bool) NRGBA {
 	if b {
 		return System
 	}
-
 	return System.Alpha(255 / 2)
 }
 
@@ -93,6 +93,14 @@ func (n NRGBA) Alpha(a uint8) NRGBA {
 
 func (n NRGBA) Color() color.NRGBA {
 	return color.NRGBA(n)
+}
+
+func (n NRGBA) Eq(n2 NRGBA) bool {
+	if n == Any {
+		return true
+	}
+
+	return n.R == n2.R && n.G == n2.G && n.B == n2.B && n.A == n2.A
 }
 
 func (n NRGBA) Hex() string {

@@ -195,7 +195,7 @@ async function render(data) {
                 phtml = `<div class="animated">${data.purple.value}</div> <span><i>max ${data.purple.value + p * 20}</i></span>`;
             }
             if (data.purple.surrendered) {
-                phtml = `<div class="animated">SND</div>`;
+                phtml = `<div class="animated">SND</div> <span><i>max ${data.purple.value + p * 20}</i></span>`;
             }
             $('.team-score.purple').html(phtml);
 
@@ -213,10 +213,10 @@ async function render(data) {
             var ohtml = `<div class="animated">${data.orange.value}</div>`;
             var o = data.regis.filter(x => x === "orange").length;
             if (o > 0) {
-                ohtml = `<div class="animated">${data.orange.value}</div><span><i>max ${data.orange.value + o * 20}</i></span>`;
+                ohtml = `<div class="animated">${data.orange.value}</div> <span><i>max ${data.orange.value + o * 20}</i></span>`;
             }
             if (data.orange.surrendered) {
-                ohtml = `<div class="animated">SND</div>`;
+                ohtml = `<div class="animated">SND</div> <span><i>max ${data.orange.value + o * 20}</i></span>`;
             }
             $('.team-score.orange').html(`${ohtml}`);
 

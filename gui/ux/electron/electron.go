@@ -12,8 +12,8 @@ import (
 	"github.com/asticode/go-astilectron"
 	"github.com/pkg/errors"
 
-	app1 "github.com/pidgy/unitehud/app"
 	"github.com/pidgy/unitehud/core/notify"
+	"github.com/pidgy/unitehud/exe"
 	"github.com/pidgy/unitehud/system/wapi"
 )
 
@@ -34,12 +34,17 @@ const (
 	title = "UniteHUD Overlay"
 )
 
+type debugger struct {
+	fmt,
+	ftl func(format string, v ...interface{})
+}
+
 var (
 	app            *astilectron.Astilectron
 	window         *astilectron.Window
 	active, hidden bool
 
-	html = filepath.Join(app1.WorkingDirectory(), "www", "UniteHUD Client.html")
+	html = filepath.Join(exe.Directory(), "www", "UniteHUD Client.html")
 
 	offscreen = astilectron.RectangleOptions{
 		PositionOptions: astilectron.PositionOptions{
@@ -197,19 +202,30 @@ func closeWindow() error {
 	return nil
 }
 
+func debug(prefix string) *debugger {
+	return &debugger{
+		fmt: func(format string, v ...interface{}) { notify.Debug(prefix+" "+format, v...) },
+		ftl: func(format string, v ...interface{}) { notify.Debug(prefix+" [Fatal] "+format, v...) },
+	}
+}
+func (d *debugger) Fatal(v ...interface{})                 {} //d.ftl("%s", fmt.Sprint(v...)) }
+func (d *debugger) Fatalf(format string, v ...interface{}) {} //d.ftl(format, v...) }
+func (d *debugger) Print(v ...interface{})                 {} //d.fmt("%s", fmt.Sprint(v...)) }
+func (d *debugger) Printf(format string, v ...interface{}) {} //d.fmt(format, v...) }
+
 func openApp() error {
 	notify.Debug("[Overlay Engine] Opening...")
 
 	var err error
 
 	app, err = astilectron.New(
-		notify.Debugger("[Overlay Engine] "),
+		debug("[Overlay Engine] "),
 		astilectron.Options{
 			AppName:            title,
-			CustomElectronPath: filepath.Join(app1.WorkingDirectory(), app1.AssetDirectory, "electron", "vendor", "electron-windows-amd64", "UniteHUD Overlay.exe"),
+			CustomElectronPath: filepath.Join(exe.Directory(), exe.AssetDirectory, "electron", "vendor", "electron-windows-amd64", "UniteHUD Overlay.exe"),
 			BaseDirectoryPath:  ".",
-			DataDirectoryPath:  filepath.Join(app1.WorkingDirectory(), app1.AssetDirectory, "electron"),
-			AppIconDefaultPath: filepath.Join(app1.WorkingDirectory(), app1.AssetDirectory, "icon", "icon.png"),
+			DataDirectoryPath:  filepath.Join(exe.Directory(), exe.AssetDirectory, "electron"),
+			AppIconDefaultPath: filepath.Join(exe.Directory(), exe.AssetDirectory, "icon", "icon.png"),
 			VersionElectron:    astilectron.DefaultVersionElectron,
 			VersionAstilectron: astilectron.DefaultVersionAstilectron,
 			AcceptTCPTimeout:   time.Hour * 24,
@@ -276,11 +292,11 @@ func openWindow() error {
 			Frame:     astikit.BoolPtr(false),
 			// HasShadow:              astikit.BoolPtr(false),
 
-			Icon: astikit.StrPtr(fmt.Sprintf("%s/icon/icon-browser.png", app1.AssetDirectory)),
+			Icon: astikit.StrPtr(fmt.Sprintf("%s/icon/icon-browser.png", exe.AssetDirectory)),
 
 			WebPreferences: &astilectron.WebPreferences{
 				WebSecurity:             astikit.BoolPtr(false),
-				DevTools:                astikit.BoolPtr(app1.DebugMode),
+				DevTools:                astikit.BoolPtr(exe.Debug),
 				Images:                  astikit.BoolPtr(true),
 				Javascript:              astikit.BoolPtr(true),
 				NodeIntegrationInWorker: astikit.BoolPtr(true),

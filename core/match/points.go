@@ -6,7 +6,6 @@ import (
 
 	"gocv.io/x/gocv"
 
-	"github.com/pidgy/unitehud/app"
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/match/duplicate"
 	"github.com/pidgy/unitehud/core/notify"
@@ -14,6 +13,7 @@ import (
 	"github.com/pidgy/unitehud/core/stats"
 	"github.com/pidgy/unitehud/core/team"
 	"github.com/pidgy/unitehud/core/template"
+	"github.com/pidgy/unitehud/exe"
 )
 
 func (m *Match) points(matrix gocv.Mat) Result {
@@ -35,16 +35,16 @@ func (m *Match) first(matrix gocv.Mat) Result {
 	r := NotFound
 
 	if m.Team.Duplicate.Counted {
-		m.Numeric = -1
+		m.Value = -1
 		return Duplicate
 	}
 
 	inset := 0
 
 	points := []int{-1, -1}
-	mins := []int{math.MaxInt32, math.MaxInt32, math.MaxInt32}
-	maxs := []float32{0, 0, 0}
-	lefts := []int{math.MaxInt32, math.MaxInt32, math.MaxInt32}
+	mins := []int{math.MaxInt32, math.MaxInt32}
+	maxs := []float32{0, 0}
+	lefts := []int{math.MaxInt32, math.MaxInt32}
 
 	templatesWithZero := config.Current.TemplatesPoints(m.Team.Name)
 	templatesWithoutZero := []*template.Template{}
@@ -75,7 +75,7 @@ func (m *Match) first(matrix gocv.Mat) Result {
 
 		for i, template := range templates {
 			if template.Mat.Cols() > region.Cols() || template.Mat.Rows() > region.Rows() {
-				m.Numeric = -1
+				m.Value = -1
 				return Invalid
 			}
 
@@ -127,7 +127,7 @@ func (m *Match) first(matrix gocv.Mat) Result {
 		}
 	}
 
-	r, m.Numeric = sliceToValue(points)
+	r, m.Value = sliceToValue(points)
 
 	return r
 
@@ -154,7 +154,7 @@ func (m *Match) regular(matrix gocv.Mat) Result {
 	points := []int{-1, -1}
 	// rects := []image.Rectangle{{}, {}}
 
-	if server.IsFinalStretch() || app.DebugMode {
+	if server.IsFinalStretch() || exe.Debug {
 		mins = []int{math.MaxInt32, math.MaxInt32, math.MaxInt32}
 		maxs = []float32{0, 0, 0}
 		lefts = []int{math.MaxInt32, math.MaxInt32, math.MaxInt32}
@@ -188,7 +188,7 @@ func (m *Match) regular(matrix gocv.Mat) Result {
 
 		for i, template := range templates {
 			if template.Mat.Cols() > region.Cols() || template.Mat.Rows() > region.Rows() {
-				m.Numeric = -1
+				m.Value = -1
 				return Invalid
 			}
 
@@ -248,7 +248,7 @@ func (m *Match) regular(matrix gocv.Mat) Result {
 		}
 	}
 
-	r, m.Numeric = sliceToValue(points)
+	r, m.Value = sliceToValue(points)
 	if r != Found {
 		return r
 	}
@@ -257,11 +257,11 @@ func (m *Match) regular(matrix gocv.Mat) Result {
 }
 
 func (m *Match) validate(matrix gocv.Mat) Result {
-	if m.Numeric < 0 || m.Numeric > 120 {
+	if m.Value < 0 || m.Value > 120 {
 		return Invalid
 	}
 
-	latest := duplicate.New(m.Numeric, matrix, m.Team.Comparable(matrix))
+	latest := duplicate.New(m.Value, matrix, m.Team.Comparable(matrix))
 	defer func() {
 		if latest.Counted {
 			m.Team.Duplicate = latest
@@ -271,15 +271,15 @@ func (m *Match) validate(matrix gocv.Mat) Result {
 	switch is, reason := m.Team.Duplicate.Of(latest); {
 	case latest.Overrides(m.Team.Duplicate):
 		latest.Counted = true
-		notify.Debug("[Detect] [%s] [%s] [Override] [%s] +%d", server.Clock(), m.Team, reason, m.Numeric)
+		notify.Debug("[Detect] [%s] [%s] [Override] [%s] +%d", server.Clock(), m.Team, reason, m.Value)
 
 		return Override
 	case is:
-		notify.Debug("[Detect] [%s] [%s] [Duplicate] [%s] +%d", server.Clock(), m.Team, reason, m.Numeric)
+		notify.Debug("[Detect] [%s] [%s] [Duplicate] [%s] +%d", server.Clock(), m.Team, reason, m.Value)
 
 		return Duplicate
 	case latest.Potential:
-		notify.Debug("[Detect] [%s] [%s] [Potential Duplicate] [%s] +%d", server.Clock(), m.Team, reason, m.Numeric)
+		notify.Debug("[Detect] [%s] [%s] [Potential Duplicate] [%s] +%d", server.Clock(), m.Team, reason, m.Value)
 
 		fallthrough
 	default:

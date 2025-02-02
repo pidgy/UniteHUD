@@ -7,8 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pidgy/unitehud/app"
 	"github.com/pidgy/unitehud/core/rgba/nrgba"
+	"github.com/pidgy/unitehud/exe"
+	"github.com/pidgy/unitehud/system/ini"
 )
 
 type (
@@ -30,12 +31,20 @@ var (
 	SelfScore   image.Image = image.NewRGBA(image.Rect(0, 0, 0, 0))
 	Energy      image.Image = image.NewRGBA(image.Rect(0, 0, 0, 0))
 	Time        image.Image = image.NewRGBA(image.Rect(0, 0, 0, 0))
-)
 
-type debugger struct {
-	fmt,
-	ftl func(format string, v ...interface{})
-}
+	Disabled struct {
+		Errors   bool
+		Warnings bool
+		Info     bool
+		System   bool
+		Debug    bool
+	}
+
+	colorError  = nrgba.Pinkity
+	colorWarn   = nrgba.PastelCoral
+	colorSystem = nrgba.System
+	colorDebug  = nrgba.PastelBlue.Alpha(50)
+)
 
 type notify struct {
 	logs []Post
@@ -44,7 +53,7 @@ type notify struct {
 var feed = &notify{}
 
 func Announce(format string, a ...interface{}) {
-	feed.log(nrgba.Announce, true, false, false, format, a...)
+	feed.log(colorSystem, true, false, false, format, a...)
 }
 
 func Append(c nrgba.NRGBA, format string, a ...interface{}) {
@@ -68,26 +77,15 @@ func CLS() {
 }
 
 func Debug(format string, a ...interface{}) {
-	if !app.DebugMode {
+	if !exe.Debug {
 		return
 	}
 
-	feed.log(nrgba.PastelBlue.Alpha(50), true, true, false, format, a...)
-}
-
-func Debugger(prefix string) *debugger {
-	return &debugger{
-		fmt: func(format string, v ...interface{}) { Debug(prefix+" "+format, v...) },
-		ftl: func(format string, v ...interface{}) { Debug(prefix+" [Fatal] "+format, v...) },
-	}
-}
-
-func Dedup(r nrgba.NRGBA, format string, a ...interface{}) {
-	feed.log(r, true, true, false, format, a...)
+	feed.log(colorDebug, true, true, false, format, a...)
 }
 
 func Error(format string, a ...interface{}) {
-	feed.log(nrgba.Pinkity, true, false, false, format, a...)
+	feed.log(colorError, true, false, false, format, a...)
 }
 
 func Feed(color nrgba.NRGBA, format string, a ...interface{}) {
@@ -114,8 +112,44 @@ func FeedStrings() (s []string) {
 	return
 }
 
+func FeedUnique(color nrgba.NRGBA, format string, a ...interface{}) {
+	feed.log(color, true, false, true, format, a...)
+}
+
 func Feeds() []Post {
-	return feed.logs
+	if !Disabled.Errors && !Disabled.Warnings && !Disabled.Info && !Disabled.System {
+		if exe.Debug && !Disabled.Debug {
+			return feed.logs
+		}
+	}
+
+	p := []Post{}
+	for _, l := range feed.logs {
+		switch {
+		case l.NRGBA.Eq(colorError):
+			if !Disabled.Errors {
+				p = append(p, l)
+			}
+		case l.NRGBA.Eq(colorWarn):
+			if !Disabled.Warnings {
+				p = append(p, l)
+			}
+		case l.NRGBA.Eq(colorSystem):
+			if !Disabled.System {
+				p = append(p, l)
+			}
+		case l.NRGBA.Eq(colorDebug):
+			if !Disabled.Debug {
+				p = append(p, l)
+			}
+		default:
+			if !Disabled.Info {
+				p = append(p, l)
+			}
+		}
+	}
+
+	return p
 }
 
 func Iter(i int) (string, int) {
@@ -153,17 +187,6 @@ func (p *Post) String() string {
 	return p.msg
 }
 
-func Remove(r string) {
-	logs := []Post{}
-	for _, post := range feed.logs {
-		if strings.Contains(post.orig, r) {
-			continue
-		}
-		logs = append(logs, post)
-	}
-	feed.logs = logs
-}
-
 func Replace(prefix string, log func(format string, a ...interface{}), format string, a ...interface{}) {
 	log(format, a...)
 
@@ -181,11 +204,11 @@ func Replace(prefix string, log func(format string, a ...interface{}), format st
 }
 
 func System(format string, a ...interface{}) {
-	feed.log(nrgba.White, true, false, true, format, a...)
+	feed.log(colorSystem, true, false, true, format, a...)
 }
 
 func SystemAppend(format string, a ...interface{}) {
-	feed.log(nrgba.System, false, false, false, format, a...)
+	feed.log(colorSystem.Alpha(200), false, false, false, format, a...)
 }
 
 func Unique(c nrgba.NRGBA, format string, a ...interface{}) {
@@ -193,15 +216,12 @@ func Unique(c nrgba.NRGBA, format string, a ...interface{}) {
 }
 
 func Warn(format string, a ...interface{}) {
-	feed.log(nrgba.PastelCoral, true, false, false, format, a...)
+	feed.log(colorWarn, true, false, false, format, a...)
 }
 
-func (d *debugger) Fatal(v ...interface{})                 {} //d.ftl("%s", fmt.Sprint(v...)) }
-func (d *debugger) Fatalf(format string, v ...interface{}) {} //d.ftl(format, v...) }
-func (d *debugger) Print(v ...interface{})                 {} //d.fmt("%s", fmt.Sprint(v...)) }
-func (d *debugger) Printf(format string, v ...interface{}) {} //d.fmt(format, v...) }
-
 func (n *notify) log(r nrgba.NRGBA, clock, dedup, unique bool, format string, a ...interface{}) {
+	format = ini.Format(format)
+
 	p := Post{
 		NRGBA: r,
 		Time:  time.Now(),
@@ -210,7 +230,7 @@ func (n *notify) log(r nrgba.NRGBA, clock, dedup, unique bool, format string, a 
 		count: 1,
 	}
 
-	if app.DebugMode {
+	if exe.Debug {
 		fmt.Printf(format+"\n", a...)
 	}
 

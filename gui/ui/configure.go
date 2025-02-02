@@ -386,7 +386,7 @@ func (g *GUI) configure() {
 
 			switch {
 			case ui.hidePreview:
-				ui.img = splash.Device()
+				ui.img = splash.DeviceClickable()
 
 			case device.IsActive(), monitor.IsDisplay(), window.IsOpen():
 				var err error
@@ -399,8 +399,8 @@ func (g *GUI) configure() {
 				}
 
 				rgba, ok := ui.img.(*image.RGBA)
-				if ok && rgba == nil {
-					ui.img = splash.Device()
+				if !ok || rgba == nil {
+					ui.img = splash.Invalid()
 				}
 			case window.Lost():
 				config.Current.Video.Capture.Window.Lost = ""
@@ -408,17 +408,12 @@ func (g *GUI) configure() {
 				fallthrough
 			default:
 				ui.img = splash.Default()
-
 			}
 
-			for _, e := range gtx.Events(g) {
-				switch event := e.(type) {
+			for _, event := range gtx.Events(g) {
+				switch e := event.(type) {
 				case key.Event:
-					if event.State != key.Release {
-						continue
-					}
-
-					switch event.Name {
+					switch e.Name {
 					case key.NameEscape:
 						ui.buttons.menu.home.Click(ui.buttons.menu.home)
 					}
@@ -426,10 +421,12 @@ func (g *GUI) configure() {
 			}
 
 			area := clip.Rect(gtx.Constraints).Push(gtx.Ops)
+
 			key.InputOp{
 				Tag:  g,
 				Keys: key.Set(key.NameEscape),
 			}.Add(gtx.Ops)
+
 			area.Pop()
 
 			g.frame(gtx, event)
@@ -448,6 +445,7 @@ func (g *GUI) configureUI() *configure {
 		since: time.Now(),
 
 		listTextSize: float32(12),
+		hidePreview:  true,
 	}
 
 	ui.groups.areas = g.areas(g.nav.Collection)
@@ -660,7 +658,7 @@ func (g *GUI) configureUI() *configure {
 			}
 
 			// Called once window is closed.
-			err = config.Open(config.Current.Gaming.Device)
+			err = config.Open()
 			if err != nil {
 				notify.Error("[UI] Failed to reload \"%s\" (%v)", config.Current.File(), err)
 				return
@@ -773,44 +771,48 @@ func (g *GUI) configureUI() *configure {
 	return ui
 }
 
-func (p *configure) Layout(gtx layout.Context, fullscreen bool) layout.Dimensions {
+func (ui *configure) Layout(gtx layout.Context, fullscreen bool) layout.Dimensions {
 	rect := clip.Rect{
 		Min: gtx.Constraints.Min.Add(image.Pt(0, title.Height)),
 		Max: gtx.Constraints.Max.Sub(image.Pt(0, 5)),
 	}
 
-	for _, ev := range gtx.Events(p) {
+	for _, ev := range gtx.Events(ui) {
 		e, ok := ev.(pointer.Event)
 		if !ok {
 			continue
 		}
 
-		p.cursor = e.Position.Round().In(image.Rectangle(rect))
-		p.since = time.Now()
+		if e.Kind == pointer.Release {
+			ui.hidePreview = !ui.hidePreview
+		}
+
+		ui.cursor = e.Position.Round().In(image.Rectangle(rect))
+		ui.since = time.Now()
 	}
 
-	if fullscreen && p.cursor {
+	if fullscreen && ui.cursor {
 		gtx.Constraints.Min = rect.Min
 
-		if time.Since(p.since) > time.Second {
+		if time.Since(ui.since) > time.Second {
 			//cursor.Is(pointer.CursorNone)
 		}
 	}
 
 	push := rect.Push(gtx.Ops)
 	pointer.InputOp{
-		Tag:   p,
-		Kinds: pointer.Move | pointer.Enter | pointer.Leave,
+		Tag:   ui,
+		Kinds: pointer.Move | pointer.Enter | pointer.Leave | pointer.Release,
 	}.Add(gtx.Ops)
 	push.Pop()
 
-	scaleX := float32(gtx.Constraints.Max.X) / float32(p.img.Bounds().Dx())
-	scaleY := float32(gtx.Constraints.Max.Y) / float32(p.img.Bounds().Dy())
+	scaleX := float32(gtx.Constraints.Max.X) / float32(ui.img.Bounds().Dx())
+	scaleY := float32(gtx.Constraints.Max.Y) / float32(ui.img.Bounds().Dy())
 	scale := (scaleX + scaleY) / 2
 
 	dims := widget.Image{
 		Fit:      widget.Contain,
-		Src:      paint.NewImageOp(p.img),
+		Src:      paint.NewImageOp(ui.img),
 		Scale:    scale,
 		Position: layout.Center,
 	}.Layout(gtx)
@@ -818,29 +820,29 @@ func (p *configure) Layout(gtx layout.Context, fullscreen bool) layout.Dimension
 	// Set the boundaries to be the exact dimensions of the image within projector window.
 	diffX := (gtx.Constraints.Max.X - dims.Size.X)
 	diffY := (gtx.Constraints.Max.Y - dims.Size.Y)
-	if !p.hideOptions {
+	if !ui.hideOptions {
 		diffX /= 2
 		diffY /= 2
 	}
 
-	p.constraints = image.Rectangle{
+	ui.constraints = image.Rectangle{
 		Min: image.Pt(diffX, diffY),
 		Max: image.Pt(gtx.Constraints.Max.X-diffX, gtx.Constraints.Max.Y-diffY),
 	}
 
-	p.inset = image.Pt(
-		gtx.Constraints.Max.X-int(float32(p.img.Bounds().Dx())*scale),
-		gtx.Constraints.Max.Y-int(float32(p.img.Bounds().Dy())*scale),
+	ui.inset = image.Pt(
+		gtx.Constraints.Max.X-int(float32(ui.img.Bounds().Dx())*scale),
+		gtx.Constraints.Max.Y-int(float32(ui.img.Bounds().Dy())*scale),
 	)
 
 	return dims
 }
 
-func (p *configure) empty(x, y float32) layout.FlexChild {
+func (ui *configure) empty(x, y float32) layout.FlexChild {
 	return layout.Rigid(layout.Spacer{Width: unit.Dp(x), Height: unit.Dp(y)}.Layout)
 }
 
-func (p *configure) foot(f *footer) layout.FlexChild {
+func (ui *configure) foot(f *footer) layout.FlexChild {
 	return layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 		gtx.Constraints.Max.Y = gtx.Dp(25)
 
@@ -850,13 +852,13 @@ func (p *configure) foot(f *footer) layout.FlexChild {
 		layout.W.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 			return layout.Inset{Top: unit.Dp(5)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Middle}.Layout(gtx,
-					p.empty(2, 0),
+					ui.empty(2, 0),
 
 					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 						return f.api.Layout(gtx)
 					}),
 
-					p.empty(2, 0),
+					ui.empty(2, 0),
 				)
 			})
 		})
@@ -873,38 +875,38 @@ func (p *configure) foot(f *footer) layout.FlexChild {
 		return layout.E.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 			return layout.Inset{Top: unit.Dp(5)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Middle}.Layout(gtx,
-					p.empty(2, 0),
+					ui.empty(2, 0),
 
 					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 						return f.cpu.Layout(gtx)
 					}),
 
-					p.empty(5, 0),
+					ui.empty(5, 0),
 
 					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 						return f.ram.Layout(gtx)
 					}),
 
-					p.empty(5, 0),
+					ui.empty(5, 0),
 
 					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 						return f.fps.Layout(gtx)
 					}),
 
-					p.empty(5, 0),
+					ui.empty(5, 0),
 
 					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 						return f.hz.Layout(gtx)
 					}),
 
-					p.empty(2, 0),
+					ui.empty(2, 0),
 				)
 			})
 		})
 	})
 }
 
-func (p *configure) spacer(x, y float32) layout.FlexChild {
+func (ui *configure) spacer(x, y float32) layout.FlexChild {
 	return layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 		if x != 0 {
 			gtx.Constraints.Max.X = int(x)

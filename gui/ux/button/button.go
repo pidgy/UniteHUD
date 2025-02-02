@@ -120,6 +120,8 @@ func (b *Widget) Layout(gtx layout.Context) layout.Dimensions {
 
 				cursor.Is(pointer.CursorPointer)
 
+				b.LastPressed = time.Now()
+
 				if b.hover && b.Click != nil {
 					b.Click(b)
 					if b.SingleClick {

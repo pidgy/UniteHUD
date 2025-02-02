@@ -58,7 +58,7 @@ func New(s *fonts.Style, max int) (*Widget, error) {
 func (t *Widget) Layout(gtx layout.Context, posts []notify.Post) layout.Dimensions {
 	defer t.cursor()
 
-	if len(posts) > t.max {
+	if !config.Current.Advanced.Accessibility.ShowCompleteEventHistory && len(posts) > t.max {
 		posts = posts[len(posts)-t.max:]
 	}
 

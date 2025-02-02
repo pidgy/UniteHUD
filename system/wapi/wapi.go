@@ -26,12 +26,20 @@ type BitmapInfoHeader struct {
 	BiClrImportant  uint32
 }
 
+// https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-monitorinfo
+type MonitorInfo struct {
+	cbSize   uint32
+	Monitor  Rect
+	WorkArea Rect
+	Flags    uint32
+}
+
 // https://learn.microsoft.com/en-us/previous-versions/dd162805(v=vs.85)
 type Point struct {
 	X, Y int32
 }
 
-// Windows RECT structure
+// Windows RECT structure.
 type Rect struct {
 	Left, Top, Right, Bottom int32
 }
@@ -85,6 +93,16 @@ type WindowPlacement struct {
 	Device      Rect
 }
 
+type WindowPos struct {
+	HWND            syscall.Handle
+	HWNDInsertAfter syscall.Handle
+	x               int32
+	y               int32
+	cx              int32
+	cy              int32
+	flags           uint32
+}
+
 // https://learn.microsoft.com/en-us/windows/win32/hidpi/dpi-awareness-context
 type SetProcessDpiAwarenessContext int
 
@@ -97,6 +115,12 @@ const (
 )
 
 var (
+	MonitorFromWindowOptions = struct {
+		DefaultToPrimary uintptr
+	}{
+		DefaultToPrimary: 1,
+	}
+
 	BitBltRasterOperations = struct {
 		SrcCopy,
 		CaptureBLT,
@@ -237,6 +261,12 @@ var (
 		Tiled:       0x00000000,
 		Visible:     0x10000000,
 	}
+
+	SystemParametersInfoOptions = struct {
+		GetWorkArea uintptr
+	}{
+		GetWorkArea: 0x0030,
+	}
 )
 
 var (
@@ -271,6 +301,10 @@ var (
 	SetWindowPos                 = user32.MustFindProc("SetWindowPos")
 	ShowWindow                   = user32.MustFindProc("ShowWindow")
 	UpdateWindow                 = user32.MustFindProc("UpdateWindow")
+	MonitorFromWindow            = user32.MustFindProc("MonitorFromWindow")
+	GetMonitorInfoW              = user32.MustFindProc("GetMonitorInfoW")
+
+	SystemParametersInfoA = user32.MustFindProc("SystemParametersInfoA")
 
 	gdi32                  = syscall.MustLoadDLL("gdi32.dll")
 	BitBlt                 = gdi32.MustFindProc("BitBlt")
@@ -303,14 +337,6 @@ func init() {
 	*/
 	WindowStyleFlags.OverlappedWindow = WindowStyleFlags.Overlapped |
 		WindowStyleFlags.Caption | WindowStyleFlags.SysMenu | WindowStyleFlags.ThickFrame | WindowStyleFlags.MinimizeBox | WindowStyleFlags.MaximizeBox
-}
-
-func (p Point) String() string {
-	return fmt.Sprintf("(%d,%d)", p.X, p.Y)
-}
-
-func (r Rect) String() string {
-	return fmt.Sprintf("[%d,%d,%d,%d]", r.Left, r.Top, r.Right, r.Bottom)
 }
 
 // SetProcessDpiAwareness ensures that Windows API calls will tell us the scale factor for our

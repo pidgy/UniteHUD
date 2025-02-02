@@ -16,6 +16,10 @@ const CONTROL_LEVEL = {
 
 var control_level = CONTROL_LEVEL.NONE;
 
+function log(msg) {
+    console.error(`[UniteHUD] [OBS] ${msg}`);
+}
+
 window.addEventListener('obsSourceVisibleChanged', function(event) {
     log("obsstudio.obsSourceVisibleChanged: " + event);
 });
@@ -35,9 +39,8 @@ $(document).ready(() => {
 
     window.obsstudio.getControlLevel(function(level) {
         control_level = CONTROL_LEVEL[level];
+
         log("obsstudio.pluginVersion: " + window.obsstudio.pluginVersion);
         log("obsstudio.controlLevel:  " + CONTROL_LEVEL[level]);
     });
 });
-
-function log(msg) { console.error(`[UniteHUD] [OBS] ${msg}`); }

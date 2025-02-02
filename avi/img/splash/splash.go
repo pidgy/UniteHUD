@@ -18,6 +18,10 @@ var (
 	deviceImg  image.Image = nil
 	deviceRGBA *image.RGBA = nil
 
+	deviceClickableMat              = gocv.IMRead(fmt.Sprintf(`%s/splash/device-clickable.png`, config.Current.Assets()), gocv.IMReadColor) // Global matrix is more efficient?
+	deviceClickableImg  image.Image = nil
+	deviceClickableRGBA *image.RGBA = nil
+
 	invalidMat              = gocv.IMRead(fmt.Sprintf(`%s/splash/invalid.png`, config.Current.Assets()), gocv.IMReadColor)
 	invalidImg  image.Image = nil
 	invalidRGBA *image.RGBA = nil
@@ -65,7 +69,7 @@ func Default() image.Image {
 
 	i, err := defaultMat.ToImage()
 	if err != nil {
-		notify.Warn("[Splash] Failed to convert splash image (%v)", err)
+		notify.Warn("[Splash] Failed to convert default splash image (%v)", err)
 		return defaultPNG
 	}
 	defaultImg = i
@@ -84,12 +88,31 @@ func Device() image.Image {
 
 	i, err := deviceMat.ToImage()
 	if err != nil {
-		notify.Warn("[Splash] Failed to convert splash image (%v)", err)
+		notify.Warn("[Splash] Failed to convert device splash image (%v)", err)
 		return defaultPNG
 	}
 	deviceImg = i
 
 	return deviceImg
+}
+
+func DeviceClickable() image.Image {
+	if deviceClickableImg != nil {
+		return deviceClickableImg
+	}
+
+	if deviceClickableMat.Empty() {
+		deviceClickableMat = defaultPNGToMat()
+	}
+
+	i, err := deviceClickableMat.ToImage()
+	if err != nil {
+		notify.Warn("[Splash] Failed to convert device-clickable splash image (%v)", err)
+		return defaultPNG
+	}
+	deviceClickableImg = i
+
+	return deviceClickableImg
 }
 
 func DeviceMat() *gocv.Mat {
@@ -111,7 +134,7 @@ func DeviceRGBA() *image.RGBA {
 
 	i, err := deviceMat.ToImage()
 	if err != nil {
-		notify.Warn("[Splash] Failed to convert splash image (%v)", err)
+		notify.Warn("[Splash] Failed to convert device rgba splash image (%v)", err)
 		return defaultPNG
 	}
 	deviceRGBA = AsRGBA(i)
@@ -130,7 +153,7 @@ func Invalid() image.Image {
 
 	i, err := invalidMat.ToImage()
 	if err != nil {
-		notify.Warn("[Splash] Failed to convert splash image (%v)", err)
+		notify.Warn("[Splash] Failed to convert 'invalid' splash image (%v)", err)
 		return defaultPNG
 	}
 	invalidImg = i
@@ -149,7 +172,7 @@ func InvalidRGBA() *image.RGBA {
 
 	i, err := invalidMat.ToImage()
 	if err != nil {
-		notify.Warn("[Splash] Failed to convert splash image (%v)", err)
+		notify.Warn("[Splash] Failed to convert 'invalid' rgba splash image (%v)", err)
 		return defaultPNG
 	}
 	invalidRGBA = AsRGBA(i)
@@ -168,7 +191,7 @@ func Loading() image.Image {
 
 	i, err := loadingMat.ToImage()
 	if err != nil {
-		notify.Warn("[Splash] Failed to convert splash image (%v)", err)
+		notify.Warn("[Splash] Failed to convert loading splash image (%v)", err)
 		return defaultPNG
 	}
 	loadingImg = i
@@ -187,7 +210,7 @@ func Projector() image.Image {
 
 	i, err := projectorMat.ToImage()
 	if err != nil {
-		notify.Warn("Failed to convert splash image (%v)", err)
+		notify.Warn("Failed to convert projector splash image (%v)", err)
 		return defaultPNG
 	}
 	projectorImg = i

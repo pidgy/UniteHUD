@@ -19,9 +19,10 @@ func TestStatus(t *testing.T) {
 	server.SetScore(team.Purple, 45)
 	server.SetScore(team.Orange, 120)
 
+	a := Activity()
 	for e := state.Nothing; e <= state.RayquazaSecurePurple; e++ {
 		state.Add(e, "9:45", 12)
-		Activity = status()
-		fmt.Printf("(%s) Discord: %s: \"%s\"\n", e, Activity.Details, Activity.State)
+		a = Activity()
+		fmt.Printf("(%s) Discord: %s: \"%s\"\n", e, a.Details, a.State)
 	}
 }

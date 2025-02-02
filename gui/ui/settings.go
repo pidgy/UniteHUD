@@ -15,12 +15,13 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 
-	app1 "github.com/pidgy/unitehud/app"
 	"github.com/pidgy/unitehud/avi/video/device"
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/fonts"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/rgba/nrgba"
+	"github.com/pidgy/unitehud/exe"
+	app1 "github.com/pidgy/unitehud/exe"
 	"github.com/pidgy/unitehud/gui/ux"
 	"github.com/pidgy/unitehud/gui/ux/button"
 	"github.com/pidgy/unitehud/gui/ux/checklist"
@@ -30,6 +31,7 @@ import (
 	"github.com/pidgy/unitehud/system/desktop"
 	"github.com/pidgy/unitehud/system/desktop/clicked"
 	"github.com/pidgy/unitehud/system/discord"
+	"github.com/pidgy/unitehud/system/ini"
 )
 
 type section struct {
@@ -67,6 +69,7 @@ type settings struct {
 
 	sections struct {
 		header,
+		reports,
 		accessibility,
 		language,
 		video,
@@ -94,6 +97,7 @@ func (g *GUI) settings(onclose func()) *settings {
 
 		sections := []*section{
 			ui.sections.header,
+			ui.sections.reports,
 			ui.sections.accessibility,
 			ui.sections.language,
 			ui.sections.video,
@@ -186,6 +190,66 @@ func (g *GUI) settingsUI() *settings {
 		description: material.H6(ui.bar.Collection.Calibri().Theme, "Advanced Settings"),
 	}
 
+	ui.sections.reports = &section{
+		title:       material.Label(ui.bar.Collection.Calibri().Theme, 14, "📝 Reports"),
+		description: material.Caption(ui.bar.Collection.Calibri().Theme, "Adjust types of notices reported"),
+		widget: &checklist.Widget{
+			Theme:    ui.bar.Collection.NotoSans().Theme,
+			TextSize: 12,
+			Items: []*checklist.Item{
+				/*
+						Errors,
+					Warnings,
+					Info,
+					System,
+					Announcements,
+					Debug bool
+				*/
+				{
+					Text:    "Errors",
+					Checked: widget.Bool{Value: config.Current.Advanced.Report.Errors},
+					Callback: func(this *checklist.Item) {
+						config.Current.Advanced.Report.Errors = !config.Current.Advanced.Report.Errors
+						notify.Disabled.Errors = !config.Current.Advanced.Report.Errors
+					},
+				},
+				{
+					Text:    "Warnings",
+					Checked: widget.Bool{Value: config.Current.Advanced.Report.Warnings},
+					Callback: func(this *checklist.Item) {
+						config.Current.Advanced.Report.Warnings = !config.Current.Advanced.Report.Warnings
+						notify.Disabled.Warnings = !config.Current.Advanced.Report.Warnings
+					},
+				},
+				{
+					Text:    "Info",
+					Checked: widget.Bool{Value: config.Current.Advanced.Report.Info},
+					Callback: func(this *checklist.Item) {
+						config.Current.Advanced.Report.Info = !config.Current.Advanced.Report.Info
+						notify.Disabled.Info = !config.Current.Advanced.Report.Info
+					},
+				},
+				{
+					Text:    "System",
+					Checked: widget.Bool{Value: config.Current.Advanced.Report.System},
+					Callback: func(this *checklist.Item) {
+						config.Current.Advanced.Report.System = !config.Current.Advanced.Report.System
+						notify.Disabled.System = !config.Current.Advanced.Report.System
+					},
+				},
+				{
+					Text:    "Debug",
+					Checked: widget.Bool{Value: exe.Debug && config.Current.Advanced.Report.Debug},
+					Callback: func(this *checklist.Item) {
+						config.Current.Advanced.Report.Debug = !config.Current.Advanced.Report.Debug
+						notify.Disabled.Debug = !config.Current.Advanced.Report.Debug
+					},
+					Disabled: !exe.Debug,
+				},
+			},
+		},
+	}
+
 	ui.sections.accessibility = &section{
 		title:       material.Label(ui.bar.Collection.Calibri().Theme, 14, "🦾 Accessibility"),
 		description: material.Caption(ui.bar.Collection.Calibri().Theme, "Adjust options for accessibility"),
@@ -207,6 +271,13 @@ func (g *GUI) settingsUI() *settings {
 						config.Current.Advanced.Accessibility.ReducedFontGraphics = !config.Current.Advanced.Accessibility.ReducedFontGraphics
 					},
 				},
+				{
+					Text:    "Show Complete Event History",
+					Checked: widget.Bool{Value: config.Current.Advanced.Accessibility.ShowCompleteEventHistory},
+					Callback: func(this *checklist.Item) {
+						config.Current.Advanced.Accessibility.ShowCompleteEventHistory = !config.Current.Advanced.Accessibility.ShowCompleteEventHistory
+					},
+				},
 			},
 		},
 	}
@@ -220,11 +291,11 @@ func (g *GUI) settingsUI() *settings {
 			TextSize: 12,
 			Items: []*checklist.Item{
 				{
-					Text:    "English",
+					Text:    fmt.Sprintf("English (%s)", ini.EnUS),
 					Checked: widget.Bool{Value: true},
 				},
 				{
-					Text:     "Español",
+					Text:     fmt.Sprintf("Español (%s)", ini.EsES),
 					Checked:  widget.Bool{Value: false},
 					Disabled: true,
 					DisabledCallback: func(this *checklist.Item) {
@@ -232,7 +303,7 @@ func (g *GUI) settingsUI() *settings {
 					},
 				},
 				{
-					Text:     "日本語",
+					Text:     fmt.Sprintf("日本語 (%s)", ini.JpJP),
 					Checked:  widget.Bool{Value: false},
 					Disabled: true,
 					DisabledCallback: func(this *checklist.Item) {
@@ -240,7 +311,7 @@ func (g *GUI) settingsUI() *settings {
 					},
 				},
 				{
-					Text:     "한국어",
+					Text:     fmt.Sprintf("한국어 (%s)", ini.KrKR),
 					Checked:  widget.Bool{Value: false},
 					Disabled: true,
 					DisabledCallback: func(this *checklist.Item) {

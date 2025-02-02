@@ -17,7 +17,6 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 
-	"github.com/pidgy/unitehud/app"
 	"github.com/pidgy/unitehud/avi/video"
 	"github.com/pidgy/unitehud/avi/video/device"
 	"github.com/pidgy/unitehud/avi/video/monitor"
@@ -25,6 +24,7 @@ import (
 	"github.com/pidgy/unitehud/core/fonts"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/rgba/nrgba"
+	"github.com/pidgy/unitehud/exe"
 	"github.com/pidgy/unitehud/gui/cursor"
 	"github.com/pidgy/unitehud/gui/ux/button"
 	"github.com/pidgy/unitehud/gui/ux/decorate"
@@ -345,7 +345,7 @@ func (c *Capture) Open() error {
 		return fmt.Errorf("Failed to create %s (%v)", c.File, err)
 	}
 
-	argv, err := syscall.UTF16PtrFromString(os.Getenv("windir") + "\\system32\\cmd.exe /C " + fmt.Sprintf("\"%s\\%s\"", app.WorkingDirectory(), c.File))
+	argv, err := syscall.UTF16PtrFromString(os.Getenv("windir") + "\\system32\\cmd.exe /C " + fmt.Sprintf("\"%s\\%s\"", exe.Directory(), c.File))
 	if err != nil {
 		return fmt.Errorf("Failed to open %s (%v)", c.File, err)
 	}

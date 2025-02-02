@@ -112,7 +112,7 @@ func Defeated() {
 		case match.Found:
 			e := state.EventType(m.Template.Value)
 
-			state.Add(e, server.Clock(), m.Numeric)
+			state.Add(e, server.Clock(), m.Value)
 
 			switch e {
 			case state.Killed:
@@ -239,7 +239,7 @@ func Objectives() {
 			continue
 		}
 
-		event := state.EventType(m.Numeric)
+		event := state.EventType(m.Value)
 		team := event.Team()
 
 		switch event {
@@ -291,9 +291,6 @@ func Preview() {
 	tick := time.NewTicker(time.Second * 5)
 	poll := time.NewTicker(time.Second * 1)
 
-	window := ""
-	device := config.NoVideoCaptureDevice
-
 	preview := func() {
 		img, err := video.Capture()
 		if err != nil {
@@ -301,13 +298,6 @@ func Preview() {
 			return
 		}
 		notify.Preview = img
-
-		if config.Current.Video.Capture.Window.Name != window && config.Current.Video.Capture.Device.Index != device {
-			notify.System("[Detect] %dx%d input resolution calculated", img.Bounds().Max.X, img.Bounds().Max.Y)
-		}
-
-		window = config.Current.Video.Capture.Window.Name
-		device = config.Current.Video.Capture.Device.Index
 	}
 	preview()
 
@@ -387,26 +377,26 @@ func Scores(by string) {
 
 			switch r {
 			case match.Override:
-				state.Add(state.ScoreOverride, server.Clock(), m.Numeric)
+				state.Add(state.ScoreOverride, server.Clock(), m.Value)
 				server.SetScore(t, -t.Duplicate.Replaces)
 				notify.Feed(t.NRGBA, "[Detect] [%s] [%s] -%d (override)", server.Clock(), lang.Title(t.Name), t.Duplicate.Replaces)
 
 				fallthrough
 			case match.Found:
-				server.SetScore(t, m.Numeric)
+				server.SetScore(t, m.Value)
 
 				title := fmt.Sprintf("[%s]", lang.Title(t.Name))
 				if t.Name == team.First.Name {
 					title = fmt.Sprintf("[%s] [%s]", lang.Title(t.Alias), lang.Title(t.Name))
 				}
 
-				notify.Feed(t.NRGBA, "[Detect] [%s] %s +%d", server.Clock(), title, m.Numeric)
+				notify.Feed(t.NRGBA, "[Detect] [%s] %s +%d", server.Clock(), title, m.Value)
 
-				state.Add(state.ScoredBy(t.Name), server.Clock(), m.Numeric)
+				state.Add(state.ScoredBy(t.Name), server.Clock(), m.Value)
 				team.First.Counted = true
 
 				if images {
-					score, err := m.AsImage(matrix, m.Numeric)
+					score, err := m.AsImage(matrix, m.Value)
 					if err != nil {
 						notify.Error("[Detect] [%s] [%s] Failed to identify score (%v)", server.Clock(), t, err)
 						break
@@ -426,17 +416,17 @@ func Scores(by string) {
 					}
 				}
 			case match.Missed:
-				state.Add(state.ScoreMissedBy(t.Name), server.Clock(), m.Numeric)
+				state.Add(state.ScoreMissedBy(t.Name), server.Clock(), m.Value)
 
-				notify.Warn("[Detect] [%s] [%s] [Missed] +%d", server.Clock(), t, m.Numeric)
+				notify.Warn("[Detect] [%s] [%s] [Missed] +%d", server.Clock(), t, m.Value)
 			case match.Invalid:
-				notify.Error("[Detect] [%s] [%s] [Invalid] +%d", server.Clock(), t, m.Numeric)
+				notify.Error("[Detect] [%s] [%s] [Invalid] +%d", server.Clock(), t, m.Value)
 			case match.Duplicate:
-				notify.Warn("[Detect] [%s] [%s] [Duplicate] +%d", server.Clock(), t, m.Numeric)
+				notify.Warn("[Detect] [%s] [%s] [Duplicate] +%d", server.Clock(), t, m.Value)
 			}
 
 			if config.Current.Record {
-				err = save.Image(img, matrix, t.Crop(m.Point), m.Numeric, t.Name, strings.ToLower(r.String()), server.Clock())
+				err = save.Image(img, matrix, t.Crop(m.Point), m.Value, t.Name, strings.ToLower(r.String()), server.Clock())
 				if err != nil {
 					notify.Warn("[Detect] Failed to save image (%v)", err)
 				}
@@ -477,7 +467,7 @@ func States() {
 		}
 		state.Add(state.EventType(m.Template.Value), server.Clock(), -1)
 
-		switch e := state.EventType(m.Numeric); e {
+		switch e := state.EventType(m.Value); e {
 		case state.MatchStarting:
 			if server.Clock() == "10:00" {
 				matrix.Close()
@@ -639,7 +629,7 @@ func confirmEnergyWasScored(before, after int, at time.Time) {
 
 	p := state.SelfScoreIndicator.Occured(time.Second * 5)
 	if p == nil {
-		notify.Warn("[Detect] [%s] [Self] [Missed] +%d Failed to find self-score option", server.Clock(), before)
+		notify.Warn("[Detect] [%s] [Self] [Missed] +%d Failed to find self-score indicator", server.Clock(), before)
 		return
 	}
 

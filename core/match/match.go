@@ -23,7 +23,7 @@ type Match struct {
 
 	Points []image.Point
 
-	Numeric int
+	Value int
 }
 
 const (
@@ -120,7 +120,7 @@ func MatchesWithAcceptance(matrix gocv.Mat, img image.Image, templates []*templa
 func (m *Match) process(matrix gocv.Mat) Result {
 	switch m.Template.Category {
 	case "killed":
-		m.Numeric = team.Energy.Holding
+		m.Value = team.Energy.Holding
 		return Found
 	case "scored": // Orange, Purple scoring.
 		crop := m.Team.Crop(m.Point)
@@ -134,7 +134,7 @@ func (m *Match) process(matrix gocv.Mat) Result {
 		// return Found, state.EventType(m.Template.Value).Int()
 		fallthrough
 	default:
-		m.Numeric = m.Template.Value // Use team.Energy.Holding.
+		m.Value = m.Template.Value // Use team.Energy.Holding.
 		return Found
 	}
 }

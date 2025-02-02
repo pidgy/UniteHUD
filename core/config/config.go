@@ -16,26 +16,34 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"gocv.io/x/gocv"
 
-	"github.com/pidgy/unitehud/app"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/rgba/nrgba"
 	"github.com/pidgy/unitehud/core/state"
 	"github.com/pidgy/unitehud/core/team"
 	"github.com/pidgy/unitehud/core/template"
 	"github.com/pidgy/unitehud/core/template/filter"
+	"github.com/pidgy/unitehud/exe"
+	"github.com/pidgy/unitehud/system/ini"
 	"github.com/pidgy/unitehud/system/sort"
 )
 
 const (
+	// Video primitives.
 	MainDisplay              = "Main Display"
 	ProjectorWindow          = "UniteHUD Projector"
 	NoVideoCaptureDevice     = -1
 	DefaultVideoCaptureAPI   = "Any"
 	DefaultVideoCaptureCodec = "Any"
 
+	// Device primitives.
 	DeviceBluestacks = "bluestacks"
 	DeviceMobile     = "mobile"
 	DeviceSwitch     = "switch"
+
+	// Discord primitives.
+	DiscordStandby  = -1
+	DiscordDisabled = 0
+	DiscordEnabled  = 1
 )
 
 var (
@@ -47,8 +55,9 @@ type Config struct {
 
 	Advanced struct {
 		Accessibility struct {
-			ReducedFontColors   bool
-			ReducedFontGraphics bool
+			ReducedFontColors        bool
+			ReducedFontGraphics      bool
+			ShowCompleteEventHistory bool
 		}
 
 		Stats struct {
@@ -57,15 +66,7 @@ type Config struct {
 
 		DecreasedCaptureLevel time.Duration
 
-		Notifications struct {
-			Muted    bool
-			Disabled struct {
-				All,
-				Updates,
-				MatchStarting,
-				MatchStopped bool
-			}
-		}
+		Locale ini.Locale
 
 		Matching struct {
 			Disabled struct {
@@ -80,8 +81,26 @@ type Config struct {
 			}
 		}
 
+		Notifications struct {
+			Muted    bool
+			Disabled struct {
+				All,
+				Updates,
+				MatchStarting,
+				MatchStopped bool
+			}
+		}
+
 		Discord struct {
 			Disabled bool
+		}
+
+		Report struct {
+			Errors,
+			Warnings,
+			Info,
+			System,
+			Debug bool
 		}
 	}
 
@@ -105,7 +124,7 @@ type Config struct {
 	}
 
 	Remember struct {
-		Discord bool
+		Discord int
 	}
 
 	Scale float64
@@ -178,7 +197,7 @@ func (c *Config) AssetIcon(file string) string {
 }
 
 func (c *Config) Assets() string {
-	return filepath.Join(app.WorkingDirectory(), app.AssetDirectory)
+	return filepath.Join(exe.Directory(), exe.AssetDirectory)
 }
 
 func (c Config) Eq(c2 Config) bool {
@@ -196,13 +215,7 @@ func (c *Config) File() string {
 	if len(os.Args) > 1 && strings.HasSuffix(os.Args[1], ".unitehud") {
 		return os.Args[1]
 	}
-	return fmt.Sprintf("config-%s.unitehud", strings.ReplaceAll(app.Version, ".", "-"))
-}
-
-func (c *Config) IsNew() bool {
-	is := first
-	first = false
-	return is
+	return fmt.Sprintf("config-%s.unitehud", exe.VersionDash())
 }
 
 func (c *Config) Reload() {
@@ -213,10 +226,14 @@ func (c *Config) Report(crash string) {
 	c.Crashed = crash
 }
 
+func (c *Config) Remove() error {
+	return os.Remove(c.File())
+}
+
 func (c *Config) Reset() error {
 	defer validate()
 
-	err := os.Remove(c.File())
+	err := c.Remove()
 	if err != nil {
 		return err
 	}
@@ -422,7 +439,7 @@ func (c *Config) deviceAsset(dir, file string) string {
 }
 
 func (c *Config) deviceAssets() string {
-	return filepath.Join(app.WorkingDirectory(), app.AssetDirectory, "device", c.Gaming.Device)
+	return filepath.Join(exe.Directory(), exe.AssetDirectory, "device", c.Gaming.Device)
 }
 
 func (c *Config) loadDeviceAssets() {
@@ -495,20 +512,20 @@ func (c *Config) loadDeviceAssets() {
 				// filter.New(team.Game, c.deviceAsset(team.Game.Name, "pre_scoring_alt.png"), state.PreScore.Int(), false),
 				// filter.New(team.Game, c.deviceAsset(team.Game.Name, "pre_scoring.png"), state.PreScore.Int(), false),
 				// filter.New(team.Game, c.deviceAsset(team.Game.Name, "post_scoring.png"), state.PostScore.Int(), false),
-				// filter.New(team.Game, c.deviceAsset(team.Game.Name, "press_button_to_score.png"), state.PressButtonToScore.Int(), false),
+				// filter.New(team.Game, c.deviceAsset(team.Game.Name, "press_button_to_score.png"), state.SelfScoreIndicator.Int(), false),
 				filter.New(team.Game, c.deviceAsset(team.Game.Name, "press_button_to_score_alt.png"), state.SelfScoreIndicator.Int(), false),
 			},
 		},
 		"scored": {
 			team.Purple.Name: Current.scoreFiles(team.Purple),
 			team.Orange.Name: Current.scoreFiles(team.Orange),
-			team.Self.Name:   Current.scoreFiles(team.Self),
-			team.First.Name:  Current.scoreFiles(team.First),
+			// team.Self.Name:   Current.scoreFiles(team.Self),
+			team.First.Name: Current.scoreFiles(team.First),
 		},
 		"points": {
 			team.Purple.Name: Current.pointFiles(team.Purple),
 			team.Orange.Name: Current.pointFiles(team.Orange),
-			team.Self.Name:   Current.pointFiles(team.Self),
+			// team.Self.Name:   Current.pointFiles(team.Self),
 			team.First.Name:  Current.pointFiles(team.First),
 			team.Energy.Name: Current.pointFiles(team.Energy),
 		},
@@ -613,26 +630,15 @@ func (c *Config) scoreFiles(t *team.Team) []filter.Filter {
 	return filters
 }
 
-func (c *Config) setDefaultAdvancedSettings() {
-	c.Advanced.Notifications.Muted = false
-	c.Advanced.Notifications.Disabled.All = false
-	c.Advanced.Notifications.Disabled.Updates = false
-	c.Advanced.Notifications.Disabled.MatchStarting = true
-	c.Advanced.Notifications.Disabled.MatchStopped = true
-	c.Advanced.Notifications.Muted = true
-
-	c.Advanced.Discord.Disabled = false
+func IsNew() bool {
+	is := first
+	first = false
+	return is
 }
 
-func (c *Config) setDefaultAreas() {
-	c.XY.Energy = image.Rect(908, 764, 1008, 864)
-	c.XY.Scores = image.Rect(500, 50, 1500, 250)
-	c.XY.Time = image.Rect(846, 0, 1046, 100)
-	c.XY.Objectives = image.Rect(350, 200, 1200, 310)
-	c.XY.KOs = image.Rect(730, 130, 1160, 310)
-}
+func Open() error {
+	device := Current.Gaming.Device
 
-func Open(device string) error {
 	defer func() {
 		r := recover()
 		if r != nil {
@@ -640,6 +646,13 @@ func Open(device string) error {
 			recovered(r)
 		}
 	}()
+
+	if exe.Debug {
+		err := Current.Remove()
+		if err != nil {
+			notify.Warn("[Config] Failed to reset debug config (%v)", err)
+		}
+	}
 
 	if device == "" {
 		Current.Gaming.Device = DeviceSwitch
@@ -656,15 +669,42 @@ func Open(device string) error {
 	}
 	defer Current.loadDeviceAssets()
 
+	// Default device settings.
 	Current.Gaming.Device = DeviceSwitch
+
+	// Default video settings.
 	Current.Video.Capture.Window.Name = MainDisplay
 	Current.Video.Capture.Device.Index = NoVideoCaptureDevice
 	Current.Video.Capture.Device.API = DefaultVideoCaptureAPI
 	Current.Video.Capture.Device.Codec = DefaultVideoCaptureCodec
-	Current.Gaming.Device = DeviceSwitch
+
+	// Default. theme settings.
 	Current.SetDefaultTheme()
-	Current.setDefaultAreas()
-	Current.setDefaultAdvancedSettings()
+
+	// Default area settings.
+	Current.XY.Energy = image.Rect(908, 764, 1008, 864)
+	Current.XY.Scores = image.Rect(500, 50, 1500, 250)
+	Current.XY.Time = image.Rect(846, 0, 1046, 100)
+	Current.XY.Objectives = image.Rect(350, 200, 1200, 310)
+	Current.XY.KOs = image.Rect(730, 130, 1160, 310)
+
+	// Default advanced settings.
+	Current.Advanced.Notifications.Muted = false // Notifications.
+	Current.Advanced.Notifications.Disabled.All = false
+	Current.Advanced.Notifications.Disabled.Updates = false
+	Current.Advanced.Notifications.Disabled.MatchStarting = true
+	Current.Advanced.Notifications.Disabled.MatchStopped = true
+	Current.Advanced.Notifications.Muted = true
+	Current.Advanced.Discord.Disabled = true // Discord.
+	Current.Advanced.Report.Errors = true    // Reports.
+	Current.Advanced.Report.Warnings = true
+	Current.Advanced.Report.Info = true
+	Current.Advanced.Report.System = true
+	Current.Advanced.Report.Debug = true
+	Current.Advanced.Locale = ini.EnUS // Locale.
+
+	// Default persistent settings.
+	Current.Remember.Discord = DiscordStandby
 
 	b, err := os.ReadFile(Current.File())
 	if err != nil {
@@ -710,13 +750,13 @@ func TemplatesFirstRound(t1 []*template.Template) []*template.Template {
 }
 
 func openNotNew(device string) error {
-	err := Open(device)
+	Current.Gaming.Device = device
+
+	err := Open()
 	if err != nil {
 		return err
 	}
-
 	first = false
-
 	return nil
 }
 
@@ -733,6 +773,12 @@ func recovered(r interface{}) {
 
 func validate() {
 	notify.System("[Config] Validating %s", Current.File())
+
+	notify.Disabled.Errors = !Current.Advanced.Report.Errors
+	notify.Disabled.Warnings = !Current.Advanced.Report.Warnings
+	notify.Disabled.Info = !Current.Advanced.Report.Info
+	notify.Disabled.System = !Current.Advanced.Report.System
+	notify.Disabled.Debug = !Current.Advanced.Report.Debug
 
 	Current.templates = map[string]map[string][]*template.Template{
 		"goals": {

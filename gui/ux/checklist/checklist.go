@@ -113,6 +113,7 @@ func (list *Widget) defaultCheckBox(i *Item) {
 	i.check.Size = unit.Dp(list.TextSize)
 	i.check.TextSize = unit.Sp(list.TextSize)
 	i.check.Font.Weight = font.ExtraBold
+
 	if list.TextSize == 0 {
 		i.check.Size = unit.Dp(12)
 		i.check.TextSize = unit.Sp(12)
@@ -169,6 +170,10 @@ func (list *Widget) draw(gtx layout.Context, item *Item) layout.Dimensions {
 		} else {
 			item.check.Color = nrgba.DarkSeafoam.Color()
 		}
+	}
+
+	if item.Disabled {
+		item.check.Color.A = 50
 	}
 
 	switch {

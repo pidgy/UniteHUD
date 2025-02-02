@@ -12,12 +12,12 @@ import (
 	"gioui.org/layout"
 	"gioui.org/unit"
 
-	app1 "github.com/pidgy/unitehud/app"
 	"github.com/pidgy/unitehud/avi/video/fps"
 	"github.com/pidgy/unitehud/avi/video/monitor"
 	"github.com/pidgy/unitehud/core/fonts"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/stats"
+	app1 "github.com/pidgy/unitehud/exe"
 	"github.com/pidgy/unitehud/gui/is"
 	"github.com/pidgy/unitehud/gui/ux/title"
 	"github.com/pidgy/unitehud/system/process"
@@ -84,11 +84,13 @@ func New() *GUI {
 	}
 
 	min := image.Pt(1100, 700)
-	max := monitor.DefaultResolution.Max
+	max := monitor.Resolution().Max.Sub(image.Pt(0, monitor.TaskbarHeight()))
 
 	is.Now = is.Loading
 
 	notify.System("[UI] Generating")
+
+	notify.Announce("Taskbar Height: %d", monitor.TaskbarHeight())
 
 	UI = &GUI{
 		window: app.NewWindow(app.Title(app1.Title), app.Decorated(false)),
@@ -189,7 +191,7 @@ func (g *GUI) Open() {
 
 	go g.proc()
 
-	if app1.DebugMode {
+	if app1.Debug {
 		// go g.debug()
 	}
 

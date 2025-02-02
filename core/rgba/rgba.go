@@ -10,7 +10,6 @@ type RGBA color.RGBA
 
 var (
 	Active         = RGBA{R: 117, G: 230, B: 218, A: 255}
-	Announce       = RGBA{R: 255, G: 255, B: 225, A: 255}
 	Background     = RGBA{R: 9, G: 8, B: 12, A: 255}
 	BackgroundAlt  = RGBA{R: 18, G: 17, B: 21, A: 255}
 	Black          = RGBA{R: 0, G: 0, B: 0, A: 255}

@@ -15,30 +15,13 @@ import (
 
 var (
 	DefaultResolution = image.Rect(0, 0, 1920, 1080)
-	Sources           = []string{}
 
-	displays = map[string]int{}
-	bounds   = map[string]image.Rectangle{}
-
-	mutex = &sync.RWMutex{}
+	Sources  = []string{}
+	displays = new(sync.Map)
 )
 
 func Active(name string) bool {
 	return IsDisplay() && name == config.Current.Video.Capture.Window.Name
-}
-
-func Bounds() image.Rectangle {
-	mutex.RLock()
-	defer mutex.RUnlock()
-	b := bounds[config.Current.Video.Capture.Window.Name]
-	return b
-}
-
-func BoundsOf(d string) image.Rectangle {
-	mutex.RLock()
-	defer mutex.RUnlock()
-	b := bounds[d]
-	return b
 }
 
 func Capture() (*image.RGBA, error) {
@@ -121,18 +104,36 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 // }, nil
 //}
 
-func IsDisplay() bool {
-	mutex.RLock()
-	defer mutex.RUnlock()
+func TaskbarHeight() int {
+	r, err := wapi.WorkArea()
+	if err != nil {
+		notify.Error("[Video] Failed to find monitor info: %v", err)
+		return 0
+	}
 
-	_, ok := displays[config.Current.Video.Capture.Window.Name]
+	return Resolution().Max.Y - int(r.Bottom)
+}
+
+func IsDisplay() bool {
+	_, ok := displays.Load(config.Current.Video.Capture.Window.Name)
 	return ok
+}
+
+func Resolution() image.Rectangle {
+	if IsDisplay() {
+		n, ok := displays.Load(config.Current.Video.Capture.Window.Name)
+		if !ok {
+			return DefaultResolution
+		}
+
+		return screenshot.GetDisplayBounds(n.(int))
+	}
+	return screenshot.GetDisplayBounds(0)
 }
 
 func Open() {
 	sourcesTmp := []string{}
-	displaysTmp := map[string]int{}
-	boundsTmp := map[string]image.Rectangle{}
+	displaysTmp := new(sync.Map)
 
 	leftDisplays := 0
 	rightDisplays := 0
@@ -168,16 +169,21 @@ func Open() {
 			continue
 		}
 
-		displaysTmp[name] = i
-		boundsTmp[name] = r
+		displaysTmp.Store(name, i)
 		sourcesTmp = append(sourcesTmp, name)
 	}
 
-	set(sourcesTmp, displaysTmp, boundsTmp)
+	Sources = sourcesTmp
+	displays = displaysTmp
 }
 
 func captureFullscreen() (*image.RGBA, error) {
-	img, err := screenshot.CaptureDisplay(displays[config.Current.Video.Capture.Window.Name])
+	n, ok := displays.Load(config.Current.Video.Capture.Window.Name)
+	if !ok {
+		return nil, fmt.Errorf("%s: failed to find display", config.Current.Video.Capture.Window.Name)
+	}
+
+	img, err := screenshot.CaptureDisplay(n.(int))
 	if err != nil {
 		return nil, err
 	}
@@ -197,18 +203,4 @@ func display(name string, count int) string {
 		return name
 	}
 	return fmt.Sprintf("%s #%d", name, count)
-}
-
-func lastError() uint32 {
-	ret, _, _ := wapi.GetLastError.Call()
-	return uint32(ret)
-}
-
-func set(s []string, d map[string]int, b map[string]image.Rectangle) {
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	Sources = s
-	displays = d
-	bounds = b
 }

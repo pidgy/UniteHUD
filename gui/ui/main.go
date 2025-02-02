@@ -22,7 +22,6 @@ import (
 	"gioui.org/widget/material"
 	"github.com/skratchdot/open-golang/open"
 
-	app1 "github.com/pidgy/unitehud/app"
 	"github.com/pidgy/unitehud/avi/audio"
 	"github.com/pidgy/unitehud/avi/video/device"
 	"github.com/pidgy/unitehud/avi/video/monitor"
@@ -36,6 +35,7 @@ import (
 	"github.com/pidgy/unitehud/core/stats"
 	"github.com/pidgy/unitehud/core/stats/history"
 	"github.com/pidgy/unitehud/core/team"
+	"github.com/pidgy/unitehud/exe"
 	"github.com/pidgy/unitehud/gui/is"
 	"github.com/pidgy/unitehud/gui/ux/button"
 	"github.com/pidgy/unitehud/gui/ux/decorate"
@@ -43,9 +43,8 @@ import (
 	"github.com/pidgy/unitehud/gui/ux/spinner"
 	"github.com/pidgy/unitehud/gui/ux/split"
 	"github.com/pidgy/unitehud/gui/ux/textblock"
-	"github.com/pidgy/unitehud/system/desktop"
-	"github.com/pidgy/unitehud/system/desktop/clicked"
 	"github.com/pidgy/unitehud/system/discord"
+	"github.com/pidgy/unitehud/system/ini"
 	"github.com/pidgy/unitehud/system/process"
 	"github.com/pidgy/unitehud/system/save"
 	"github.com/pidgy/unitehud/system/tray"
@@ -182,11 +181,11 @@ func (g *GUI) main() {
 		}
 	}
 
-	if config.Current.IsNew() {
+	if config.IsNew() {
 		g.ToastNewsletter(
-			app1.TitleVersion,
+			exe.TitleAndVersion,
 			Bulletin{
-				Title: fmt.Sprintf("Welcome to %s!", app1.TitleVersion),
+				Title: fmt.Sprintf("Welcome to %s!", exe.TitleAndVersion),
 				Topics: []struct {
 					Subtitle string
 					Points   []string
@@ -219,19 +218,39 @@ func (g *GUI) main() {
 		)
 	}
 
-	if !config.Current.Remember.Discord {
+	if config.Current.Remember.Discord == config.DiscordStandby {
+		waitq := make(chan bool)
+
 		g.ToastYesNoRememberDecision(
-			app1.Title,
-			"Connect to Discord?",
-			"Remember this decision",
+			exe.Title,
+			ini.Find("toast", "connect_discord"),
+			ini.Find("toast", "connect_discord_remember"),
 			OnToastYes(func() {
+				defer close(waitq)
+
 				config.Current.Advanced.Discord.Disabled = false
 			}),
 			OnToastNo(func() {
+				defer close(waitq)
+
 				config.Current.Advanced.Discord.Disabled = true
 			}),
 			OnToastRemember(func(b bool) {
-				config.Current.Remember.Discord = true
+				config.Current.Remember.Discord = config.DiscordDisabled
+				if b {
+					config.Current.Remember.Discord = config.DiscordEnabled
+				}
+				err := config.Current.Save()
+				if err != nil {
+					notify.Error("[UI] Failed to save UniteHUD configuration (%v)", err)
+					return
+				}
+			}),
+			OnToastNeither(func() {
+				defer close(waitq)
+
+				config.Current.Remember.Discord = config.DiscordDisabled
+				config.Current.Advanced.Discord.Disabled = true
 
 				err := config.Current.Save()
 				if err != nil {
@@ -240,6 +259,8 @@ func (g *GUI) main() {
 				}
 			}),
 		)
+
+		<-waitq
 	}
 
 	tray.SetStartStopTitle("Start")
@@ -250,14 +271,12 @@ func (g *GUI) main() {
 			continue
 		}
 
-		if g.performance.eco && state.Idle() > time.Minute*30 && !ui.buttons.stop.Disabled {
-			desktop.Notification("Eco Mode").
-				Says("No matches detected for 30 minutes, stopping to save resources").
-				When(clicked.OpenUniteHUD).
-				Send()
-
-			ui.buttons.stop.Click(ui.buttons.stop)
-		}
+		// if g.performance.eco && state.Idle() > time.Minute*30 && !ui.buttons.stop.Disabled {
+		// 	desktop.Notification("Eco Mode").
+		// 		Says("UniteHUD is still running and no matches detected for 30 minutes").
+		// 		When(clicked.OpenUniteHUD).
+		// 		Send()
+		// }
 
 		switch event := g.window.NextEvent().(type) {
 		case system.StageEvent:
@@ -320,8 +339,9 @@ func (g *GUI) main() {
 								ui.labels.discord.Color.A = 127
 								ui.labels.discord.Text = "👾 Discord RPC Disabled"
 							} else {
+								a := discord.Activity()
 								ui.labels.discord.Color.A = 200
-								ui.labels.discord.Text = fmt.Sprintf("👾 %s: %s", strings.ReplaceAll(discord.Activity.Details, "UniteHUD - ", ""), discord.Activity.State)
+								ui.labels.discord.Text = fmt.Sprintf("👾 %s: %s", strings.ReplaceAll(a.Details, "UniteHUD - ", ""), a.State)
 							}
 							return ui.labels.discord.Layout(gtx)
 						})
@@ -379,14 +399,11 @@ func (g *GUI) main() {
 							Left: unit.Dp(float32(gtx.Constraints.Max.X - 35)),
 						}.Layout(gtx, ui.labels.holding.Layout)
 
-						clients := server.Clients()
-						if clients > 0 {
+						if server.Clients() > 0 {
 							ui.labels.connectedClients.Color = nrgba.Seafoam.Color()
 						} else {
 							ui.labels.connectedClients.Color = nrgba.PaleRed.Color()
 						}
-
-						ui.labels.connectedClients.Text = fmt.Sprintf("OBS %d", clients)
 						layout.Inset{
 							Top:  unit.Dp(34),
 							Left: unit.Dp(float32(gtx.Constraints.Max.X - 135)),
@@ -697,7 +714,7 @@ func (g *GUI) mainUI() *main {
 
 			tray.SetStartStopTitle("Start")
 
-			notify.Announce("[UI] Stopped %s", app1.Title)
+			notify.Announce("[UI] Stopped %s", exe.Title)
 		},
 	}
 
@@ -741,7 +758,7 @@ func (g *GUI) mainUI() *main {
 
 			g.Running = true
 
-			notify.Announce("[UI] Started %s", app1.Title)
+			notify.Announce("[UI] Started %s", exe.Title)
 		},
 	}
 
@@ -814,6 +831,7 @@ func (g *GUI) mainUI() *main {
 		ui.labels.connectedClients = material.H5(g.nav.Collection.Calibri().Theme, "")
 		ui.labels.connectedClients.Alignment = text.Middle
 		ui.labels.connectedClients.TextSize = unit.Sp(14)
+		ui.labels.connectedClients.Text = "OBS"
 
 		ui.labels.symbol = material.H5(g.nav.Collection.Calibri().Theme, "")
 		ui.labels.symbol.Alignment = text.Middle
@@ -920,7 +938,7 @@ func (g *GUI) mainUI() *main {
 		ui.labels.uptime.Alignment = text.Middle
 		ui.labels.uptime.TextSize = unit.Sp(14)
 
-		ui.labels.version = material.H5(g.nav.Collection.Calibri().Theme, app1.Version)
+		ui.labels.version = material.H5(g.nav.Collection.Calibri().Theme, exe.Version)
 		ui.labels.version.Color = nrgba.Gray.Color()
 		ui.labels.version.Alignment = text.Middle
 		ui.labels.version.TextSize = unit.Sp(14)
@@ -1009,7 +1027,7 @@ func (g *GUI) mainUI() *main {
 
 			g.ToastOK("Overlay", `Drag "UniteHUD Client.html" into OBS.`,
 				OnToastOK(func() {
-					err = open.Run(filepath.Join(app1.WorkingDirectory(), "www"))
+					err = open.Run(filepath.Join(exe.Directory(), "www"))
 					if err != nil {
 						notify.Error("[UI] Failed to open www/ directory: %v", err)
 						return
@@ -1035,28 +1053,28 @@ func (g *GUI) mainUI() *main {
 		},
 	}
 
-	ui.nav.eco = &button.Widget{
-		Text:        "🌳",
-		Font:        g.nav.Collection.NishikiTeki(),
-		OnHoverHint: func() { g.nav.Tip("Toggle resource saver") },
-		Pressed:     nrgba.DarkSeafoam,
-		TextSize:    unit.Sp(16),
+	// ui.nav.eco = &button.Widget{
+	// 	Text:        "🌳",
+	// 	Font:        g.nav.Collection.NishikiTeki(),
+	// 	OnHoverHint: func() { g.nav.Tip("Toggle resource saver") },
+	// 	Pressed:     nrgba.DarkSeafoam,
+	// 	TextSize:    unit.Sp(16),
 
-		Click: func(this *button.Widget) {
-			g.performance.eco = !g.performance.eco
+	// 	Click: func(this *button.Widget) {
+	// 		g.performance.eco = !g.performance.eco
 
-			this.Activate()
-			if g.performance.eco {
-				this.Deactivate()
-			}
+	// 		this.Activate()
+	// 		if g.performance.eco {
+	// 			this.Deactivate()
+	// 		}
 
-			if g.performance.eco {
-				notify.System("[UI] Resource saver has been enabled")
-			} else {
-				notify.System("[UI] Resource saver has been disabled")
-			}
-		},
-	}
+	// 		if g.performance.eco {
+	// 			notify.System("[UI] Resource saver has been enabled")
+	// 		} else {
+	// 			notify.System("[UI] Resource saver has been disabled")
+	// 		}
+	// 	},
+	// }
 
 	ui.nav.logs = &button.Widget{
 		Text:        "🗁",
@@ -1145,7 +1163,7 @@ func (g *GUI) mainUI() *main {
 			}
 
 			// Called once window is closed.
-			err = config.Open(config.Current.Gaming.Device)
+			err = config.Open()
 			if err != nil {
 				notify.Error("[UI] Failed to reload \"%s\" (%v)", config.Current.File(), err)
 				return
@@ -1239,7 +1257,7 @@ func (g *GUI) once(ui *main) {
 	once = true
 
 	g.window.Option(
-		app.Title(app1.Title),
+		app.Title(exe.Title),
 		app.Size(
 			unit.Dp(g.dimensions.min.X),
 			unit.Dp(g.dimensions.min.Y),

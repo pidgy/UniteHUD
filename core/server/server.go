@@ -13,7 +13,6 @@ import (
 
 	"nhooyr.io/websocket"
 
-	"github.com/pidgy/unitehud/app"
 	"github.com/pidgy/unitehud/avi/img"
 	"github.com/pidgy/unitehud/avi/video"
 	"github.com/pidgy/unitehud/avi/video/fps"
@@ -22,6 +21,7 @@ import (
 	"github.com/pidgy/unitehud/core/rgba/nrgba"
 	"github.com/pidgy/unitehud/core/state"
 	"github.com/pidgy/unitehud/core/team"
+	"github.com/pidgy/unitehud/exe"
 	"github.com/pidgy/unitehud/system/lang"
 )
 
@@ -81,6 +81,11 @@ var current = &info{
 	mutex:   &sync.Mutex{},
 }
 
+var track struct {
+	ws   []byte
+	http []byte
+}
+
 func Bottom() []objective {
 	return current.game.Bottom
 }
@@ -101,12 +106,16 @@ func Clients() int {
 
 	for c := range current.clients {
 		if time.Since(current.clients[c]) > time.Second*5 {
-			notify.Feed(nrgba.Slate, "[Server] Client disconnected (%s)", c)
+			notify.FeedUnique(nrgba.Slate, "[Server] Client disconnected (%s)", c)
 			delete(current.clients, c)
 		}
 	}
 
 	return len(current.clients)
+}
+
+func Game() *game {
+	return current.game
 }
 
 func Holding() int {
@@ -137,17 +146,9 @@ func KOs(t *team.Team) int {
 	}
 }
 
-var track struct {
-	ws   []byte
-	http []byte
-}
-
 func Open() error {
 	http.Handle("/stream", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, ok := current.client(r)
-		if !ok {
-			return
-		}
+		current.client(r)
 
 		w.Header().Add(
 			"Content-Type",
@@ -164,7 +165,7 @@ func Open() error {
 		defer fps.NewLoop(&fps.LoopOptions{
 			FPS: 120,
 			On: func(min, max, avg time.Duration) (close bool) {
-				if app.DebugMode {
+				if exe.Debug {
 					defer fmt.Printf("HTTP /stream min=%s, max=%s, avg=%s\n", min, max, avg)
 				}
 
@@ -203,14 +204,13 @@ func Open() error {
 	http.Handle("/ws", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
 
-		now, ok := current.client(r)
-		if ok {
-			track.ws, err = json.Marshal(current.game)
-			if err != nil {
-				notify.Error("[Server] Failed to create WebSocket response (%v)", err)
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
+		now := current.client(r)
+
+		track.ws, err = json.Marshal(current.game)
+		if err != nil {
+			notify.Error("[Server] Failed to create WebSocket response (%v)", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
 
 		c, err := websocket.Accept(w, r, &websocket.AcceptOptions{
@@ -225,7 +225,7 @@ func Open() error {
 
 		current.game.Platform = config.Current.Gaming.Device
 		current.game.Events = notify.LastNStrings(10)
-		current.game.Debug = app.DebugMode
+		current.game.Debug = exe.Debug
 
 		err = c.Write(context.Background(), websocket.MessageText, track.ws)
 		if err != nil {
@@ -244,19 +244,18 @@ func Open() error {
 	http.HandleFunc("/http", func(w http.ResponseWriter, r *http.Request) {
 		var err error
 
-		now, ok := current.client(r)
-		if ok {
-			track.http, err = json.Marshal(current.game)
-			if err != nil {
-				notify.Error("[Server] Failed to create HTTP response (%v)", err)
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
+		now := current.client(r)
+
+		track.http, err = json.Marshal(current.game)
+		if err != nil {
+			notify.Error("[Server] Failed to create HTTP response (%v)", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
 
 		current.game.Platform = config.Current.Gaming.Device
 		current.game.Events = notify.LastNStrings(10)
-		current.game.Debug = app.DebugMode
+		current.game.Debug = exe.Debug
 
 		_, err = w.Write(track.http)
 		if err != nil {
@@ -272,7 +271,7 @@ func Open() error {
 		}
 	})
 
-	go http.ListenAndServe(Address, nil)
+	go listen()
 
 	state.Add(state.ServerStarted, Clock(), -1)
 	notify.System("[Server] Listening on %s", Address)
@@ -282,21 +281,8 @@ func Open() error {
 	return nil
 }
 
-func metrics() {
-	for ; ; time.Sleep(time.Minute * 30) {
-		if current.requests < 2 {
-			notify.System("[Server] Awaiting connection...")
-			continue
-		}
-
-		if current.game.Ready {
-			notify.System(
-				"[Detect] Averaging %s / %.1fkB latency",
-				current.duration/time.Duration(current.requests),
-				float64(current.tx)/float64(current.requests)/1000,
-			)
-		}
-	}
+func listen() {
+	panic(http.ListenAndServe(Address, nil))
 }
 
 func Match() bool {
@@ -610,24 +596,37 @@ func SetTime(minutes, seconds int) {
 	current.game.Seconds = minutes*60 + seconds
 }
 
-func (i *info) client(r *http.Request) (time.Time, bool) {
+func (i *info) client(r *http.Request) time.Time {
 	i.mutex.Lock()
 	defer i.mutex.Unlock()
 
-	c := fmt.Sprintf("%s -> %s", strings.Split(r.RemoteAddr, ":")[0], r.URL)
+	key := fmt.Sprintf("%s -> %s", strings.Split(r.RemoteAddr, ":")[0], r.URL)
 
-	// then, ok := i.clients[c]
-	// if !ok {
-	// 	notify.System("[Server] Client connected (%s)", c)
-	// }
-	// if time.Since(then) < time.Second/2 {
-	// 	notify.Warn("[Server] Ignoring spurious requests (%s)", c)
-	// 	return then, false
-	// }
+	_, ok := i.clients[key]
+	if !ok {
+		notify.FeedUnique(nrgba.Slate, "[Server] Client connected (%s)", key)
+	}
 
-	i.clients[c] = time.Now()
+	i.clients[key] = time.Now()
 
-	return i.clients[c], true
+	return i.clients[key]
+}
+
+func metrics() {
+	for ; ; time.Sleep(time.Minute * 30) {
+		if current.requests < 2 {
+			notify.System("[Server] Awaiting connection...")
+			continue
+		}
+
+		if current.game.Ready {
+			notify.System(
+				"[Detect] Averaging %s / %.1fkB latency",
+				current.duration/time.Duration(current.requests),
+				float64(current.tx)/float64(current.requests)/1000,
+			)
+		}
+	}
 }
 
 func reset() *game {
@@ -652,7 +651,7 @@ func reset() *game {
 		Regilekis: []string{team.None.Name, team.None.Name, team.None.Name},
 		Rayquaza:  "",
 		Bottom:    []objective{},
-		Version:   app.Version,
+		Version:   exe.Version,
 		Defeated:  []int{},
 	}
 }

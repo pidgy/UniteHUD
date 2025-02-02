@@ -1,6 +1,7 @@
 package wapi
 
 import (
+	"fmt"
 	"image"
 	"syscall"
 	"unsafe"
@@ -15,20 +16,6 @@ type (
 	Window uintptr
 	Bytes  uintptr
 )
-
-func NewWindow(name string) (Window, error) {
-	argv, err := syscall.UTF16PtrFromString(name)
-	if err != nil {
-		return 0, err
-	}
-
-	r, _, err := FindWindow.Call(0, uintptr(unsafe.Pointer(argv)))
-	if r == 0 {
-		return 0, err
-	}
-
-	return Window(r), nil
-}
 
 func (b Bitmap) Delete() {
 	DeleteObject.Call(b.id())
@@ -119,10 +106,6 @@ func (d Device) Delete() {
 	DeleteDC.Call(uintptr(d))
 }
 
-func (o Object) Delete() {
-	DeleteObject.Call(o.id())
-}
-
 func EnumerateWindows(callback func(h uintptr, p uintptr) uintptr) error {
 	r, _, err := EnumWindows.Call(syscall.NewCallback(callback), 0, 0)
 	if r == 0 {
@@ -131,12 +114,56 @@ func EnumerateWindows(callback func(h uintptr, p uintptr) uintptr) error {
 	return nil
 }
 
+func GetMonitorInfo() (MonitorInfo, error) {
+	mi := MonitorInfo{
+		cbSize: uint32(unsafe.Sizeof(MonitorInfo{})),
+	}
+
+	v, _, err := MonitorFromWindow.Call(uintptr(0), MonitorFromWindowOptions.DefaultToPrimary)
+	if v == 0 {
+		return mi, err
+	}
+
+	v, _, err = GetMonitorInfoW.Call(v, uintptr(unsafe.Pointer(&mi)))
+	if v == 0 {
+		return mi, err
+	}
+
+	return mi, nil
+}
+
 func MoveWindowNoSize(hwnd uintptr, pos image.Point) {
 	MoveWindow.Call(hwnd, uintptr(pos.X), uintptr(pos.Y), 0, 0, uintptr(1))
 }
 
+func NewWindow(name string) (Window, error) {
+	argv, err := syscall.UTF16PtrFromString(name)
+	if err != nil {
+		return 0, err
+	}
+
+	r, _, err := FindWindow.Call(0, uintptr(unsafe.Pointer(argv)))
+	if r == 0 {
+		return 0, err
+	}
+
+	return Window(r), nil
+}
+
+func (o Object) Delete() {
+	DeleteObject.Call(o.id())
+}
+
 func ObjectSelect(hwnd1, hwnd2 uintptr) {
 	SelectObject.Call(hwnd1, hwnd2)
+}
+
+func (p Point) String() string {
+	return fmt.Sprintf("(%d,%d)", p.X, p.Y)
+}
+
+func (r Rect) String() string {
+	return fmt.Sprintf("[%d,%d,%d,%d]", r.Left, r.Top, r.Right, r.Bottom)
 }
 
 func ShowWindowMinimizedRestore(hwnd uintptr) {
@@ -223,6 +250,17 @@ func (w Window) Title() (string, error) {
 	return syscall.UTF16ToString(b), nil
 }
 
+// https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-systemparametersinfoa?redirectedfrom=MSDN
+func WorkArea() (Rect, error) {
+	var r Rect
+
+	v, _, err := SystemParametersInfoA.Call(SystemParametersInfoOptions.GetWorkArea, 0, uintptr(unsafe.Pointer(&r)), 0)
+	if v == 0 {
+		return r, err
+	}
+
+	return r, nil
+}
 func helpSetWindowPos(hwnd uintptr, pt image.Point, size image.Point, flags uintptr) {
 	go SetWindowPos.Call(
 		hwnd,

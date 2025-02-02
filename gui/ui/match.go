@@ -91,7 +91,7 @@ func (g *GUI) matchKOs(a *area.Widget) (bool, error) {
 		return false, nil
 	}
 	a.NRGBA = area.Match
-	a.Subtext = state.EventType(m.Numeric).String()
+	a.Subtext = state.EventType(m.Value).String()
 
 	return r == match.Found, nil
 }
@@ -120,7 +120,7 @@ func (g *GUI) matchObjectives(a *area.Widget) (bool, error) {
 		return false, nil
 	}
 	a.NRGBA = area.Match
-	a.Subtext = state.EventType(m.Numeric).String()
+	a.Subtext = state.EventType(m.Value).String()
 
 	return r == match.Found, nil
 }
@@ -176,7 +176,7 @@ func (g *GUI) matchScore(a *area.Widget) (bool, error) {
 		switch r {
 		case match.Found, match.Duplicate:
 			a.NRGBA = area.Match
-			a.Subtext = fmt.Sprintf("%d", m.Numeric)
+			a.Subtext = fmt.Sprintf("%d", m.Value)
 
 			return true, nil
 		case match.NotFound:
@@ -184,7 +184,7 @@ func (g *GUI) matchScore(a *area.Widget) (bool, error) {
 			a.Subtext = fmt.Sprintf("%s", r.String())
 		case match.Missed:
 			a.NRGBA = nrgba.DarkerYellow.Alpha(0x99)
-			a.Subtext = fmt.Sprintf("%d?", m.Numeric)
+			a.Subtext = fmt.Sprintf("%d?", m.Value)
 		case match.Invalid:
 			a.NRGBA = area.Miss
 			a.Subtext = fmt.Sprintf("%s", r.String())
@@ -215,7 +215,7 @@ func (g *GUI) matchState(a *area.Widget) (bool, error) {
 
 	m, r := match.Matches(matrix, img, templates)
 	if r == match.Found {
-		a.Subtext = state.EventType(m.Numeric).String()
+		a.Subtext = state.EventType(m.Value).String()
 		a.NRGBA = area.Match
 		return true, nil
 	}
