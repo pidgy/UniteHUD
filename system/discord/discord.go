@@ -12,6 +12,8 @@ import (
 	"github.com/pidgy/unitehud/core/rgba/nrgba"
 	"github.com/pidgy/unitehud/core/server"
 	"github.com/pidgy/unitehud/core/state"
+	"github.com/pidgy/unitehud/core/team"
+	"github.com/pidgy/unitehud/exe"
 	"github.com/pidgy/unitehud/gui/is"
 )
 
@@ -26,13 +28,11 @@ var (
 	// 	}
 	// }
 
-	discard = false
+	replace = true
 
-	lastMatch time.Time
-)
+	Current = def
 
-func Activity() activity {
-	a := activity{
+	def = activity{
 		State: "Waiting for match to start",
 
 		Details: "UniteHUD - Main Menu",
@@ -65,72 +65,40 @@ func Activity() activity {
 			},
 		},
 	}
+)
 
-	a.Details = fmt.Sprintf("UniteHUD - %s", is.Now)
+func current() activity {
+	a := Current
+	if !replace {
+		return a
+	}
 
 	if is.Now == is.Configuring {
+		a.Details = fmt.Sprintf("UniteHUD - %s", is.Now)
 		a.State = "Configuring capture settings"
 		return a
 	}
 
 	if is.Now == is.Loading {
-		a.State = "Configuring capture settings"
+		a.Details = fmt.Sprintf("UniteHUD - %s", is.Now)
+		a.State = "Loading..."
 		return a
 	}
 
-	game := server.Game()
+	if !server.Ready() {
+		a.Details = "UniteHUD - Main Menu / Paused"
+		a.State = "Waiting for match to start"
+		return a
+	}
+
+	// Confirmed server is running, looking for matches.
+	// Determine if a game is ongoing.
+
+	a.Details = "UniteHUD - In a Match"
 
 	a.Instance = activityInstanceInMatch
 
-	switch {
-	case !game.InMatch && time.Since(lastMatch) > time.Second*10:
-		return a
-	case !game.InMatch && time.Since(lastMatch) < time.Second*10:
-		fallthrough
-	case state.Occured(time.Second*10, state.MatchEnding, state.SurrenderOrange, state.SurrenderPurple):
-		discardFor(time.Since(lastMatch))
-
-		a.Details = "UniteHUD - Match Ended"
-		a.Timestamps = timestamps{}
-
-		switch {
-		case game.Orange.Surrendered:
-			a.State = fmt.Sprintf("Won %d - %d (Surrendered)", game.Purple.Value, game.Orange.Value)
-		case game.Purple.Surrendered:
-			a.State = fmt.Sprintf("Lost %d - %d (Surrendered)", game.Purple.Value, game.Orange.Value)
-		case game.Purple.Value > game.Orange.Value:
-			a.State = fmt.Sprintf("Won %d - %d", game.Purple.Value, game.Orange.Value)
-		case game.Purple.Value < game.Orange.Value:
-			a.State = fmt.Sprintf("Lost %d - %d", game.Purple.Value, game.Orange.Value)
-		case game.Purple.Value == game.Orange.Value:
-			a.State = fmt.Sprintf("Tied %d - %d", game.Purple.Value, game.Orange.Value)
-		}
-
-		return a
-	}
-	lastMatch = time.Now()
-
-	if state.Occured(time.Second*10, state.MatchStarting) && server.Clock() == "10:00" {
-		discardFor(time.Second * 10)
-
-		a.Details = "UniteHUD - Match Starting"
-		a.State = "Loading..."
-		a.Timestamps = timestamps{}
-
-		return a
-	}
-
-	ten := (time.Minute * 10).Milliseconds()
-	ms := int64(game.Seconds * 1000)
-
-	started := ten - ms
-	ending := ten - started
-	if ms > 0 {
-		a.Timestamps.Start = time.Now().UnixMilli() - started
-		a.Timestamps.End = time.Now().UnixMilli() + ending
-	}
-
-	a.Details = "UniteHUD - In a Match"
+	game := server.Game()
 
 	wl := "Tied"
 	switch {
@@ -141,91 +109,131 @@ func Activity() activity {
 	}
 	a.State = fmt.Sprintf("%s %d - %d", wl, game.Purple.Value, game.Orange.Value)
 
-	if state.Occured(time.Second*10, state.RayquazaSecureOrange, state.RayquazaSecurePurple) {
-		a.State = fmt.Sprintf("%s +Rayquaza %s", strings.Title(game.Rayquaza), a.State)
+	ten, ms := (time.Minute * 10).Milliseconds(), int64(game.Seconds*1000)
+	started := ten - ms
+	if ms > 0 {
+		a.Timestamps = timestamps{
+			Start: time.Now().UnixMilli() - started,
+			End:   time.Now().UnixMilli() + (ten - started),
+		}
 	}
 
-	if server.IsFinalStretch() {
-		a.State = fmt.Sprintf("Final Stretch - %s", a.State)
+	// If were not in a match, confirm it hasnt ended recently.
+	events := state.Past(time.Second*10,
+		state.MatchStarting,
+		state.MatchEnding,
+		state.SurrenderOrange,
+		state.SurrenderPurple,
+		state.RegiceSecureOrange,
+		state.RegiceSecurePurple,
+		state.RegisteelSecureOrange,
+		state.RegisteelSecurePurple,
+		state.RegirockSecureOrange,
+		state.RegirockSecurePurple,
+		state.RegielekiSecureOrange,
+		state.RegielekiSecurePurple,
+		state.RayquazaSecureOrange,
+		state.RayquazaSecurePurple,
+	)
+
+	ignoreFinalStretch := false
+	defer func() {
+		if ignoreFinalStretch {
+			return
+		}
+		if server.IsFinalStretch() {
+			a.State = fmt.Sprintf("Final Stretch - %s", a.State)
+		}
+	}()
+
+	// Determine if match is starting or ending.
+	for _, event := range events {
+		switch event.EventType {
+		case state.MatchStarting:
+			dontReplaceFor(time.Second * 30)
+
+			a.Details = "UniteHUD - Match Starting"
+			a.State = "Loading..."
+			a.Timestamps = timestamps{}
+
+			return a
+		case state.SurrenderOrange:
+			dontReplaceFor(time.Second * 30)
+
+			a.Details = "UniteHUD - Match Ending"
+			a.State = fmt.Sprintf("Won %d - %d (Surrender)", game.Purple.Value, game.Orange.Value)
+
+			return a
+		case state.SurrenderPurple:
+			dontReplaceFor(time.Second * 30)
+
+			a.Details = "UniteHUD - Match Ending"
+			a.State = fmt.Sprintf("Lost %d - %d (Surrender)", game.Purple.Value, game.Orange.Value)
+
+			return a
+		case state.MatchEnding:
+			dontReplaceFor(time.Second * 30)
+
+			wl := "Tied"
+			switch {
+			case game.Purple.Value > game.Orange.Value:
+				wl = "Won"
+			case game.Purple.Value < game.Orange.Value:
+				wl = "Lost"
+			}
+
+			a.Details = "UniteHUD - Match Ended"
+			a.State = fmt.Sprintf("%s %d - %d", wl, game.Purple.Value, game.Orange.Value)
+
+			a.Timestamps = timestamps{}
+
+			return a
+		}
 	}
 
-	// switch is.Now {
-	// case is.Configuring:
-	// 	a.State = "Configuring capture settings"
-	// case is.Loading:
-	// 	a.State = "Starting"
-	// case is.MainMenu:
-	// 	if !server.Ready() {
-	// 		a.State = "Ready to capture scores"
-	// 	}
+	// Could be middle of a match, check for objectives.
+	for _, event := range events {
+		switch e := event.EventType; e {
+		case state.RayquazaSecureOrange, state.RegisteelSecureOrange, state.RegiceSecureOrange, state.RegirockSecureOrange, state.RegielekiSecureOrange,
+			state.RayquazaSecurePurple, state.RegisteelSecurePurple, state.RegiceSecurePurple, state.RegirockSecurePurple, state.RegielekiSecurePurple:
 
-	// 	if !server.Match() {
-	// 		return a, !state.Occured(time.Second*15, state.MatchEnding, state.SurrenderOrange, state.SurrenderPurple)
-	// 	}
+			dontReplaceFor(time.Second * 10)
 
-	// 	event := state.Last()
+			obj := "Objective"
+			strs := strings.Split(e.String(), " ")
+			if len(strs) > 1 {
+				obj = strs[1]
+			}
 
-	// 	a.Instance = activityInstanceInMatch
+			wl := "lost"
+			if e.Team() == team.Purple {
+				wl = "secured"
+			}
 
-	// 	ten := int64((time.Minute * 10).Milliseconds())
-	// 	ms := int64(server.Seconds() * 1000)
+			a.State = fmt.Sprintf("%d - %d / %s %s", game.Purple.Value, game.Orange.Value, obj, wl)
+			return a
+		}
+	}
 
-	// 	case state.HoldingEnergy, state.OrangeScoreMissed, state.PurpleScoreMissed,
-	// 		state.SelfScoreIndicator, state.PreScore, state.PostScore, state.Nothing:
-	// 	case state.MatchStarting:
-	// 		a.Timestamps = timestamps{}
-	// 		a.Details = "UniteHUD - Match Starting"
-	// 		a.State = "Loading..."
-	// 	case state.Killed, state.KilledWithPoints, state.KilledWithoutPoints:
-	// 		e := state.First(event.EventType, time.Second*30)
-	// 		if e != nil {
-	// 			event = e
-	// 		}
-	// 		a.State = fmt.Sprintf("KO'd %ds ago", int(time.Since(event.Time).Seconds()))
+	if game.Seconds == 0 {
+		a.Details = "UniteHUD - Main Menu"
+		a.State = "Waiting for next match to start"
+		a.Timestamps = timestamps{
+			Start: exe.Uptime.UnixMilli(),
+			End:   0,
+		}
+		a.Instance = activityInstanceIdle
 
-	// 		discardFor(time.Second * 5)
-	// 	case state.PurpleScore, state.OrangeScore, state.FirstScored:
-	// 		fallthrough
-	// 	case state.RegiceSecureOrange:
-	// 		a.State = "Regice Lost"
-	// 	case state.RegirockSecureOrange:
-	// 		a.State = "Regirock Lost"
-	// 	case state.RegielekiSecureOrange:
-	// 		a.State = "Regieleki Lost"
-	// 	case state.RegisteelSecureOrange:
-	// 		a.State = "Registeel Lost"
-	// 	case state.RayquazaSecureOrange:
-	// 		a.State = "Rayquaza Lost"
-	// 	case state.RayquazaSecurePurple:
-	// 		a.State = "Rayquaza Secured"
-	// 	case state.RegiceSecurePurple:
-	// 		a.State = "Regice Secured"
-	// 	case state.RegielekiSecurePurple:
-	// 		a.State = "Regieleki Secured"
-	// 	case state.RegisteelSecurePurple:
-	// 		a.State = "Registeel Secured"
-	// 	case state.RegirockSecurePurple:
-	// 		a.State = "Regirock Secured"
-	// 	default:
-	// 		if time.Since(event.Time) > time.Second*30 {
-	// 			break
-	// 		}
-
-	// 		a.State = fmt.Sprintf("%s - %s", event.EventType, a.State)
-	// 	}
-
-	// 	if server.IsFinalStretch() {
-	// 		a.State = fmt.Sprintf("Final Stretch - %s", a.State)
-	// 	}
-	// }
+		ignoreFinalStretch = true
+	}
 
 	return a
 }
 
-func discardFor(d time.Duration) {
-	discard = true
+func dontReplaceFor(d time.Duration) {
+	replace = false
 	time.AfterFunc(d, func() {
-		discard = false
+		replace = true
 	})
 }
 
@@ -236,21 +244,17 @@ func Close() {
 
 func Open() error {
 	go func() {
-		last := Activity()
 
 		for ; ; time.Sleep(time.Second * 5) {
 			reconnect()
 
-			curr := Activity()
-			if !discard {
-				last = curr
-			}
+			Current = current()
 
 			rpc.send(frame{
 				Cmd: commandSetActivity,
 				Args: args{
 					Pid:      os.Getpid(),
-					Activity: last,
+					Activity: Current,
 				},
 				Nonce: uuid.New().String(),
 			})

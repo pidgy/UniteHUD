@@ -712,20 +712,20 @@ func (g *GUI) videos(text float32) *videos {
 
 					err := config.Current.Save()
 					if err != nil {
-						notify.Error("[UI] Failed to load %s configuration", config.Current.Gaming.Device)
+						notify.Error("[UI] <ini:failed:load> %s configuration", config.Current.Gaming.Device)
 						return false
 					}
 
 					err = config.Open()
 					if err != nil {
-						notify.Error("[UI] Failed to load %s configuration", config.Current.Gaming.Device)
+						notify.Error("[UI] <ini:failed:load> %s configuration", config.Current.Gaming.Device)
 						return false
 					}
 
 					time.AfterFunc(time.Second, func() {
 						err := config.Current.Save()
 						if err != nil {
-							notify.Error("[UI] Failed to save %s configuration", config.Current.Gaming.Device)
+							notify.Error("[UI] <ini:failed:save> %s configuration", config.Current.Gaming.Device)
 						}
 					})
 				}

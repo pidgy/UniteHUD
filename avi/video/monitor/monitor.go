@@ -107,7 +107,7 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 func TaskbarHeight() int {
 	r, err := wapi.WorkArea()
 	if err != nil {
-		notify.Error("[Video] Failed to find monitor info: %v", err)
+		notify.Error("[Video] <ini:failed:find> monitor info: %v", err)
 		return 0
 	}
 
@@ -165,7 +165,7 @@ func Open() {
 			bottomDisplays++
 			name = display("Bottom", bottomDisplays)
 		default:
-			notify.Error("[Video] Failed to locate display #%d [%s] relative to %s [%s]", i, r, config.MainDisplay, m)
+			notify.Error("[Video] <ini:failed:locate> display #%d [%s] relative to %s [%s]", i, r, config.MainDisplay, m)
 			continue
 		}
 
@@ -180,7 +180,7 @@ func Open() {
 func captureFullscreen() (*image.RGBA, error) {
 	n, ok := displays.Load(config.Current.Video.Capture.Window.Name)
 	if !ok {
-		return nil, fmt.Errorf("%s: failed to find display", config.Current.Video.Capture.Window.Name)
+		return nil, fmt.Errorf("%s: <ini:failed:find> display", config.Current.Video.Capture.Window.Name)
 	}
 
 	img, err := screenshot.CaptureDisplay(n.(int))

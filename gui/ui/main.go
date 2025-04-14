@@ -44,7 +44,6 @@ import (
 	"github.com/pidgy/unitehud/gui/ux/split"
 	"github.com/pidgy/unitehud/gui/ux/textblock"
 	"github.com/pidgy/unitehud/system/discord"
-	"github.com/pidgy/unitehud/system/ini"
 	"github.com/pidgy/unitehud/system/process"
 	"github.com/pidgy/unitehud/system/save"
 	"github.com/pidgy/unitehud/system/tray"
@@ -158,7 +157,7 @@ func (g *GUI) main() {
 
 		err := save.Logs(notify.FeedStrings(), stats.Lines(), stats.Counts())
 		if err != nil {
-			notify.Warn("[UI] Failed to save logs (%v)", err)
+			notify.Warn("[UI] <ini:failed:save> logs (%v)", err)
 		}
 
 		g.ToastYesNo(
@@ -168,7 +167,7 @@ func (g *GUI) main() {
 				func() {
 					err := save.Open()
 					if err != nil {
-						notify.Error("[UI] Failed to open save directory (%v)", err)
+						notify.Error("[UI] <ini:failed:open> save directory (%v)", err)
 						return
 					}
 				},
@@ -223,8 +222,8 @@ func (g *GUI) main() {
 
 		g.ToastYesNoRememberDecision(
 			exe.Title,
-			ini.Find("toast", "connect_discord"),
-			ini.Find("toast", "connect_discord_remember"),
+			"<ini:toast:connect_discord>",
+			"<ini:toast:connect_discord_remember>",
 			OnToastYes(func() {
 				defer close(waitq)
 
@@ -242,7 +241,7 @@ func (g *GUI) main() {
 				}
 				err := config.Current.Save()
 				if err != nil {
-					notify.Error("[UI] Failed to save UniteHUD configuration (%v)", err)
+					notify.Error("[UI] <ini:failed:save> UniteHUD configuration (%v)", err)
 					return
 				}
 			}),
@@ -254,7 +253,7 @@ func (g *GUI) main() {
 
 				err := config.Current.Save()
 				if err != nil {
-					notify.Error("[UI] Failed to save UniteHUD configuration (%v)", err)
+					notify.Error("[UI] <ini:failed:save> UniteHUD configuration (%v)", err)
 					return
 				}
 			}),
@@ -339,9 +338,8 @@ func (g *GUI) main() {
 								ui.labels.discord.Color.A = 127
 								ui.labels.discord.Text = "👾 Discord RPC Disabled"
 							} else {
-								a := discord.Activity()
 								ui.labels.discord.Color.A = 200
-								ui.labels.discord.Text = fmt.Sprintf("👾 %s: %s", strings.ReplaceAll(a.Details, "UniteHUD - ", ""), a.State)
+								ui.labels.discord.Text = fmt.Sprintf("👾 %s: %s", strings.ReplaceAll(discord.Current.Details, "UniteHUD - ", ""), discord.Current.State)
 							}
 							return ui.labels.discord.Layout(gtx)
 						})
@@ -709,7 +707,7 @@ func (g *GUI) mainUI() *main {
 
 			err := save.Logs(notify.FeedStrings(), stats.Lines(), stats.Counts())
 			if err != nil {
-				notify.Warn("[UI] Failed to save logs (%v)", err)
+				notify.Warn("[UI] <ini:failed:save> logs (%v)", err)
 			}
 
 			tray.SetStartStopTitle("Start")
@@ -765,7 +763,7 @@ func (g *GUI) mainUI() *main {
 	ui.textblocks.feed, err = textblock.New(g.nav.Collection.Cascadia(), 75)
 	if err != nil {
 		ui.textblocks.feed = &textblock.Widget{}
-		notify.Warn("[UI] Failed to load font: (%v)", err)
+		notify.Warn("[UI] <ini:failed:load> font: (%v)", err)
 	}
 
 	ui.buttons.settingsImage = &button.ImageWidget{
@@ -1029,7 +1027,7 @@ func (g *GUI) mainUI() *main {
 				OnToastOK(func() {
 					err = open.Run(filepath.Join(exe.Directory(), "www"))
 					if err != nil {
-						notify.Error("[UI] Failed to open www/ directory: %v", err)
+						notify.Error("[UI] <ini:failed:open> www/ directory: %v", err)
 						return
 					}
 				}),
@@ -1088,12 +1086,12 @@ func (g *GUI) mainUI() *main {
 
 			err = save.Logs(notify.FeedStrings(), stats.Lines(), stats.Counts())
 			if err != nil {
-				notify.Warn("[UI] Failed to save logs (%v)", err)
+				notify.Warn("[UI] <ini:failed:save> logs (%v)", err)
 			}
 
 			err := save.Open()
 			if err != nil {
-				notify.Warn("[UI] Failed to open: %s (%v)", save.Directory, err)
+				notify.Warn("[UI] <ini:failed:open>: %s (%v)", save.Directory, err)
 			}
 		},
 	}
@@ -1115,7 +1113,7 @@ func (g *GUI) mainUI() *main {
 
 				err := save.Logs(notify.FeedStrings(), stats.Lines(), stats.Counts())
 				if err != nil {
-					notify.Warn("[UI] Failed to save logs (%v)", err)
+					notify.Warn("[UI] <ini:failed:save> logs (%v)", err)
 				}
 			}
 
@@ -1128,12 +1126,12 @@ func (g *GUI) mainUI() *main {
 
 					err := save.Open()
 					if err != nil {
-						notify.Error("[UI] Failed to open \"%s\" (%v)", save.Directory, err)
+						notify.Error("[UI] <ini:failed:open> \"%s\" (%v)", save.Directory, err)
 					}
 
 					err = save.Logs(notify.FeedStrings(), stats.Lines(), stats.Counts())
 					if err != nil {
-						notify.Warn("[UI] Failed to save logs (%v)", err)
+						notify.Warn("[UI] <ini:failed:save> logs (%v)", err)
 					}
 
 					config.Current.Record = false
@@ -1158,7 +1156,7 @@ func (g *GUI) mainUI() *main {
 			exe := "C:\\Windows\\system32\\notepad.exe"
 			err := exec.Command(exe, config.Current.File()).Run()
 			if err != nil {
-				notify.Error("[UI] Failed to open \"%s\" (%v)", config.Current.File(), err)
+				notify.Error("[UI] <ini:failed:open> \"%s\" (%v)", config.Current.File(), err)
 				return
 			}
 

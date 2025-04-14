@@ -69,7 +69,7 @@ func Default() image.Image {
 
 	i, err := defaultMat.ToImage()
 	if err != nil {
-		notify.Warn("[Splash] Failed to convert default splash image (%v)", err)
+		notify.Warn("[Splash] <ini:failed:convert> default splash image (%v)", err)
 		return defaultPNG
 	}
 	defaultImg = i
@@ -88,7 +88,7 @@ func Device() image.Image {
 
 	i, err := deviceMat.ToImage()
 	if err != nil {
-		notify.Warn("[Splash] Failed to convert device splash image (%v)", err)
+		notify.Warn("[Splash] <ini:failed:convert> device splash image (%v)", err)
 		return defaultPNG
 	}
 	deviceImg = i
@@ -107,7 +107,7 @@ func DeviceClickable() image.Image {
 
 	i, err := deviceClickableMat.ToImage()
 	if err != nil {
-		notify.Warn("[Splash] Failed to convert device-clickable splash image (%v)", err)
+		notify.Warn("[Splash] <ini:failed:convert> device-clickable splash image (%v)", err)
 		return defaultPNG
 	}
 	deviceClickableImg = i
@@ -134,7 +134,7 @@ func DeviceRGBA() *image.RGBA {
 
 	i, err := deviceMat.ToImage()
 	if err != nil {
-		notify.Warn("[Splash] Failed to convert device rgba splash image (%v)", err)
+		notify.Warn("[Splash] <ini:failed:convert> device rgba splash image (%v)", err)
 		return defaultPNG
 	}
 	deviceRGBA = AsRGBA(i)
@@ -153,7 +153,7 @@ func Invalid() image.Image {
 
 	i, err := invalidMat.ToImage()
 	if err != nil {
-		notify.Warn("[Splash] Failed to convert 'invalid' splash image (%v)", err)
+		notify.Warn("[Splash] <ini:failed:convert> 'invalid' splash image (%v)", err)
 		return defaultPNG
 	}
 	invalidImg = i
@@ -172,7 +172,7 @@ func InvalidRGBA() *image.RGBA {
 
 	i, err := invalidMat.ToImage()
 	if err != nil {
-		notify.Warn("[Splash] Failed to convert 'invalid' rgba splash image (%v)", err)
+		notify.Warn("[Splash] <ini:failed:convert> 'invalid' rgba splash image (%v)", err)
 		return defaultPNG
 	}
 	invalidRGBA = AsRGBA(i)
@@ -191,7 +191,7 @@ func Loading() image.Image {
 
 	i, err := loadingMat.ToImage()
 	if err != nil {
-		notify.Warn("[Splash] Failed to convert loading splash image (%v)", err)
+		notify.Warn("[Splash] <ini:failed:convert> loading splash image (%v)", err)
 		return defaultPNG
 	}
 	loadingImg = i
@@ -210,7 +210,7 @@ func Projector() image.Image {
 
 	i, err := projectorMat.ToImage()
 	if err != nil {
-		notify.Warn("Failed to convert projector splash image (%v)", err)
+		notify.Warn("<ini:failed:convert> projector splash image (%v)", err)
 		return defaultPNG
 	}
 	projectorImg = i

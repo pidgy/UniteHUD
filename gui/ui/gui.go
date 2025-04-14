@@ -80,7 +80,7 @@ var UI *GUI
 func New() *GUI {
 	err := wapi.SetProcessDPIAwareness(wapi.PerMonitorAware)
 	if err != nil {
-		notify.Warn("[UI] Failed to set DPI awareness, %v", err)
+		notify.Warn("[UI] <ini:failed:set> DPI awareness, %v", err)
 	}
 
 	min := image.Pt(1100, 700)

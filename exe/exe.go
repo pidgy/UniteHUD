@@ -26,7 +26,7 @@ func Directory() string {
 	if dir == "" {
 		e, err := os.Executable()
 		if err != nil {
-			dir = "failed to locate executable directory"
+			dir = "<ini:failed:locate> executable directory"
 		}
 		dir = filepath.Dir(e)
 	}

@@ -55,7 +55,7 @@ func Clock() {
 
 		matrix, img, err := capture(config.Current.XY.Time)
 		if err != nil {
-			notify.Error("[Detect] Failed to capture clock area (%v)", err)
+			notify.Error("[Detect] <ini:failed:capture> clock area (%v)", err)
 			matrix.Close()
 			continue
 		}
@@ -102,7 +102,7 @@ func Defeated() {
 
 		matrix, img, err := capture(area)
 		if err != nil {
-			notify.Error("[Detect] Failed to capture area (%v)", err)
+			notify.Error("[Detect] <ini:failed:capture> area (%v)", err)
 			matrix.Close()
 			continue
 		}
@@ -162,7 +162,7 @@ func Energy() {
 
 		matrix, img, err := capture(config.Current.XY.Energy)
 		if err != nil {
-			notify.Error("[Detect] Failed to capture energy area (%v)", err)
+			notify.Error("[Detect] <ini:failed:capture> energy area (%v)", err)
 			matrix.Close()
 			continue
 		}
@@ -228,7 +228,7 @@ func Objectives() {
 
 		matrix, img, err := capture(config.Current.XY.Objectives)
 		if err != nil {
-			notify.Error("[Detect] Failed to capture objective area (%v)", err)
+			notify.Error("[Detect] <ini:failed:capture> objective area (%v)", err)
 			matrix.Close()
 			continue
 		}
@@ -294,7 +294,7 @@ func Preview() {
 	preview := func() {
 		img, err := video.Capture()
 		if err != nil {
-			notify.Error("[Detect] Failed to capture preview (%v)", err)
+			notify.Error("[Detect] <ini:failed:capture> preview (%v)", err)
 			return
 		}
 		notify.Preview = img
@@ -335,7 +335,7 @@ func Scores(by string) {
 
 			matrix, img, err := capture(config.Current.ScoringOption())
 			if err != nil {
-				notify.Error("[Detect] [%s] [Self] Failed to capture energy area (%v)", server.Clock(), err)
+				notify.Error("[Detect] [%s] [Self] <ini:failed:capture> energy area (%v)", server.Clock(), err)
 				matrix.Close()
 				continue
 			}
@@ -364,7 +364,7 @@ func Scores(by string) {
 
 			matrix, img, err := capture(config.Current.XY.Scores)
 			if err != nil {
-				notify.Error("[Detect] Failed to capture score area (%v)", err)
+				notify.Error("[Detect] <ini:failed:capture> score area (%v)", err)
 				matrix.Close()
 				continue
 			}
@@ -428,7 +428,7 @@ func Scores(by string) {
 			if config.Current.Record {
 				err = save.Image(img, matrix, t.Crop(m.Point), m.Value, t.Name, strings.ToLower(r.String()), server.Clock())
 				if err != nil {
-					notify.Warn("[Detect] Failed to save image (%v)", err)
+					notify.Warn("[Detect] <ini:failed:save> image (%v)", err)
 				}
 			}
 
@@ -455,7 +455,7 @@ func States() {
 
 		matrix, img, err := capture(area)
 		if err != nil {
-			notify.Error("[Detect] Failed to capture state area (%v)", err)
+			notify.Error("[Detect] <ini:failed:capture> state area (%v)", err)
 			matrix.Close()
 			continue
 		}
@@ -629,7 +629,7 @@ func confirmEnergyWasScored(before, after int, at time.Time) {
 
 	p := state.SelfScoreIndicator.Occured(time.Second * 5)
 	if p == nil {
-		notify.Warn("[Detect] [%s] [Self] [Missed] +%d Failed to find self-score indicator", server.Clock(), before)
+		notify.Warn("[Detect] [%s] [Self] [Missed] +%d <ini:failed:find> self-score indicator", server.Clock(), before)
 		return
 	}
 

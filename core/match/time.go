@@ -47,8 +47,8 @@ func AsTimeImage(mat gocv.Mat, kitchen string) (image.Image, error) {
 	return crop, nil
 }
 
-func Time(matrix gocv.Mat, img *image.RGBA) (minutes, seconds int, kitchen string) {
-	clock := [4]int{-1, -1, -1, -1}
+func Time(matrix gocv.Mat, img *image.RGBA) (minutes, seconds int64, kitchen string) {
+	clock := [4]int64{-1, -1, -1, -1}
 	locs := []int{math.MaxInt32, math.MaxInt32, math.MaxInt32, math.MaxInt32}
 	cols := []int{0, 0, 0, 0}
 	templates := config.Current.TemplatesTime(team.Time.Name)
@@ -104,7 +104,7 @@ func Time(matrix gocv.Mat, img *image.RGBA) (minutes, seconds int, kitchen strin
 			if maxp.X < locs[c] {
 				locs[c] = maxp.X
 				cols[c] = templates[i].Cols() - 2
-				clock[c] = templates[i].Value
+				clock[c] = int64(templates[i].Value)
 			}
 		}
 

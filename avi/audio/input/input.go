@@ -56,7 +56,7 @@ func New(ctx *malgo.AllocatedContext, name string) (*Device, error) {
 		return d, nil
 	}
 
-	return disabled, fmt.Errorf("failed to find capture device: %s", name)
+	return disabled, fmt.Errorf("<ini:failed:find> capture device: %s", name)
 }
 
 func (d *Device) Active() bool {
@@ -130,7 +130,7 @@ func (d *Device) Start(mctx malgo.Context, w io.ReadWriter) error {
 		defer func() {
 			err := device.Stop()
 			if err != nil {
-				notify.Error("[Audio Input] Failed to stop device (%v)", err)
+				notify.Error("[Audio Input] <ini:failed:stop> device (%v)", err)
 				return
 			}
 		}()
@@ -153,14 +153,14 @@ func (d *Device) Type() device.Type {
 func Devices(ctx *malgo.AllocatedContext) (captures []*Device) {
 	d, err := ctx.Devices(malgo.Capture)
 	if err != nil {
-		notify.Error("[Audio Input] Failed to find devices (%v)", err)
+		notify.Error("[Audio Input] <ini:failed:find> devices (%v)", err)
 		return nil
 	}
 
 	for _, info := range d {
 		full, err := ctx.DeviceInfo(malgo.Capture, info.ID, malgo.Shared)
 		if err != nil {
-			notify.Warn("[Audio Input] Failed to poll device \"%s\" (%v)", info.ID, err)
+			notify.Warn("[Audio Input] <ini:failed:poll> device \"%s\" (%v)", info.ID, err)
 		}
 
 		captures = append(captures, &Device{

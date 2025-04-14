@@ -263,7 +263,7 @@ func (ui *projector) fullscreen() {
 
 	err := wapi.SetThreadExecutionState(t, wapi.ThreadExecutionStateContinuous)
 	if err != nil {
-		notify.Warn("[UI] Projector failed to set thread execution state (%v)", err)
+		notify.Warn("[UI] Projector <ini:failed:set> thread execution state (%v)", err)
 	}
 }
 
@@ -317,7 +317,7 @@ func (g *GUI) projectorUI() *projector {
 
 func (ui *projector) setWindowPos(shift image.Point) {
 	if ui.dimensions.fullscreened || ui.hwnd == 0 || ui.dimensions.moving {
-		notify.Warn("[UI] Failed to set overlay position")
+		notify.Warn("[UI] <ini:failed:set> overlay position")
 		return
 	}
 

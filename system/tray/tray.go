@@ -223,7 +223,7 @@ func configuration() {
 
 			err = exec.Command("C:\\Windows\\system32\\notepad.exe", path).Run()
 			if err != nil {
-				notify.Error("[UI] Failed to open \"%s\" (%v)", path, err)
+				notify.Error("[UI] <ini:failed:open> \"%s\" (%v)", path, err)
 				continue
 			}
 
@@ -304,12 +304,12 @@ func logs() toggle {
 			case <-open.ClickedCh:
 				err := save.Open()
 				if err != nil {
-					notify.Error("[Tray] Failed to open log directory (%v)", err)
+					notify.Error("[Tray] <ini:failed:open> log directory (%v)", err)
 				}
 			case <-view.ClickedCh:
 				err := save.OpenCurrentLog()
 				if err != nil {
-					notify.Error("[Tray] Failed to open log directory (%v)", err)
+					notify.Error("[Tray] <ini:failed:open> log directory (%v)", err)
 				}
 			}
 		}
@@ -361,7 +361,7 @@ func website() toggle {
 		event: func() {
 			err := open.Run("https://unitehud.dev")
 			if err != nil {
-				notify.Error("[Tray] Failed to open unitehud.dev (%v)", err)
+				notify.Error("[Tray] <ini:failed:open> unitehud.dev (%v)", err)
 			}
 		},
 	}

@@ -343,7 +343,7 @@ func (p *preview) makePreviewCaptureButton(cap *area.Capture, img image.Image) *
 		Click: func(i *button.ImageWidget) {
 			err := cap.Open()
 			if err != nil {
-				p.windows.parent.ToastError(fmt.Errorf("Failed to open capture preview (%v)", err))
+				p.windows.parent.ToastError(fmt.Errorf("<ini:failed:open> capture preview (%v)", err))
 			}
 		},
 	}

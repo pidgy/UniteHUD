@@ -220,13 +220,13 @@ func Warn(format string, a ...interface{}) {
 }
 
 func (n *notify) log(r nrgba.NRGBA, clock, dedup, unique bool, format string, a ...interface{}) {
-	format = ini.Format(format)
+	format = ini.Format(fmt.Sprintf(format, a...))
 
 	p := Post{
 		NRGBA: r,
 		Time:  time.Now(),
 
-		orig:  fmt.Sprintf(format, a...),
+		orig:  format,
 		count: 1,
 	}
 

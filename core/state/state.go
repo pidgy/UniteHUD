@@ -68,6 +68,8 @@ const (
 
 var (
 	Events = []*Event{{EventType: Nothing, Time: exe.Uptime}}
+
+	past = Events
 )
 
 func (e EventType) Int() int {
@@ -174,6 +176,7 @@ func Add(e EventType, clock string, points int) {
 	}
 
 	Events = append([]*Event{event}, Events...)
+	past = append([]*Event{event}, past...)
 }
 
 func Clear() {
@@ -267,6 +270,19 @@ func (this EventType) Occured(since time.Duration) *Event {
 	return nil
 }
 
+func (this EventType) Team() *team.Team {
+	switch this {
+	case SelfScoreIndicator, PreScore, PostScore, Killed, KilledWithPoints, KilledWithoutPoints, HoldingEnergy:
+		return team.Self
+	case OrangeScore, RegielekiSecureOrange, RegiceSecureOrange, RegirockSecureOrange, RegisteelSecureOrange, RayquazaSecureOrange:
+		return team.Orange
+	case FirstScored, PurpleScore, RegielekiSecurePurple, RegiceSecurePurple, RegirockSecurePurple, RegisteelSecurePurple, RayquazaSecurePurple:
+		return team.Purple
+	default:
+		return team.Game
+	}
+}
+
 func Start() *Event {
 	if len(Events) == 0 {
 		return &Event{}
@@ -275,7 +291,18 @@ func Start() *Event {
 }
 
 func First(e EventType, since time.Duration) *Event {
-	events := Past(e, since)
+	events := []*Event{}
+
+	for _, event := range Events {
+		if time.Since(event.Time) > since {
+			break
+		}
+
+		if event.EventType == e {
+			events = append(events, event)
+		}
+	}
+
 	if len(events) > 0 {
 		return events[len(events)-1]
 	}
@@ -296,16 +323,18 @@ func Occured(since time.Duration, e ...EventType) bool {
 	return false
 }
 
-func Past(e EventType, since time.Duration) []*Event {
+func Past(since time.Duration, es ...EventType) []*Event {
 	events := []*Event{}
 
-	for _, event := range Events {
+	for _, event := range past {
 		if time.Since(event.Time) > since {
 			return events
 		}
 
-		if event.EventType == e {
-			events = append(events, event)
+		for _, e := range es {
+			if e == event.EventType {
+				events = append(events, event)
+			}
 		}
 	}
 
@@ -377,17 +406,4 @@ func Strings(since time.Duration) []string {
 	}
 
 	return s
-}
-
-func (this EventType) Team() *team.Team {
-	switch this {
-	case SelfScoreIndicator, PreScore, PostScore, Killed, KilledWithPoints, KilledWithoutPoints, HoldingEnergy:
-		return team.Self
-	case OrangeScore, RegielekiSecureOrange, RegiceSecureOrange, RegirockSecureOrange, RegisteelSecureOrange, RayquazaSecureOrange:
-		return team.Orange
-	case FirstScored, PurpleScore, RegielekiSecurePurple, RegiceSecurePurple, RegirockSecurePurple, RegisteelSecurePurple, RayquazaSecurePurple:
-		return team.Purple
-	default:
-		return team.Game
-	}
 }

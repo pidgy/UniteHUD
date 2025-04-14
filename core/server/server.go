@@ -27,11 +27,11 @@ import (
 
 const Address = "127.0.0.1:17069"
 
-type game struct {
+type State struct {
 	Bottom    []objective `json:"bottom"`
 	Config    bool        `json:"config"`
 	Debug     bool        `json:"debug"`
-	Defeated  []int       `json:"defeated"`
+	Defeated  []int64     `json:"defeated"`
 	Energy    int         `json:"balls"`
 	Events    []string    `json:"events"`
 	InMatch   bool        `json:"match"`
@@ -40,7 +40,7 @@ type game struct {
 	Platform  string      `json:"platform"`
 	Rayquaza  string      `json:"rayquaza"`
 	Regilekis []string    `json:"regis"`
-	Seconds   int         `json:"seconds"`
+	Seconds   int64       `json:"seconds"`
 	Self      *score      `json:"self"`
 	Stacks    int         `json:"stacks"`
 	Ready     bool        `json:"ready"`
@@ -50,7 +50,7 @@ type game struct {
 }
 
 type info struct {
-	*game
+	*State
 
 	tx       int
 	requests int
@@ -76,7 +76,7 @@ type score struct {
 }
 
 var current = &info{
-	game:    reset(),
+	State:   reset(),
 	clients: map[string]time.Time{},
 	mutex:   &sync.Mutex{},
 }
@@ -87,17 +87,17 @@ var track struct {
 }
 
 func Bottom() []objective {
-	return current.game.Bottom
+	return current.State.Bottom
 }
 
 func Clear() {
-	started := current.game.Ready
-	current.game = reset()
-	current.game.Ready = started
+	started := current.State.Ready
+	current.State = reset()
+	current.State.Ready = started
 }
 
 func Clock() string {
-	return fmt.Sprintf("%02d:%02d", current.game.Seconds/60, current.game.Seconds%60)
+	return fmt.Sprintf("%02d:%02d", current.State.Seconds/60, current.State.Seconds%60)
 }
 
 func Clients() int {
@@ -114,33 +114,33 @@ func Clients() int {
 	return len(current.clients)
 }
 
-func Game() *game {
-	return current.game
+func Game() *State {
+	return current.State
 }
 
 func Holding() int {
-	return current.game.Energy
+	return current.State.Energy
 }
 
 func IsFinalStretch() bool {
-	if current.game.Seconds == 0 || current.game.Seconds >= 130 {
+	if current.State.Seconds == 0 || current.State.Seconds >= 130 {
 		return false
 	}
 
 	// Edge case to handle scoring at exactly 2:00 and missing time update.
-	if time.Since(current.lastSecondsUpdate).Seconds() >= float64(current.game.Seconds-130) {
+	if time.Since(current.lastSecondsUpdate).Seconds() >= float64(current.State.Seconds-130) {
 		return true
 	}
 
-	return current.game.Seconds > 0 && current.game.Seconds < 121
+	return current.State.Seconds > 0 && current.State.Seconds < 121
 }
 
 func KOs(t *team.Team) int {
 	switch t.Name {
 	case team.Purple.Name:
-		return current.game.Purple.KOs
+		return current.State.Purple.KOs
 	case team.Orange.Name:
-		return current.game.Orange.KOs
+		return current.State.Orange.KOs
 	default:
 		return 0
 	}
@@ -206,7 +206,7 @@ func Open() error {
 
 		now := current.client(r)
 
-		track.ws, err = json.Marshal(current.game)
+		track.ws, err = json.Marshal(current.State)
 		if err != nil {
 			notify.Error("[Server] Failed to create WebSocket response (%v)", err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -223,9 +223,9 @@ func Open() error {
 		}
 		defer c.Close(websocket.StatusNormalClosure, "cross origin WebSocket accepted")
 
-		current.game.Platform = config.Current.Gaming.Device
-		current.game.Events = notify.LastNStrings(10)
-		current.game.Debug = exe.Debug
+		current.State.Platform = config.Current.Gaming.Device
+		current.State.Events = notify.LastNStrings(10)
+		current.State.Debug = exe.Debug
 
 		err = c.Write(context.Background(), websocket.MessageText, track.ws)
 		if err != nil {
@@ -234,7 +234,7 @@ func Open() error {
 			return
 		}
 
-		if current.game.Ready {
+		if current.State.Ready {
 			current.tx += len(track.ws)
 			current.duration += time.Since(now)
 			current.requests++
@@ -246,16 +246,16 @@ func Open() error {
 
 		now := current.client(r)
 
-		track.http, err = json.Marshal(current.game)
+		track.http, err = json.Marshal(current.State)
 		if err != nil {
 			notify.Error("[Server] Failed to create HTTP response (%v)", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
-		current.game.Platform = config.Current.Gaming.Device
-		current.game.Events = notify.LastNStrings(10)
-		current.game.Debug = exe.Debug
+		current.State.Platform = config.Current.Gaming.Device
+		current.State.Events = notify.LastNStrings(10)
+		current.State.Debug = exe.Debug
 
 		_, err = w.Write(track.http)
 		if err != nil {
@@ -264,7 +264,7 @@ func Open() error {
 			return
 		}
 
-		if current.game.Ready {
+		if current.State.Ready {
 			current.tx += len(track.http)
 			current.duration += time.Since(now)
 			current.requests++
@@ -286,29 +286,29 @@ func listen() {
 }
 
 func Match() bool {
-	return current.game.InMatch
+	return current.State.InMatch
 }
 
 func Objectives(t *team.Team) (regielekis, regices, regirocks, registeels, rayquazas int) {
 	q := 0
-	if current.game.Rayquaza == t.Name {
+	if current.State.Rayquaza == t.Name {
 		q++
 	}
 	return RegielekisSecured(t), RegicesSecured(t), RegirocksSecured(t), RegisteelsSecured(t), q
 }
 
 func Rayquaza() string {
-	return current.game.Rayquaza
+	return current.State.Rayquaza
 }
 
 func Ready() bool {
-	return current.game.Ready
+	return current.State.Ready
 }
 func RegielekiAdv() *team.Team {
 	p := 0
 	o := 0
 
-	for _, t := range current.game.Regilekis {
+	for _, t := range current.State.Regilekis {
 		switch t {
 		case team.Purple.Name:
 			p++
@@ -329,7 +329,7 @@ func RegielekiAdv() *team.Team {
 
 func RegicesSecured(t *team.Team) int {
 	n := 0
-	for _, b := range current.game.Bottom {
+	for _, b := range current.State.Bottom {
 		if b.Name == "regice" && b.Team == t.Name {
 			n++
 		}
@@ -338,12 +338,12 @@ func RegicesSecured(t *team.Team) int {
 }
 
 func Regielekis() []string {
-	return current.game.Regilekis
+	return current.State.Regilekis
 }
 
 func RegielekisSecured(t *team.Team) int {
 	n := 0
-	for _, r := range current.game.Regilekis {
+	for _, r := range current.State.Regilekis {
 		if r == t.Name {
 			n++
 		}
@@ -353,7 +353,7 @@ func RegielekisSecured(t *team.Team) int {
 
 func RegirocksSecured(t *team.Team) int {
 	n := 0
-	for _, b := range current.game.Bottom {
+	for _, b := range current.State.Bottom {
 		if b.Name == "regirock" && b.Team == t.Name {
 			n++
 		}
@@ -363,7 +363,7 @@ func RegirocksSecured(t *team.Team) int {
 
 func RegisteelsSecured(t *team.Team) int {
 	n := 0
-	for _, b := range current.game.Bottom {
+	for _, b := range current.State.Bottom {
 		if b.Name == "registeel" && b.Team == t.Name {
 			n++
 		}
@@ -374,11 +374,11 @@ func RegisteelsSecured(t *team.Team) int {
 func Score(t *team.Team) int {
 	switch t {
 	case team.Purple:
-		return current.game.Purple.Value
+		return current.State.Purple.Value
 	case team.Orange:
-		return current.game.Orange.Value
+		return current.State.Orange.Value
 	case team.Self:
-		return current.game.Self.Value
+		return current.State.Self.Value
 	default:
 		return -1
 	}
@@ -387,25 +387,25 @@ func Score(t *team.Team) int {
 func ScoreString(t *team.Team) string {
 	switch t {
 	case team.Purple:
-		if current.game.Purple.Surrendered {
-			return fmt.Sprintf("%d [SND]", current.game.Purple.Value)
+		if current.State.Purple.Surrendered {
+			return fmt.Sprintf("%d [SND]", current.State.Purple.Value)
 		}
-		return fmt.Sprintf("%d", current.game.Purple.Value)
+		return fmt.Sprintf("%d", current.State.Purple.Value)
 	case team.Orange:
-		if current.game.Orange.Surrendered {
-			return fmt.Sprintf("%d [SND]", current.game.Orange.Value)
+		if current.State.Orange.Surrendered {
+			return fmt.Sprintf("%d [SND]", current.State.Orange.Value)
 		}
-		return fmt.Sprintf("%d", current.game.Orange.Value)
+		return fmt.Sprintf("%d", current.State.Orange.Value)
 	}
 	return fmt.Sprintf("0 (Unknown Team %s)", t)
 }
 
 func Scores() (orange, purple, self int) {
-	return current.game.Orange.Value, current.game.Purple.Value, current.game.Self.Value
+	return current.State.Orange.Value, current.State.Purple.Value, current.State.Self.Value
 }
 
-func Seconds() int {
-	return current.game.Seconds
+func Seconds() int64 {
+	return current.State.Seconds
 }
 
 func SetBottomObjective(t *team.Team, name string, n int) {
@@ -450,36 +450,36 @@ func SetBottomObjective(t *team.Team, name string, n int) {
 }
 
 func SetConfig(c bool) {
-	current.game.Config = c
+	current.State.Config = c
 }
 
 func SetDefeated() {
-	current.game.Defeated = append(current.game.Defeated, current.game.Seconds)
+	current.State.Defeated = append(current.State.Defeated, current.State.Seconds)
 }
 
 func SetEnergy(b int) {
-	current.game.Energy = b
+	current.State.Energy = b
 }
 
 func SetKO(t *team.Team) {
 	switch t.Name {
 	case team.Purple.Name:
-		current.game.Purple.KOs++
+		current.State.Purple.KOs++
 	case team.Orange.Name:
-		current.game.Orange.KOs++
+		current.State.Orange.KOs++
 	}
 }
 
 func SetMatchStarted() {
-	current.game.InMatch = true
+	current.State.InMatch = true
 }
 
 func SetMatchStopped() {
-	current.game.InMatch = false
+	current.State.InMatch = false
 }
 
 func SetRayquaza(t *team.Team) {
-	current.game.Rayquaza = t.Name
+	current.State.Rayquaza = t.Name
 }
 
 func SetRegice(t *team.Team) {
@@ -493,14 +493,14 @@ func SetRegice(t *team.Team) {
 func SetRegieleki(t *team.Team) {
 	for i, t2 := range current.Regilekis {
 		if t2 == team.None.Name {
-			current.game.Regilekis[i] = t.Name
+			current.State.Regilekis[i] = t.Name
 			return
 		}
 	}
 
-	current.game.Regilekis[0] = t.Name
-	current.game.Regilekis[1] = team.None.Name
-	current.game.Regilekis[2] = team.None.Name
+	current.State.Regilekis[0] = t.Name
+	current.State.Regilekis[1] = team.None.Name
+	current.State.Regilekis[2] = team.None.Name
 }
 
 // SetRegielekiAt assumes n to be an index starting at 0.
@@ -508,14 +508,14 @@ func SetRegielekiAt(t *team.Team, n int) {
 	op := fmt.Sprintf("[%s] Regieleki #%d", lang.Title(t.Name), n+1)
 
 	switch {
-	case n != 0 && current.game.Regilekis[n-1] == team.None.Name:
+	case n != 0 && current.State.Regilekis[n-1] == team.None.Name:
 		notify.Warn("[Server] %s illegal operation (missing previous)", op)
-	case current.game.Regilekis[n] != t.Name:
+	case current.State.Regilekis[n] != t.Name:
 		notify.Unique(t.NRGBA, "[Server] %s secure replaced", op)
-		current.game.Regilekis[n] = t.Name
-	case n+1 == len(current.game.Regilekis) || current.game.Regilekis[n+1] == team.None.Name:
+		current.State.Regilekis[n] = t.Name
+	case n+1 == len(current.State.Regilekis) || current.State.Regilekis[n+1] == team.None.Name:
 		notify.Unique(t.NRGBA, "[Server] %s reset", op)
-		current.game.Regilekis[n] = team.None.Name
+		current.State.Regilekis[n] = team.None.Name
 	default:
 		notify.Warn("[Server] %s illegal operation", op)
 	}
@@ -545,19 +545,19 @@ func SetScore(t *team.Team, v int) {
 
 	switch t.Name {
 	case team.Purple.Name:
-		current.game.Purple.Value += s.Value
+		current.State.Purple.Value += s.Value
 	case team.Orange.Name:
-		current.game.Orange.Value += s.Value
+		current.State.Orange.Value += s.Value
 	case team.Self.Name:
-		current.game.Purple.Value += s.Value
-		current.game.Self.Value += s.Value
-		current.game.Stacks++
+		current.State.Purple.Value += s.Value
+		current.State.Self.Value += s.Value
+		current.State.Stacks++
 	case team.First.Name:
 		switch team.First.Alias {
 		case team.Purple.Name:
-			current.game.Purple.Value += s.Value
+			current.State.Purple.Value += s.Value
 		case team.Orange.Name:
-			current.game.Orange.Value += s.Value
+			current.State.Orange.Value += s.Value
 		default:
 			notify.Error("[Server] Received first goal from an unknown team")
 		}
@@ -567,33 +567,33 @@ func SetScore(t *team.Team, v int) {
 func SetScoreSurrendered(t *team.Team) {
 	switch t {
 	case team.Purple:
-		current.game.Purple.Surrendered = true
+		current.State.Purple.Surrendered = true
 	case team.Orange:
-		current.game.Orange.Surrendered = true
+		current.State.Orange.Surrendered = true
 	}
 }
 
 func SetReady() {
-	current.game.Ready = true
+	current.State.Ready = true
 	state.Add(state.ServerStarted, Clock(), -1)
 }
 
 func SetNotReady() {
-	current.game.Ready = false
+	current.State.Ready = false
 	state.Add(state.ServerStopped, Clock(), -1)
 }
 
-func SetTime(minutes, seconds int) {
-	current.game.lastSecondsUpdate = time.Now()
+func SetTime(minutes, seconds int64) {
+	current.State.lastSecondsUpdate = time.Now()
 
 	if minutes+seconds == 0 {
-		current.game.InMatch = false
+		current.State.InMatch = false
 		return
 	}
 
-	current.game.InMatch = true
+	current.State.InMatch = true
 
-	current.game.Seconds = minutes*60 + seconds
+	current.State.Seconds = minutes*60 + seconds
 }
 
 func (i *info) client(r *http.Request) time.Time {
@@ -619,7 +619,7 @@ func metrics() {
 			continue
 		}
 
-		if current.game.Ready {
+		if current.State.Ready {
 			notify.System(
 				"[Detect] Averaging %s / %.1fkB latency",
 				current.duration/time.Duration(current.requests),
@@ -629,8 +629,8 @@ func metrics() {
 	}
 }
 
-func reset() *game {
-	return &game{
+func reset() *State {
+	return &State{
 		Purple: &score{
 			Team:        team.Purple.Name,
 			Value:       0,
@@ -652,6 +652,6 @@ func reset() *game {
 		Rayquaza:  "",
 		Bottom:    []objective{},
 		Version:   exe.Version,
-		Defeated:  []int{},
+		Defeated:  []int64{},
 	}
 }

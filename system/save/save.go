@@ -80,7 +80,7 @@ func Logs(feeds, lines []string, templates map[string]int) error {
 
 	f, err := os.OpenFile(dir, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
-		return fmt.Errorf("save: failed to open log file: %s: %v", Directory, err)
+		return fmt.Errorf("save: <ini:failed:open> log file: %s: %v", Directory, err)
 	}
 	defer f.Close()
 
@@ -214,7 +214,7 @@ func templateStatistics(t map[string]int) error {
 	raw, err := os.ReadFile(today)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			return fmt.Errorf("save: failed to open %s: %v", templates, err)
+			return fmt.Errorf("save: <ini:failed:open> %s: %v", templates, err)
 		}
 	}
 	if len(raw) == 0 {
@@ -239,7 +239,7 @@ func templateStatistics(t map[string]int) error {
 
 	err = os.WriteFile(today, sortedJSON(raw), os.ModePerm)
 	if err != nil {
-		return fmt.Errorf("save: failed to save %s: %v", today, err)
+		return fmt.Errorf("save: <ini:failed:save> %s: %v", today, err)
 	}
 
 	// Append and save statistics from all time.
@@ -248,7 +248,7 @@ func templateStatistics(t map[string]int) error {
 	raw, err = os.ReadFile(all)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			return fmt.Errorf("save: failed to open %s: %v", templates, err)
+			return fmt.Errorf("save: <ini:failed:open> %s: %v", templates, err)
 		}
 	}
 	if len(raw) == 0 {
@@ -273,7 +273,7 @@ func templateStatistics(t map[string]int) error {
 
 	err = os.WriteFile(all, sortedJSON(raw), os.ModePerm)
 	if err != nil {
-		return fmt.Errorf("save: failed to save %s: %v", all, err)
+		return fmt.Errorf("save: <ini:failed:save> %s: %v", all, err)
 	}
 
 	return nil

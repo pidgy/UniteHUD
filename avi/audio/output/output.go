@@ -55,7 +55,7 @@ func New(ctx *malgo.AllocatedContext, name string) (*Device, error) {
 		return d, nil
 	}
 
-	return nil, fmt.Errorf("failed to find playback device: %s", name)
+	return nil, fmt.Errorf("<ini:failed:find> playback device: %s", name)
 }
 
 func (d *Device) Active() bool {
@@ -137,7 +137,7 @@ func (d *Device) Start(mctx malgo.Context, r io.ReadWriter) error {
 		defer func() {
 			err := device.Stop()
 			if err != nil {
-				notify.Error("[Audio Output] Failed to stop device (%v)", err)
+				notify.Error("[Audio Output] <ini:failed:stop> device (%v)", err)
 				return
 			}
 		}()
@@ -160,14 +160,14 @@ func (d *Device) Type() device.Type {
 func Devices(ctx *malgo.AllocatedContext) (playbacks []*Device) {
 	d, err := ctx.Devices(malgo.Playback)
 	if err != nil {
-		notify.Error("[Audio Output] Failed to find devices (%v)", err)
+		notify.Error("[Audio Output] <ini:failed:find> devices (%v)", err)
 		return nil
 	}
 
 	for _, info := range d {
 		full, err := ctx.DeviceInfo(malgo.Playback, info.ID, malgo.Shared)
 		if err != nil {
-			notify.Warn("[Audio Output] Failed to find device information for %s (%v)", info.ID, err)
+			notify.Warn("[Audio Output] <ini:failed:find> device information for %s (%v)", info.ID, err)
 		}
 
 		playbacks = append(playbacks, &Device{

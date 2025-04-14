@@ -393,7 +393,7 @@ func (g *GUI) configure() {
 
 				ui.img, err = video.Capture()
 				if err != nil {
-					g.ToastErrorf("Failed to capture video (%v)", err)
+					g.ToastErrorf("<ini:failed:capture> video (%v)", err)
 					g.next(is.MainMenu)
 					break
 				}
@@ -487,7 +487,7 @@ func (g *GUI) configureUI() *configure {
 
 					err := config.Current.Save()
 					if err != nil {
-						notify.Warn("[UI] Failed to save UniteHUD configuration (%v)", err)
+						notify.Warn("[UI] <ini:failed:save> UniteHUD configuration (%v)", err)
 					}
 
 					g.next(is.MainMenu)
@@ -590,7 +590,7 @@ func (g *GUI) configureUI() *configure {
 
 					err := config.Current.Save()
 					if err != nil {
-						notify.Error("[UI] Failed to save UniteHUD configuration (%v)", err)
+						notify.Error("[UI] <ini:failed:save> UniteHUD configuration (%v)", err)
 						return
 					}
 
@@ -653,7 +653,7 @@ func (g *GUI) configureUI() *configure {
 
 			err := exec.Command("C:\\Windows\\system32\\notepad.exe", config.Current.File()).Run()
 			if err != nil {
-				notify.Error("[UI] Failed to open \"%s\" (%v)", config.Current.File(), err)
+				notify.Error("[UI] <ini:failed:open> \"%s\" (%v)", config.Current.File(), err)
 				return
 			}
 
@@ -666,7 +666,7 @@ func (g *GUI) configureUI() *configure {
 
 			err = config.Current.Save()
 			if err != nil {
-				notify.Error("[UI] Failed to save \"%s\" (%v)", config.Current.File(), err)
+				notify.Error("[UI] <ini:failed:save> \"%s\" (%v)", config.Current.File(), err)
 				return
 			}
 

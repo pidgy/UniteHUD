@@ -129,7 +129,7 @@ func Open() error {
 		}
 	}
 
-	notify.Error("[Window] Failed to find \"%s\"", config.Current.Video.Capture.Window.Name)
+	notify.Error("[Window] <ini:failed:find> \"%s\"", config.Current.Video.Capture.Window.Name)
 
 	config.Current.Video.Capture.Window.Lost = config.Current.Video.Capture.Window.Name
 	config.Current.Video.Capture.Window.Name = config.MainDisplay
@@ -191,7 +191,7 @@ func list() ([]string, []uintptr, error) {
 
 		name, err := w.Title()
 		if err != nil {
-			// notify.Error("Failed to find a window title (%v)", err)
+			// notify.Error("<ini:failed:find> a window title (%v)", err)
 			return 1
 		}
 

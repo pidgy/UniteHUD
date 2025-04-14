@@ -24,6 +24,7 @@ import (
 	"github.com/pidgy/unitehud/gui/ux/button"
 	"github.com/pidgy/unitehud/gui/ux/decorate"
 	"github.com/pidgy/unitehud/gui/ux/title"
+	"github.com/pidgy/unitehud/system/ini"
 )
 
 type (
@@ -98,6 +99,9 @@ func (c *closeable) ready() {
 }
 
 func (g *GUI) toast(header, msg string, width, height float32) *toast {
+	msg = ini.Format(msg)
+	header = ini.Format(header)
+
 	notify.Debug("[Toast] %s: %s", header, msg)
 
 	if g.previous.toast.active {
@@ -382,6 +386,8 @@ func (g *GUI) ToastYesNo(header, msg string, y OnToastYes, n OnToastNo) {
 }
 
 func (g *GUI) ToastYesNoRememberDecision(header, msg, decision string, y OnToastYes, n OnToastNo, r OnToastRemember, x OnToastNeither) {
+	decision = ini.Format(decision)
+
 	h := float32(125)
 	if decision != "" {
 		h = 150

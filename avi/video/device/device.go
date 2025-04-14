@@ -210,7 +210,7 @@ func Name(index int) string {
 
 	cached.devices[index], err = device.VideoCaptureDeviceName(index)
 	if err != nil {
-		notify.Error("[Video] Failed to find device %d name (%v)", index, err)
+		notify.Error("[Video] <ini:failed:find> device %d name (%v)", index, err)
 		return fmt.Sprintf("%d", index)
 	}
 
@@ -320,7 +320,7 @@ func capture() error {
 			ok := device.Read(&mat)
 			if !ok {
 				defer active.reset()
-				notify.Error("[Video] Failed to capture from %s", active.name)
+				notify.Error("[Video] <ini:failed:capture> %s", active.name)
 				lock.Unlock()
 				goto close
 			}
@@ -341,7 +341,7 @@ func capture() error {
 	close:
 		err := device.Close()
 		if err != nil {
-			notify.Warn("[Video] Failed to close %s (%v)", active.name, err)
+			notify.Warn("[Video] <ini:failed:close> %s (%v)", active.name, err)
 		}
 	}()
 
@@ -392,7 +392,7 @@ func index(name string) int {
 	for i := 0; i < 10; i++ {
 		n, err := device.VideoCaptureDeviceName(i)
 		if err != nil {
-			notify.Error("[Video] Failed to find %s (%v)", name, err)
+			notify.Error("[Video] <ini:failed:find> %s (%v)", name, err)
 			return config.NoVideoCaptureDevice
 		}
 		if n == name {
@@ -446,11 +446,11 @@ func set(vc *gocv.VideoCapture) error {
 	active.applied = poll(vc)
 
 	if !active.applied.resolution.Eq(required.resolution) {
-		return errors.Errorf("failed to set property: resolution %s", required.resolution)
+		return errors.Errorf("<ini:failed:set> property: resolution %s", required.resolution)
 	}
 
 	if int(active.applied.fps) != int(required.fps) {
-		return errors.Errorf("failed to set property: %.0f FPS", required.fps)
+		return errors.Errorf("<ini:failed:set> property: %.0f FPS", required.fps)
 	}
 
 	notify.System("[Video] Configured %s", active.name)
@@ -475,7 +475,7 @@ func stop() {
 			}
 			return
 		case <-t.C:
-			notify.Error("[Video] Failed to stop %s", active.name)
+			notify.Error("[Video] <ini:failed:stop> %s", active.name)
 			return
 		}
 	}

@@ -41,7 +41,7 @@ func Check() {
 
 	err = json.NewDecoder(r.Body).Decode(&q)
 	if err != nil {
-		notify.Error("[Update] Failed to read update file (%v)", err)
+		notify.Error("[Update] <ini:failed:read> update file (%v)", err)
 		return
 	}
 

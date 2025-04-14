@@ -64,7 +64,7 @@ func Active() bool {
 
 func Close() {
 	if !active {
-		notify.Warn("[Overlay Window] Failed to close (inactive)")
+		notify.Warn("[Overlay Window] <ini:failed:close> (inactive)")
 		return
 	}
 	active = false
@@ -72,13 +72,13 @@ func Close() {
 
 	err := closeWindow()
 	if err != nil {
-		notify.Error("[Overlay Window] Failed to close (%v)", err)
+		notify.Error("[Overlay Window] <ini:failed:close> (%v)", err)
 		return
 	}
 
 	err = closeApp()
 	if err != nil {
-		notify.Error("[Overlay Engine] Failed to close (%v)", err)
+		notify.Error("[Overlay Engine] <ini:failed:close> (%v)", err)
 		return
 	}
 }
@@ -111,7 +111,7 @@ func Follow(hwnd uintptr, parent bool) {
 	err := window.SetBounds(b)
 	if err != nil {
 		if active {
-			notify.Debug("[Overlay Window] Failed to set bounds (%v)", err)
+			notify.Debug("[Overlay Window] <ini:failed:set> bounds (%v)", err)
 		}
 	}
 
@@ -146,13 +146,13 @@ func Open() error {
 
 	err := openApp()
 	if err != nil {
-		notify.Error("[Overlay Engine] Failed to open (%v)", err)
+		notify.Error("[Overlay Engine] <ini:failed:open> (%v)", err)
 		return err
 	}
 
 	err = openWindow()
 	if err != nil {
-		notify.Error("[Overlay Window] Failed to open (%v)", err)
+		notify.Error("[Overlay Window] <ini:failed:open> (%v)", err)
 		return err
 	}
 
@@ -308,7 +308,7 @@ func openWindow() error {
 		},
 	)
 	if err != nil {
-		notify.Error("[Overlay Window] Failed to open (%v)", err)
+		notify.Error("[Overlay Window] <ini:failed:open> (%v)", err)
 		return err
 	}
 
