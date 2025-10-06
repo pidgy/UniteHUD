@@ -52,15 +52,15 @@ type notify struct {
 
 var feed = &notify{}
 
-func Announce(format string, a ...interface{}) {
+func Announce(format string, a ...any) {
 	feed.log(colorSystem, true, false, false, format, a...)
 }
 
-func Append(c nrgba.NRGBA, format string, a ...interface{}) {
+func Append(c nrgba.NRGBA, format string, a ...any) {
 	feed.log(c, false, false, false, format, a...)
 }
 
-func Bool(b bool, format string, a ...interface{}) {
+func Bool(b bool, format string, a ...any) {
 	feed.log(nrgba.Bool(b), false, false, false, format, a...)
 }
 
@@ -76,7 +76,7 @@ func CLS() {
 	feed.logs = feed.logs[:0]
 }
 
-func Debug(format string, a ...interface{}) {
+func Debug(format string, a ...any) {
 	if !exe.Debug {
 		return
 	}
@@ -84,15 +84,15 @@ func Debug(format string, a ...interface{}) {
 	feed.log(colorDebug, true, true, false, format, a...)
 }
 
-func Error(format string, a ...interface{}) {
+func Error(format string, a ...any) {
 	feed.log(colorError, true, false, false, format, a...)
 }
 
-func Feed(color nrgba.NRGBA, format string, a ...interface{}) {
+func Feed(color nrgba.NRGBA, format string, a ...any) {
 	feed.log(color, true, false, false, format, a...)
 }
 
-func FeedReplace(color nrgba.NRGBA, r *regexp.Regexp, format string, a ...interface{}) {
+func FeedReplace(color nrgba.NRGBA, r *regexp.Regexp, format string, a ...any) {
 	defer Feed(color, format, a...)
 
 	max := 20
@@ -112,7 +112,7 @@ func FeedStrings() (s []string) {
 	return
 }
 
-func FeedUnique(color nrgba.NRGBA, format string, a ...interface{}) {
+func FeedUnique(color nrgba.NRGBA, format string, a ...any) {
 	feed.log(color, true, false, true, format, a...)
 }
 
@@ -176,7 +176,7 @@ func LastNStrings(n int) (s []string) {
 	return
 }
 
-func Missed(event interface{}, window string) {
+func Missed(event any, window string) {
 	Debug("[UI] Missed %T event (%s)", event, window)
 }
 
@@ -187,7 +187,7 @@ func (p *Post) String() string {
 	return p.msg
 }
 
-func Replace(prefix string, log func(format string, a ...interface{}), format string, a ...interface{}) {
+func Replace(prefix string, log func(format string, a ...any), format string, a ...any) {
 	log(format, a...)
 
 	n := 0
@@ -203,23 +203,23 @@ func Replace(prefix string, log func(format string, a ...interface{}), format st
 	}
 }
 
-func System(format string, a ...interface{}) {
+func System(format string, a ...any) {
 	feed.log(colorSystem, true, false, true, format, a...)
 }
 
-func SystemAppend(format string, a ...interface{}) {
+func SystemAppend(format string, a ...any) {
 	feed.log(colorSystem.Alpha(200), false, false, false, format, a...)
 }
 
-func Unique(c nrgba.NRGBA, format string, a ...interface{}) {
+func Unique(c nrgba.NRGBA, format string, a ...any) {
 	feed.log(c, true, false, true, format, a...)
 }
 
-func Warn(format string, a ...interface{}) {
+func Warn(format string, a ...any) {
 	feed.log(colorWarn, true, false, false, format, a...)
 }
 
-func (n *notify) log(r nrgba.NRGBA, clock, dedup, unique bool, format string, a ...interface{}) {
+func (n *notify) log(r nrgba.NRGBA, clock, dedup, unique bool, format string, a ...any) {
 	format = ini.Format(fmt.Sprintf(format, a...))
 
 	p := Post{
@@ -231,7 +231,7 @@ func (n *notify) log(r nrgba.NRGBA, clock, dedup, unique bool, format string, a 
 	}
 
 	if exe.Debug {
-		fmt.Printf(format+"\n", a...)
+		fmt.Println(format)
 	}
 
 	if clock {

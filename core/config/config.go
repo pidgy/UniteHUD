@@ -461,8 +461,8 @@ func (c *Config) loadDeviceAssets() {
 		},
 		"secure": {
 			team.Game.Name: {
-				filter.New(team.Game, c.deviceAsset(team.Game.Name, "rayquaza_ally.png"), state.RayquazaSecurePurple.Int(), false),
-				filter.New(team.Game, c.deviceAsset(team.Game.Name, "rayquaza_enemy.png"), state.RayquazaSecureOrange.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "final_objective_ally.png"), state.FinalObjectiveSecurePurple.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "final_objective_enemy.png"), state.FinalObjectiveSecureOrange.Int(), false),
 				filter.New(team.Game, c.deviceAsset(team.Game.Name, "regieleki_ally.png"), state.RegielekiSecurePurple.Int(), false),
 				filter.New(team.Game, c.deviceAsset(team.Game.Name, "regieleki_enemy.png"), state.RegielekiSecureOrange.Int(), false),
 				filter.New(team.Game, c.deviceAsset(team.Game.Name, "regice_ally.png"), state.RegiceSecurePurple.Int(), false),

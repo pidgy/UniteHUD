@@ -23,8 +23,6 @@ import (
 	"github.com/pidgy/unitehud/system/update"
 )
 
-var sigq = make(chan os.Signal, 1)
-
 func init() {
 	notify.Announce("[UniteHUD] Initializing...")
 
@@ -35,8 +33,8 @@ func init() {
 }
 
 func signals() {
-	signal.Notify(sigq, os.Interrupt)
-	<-sigq
+	signal.Notify(exe.Chan(), os.Interrupt)
+	<-exe.Chan()
 
 	notify.Announce("[UniteHUD] Closing...")
 
@@ -54,7 +52,7 @@ func signals() {
 }
 
 func main() {
-	defer ui.New().OnClose(func() { close(sigq) }).Open()
+	defer ui.New().OnClose(func() { exe.Close() }).Open()
 
 	err := process.Open()
 	if err != nil {
@@ -86,7 +84,7 @@ func main() {
 		notify.Warn("[UniteHUD] <ini:failed:start> server (%v)", err)
 	}
 
-	err = tray.Open(exe.Title, exe.TitleAndVersion, ui.Close)
+	err = tray.Open()
 	if err != nil {
 		notify.Warn("[UniteHUD] <ini:failed:open> system tray (%v)", err)
 	}

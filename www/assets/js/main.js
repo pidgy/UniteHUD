@@ -11,7 +11,7 @@ const cached = {
     img: {
         objectives: {
             get top() { return `${cached.assets.img}/regieleki.png`; },
-            get central() { return `${cached.assets.img}/rayquaza.png`; },
+            get central() { return `${cached.assets.img}/groudon.png`; },
             get bottom() {
                 return [
                     `${cached.assets.img}/regice.png`,
@@ -276,9 +276,9 @@ async function render(data) {
             .children('img')
             .attr('src', cached.img.objectives.central);
 
-        if (data.rayquaza) {
+        if (data.final_objective) {
             $(`.objectives-1.central .objectives-circle.none`).css('opacity', 0);
-            $(`.objectives-1.central .objectives-circle.${data.rayquaza}`).css('opacity', 1);
+            $(`.objectives-1.central .objectives-circle.${data.final_objective}`).css('opacity', 1);
             $(`.objectives-1.central`).filter("img").css({
                 'opacity': 1,
                 'animation': 'secured 1s cubic-bezier(.36,.07,.19,.97) both'
@@ -383,6 +383,7 @@ const debug = {
             "events": [],
             "debug": true,
             "match": true,
+            "final_objective": "purple"
         };
     },
     ready: {
@@ -411,9 +412,9 @@ const debug = {
             get clear() { return debug.data.bottom = []; },
         },
         central: {
-            get purple() { return debug.data.rayquaza = "purple"; },
-            get orange() { return debug.data.rayquaza = "orange"; },
-            get clear() { return debug.data.rayquaza = ""; },
+            get purple() { return debug.data.final_objective = "purple"; },
+            get orange() { return debug.data.final_objective = "orange"; },
+            get clear() { return debug.data.final_objective = ""; },
         },
     },
     events: {
@@ -462,8 +463,8 @@ const debug = {
                 "[19:56:41] [Detect] [06:37] [Purple] +24",
                 "[19:56:44] [Detect] [06:29] [Self] Score option present (26)",
                 "[20:03:26] [Detect] [Game] Match ended",
-                "[20:03:26] [Detect] [Purple] 238 [+0 Regielekis] [+0 Regices] [+0 Regirocks] [+0 Registeels] [+0 Rayquazas]",
-                "[20:03:26] [Detect] [Orange] 251 [+2 Regielekis] [+0 Regices] [+1 Regirock] [+1 Registeel] [+0 Rayquazas]",
+                "[20:03:26] [Detect] [Purple] 238 [+0 Regielekis] [+0 Regices] [+0 Regirocks] [+0 Registeels] [+0 Groudons]",
+                "[20:03:26] [Detect] [Orange] 251 [+2 Regielekis] [+0 Regices] [+1 Regirock] [+1 Registeel] [+0 Groudons]",
                 "[20:03:26] [Detect] [Self] 97",
                 "[20:03:35] [UI] Main stage: StageRunning",
                 "[20:03:36] [UI] Main stage: StageInactive",
@@ -512,8 +513,8 @@ const debug = {
                     img = `<img class="debug-label-banner-logo" src="assets/img/unscored.png">`
                 } else if (event.includes("[Self]")) {
                     img = `<img class="debug-label-banner-logo" src="assets/img/unscored.png">`
-                } else if (event.includes(" Rayquaza ")) {
-                    img = `<img class="debug-label-banner-logo" src="assets/img/rayquaza.png">`
+                } else if (event.includes(" Groudon ")) {
+                    img = `<img class="debug-label-banner-logo" src="assets/img/groudon.png">`
                 } else if (event.includes("[Game]")) {
                     img = `<img class="debug-label-banner-logo" src="assets/img/pokemonunite.png">`
                 } else if (event.includes("[Purple]")) {

@@ -16,6 +16,7 @@ import (
 	"github.com/pidgy/unitehud/avi/video/device"
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/notify"
+	"github.com/pidgy/unitehud/exe"
 	"github.com/pidgy/unitehud/system/lang"
 	"github.com/pidgy/unitehud/system/process"
 	"github.com/pidgy/unitehud/system/save"
@@ -27,10 +28,6 @@ type toggle struct {
 	event func()
 }
 
-var (
-	hwnd = uintptr(0)
-)
-
 var menu = struct {
 	visible bool
 
@@ -40,6 +37,8 @@ var menu = struct {
 	startstop toggle
 	hide      toggle
 	exit      toggle
+
+	hwnd uintptr
 
 	eventq     chan func()
 	startstopq chan bool
@@ -58,16 +57,16 @@ func Close() {
 	systray.Quit()
 }
 
-func Open(title, version string, onExit func()) error {
+func Open() error {
 	notify.Debug("[Tray] Opening...")
 
 	go systray.Run(
 		func() { // OnReady.
-			for hwnd == 0 {
+			for menu.hwnd == 0 {
 				time.Sleep(time.Second)
 			}
 
-			menu.header = header(title, version)
+			menu.header = header(exe.Title, exe.TitleAndVersion)
 			proc()
 			configuration()
 			menu.logs = logs()
@@ -110,7 +109,7 @@ func Open(title, version string, onExit func()) error {
 }
 
 func SetHWND(h uintptr) {
-	hwnd = uintptr(h)
+	menu.hwnd = uintptr(h)
 }
 
 func SetStartStopDisabled() {
@@ -242,7 +241,9 @@ func exit() toggle {
 
 	return toggle{
 		MenuItem: systray.AddMenuItem("Exit UniteHUD", "Quit the program"),
-		event:    func() { os.Exit(0) },
+		event: func() {
+			exe.Close()
+		},
 	}
 }
 
@@ -265,9 +266,9 @@ func header(title, version string) toggle {
 	return toggle{
 		MenuItem: m,
 		event: func() {
-			notify.Debug("[Tray] Raising hwnd: %d", hwnd)
+			notify.Debug("[Tray] Raising HWND: %d", menu.hwnd)
 
-			wapi.ShowWindowMinimizedRestore(hwnd)
+			wapi.ShowWindowMinimizedRestore(menu.hwnd)
 
 			menu.hide.SetTitle("Hide")
 			menu.hide.Enable()
@@ -281,9 +282,9 @@ func hide() toggle {
 	return toggle{
 		MenuItem: systray.AddMenuItem("Hide", "Minimize to system tray"),
 		event: func() {
-			notify.Debug("[Tray] Hiding/Showing hwnd: %d", hwnd)
+			notify.Debug("[Tray] Hiding/Showing HWND: %d", menu.hwnd)
 
-			wapi.ShowWindowHide(hwnd)
+			wapi.ShowWindowHide(menu.hwnd)
 			menu.hide.Disable()
 		},
 	}

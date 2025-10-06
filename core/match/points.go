@@ -119,6 +119,9 @@ func (m *Match) first(matrix gocv.Mat) Result {
 			}
 
 			go stats.Collect(templates[i].Truncated(), maxv)
+
+			// templates[i].Mask.Close()
+			// templates[i].Mask = gocv.NewMat()
 		}
 
 		inset += mins[round] + 15

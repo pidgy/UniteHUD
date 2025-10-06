@@ -93,10 +93,10 @@ GET 127.0.0.1:17069/ws
     "config": false,
     "profile": "player",
     "version": "v1.1",
-    "rayquaza": "orange",
+    "final_objective": "orange",
     "events": [
         "[2:00] Defeated with points", 
-        "[1:45] Rayquaza orange secure"
+        "[1:45] Groudon orange secure"
     ]
 }
 ```

@@ -11,7 +11,7 @@ const (
 	Title           = "UniteHUD"
 	TitleAndVersion = Title + " " + Version
 	Version         = "v" + VersionSemVer
-	VersionSemVer   = "3.9.0"
+	VersionSemVer   = "3.10.0"
 	AssetDirectory  = `assets`
 )
 
@@ -19,8 +19,22 @@ var (
 	Debug  = strings.Contains(strings.ToLower(os.Args[0]), "debug")
 	Uptime = time.Now()
 
+	sigq = make(chan os.Signal, 1)
+
 	dir = ""
 )
+
+func Chan() chan os.Signal {
+	return sigq
+}
+
+func Close() {
+	if sigq == nil {
+		return
+	}
+	close(sigq)
+	sigq = nil
+}
 
 func Directory() string {
 	if dir == "" {

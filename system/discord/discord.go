@@ -132,8 +132,8 @@ func current() activity {
 		state.RegirockSecurePurple,
 		state.RegielekiSecureOrange,
 		state.RegielekiSecurePurple,
-		state.RayquazaSecureOrange,
-		state.RayquazaSecurePurple,
+		state.FinalObjectiveSecureOrange,
+		state.FinalObjectiveSecurePurple,
 	)
 
 	ignoreFinalStretch := false
@@ -194,8 +194,8 @@ func current() activity {
 	// Could be middle of a match, check for objectives.
 	for _, event := range events {
 		switch e := event.EventType; e {
-		case state.RayquazaSecureOrange, state.RegisteelSecureOrange, state.RegiceSecureOrange, state.RegirockSecureOrange, state.RegielekiSecureOrange,
-			state.RayquazaSecurePurple, state.RegisteelSecurePurple, state.RegiceSecurePurple, state.RegirockSecurePurple, state.RegielekiSecurePurple:
+		case state.FinalObjectiveSecureOrange, state.RegisteelSecureOrange, state.RegiceSecureOrange, state.RegirockSecureOrange, state.RegielekiSecureOrange,
+			state.FinalObjectiveSecurePurple, state.RegisteelSecurePurple, state.RegiceSecurePurple, state.RegirockSecurePurple, state.RegielekiSecurePurple:
 
 			dontReplaceFor(time.Second * 10)
 

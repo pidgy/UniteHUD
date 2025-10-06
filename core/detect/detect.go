@@ -250,12 +250,12 @@ func Objectives() {
 			}
 			server.SetRegieleki(team)
 			top = time.Now()
-		case state.RayquazaSecureOrange, state.RayquazaSecurePurple:
+		case state.FinalObjectiveSecureOrange, state.FinalObjectiveSecurePurple:
 			if time.Since(central) < time.Minute {
 				matrix.Close()
 				continue
 			}
-			server.SetRayquaza(team)
+			server.SetFinalObjective(team)
 			central = time.Now()
 		case state.RegiceSecureOrange, state.RegiceSecurePurple:
 			if time.Since(bottom) < time.Minute {
@@ -513,7 +513,7 @@ func States() {
 
 				// Purple score and objective results.
 
-				regielekis, regices, regirocks, registeels, rayquazas := server.Objectives(team.Purple)
+				regielekis, regices, regirocks, registeels, final := server.Objectives(team.Purple)
 				notify.Feed(
 					team.Purple.NRGBA,
 					"[Detect] [%s] %s [+%d %s] [+%d %s] [+%d %s] [+%d %s] [+%d %s]",
@@ -523,12 +523,12 @@ func States() {
 					regices, plural("Regice", regices),
 					regirocks, plural("Regirock", regirocks),
 					registeels, plural("Registeel", registeels),
-					rayquazas, plural("Rayquaza", rayquazas),
+					final, plural("Groudons", final),
 				)
 
 				// Orange score and objective results.
 
-				regielekis, regices, regirocks, registeels, rayquazas = server.Objectives(team.Orange)
+				regielekis, regices, regirocks, registeels, final = server.Objectives(team.Orange)
 				notify.Feed(
 					team.Orange.NRGBA,
 					"[Detect] [%s] %s [+%d %s] [+%d %s] [+%d %s] [+%d %s] [+%d %s]",
@@ -538,7 +538,7 @@ func States() {
 					regices, plural("Regice", regices),
 					regirocks, plural("Regirock", regirocks),
 					registeels, plural("Registeel", registeels),
-					rayquazas, plural("Rayquaza", rayquazas),
+					final, plural("Groudons", final),
 				)
 
 				// Self score and objective results.

@@ -28,23 +28,23 @@ import (
 const Address = "127.0.0.1:17069"
 
 type State struct {
-	Bottom    []objective `json:"bottom"`
-	Config    bool        `json:"config"`
-	Debug     bool        `json:"debug"`
-	Defeated  []int64     `json:"defeated"`
-	Energy    int         `json:"balls"`
-	Events    []string    `json:"events"`
-	InMatch   bool        `json:"match"`
-	Orange    *score      `json:"orange"`
-	Purple    *score      `json:"purple"`
-	Platform  string      `json:"platform"`
-	Rayquaza  string      `json:"rayquaza"`
-	Regilekis []string    `json:"regis"`
-	Seconds   int64       `json:"seconds"`
-	Self      *score      `json:"self"`
-	Stacks    int         `json:"stacks"`
-	Ready     bool        `json:"ready"`
-	Version   string      `json:"version"`
+	Bottom         []objective `json:"bottom"`
+	Config         bool        `json:"config"`
+	Debug          bool        `json:"debug"`
+	Defeated       []int64     `json:"defeated"`
+	Energy         int         `json:"balls"`
+	Events         []string    `json:"events"`
+	InMatch        bool        `json:"match"`
+	Orange         *score      `json:"orange"`
+	Purple         *score      `json:"purple"`
+	Platform       string      `json:"platform"`
+	FinalObjective string      `json:"final_objective"`
+	Regilekis      []string    `json:"regis"`
+	Seconds        int64       `json:"seconds"`
+	Self           *score      `json:"self"`
+	Stacks         int         `json:"stacks"`
+	Ready          bool        `json:"ready"`
+	Version        string      `json:"version"`
 
 	lastSecondsUpdate time.Time
 }
@@ -289,16 +289,11 @@ func Match() bool {
 	return current.State.InMatch
 }
 
-func Objectives(t *team.Team) (regielekis, regices, regirocks, registeels, rayquazas int) {
-	q := 0
-	if current.State.Rayquaza == t.Name {
-		q++
+func Objectives(t *team.Team) (regielekis, regices, regirocks, registeels, finals int) {
+	if current.State.FinalObjective == t.Name {
+		finals = 1
 	}
-	return RegielekisSecured(t), RegicesSecured(t), RegirocksSecured(t), RegisteelsSecured(t), q
-}
-
-func Rayquaza() string {
-	return current.State.Rayquaza
+	return RegielekisSecured(t), RegicesSecured(t), RegirocksSecured(t), RegisteelsSecured(t), finals
 }
 
 func Ready() bool {
@@ -478,8 +473,8 @@ func SetMatchStopped() {
 	current.State.InMatch = false
 }
 
-func SetRayquaza(t *team.Team) {
-	current.State.Rayquaza = t.Name
+func SetFinalObjective(t *team.Team) {
+	current.State.FinalObjective = t.Name
 }
 
 func SetRegice(t *team.Team) {
@@ -646,12 +641,12 @@ func reset() *State {
 			Value:       0,
 			Surrendered: false,
 		},
-		Seconds:   0,
-		Energy:    0,
-		Regilekis: []string{team.None.Name, team.None.Name, team.None.Name},
-		Rayquaza:  "",
-		Bottom:    []objective{},
-		Version:   exe.Version,
-		Defeated:  []int64{},
+		Seconds:        0,
+		Energy:         0,
+		Regilekis:      []string{team.None.Name, team.None.Name, team.None.Name},
+		FinalObjective: "",
+		Bottom:         []objective{},
+		Version:        exe.Version,
+		Defeated:       []int64{},
 	}
 }

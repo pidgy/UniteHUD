@@ -60,8 +60,8 @@ const (
 	KOStreakPurple
 	KOOrange
 	KOStreakOrange
-	RayquazaSecureOrange
-	RayquazaSecurePurple
+	FinalObjectiveSecureOrange
+	FinalObjectiveSecurePurple
 	SurrenderOrange
 	SurrenderPurple
 )
@@ -154,10 +154,10 @@ func (e EventType) String() string {
 		return "[Purple] KO Streak"
 	case KOStreakOrange:
 		return "[Orange] KO Streak"
-	case RayquazaSecurePurple:
-		return "[Purple] Rayquaza"
-	case RayquazaSecureOrange:
-		return "[Orange] Rayquaza"
+	case FinalObjectiveSecurePurple:
+		return "[Purple] Groudon"
+	case FinalObjectiveSecureOrange:
+		return "[Orange] Groudon"
 	case SurrenderPurple:
 		return "[Purple] Surrendered"
 	case SurrenderOrange:
@@ -274,9 +274,9 @@ func (this EventType) Team() *team.Team {
 	switch this {
 	case SelfScoreIndicator, PreScore, PostScore, Killed, KilledWithPoints, KilledWithoutPoints, HoldingEnergy:
 		return team.Self
-	case OrangeScore, RegielekiSecureOrange, RegiceSecureOrange, RegirockSecureOrange, RegisteelSecureOrange, RayquazaSecureOrange:
+	case OrangeScore, RegielekiSecureOrange, RegiceSecureOrange, RegirockSecureOrange, RegisteelSecureOrange, FinalObjectiveSecureOrange:
 		return team.Orange
-	case FirstScored, PurpleScore, RegielekiSecurePurple, RegiceSecurePurple, RegirockSecurePurple, RegisteelSecurePurple, RayquazaSecurePurple:
+	case FirstScored, PurpleScore, RegielekiSecurePurple, RegiceSecurePurple, RegirockSecurePurple, RegisteelSecurePurple, FinalObjectiveSecurePurple:
 		return team.Purple
 	default:
 		return team.Game
