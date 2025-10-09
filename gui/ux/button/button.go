@@ -18,11 +18,6 @@ import (
 	"github.com/pidgy/unitehud/gui/cursor"
 )
 
-var (
-	DefaultSize = image.Pt(100, 35)
-	IconSize    = image.Pt(31, 26)
-)
-
 type Widget struct {
 	Text            string
 	TextSize        unit.Sp
@@ -57,6 +52,11 @@ type Widget struct {
 	inset layout.Inset
 	set   bool
 }
+
+var (
+	DefaultSize = image.Pt(100, 35)
+	IconSize    = image.Pt(31, 26)
+)
 
 func (b *Widget) Activate() {
 	b.active = true

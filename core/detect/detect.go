@@ -219,10 +219,14 @@ func Energy() {
 
 func Objectives() {
 	top, bottom, central := time.Time{}, time.Time{}, time.Time{}
+	regidragoKO := time.Time{}
+
+	cooldown := time.Second * 3
 
 	for every(time.Second) {
 		if config.Current.Advanced.Matching.Disabled.Objectives {
 			top, bottom, central = time.Time{}, time.Time{}, time.Time{}
+			regidragoKO = time.Time{}
 			continue
 		}
 
@@ -242,37 +246,51 @@ func Objectives() {
 		event := state.EventType(m.Value)
 		team := event.Team()
 
+		notify.Feed(team.NRGBA, "[Detect] PUT ME BACK [%s] %s", server.Clock(), event)
+
 		switch event {
+		case state.RegidragoSecureKO:
+			if time.Since(regidragoKO) < time.Minute {
+				matrix.Close()
+				continue
+			}
+			regidragoKO = time.Now()
+		case state.RegidragoSecurePurple, state.RegidragoSecureOrange:
+			if time.Since(regidragoKO) > time.Minute {
+				continue
+			}
+			server.SetRegidrago(team)
+			regidragoKO = time.Time{}
 		case state.RegielekiSecureOrange, state.RegielekiSecurePurple:
-			if time.Since(top) < time.Minute {
+			if time.Since(top) < cooldown {
 				matrix.Close()
 				continue
 			}
 			server.SetRegieleki(team)
 			top = time.Now()
 		case state.FinalObjectiveSecureOrange, state.FinalObjectiveSecurePurple:
-			if time.Since(central) < time.Minute {
+			if time.Since(central) < cooldown {
 				matrix.Close()
 				continue
 			}
 			server.SetFinalObjective(team)
 			central = time.Now()
 		case state.RegiceSecureOrange, state.RegiceSecurePurple:
-			if time.Since(bottom) < time.Minute {
+			if time.Since(bottom) < cooldown {
 				matrix.Close()
 				continue
 			}
 			server.SetRegice(team)
 			bottom = time.Now()
 		case state.RegirockSecureOrange, state.RegirockSecurePurple:
-			if time.Since(bottom) < time.Minute {
+			if time.Since(bottom) < cooldown {
 				matrix.Close()
 				continue
 			}
 			server.SetRegirock(team)
 			bottom = time.Now()
 		case state.RegisteelSecureOrange, state.RegisteelSecurePurple:
-			if time.Since(bottom) < time.Minute {
+			if time.Since(bottom) < cooldown {
 				matrix.Close()
 				continue
 			}
@@ -280,8 +298,8 @@ func Objectives() {
 			bottom = time.Now()
 		}
 
-		state.Add(event, server.Clock(), 0)
-		notify.Feed(team.NRGBA, "[Detect] [%s] %s", server.Clock(), event)
+		// state.Add(event, server.Clock(), 0)
+		// notify.Feed(team.NRGBA, "[Detect] [%s] %s", server.Clock(), event)
 	}
 }
 
@@ -513,31 +531,33 @@ func States() {
 
 				// Purple score and objective results.
 
-				regielekis, regices, regirocks, registeels, final := server.Objectives(team.Purple)
+				regielekis, regices, regirocks, registeels, regidragos, final := server.Objectives(team.Purple)
 				notify.Feed(
 					team.Purple.NRGBA,
-					"[Detect] [%s] %s [+%d %s] [+%d %s] [+%d %s] [+%d %s] [+%d %s]",
+					"[Detect] [%s] %s [+%d %s] [+%d %s] [+%d %s] [+%d %s] [+%d %s] [+%d %s]",
 					team.Purple,
 					server.ScoreString(team.Purple),
 					regielekis, plural("Regieleki", regielekis),
 					regices, plural("Regice", regices),
 					regirocks, plural("Regirock", regirocks),
 					registeels, plural("Registeel", registeels),
+					regidragos, plural("Regidrago", regidragos),
 					final, plural("Groudons", final),
 				)
 
 				// Orange score and objective results.
 
-				regielekis, regices, regirocks, registeels, final = server.Objectives(team.Orange)
+				regielekis, regices, regirocks, registeels, regidragos, final = server.Objectives(team.Orange)
 				notify.Feed(
 					team.Orange.NRGBA,
-					"[Detect] [%s] %s [+%d %s] [+%d %s] [+%d %s] [+%d %s] [+%d %s]",
+					"[Detect] [%s] %s [+%d %s] [+%d %s] [+%d %s] [+%d %s] [+%d %s] [+%d %s]",
 					team.Orange,
 					server.ScoreString(team.Orange),
 					regielekis, plural("Regieleki", regielekis),
 					regices, plural("Regice", regices),
 					regirocks, plural("Regirock", regirocks),
 					registeels, plural("Registeel", registeels),
+					regidragos, plural("Regidrago", regidragos),
 					final, plural("Groudons", final),
 				)
 

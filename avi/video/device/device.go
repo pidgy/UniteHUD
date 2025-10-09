@@ -62,7 +62,7 @@ const (
 )
 
 var (
-	CodecAny  = codec{"Any"}
+	CodecAny  = codec{"any"}
 	CodecXRGB = codec{"XRGB"}
 	CodecNV12 = codec{"NV12"}
 	CodecYUY2 = codec{"YUY2"}
@@ -96,7 +96,7 @@ func init() {
 			if s != "" {
 				cached.apis[i] = api{
 					gocv: i,
-					name: strings.Title(strings.ReplaceAll(i.String(), "video-capture-", "")),
+					name: strings.ReplaceAll(i.String(), "video-capture-", ""),
 				}
 			}
 		}
@@ -297,7 +297,7 @@ func capture() error {
 
 	device, err := gocv.OpenVideoCaptureWithAPI(active.index, api.gocv)
 	if err != nil {
-		return errors.Errorf("this device does not support %s", api.name)
+		return errors.Errorf("this device does not support %s capture APIs", api.name)
 	}
 
 	err = set(device)

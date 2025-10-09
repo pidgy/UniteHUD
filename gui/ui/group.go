@@ -8,6 +8,9 @@ import (
 
 	"gioui.org/unit"
 	"gioui.org/widget"
+	"gocv.io/x/gocv"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"github.com/pidgy/unitehud/avi/audio"
 	"github.com/pidgy/unitehud/avi/video"
@@ -16,6 +19,9 @@ import (
 	"github.com/pidgy/unitehud/core/fonts"
 	"github.com/pidgy/unitehud/core/match"
 	"github.com/pidgy/unitehud/core/notify"
+	"github.com/pidgy/unitehud/core/rgba/nrgba"
+	"github.com/pidgy/unitehud/core/server"
+	"github.com/pidgy/unitehud/core/state"
 	"github.com/pidgy/unitehud/core/team"
 	"github.com/pidgy/unitehud/gui/ux/area"
 	"github.com/pidgy/unitehud/gui/ux/checklist"
@@ -23,13 +29,12 @@ import (
 )
 
 type areas struct {
-	energy *area.Widget
-	// ko        *area.Widget
+	energy             *area.Widget
 	objective          *area.Widget
+	pressButtonToScore *area.Widget
 	score              *area.Widget
 	state              *area.Widget
 	time               *area.Widget
-	pressButtonToScore *area.Widget
 }
 
 type audios struct {
@@ -41,6 +46,8 @@ type capture struct {
 	list     *checklist.Widget
 	populate func()
 	len      int
+
+	prev string
 }
 
 type videos struct {
@@ -181,7 +188,34 @@ func (g *GUI) areas(collection fonts.Collection) *areas {
 			Min:      config.Current.XY.Objectives.Min,
 			Max:      config.Current.XY.Objectives.Max,
 			NRGBA:    area.Locked,
-			Match:    g.matchObjectives,
+			Match: func(w *area.Widget) (bool, error) {
+				if !g.Preview {
+					w.NRGBA = area.Locked
+					return false, nil
+				}
+
+				img, err := video.CaptureRect(w.Rectangle())
+				if err != nil {
+					return false, err
+				}
+
+				matrix, err := gocv.ImageToMatRGB(img)
+				if err != nil {
+					return false, err
+				}
+				defer matrix.Close()
+
+				m, r := match.Matches(matrix, img, config.Current.TemplatesSecure(team.Game.Name))
+				if r != match.Found {
+					w.NRGBA = area.Miss
+					w.Subtext = r.String()
+					return false, nil
+				}
+				w.NRGBA = area.Match
+				w.Subtext = state.EventType(m.Value).String()
+
+				return r == match.Found, nil
+			},
 			Cooldown: time.Second,
 
 			Capture: &area.Capture{
@@ -199,7 +233,56 @@ func (g *GUI) areas(collection fonts.Collection) *areas {
 			Min:      config.Current.XY.Energy.Min,
 			Max:      config.Current.XY.Energy.Max,
 			NRGBA:    area.Locked,
-			Match:    g.matchEnergy,
+			Match: func(w *area.Widget) (bool, error) {
+				if !g.Preview {
+					w.NRGBA = area.Locked
+					return false, nil
+				}
+
+				img, err := video.CaptureRect(w.Rectangle())
+				if err != nil {
+					return false, err
+				}
+
+				matrix, err := gocv.ImageToMatRGB(img)
+				if err != nil {
+					return false, err
+				}
+				defer matrix.Close()
+
+				result, _, score := match.Energy(matrix, img)
+				switch result {
+				case match.Found, match.Duplicate:
+					w.NRGBA = area.Match
+					w.Subtext = fmt.Sprintf("%d", score)
+
+				case match.NotFound:
+					w.NRGBA = area.Miss
+				case match.Missed:
+					w.NRGBA = nrgba.DarkerYellow.Alpha(0x99)
+					w.Subtext = fmt.Sprintf("%d?", score)
+				case match.Invalid:
+					w.NRGBA = area.Miss
+				}
+
+				m, r := match.SelfScore(matrix, img)
+				switch r {
+				case match.Found:
+					w.NRGBA = area.Match
+					w.Subtext = "Scored"
+
+					if state.EventType(m.Template.Value) == state.PreScore {
+						w.NRGBA = area.Match
+						w.Subtext = "Scoring"
+					}
+				case match.Invalid:
+					w.NRGBA = area.Miss
+					w.Subtext = "Invalid Aeos"
+				}
+
+				return r == match.Found || result == match.Found, nil
+			},
+
 			Cooldown: team.Energy.Delay,
 
 			Capture: &area.Capture{
@@ -217,7 +300,36 @@ func (g *GUI) areas(collection fonts.Collection) *areas {
 			Min:      config.Current.XY.Time.Min,
 			Max:      config.Current.XY.Time.Max,
 			NRGBA:    area.Locked,
-			Match:    g.matchTime,
+			Match: func(w *area.Widget) (bool, error) {
+				if !g.Preview {
+					w.NRGBA = area.Locked
+					return false, nil
+				}
+
+				img, err := video.CaptureRect(w.Rectangle())
+				if err != nil {
+					return false, err
+				}
+
+				matrix, err := gocv.ImageToMatRGB(img)
+				if err != nil {
+					return false, err
+				}
+				defer matrix.Close()
+
+				m, s, k := match.Time(matrix, img)
+				if m+s != 0 {
+					w.NRGBA = area.Match
+					w.Subtext = k
+
+					return true, nil
+				}
+
+				w.NRGBA = area.Miss
+				w.Subtext = "Not Found"
+
+				return false, nil
+			},
 			Cooldown: team.Time.Delay,
 
 			Capture: &area.Capture{
@@ -235,8 +347,46 @@ func (g *GUI) areas(collection fonts.Collection) *areas {
 			Min:           config.Current.XY.Scores.Min,
 			Max:           config.Current.XY.Scores.Max,
 			NRGBA:         area.Locked,
-			Match:         g.matchScore,
-			Cooldown:      team.Purple.Delay,
+			Match: func(w *area.Widget) (bool, error) {
+				if !g.Preview {
+					w.NRGBA = area.Locked
+					return false, nil
+				}
+
+				img, err := video.CaptureRect(w.Rectangle())
+				if err != nil {
+					return false, err
+				}
+
+				matrix, err := gocv.ImageToMatRGB(img)
+				if err != nil {
+					return false, err
+				}
+				defer matrix.Close()
+
+				for _, t := range config.Current.TemplatesScoredAll() {
+					m, r := match.Matches(matrix, img, t)
+					switch r {
+					case match.Found, match.Duplicate:
+						w.NRGBA = area.Match
+						w.Subtext = fmt.Sprintf("%d", m.Value)
+
+						return true, nil
+					case match.NotFound:
+						w.NRGBA = area.Miss
+						w.Subtext = fmt.Sprintf("%s", r.String())
+					case match.Missed:
+						w.NRGBA = nrgba.DarkerYellow.Alpha(0x99)
+						w.Subtext = fmt.Sprintf("%d?", m.Value)
+					case match.Invalid:
+						w.NRGBA = area.Miss
+						w.Subtext = fmt.Sprintf("%s", r.String())
+					}
+				}
+
+				return false, nil
+			},
+			Cooldown: team.Purple.Delay,
 
 			Capture: &area.Capture{
 				Option:      "Score",
@@ -253,9 +403,52 @@ func (g *GUI) areas(collection fonts.Collection) *areas {
 			Subtext: match.NotFound.String(),
 			Theme:   collection.Calibri().Theme,
 			NRGBA:   area.Locked.Alpha(0),
-			Match:   g.matchState,
-			Min:     image.Pt(0, 0),
-			Max:     image.Pt(150, 25),
+			Match: func(w *area.Widget) (bool, error) {
+				if !g.Preview {
+					w.NRGBA = area.Locked
+					return false, nil
+				}
+
+				img, err := video.CaptureRect(w.Rectangle())
+				if err != nil {
+					return false, err
+				}
+
+				matrix, err := gocv.ImageToMatRGB(img)
+				if err != nil {
+					return false, err
+				}
+				defer matrix.Close()
+
+				templates := append(config.Current.TemplatesStarting(), append(config.Current.TemplatesEnding(), config.Current.TemplatesSurrender()...)...)
+
+				m, r := match.Matches(matrix, img, templates)
+				if r == match.Found {
+					w.Subtext = state.EventType(m.Value).String()
+					w.NRGBA = area.Match
+					return true, nil
+				}
+
+				w.Subtext = r.String()
+				w.NRGBA = area.Miss
+
+				switch {
+				case server.IsFinalStretch():
+					w.Subtext = "Final Stretch"
+					w.NRGBA = area.Match
+
+					return true, nil
+				case server.Clock() != "00:00":
+					w.Subtext = "In Match"
+					w.NRGBA = area.Match
+
+					return true, nil
+				}
+
+				return false, nil
+			},
+			Min: image.Pt(0, 0),
+			Max: image.Pt(150, 25),
 
 			Capture: &area.Capture{
 				Option:      "State",
@@ -274,8 +467,35 @@ func (g *GUI) areas(collection fonts.Collection) *areas {
 			Min:           config.Current.ScoringOption().Min,
 			Max:           config.Current.ScoringOption().Max,
 			NRGBA:         area.Locked,
-			Match:         g.matchPressButtonToScore,
-			Cooldown:      team.Purple.Delay,
+			Match: func(w *area.Widget) (bool, error) {
+				if !g.Preview {
+					w.NRGBA = area.Locked
+					return false, nil
+				}
+
+				img, err := video.CaptureRect(w.Rectangle())
+				if err != nil {
+					return false, err
+				}
+
+				matrix, err := gocv.ImageToMatRGB(img)
+				if err != nil {
+					return false, err
+				}
+				defer matrix.Close()
+
+				w.NRGBA = area.Miss
+
+				_, r := match.SelfScoreIndicator(matrix, img)
+				if r == match.Found {
+					w.NRGBA = area.Match
+				}
+
+				w.Subtext = r.String()
+
+				return r == match.Found, nil
+			},
+			Cooldown: team.Purple.Delay,
 
 			Capture: &area.Capture{
 				Option:      "Self-Score",
@@ -291,6 +511,8 @@ func (g *GUI) videos(text float32) *videos {
 	v := &videos{}
 
 	v.monitor = capture{
+		prev: device.ActiveName(),
+
 		list: &checklist.Widget{
 			Theme:    g.nav.Collection.NotoSans().Theme,
 			TextSize: text,
@@ -309,20 +531,12 @@ func (g *GUI) videos(text float32) *videos {
 			},
 		},
 		populate: func() {
-			// if videoCaptureDisabledEvent {
-			// 	for _, item := range v.monitor.list.Items {
-			// 		item.Checked.Value = false
-			// 		if item.Text == config.Current.Video.Capture.Window.Name {
-			// 			item.Checked.Value = true
-			// 		}
-			// 	}
-			// }
-
-			screens := video.Screens()
-			if len(screens) == v.monitor.len {
+			if v.monitor.prev == device.ActiveName() && len(video.Screens()) == v.monitor.len {
 				return
 			}
-			v.monitor.len = len(screens)
+
+			v.monitor.prev = device.ActiveName()
+			v.monitor.len = len(video.Screens())
 
 			items := []*checklist.Item{}
 
@@ -330,7 +544,7 @@ func (g *GUI) videos(text float32) *videos {
 				config.Current.Video.Capture.Window.Name = config.MainDisplay
 			}
 
-			for _, screen := range screens {
+			for _, screen := range video.Screens() {
 				items = append(items,
 					&checklist.Item{
 						Text:    screen,
@@ -343,73 +557,75 @@ func (g *GUI) videos(text float32) *videos {
 		},
 	}
 
-	v.window = capture{
-		list: &checklist.Widget{
-			Theme:    g.nav.Collection.NotoSans().Theme,
-			TextSize: text,
-			Items:    []*checklist.Item{},
-			Callback: func(i *checklist.Item, _ *checklist.Widget) (check bool) {
-				video.Close()
+	/*
+		// v.window = capture{
+		// 	list: &checklist.Widget{
+		// 		Theme:    g.nav.Collection.NotoSans().Theme,
+		// 		TextSize: text,
+		// 		Items:    []*checklist.Item{},
+		// 		Callback: func(i *checklist.Item, _ *checklist.Widget) (check bool) {
+		// 			video.Close()
 
-				defer v.window.populate()
-				defer v.monitor.populate()
-				defer v.device.populate()
-				defer v.apis.populate()
-				defer v.codecs.populate()
+		// 			defer v.window.populate()
+		// 			defer v.monitor.populate()
+		// 			defer v.device.populate()
+		// 			defer v.apis.populate()
+		// 			defer v.codecs.populate()
 
-				config.Current.Video.Capture.Window.Name = i.Text
-				if config.Current.Video.Capture.Window.Name == "" {
-					config.Current.Video.Capture.Window.Name = config.MainDisplay
-				}
-				return true
-			},
-		},
-		populate: func() {
-			if config.Current.Video.Capture.Window.Name == "" {
-				config.Current.Video.Capture.Window.Name = config.MainDisplay
-			}
+		// 			config.Current.Video.Capture.Window.Name = i.Text
+		// 			if config.Current.Video.Capture.Window.Name == "" {
+		// 				config.Current.Video.Capture.Window.Name = config.MainDisplay
+		// 			}
+		// 			return true
+		// 		},
+		// 	},
+		// 	populate: func() {
+		// 		if config.Current.Video.Capture.Window.Name == "" {
+		// 			config.Current.Video.Capture.Window.Name = config.MainDisplay
+		// 		}
 
-			for _, item := range v.window.list.Items {
-				item.Checked.Value = config.Current.Video.Capture.Window.Name == item.Text
-			}
+		// 		for _, item := range v.window.list.Items {
+		// 			item.Checked.Value = config.Current.Video.Capture.Window.Name == item.Text
+		// 		}
 
-			items := []*checklist.Item{}
+		// 		items := []*checklist.Item{}
 
-			windows := video.Windows()
-			if len(windows) == len(v.window.list.Items) {
-				if len(v.window.list.Items) == 0 {
-					return
-				}
+		// 		windows := video.Windows()
+		// 		if len(windows) == len(v.window.list.Items) {
+		// 			if len(v.window.list.Items) == 0 {
+		// 				return
+		// 			}
 
-				if v.window.list.Default().Checked.Value {
-					return
-				}
+		// 			if v.window.list.Default().Checked.Value {
+		// 				return
+		// 			}
 
-				for _, item := range v.window.list.Items {
-					if item.Checked.Value {
-						items = append([]*checklist.Item{item}, items...)
-					} else {
-						items = append(items, item)
-					}
-				}
-			} else {
-				for _, win := range windows {
-					item := &checklist.Item{
-						Text:    win,
-						Checked: widget.Bool{Value: win == config.Current.Video.Capture.Window.Name},
-					}
-					if item.Checked.Value {
-						items = append([]*checklist.Item{item}, items...)
-					} else {
-						items = append(items, item)
-					}
-				}
-			}
+		// 			for _, item := range v.window.list.Items {
+		// 				if item.Checked.Value {
+		// 					items = append([]*checklist.Item{item}, items...)
+		// 				} else {
+		// 					items = append(items, item)
+		// 				}
+		// 			}
+		// 		} else {
+		// 			for _, win := range windows {
+		// 				item := &checklist.Item{
+		// 					Text:    win,
+		// 					Checked: widget.Bool{Value: win == config.Current.Video.Capture.Window.Name},
+		// 				}
+		// 				if item.Checked.Value {
+		// 					items = append([]*checklist.Item{item}, items...)
+		// 				} else {
+		// 					items = append(items, item)
+		// 				}
+		// 			}
+		// 		}
 
-			v.window.list.Items = items
+		// 		v.window.list.Items = items
 
-		},
-	}
+		// 	},
+		// }
+	*/
 
 	v.device = capture{
 		list: &checklist.Widget{
@@ -440,8 +656,10 @@ func (g *GUI) videos(text float32) *videos {
 					err := video.Open()
 					if err != nil {
 						g.ToastError(err)
+						return
 					}
 
+					v.onevent(false)
 				}()
 
 				return true
@@ -562,6 +780,7 @@ func (g *GUI) videos(text float32) *videos {
 				}
 
 				v.onevent(false) // Show preview.
+
 				return true
 			},
 		},
@@ -571,7 +790,7 @@ func (g *GUI) videos(text float32) *videos {
 			for _, api := range device.APIs() {
 				v.apis.list.Items = append(v.apis.list.Items,
 					&checklist.Item{
-						Text:  api,
+						Text:  cases.Title(language.English, cases.NoLower).String(api),
 						Value: device.API(api).Value(),
 						Checked: widget.Bool{
 							Value: api == config.Current.Video.Capture.Device.API,
@@ -669,13 +888,11 @@ func (g *GUI) videos(text float32) *videos {
 			v.codecs.list.Items = []*checklist.Item{}
 
 			for _, c := range device.Codecs() {
-				s := c.String()
-
 				v.codecs.list.Items = append(v.codecs.list.Items,
 					&checklist.Item{
-						Text: s,
+						Text: cases.Title(language.English, cases.NoLower).String(c.String()),
 						Checked: widget.Bool{
-							Value: s == config.Current.Video.Capture.Device.Codec,
+							Value: c.String() == config.Current.Video.Capture.Device.Codec,
 						},
 					},
 				)
@@ -739,7 +956,7 @@ func (g *GUI) videos(text float32) *videos {
 
 func (v *videos) populate() {
 	v.device.populate()
-	v.window.populate()
+	// v.window.populate()
 	v.monitor.populate()
 	v.apis.populate()
 	v.codecs.populate()

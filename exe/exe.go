@@ -11,7 +11,7 @@ const (
 	Title           = "UniteHUD"
 	TitleAndVersion = Title + " " + Version
 	Version         = "v" + VersionSemVer
-	VersionSemVer   = "3.10.0"
+	VersionSemVer   = "4.0.0"
 	AssetDirectory  = `assets`
 )
 

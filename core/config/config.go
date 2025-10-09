@@ -472,6 +472,9 @@ func (c *Config) loadDeviceAssets() {
 				filter.New(team.Game, c.deviceAsset(team.Game.Name, "regirock_enemy.png"), state.RegirockSecureOrange.Int(), false),
 				filter.New(team.Game, c.deviceAsset(team.Game.Name, "registeel_ally.png"), state.RegisteelSecurePurple.Int(), false),
 				filter.New(team.Game, c.deviceAsset(team.Game.Name, "registeel_enemy.png"), state.RegisteelSecureOrange.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "regidrago_ko.png"), state.RegidragoSecureKO.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "regidrago_ally.png"), state.RegidragoSecurePurple.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "regidrago_enemy.png"), state.RegidragoSecureOrange.Int(), false),
 			},
 		},
 		"ko": {
@@ -685,7 +688,7 @@ func Open() error {
 	Current.XY.Energy = image.Rect(908, 764, 1008, 864)
 	Current.XY.Scores = image.Rect(500, 50, 1500, 250)
 	Current.XY.Time = image.Rect(846, 0, 1046, 100)
-	Current.XY.Objectives = image.Rect(350, 200, 1200, 310)
+	Current.XY.Objectives = image.Rect(425, 215, 1200, 325)
 	Current.XY.KOs = image.Rect(730, 130, 1160, 310)
 
 	// Default advanced settings.

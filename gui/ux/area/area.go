@@ -38,6 +38,16 @@ var (
 	Miss   = nrgba.Red
 )
 
+type Capture struct {
+	Option      string
+	File        string
+	Base        image.Rectangle
+	DefaultBase image.Rectangle
+
+	MatchedColor color.NRGBA
+	MatchedText  string
+}
+
 type Widget struct {
 	Text          string
 	TextSize      unit.Sp
@@ -75,16 +85,6 @@ type Widget struct {
 	}
 
 	frameFrequency int
-}
-
-type Capture struct {
-	Option      string
-	File        string
-	Base        image.Rectangle
-	DefaultBase image.Rectangle
-
-	MatchedColor color.NRGBA
-	MatchedText  string
 }
 
 func (a *Widget) Layout(gtx layout.Context, collection fonts.Collection, capture image.Rectangle, img image.Image, blank image.Point) (err error) {

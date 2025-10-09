@@ -107,6 +107,11 @@ type configure struct {
 	*footer
 }
 
+var (
+	hideTrue  = true
+	hideFalse = false
+)
+
 func (g *GUI) configure() {
 	ui := g.configureUI()
 
@@ -444,8 +449,9 @@ func (g *GUI) configureUI() *configure {
 		img:   splash.Invalid(),
 		since: time.Now(),
 
+		hidePreview: true,
+
 		listTextSize: float32(12),
-		hidePreview:  true,
 	}
 
 	ui.groups.areas = g.areas(g.nav.Collection)

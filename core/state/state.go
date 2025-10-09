@@ -18,9 +18,10 @@ type Event struct {
 	Verified bool
 }
 
+// EventType indicates the result and state of an event.
 type EventType int
-type Types []EventType
 
+// See [EventType.String] for literal descriptions.
 const (
 	Custom EventType = iota - 2
 	Nothing
@@ -64,6 +65,9 @@ const (
 	FinalObjectiveSecurePurple
 	SurrenderOrange
 	SurrenderPurple
+	RegidragoSecureKO
+	RegidragoSecurePurple
+	RegidragoSecureOrange
 )
 
 var (
@@ -132,6 +136,12 @@ func (e EventType) String() string {
 		return "[Purple] Registeel"
 	case RegisteelSecureOrange:
 		return "[Orange] Registeel"
+	case RegidragoSecureKO:
+		return "Regidrago KO"
+	case RegidragoSecurePurple:
+		return "[Purple] Regidrago"
+	case RegidragoSecureOrange:
+		return "[Orange] Regidrago"
 	case SelfScoreIndicator:
 		return `Self-Score Indicator"`
 	case ScoreOverride:
@@ -274,9 +284,9 @@ func (this EventType) Team() *team.Team {
 	switch this {
 	case SelfScoreIndicator, PreScore, PostScore, Killed, KilledWithPoints, KilledWithoutPoints, HoldingEnergy:
 		return team.Self
-	case OrangeScore, RegielekiSecureOrange, RegiceSecureOrange, RegirockSecureOrange, RegisteelSecureOrange, FinalObjectiveSecureOrange:
+	case OrangeScore, RegielekiSecureOrange, RegiceSecureOrange, RegirockSecureOrange, RegisteelSecureOrange, RegidragoSecureOrange, FinalObjectiveSecureOrange:
 		return team.Orange
-	case FirstScored, PurpleScore, RegielekiSecurePurple, RegiceSecurePurple, RegirockSecurePurple, RegisteelSecurePurple, FinalObjectiveSecurePurple:
+	case FirstScored, PurpleScore, RegielekiSecurePurple, RegiceSecurePurple, RegirockSecurePurple, RegisteelSecurePurple, RegidragoSecurePurple, FinalObjectiveSecurePurple:
 		return team.Purple
 	default:
 		return team.Game

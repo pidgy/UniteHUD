@@ -492,18 +492,22 @@ func (g *GUI) main() {
 							}.Layout(gtx, ui.labels.regielekiUnderlines[i].Layout)
 						}
 
-						b := server.Bottom()
-						for i := range ui.labels.regiBottoms {
+						objs := server.ObjectivesSecured()
+						for i, o := range objs {
+							if o.Name == server.ObjectiveRegieleki {
+								continue
+							}
+							if i+1 > len(ui.labels.regiBottoms) {
+								continue
+							}
+
 							ui.labels.regiBottoms[i].Color = team.None.Color()
 							ui.labels.regiBottoms[i].Text = "R"
 							ui.labels.regiBottomUnderlines[i].Color = ui.labels.regiBottoms[i].Color
 
-							if i < len(b) {
-								t := b[i]
-								ui.labels.regiBottoms[i].Text = strings.ToUpper(string(t.Name[4]))
-								ui.labels.regiBottoms[i].Color = nrgba.Objective(t.Name).Color()
-								ui.labels.regiBottomUnderlines[i].Color = team.Color(t.Team).Color()
-							}
+							ui.labels.regiBottoms[i].Text = strings.ToUpper(string(o.Name[4]))
+							ui.labels.regiBottoms[i].Color = nrgba.Objective(o.Name).Color()
+							ui.labels.regiBottomUnderlines[i].Color = team.Color(o.Team).Color()
 
 							layout.Inset{
 								Top:  unit.Dp(34),

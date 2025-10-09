@@ -25,25 +25,41 @@ import (
 	"github.com/pidgy/unitehud/system/lang"
 )
 
-const Address = "127.0.0.1:17069"
+const (
+	Address = "127.0.0.1:17069"
+
+	ObjectiveRegice    = "regice"
+	ObjectiveRegidrago = "regidrago"
+	ObjectiveRegieleki = "regieleki"
+	ObjectiveRegirock  = "regirock"
+	ObjectiveRegisteel = "registeel"
+)
+
+type Objective struct {
+	Name        string `json:"name"`
+	Team        string `json:"team"`
+	Time        int64  `json:"time"`
+	Surrendered bool   `json:"surrendered"`
+}
 
 type State struct {
-	Bottom         []objective `json:"bottom"`
+	Objectives     []Objective `json:"objectives"`
 	Config         bool        `json:"config"`
 	Debug          bool        `json:"debug"`
 	Defeated       []int64     `json:"defeated"`
 	Energy         int         `json:"balls"`
 	Events         []string    `json:"events"`
+	FinalObjective string      `json:"final_objective"`
 	InMatch        bool        `json:"match"`
 	Orange         *score      `json:"orange"`
 	Purple         *score      `json:"purple"`
 	Platform       string      `json:"platform"`
-	FinalObjective string      `json:"final_objective"`
+	Ready          bool        `json:"ready"`
 	Regilekis      []string    `json:"regis"`
+	Regidragos     []string    `json:"regidragos"`
 	Seconds        int64       `json:"seconds"`
 	Self           *score      `json:"self"`
 	Stacks         int         `json:"stacks"`
-	Ready          bool        `json:"ready"`
 	Version        string      `json:"version"`
 
 	lastSecondsUpdate time.Time
@@ -59,13 +75,6 @@ type info struct {
 	clients map[string]time.Time
 
 	mutex *sync.Mutex
-}
-
-type objective struct {
-	Name        string `json:"name"`
-	Team        string `json:"team"`
-	Time        int64  `json:"time"`
-	Surrendered bool   `json:"surrendered"`
 }
 
 type score struct {
@@ -84,10 +93,6 @@ var current = &info{
 var track struct {
 	ws   []byte
 	http []byte
-}
-
-func Bottom() []objective {
-	return current.State.Bottom
 }
 
 func Clear() {
@@ -289,16 +294,21 @@ func Match() bool {
 	return current.State.InMatch
 }
 
-func Objectives(t *team.Team) (regielekis, regices, regirocks, registeels, finals int) {
+func Objectives(t *team.Team) (regielekis, regices, regirocks, registeels, regidragos, finals int) {
 	if current.State.FinalObjective == t.Name {
 		finals = 1
 	}
-	return RegielekisSecured(t), RegicesSecured(t), RegirocksSecured(t), RegisteelsSecured(t), finals
+	return RegielekisSecured(t), RegicesSecured(t), RegirocksSecured(t), RegisteelsSecured(t), RegidragosSecured(t), finals
+}
+
+func ObjectivesSecured() []Objective {
+	return current.State.Objectives
 }
 
 func Ready() bool {
 	return current.State.Ready
 }
+
 func RegielekiAdv() *team.Team {
 	p := 0
 	o := 0
@@ -324,8 +334,18 @@ func RegielekiAdv() *team.Team {
 
 func RegicesSecured(t *team.Team) int {
 	n := 0
-	for _, b := range current.State.Bottom {
-		if b.Name == "regice" && b.Team == t.Name {
+	for _, b := range current.State.Objectives {
+		if b.Name == ObjectiveRegice && b.Team == t.Name {
+			n++
+		}
+	}
+	return n
+}
+
+func RegidragosSecured(t *team.Team) int {
+	n := 0
+	for _, b := range current.State.Objectives {
+		if b.Name == ObjectiveRegidrago && b.Team == t.Name {
 			n++
 		}
 	}
@@ -348,8 +368,8 @@ func RegielekisSecured(t *team.Team) int {
 
 func RegirocksSecured(t *team.Team) int {
 	n := 0
-	for _, b := range current.State.Bottom {
-		if b.Name == "regirock" && b.Team == t.Name {
+	for _, b := range current.State.Objectives {
+		if b.Name == ObjectiveRegirock && b.Team == t.Name {
 			n++
 		}
 	}
@@ -358,8 +378,8 @@ func RegirocksSecured(t *team.Team) int {
 
 func RegisteelsSecured(t *team.Team) int {
 	n := 0
-	for _, b := range current.State.Bottom {
-		if b.Name == "registeel" && b.Team == t.Name {
+	for _, b := range current.State.Objectives {
+		if b.Name == ObjectiveRegisteel && b.Team == t.Name {
 			n++
 		}
 	}
@@ -404,7 +424,7 @@ func Seconds() int64 {
 }
 
 func SetBottomObjective(t *team.Team, name string, n int) {
-	o := objective{
+	o := Objective{
 		Team: t.Name,
 		Name: name,
 		Time: time.Now().Unix(),
@@ -414,32 +434,32 @@ func SetBottomObjective(t *team.Team, name string, n int) {
 
 	switch {
 	// Illegal.
-	case len(current.Bottom) < n:
+	case len(current.Objectives) < n:
 		notify.Warn("[Server] %s illegal operation (no index)", op)
 
 	// Remove.
-	case len(current.Bottom) == n+1 && current.Bottom[n].Team == t.Name && current.Bottom[n].Name == o.Name:
+	case len(current.Objectives) == n+1 && current.Objectives[n].Team == t.Name && current.Objectives[n].Name == o.Name:
 		// Remove last objective.
-		current.Bottom = current.Bottom[:n]
+		current.Objectives = current.Objectives[:n]
 		notify.Unique(t.NRGBA, "[Server] %s removed", op)
 
 	// Add.
-	case len(current.Bottom) == n:
-		current.Bottom = append(current.Bottom, o)
+	case len(current.Objectives) == n:
+		current.Objectives = append(current.Objectives, o)
 		notify.Unique(t.NRGBA, "[Server] %s secured", op)
-	case len(current.Bottom) > n+1 && current.Bottom[n].Team != t.Name:
-		current.Bottom[n] = o
+	case len(current.Objectives) > n+1 && current.Objectives[n].Team != t.Name:
+		current.Objectives[n] = o
 		notify.Unique(t.NRGBA, "[Server] %s secure replaced", op)
 
 		// Overwrite.
-	case len(current.Bottom) == n+1 && current.Bottom[n].Team == t.Name && current.Bottom[n].Name != o.Name:
+	case len(current.Objectives) == n+1 && current.Objectives[n].Team == t.Name && current.Objectives[n].Name != o.Name:
 		// Replace between first and last.
 		fallthrough
-	case len(current.Bottom) > n+1 && current.Bottom[n].Team == t.Name:
+	case len(current.Objectives) > n+1 && current.Objectives[n].Team == t.Name:
 		fallthrough
-	case len(current.Bottom) == n+1 && current.Bottom[n].Team != t.Name:
+	case len(current.Objectives) == n+1 && current.Objectives[n].Team != t.Name:
 		// Overwrite last objective.
-		current.Bottom[n] = o
+		current.Objectives[n] = o
 		notify.Unique(t.NRGBA, "[Server] %s secure replaced", op)
 	}
 }
@@ -477,10 +497,18 @@ func SetFinalObjective(t *team.Team) {
 	current.State.FinalObjective = t.Name
 }
 
-func SetRegice(t *team.Team) {
-	current.Bottom = append(current.Bottom, objective{
+func SetRegidrago(t *team.Team) {
+	current.Objectives = append(current.Objectives, Objective{
 		Team: t.Name,
-		Name: "regice",
+		Name: ObjectiveRegidrago,
+		Time: time.Now().Unix(),
+	})
+}
+
+func SetRegice(t *team.Team) {
+	current.Objectives = append(current.Objectives, Objective{
+		Team: t.Name,
+		Name: ObjectiveRegice,
 		Time: time.Now().Unix(),
 	})
 }
@@ -517,17 +545,17 @@ func SetRegielekiAt(t *team.Team, n int) {
 }
 
 func SetRegirock(t *team.Team) {
-	current.Bottom = append(current.Bottom, objective{
+	current.Objectives = append(current.Objectives, Objective{
 		Team: t.Name,
-		Name: "regirock",
+		Name: ObjectiveRegirock,
 		Time: time.Now().Unix(),
 	})
 }
 
 func SetRegisteel(t *team.Team) {
-	current.Bottom = append(current.Bottom, objective{
+	current.Objectives = append(current.Objectives, Objective{
 		Team: t.Name,
-		Name: "registeel",
+		Name: ObjectiveRegisteel,
 		Time: time.Now().Unix(),
 	})
 }
@@ -645,7 +673,7 @@ func reset() *State {
 		Energy:         0,
 		Regilekis:      []string{team.None.Name, team.None.Name, team.None.Name},
 		FinalObjective: "",
-		Bottom:         []objective{},
+		Objectives:     []Objective{},
 		Version:        exe.Version,
 		Defeated:       []int64{},
 	}
