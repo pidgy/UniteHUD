@@ -371,7 +371,7 @@ const debug = {
 
         return debug.data = {
             "profile": "player",
-            "version": debug,
+            "version": "debug",
             "ready": true,
             "seconds": 10 * 60,
             "purple": { "value": 0, "kos": 0, "surrendered": false },

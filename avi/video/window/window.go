@@ -1,7 +1,9 @@
 package window
 
 import (
+	"fmt"
 	"image"
+	"reflect"
 	"sync"
 	"time"
 	"unsafe"
@@ -14,26 +16,8 @@ import (
 
 var (
 	Sources = []string{}
-
-	handles = []uintptr{}
 	lock    = &sync.Mutex{}
 )
-
-func init() {
-	go func() {
-		for {
-			time.Sleep(time.Second * 5)
-
-			windows, _, err := list()
-			if err != nil {
-				notify.Warn("[Window] Failed to list windows (%v)", err)
-				continue
-			}
-
-			Sources = windows
-		}
-	}()
-}
 
 // Capture captures the desired area from a Window and returns an image.
 func Capture() (*image.RGBA, error) {
@@ -51,62 +35,113 @@ func Capture() (*image.RGBA, error) {
 }
 
 func CaptureRect(w wapi.Window, rect image.Rectangle) (*image.RGBA, error) {
-	src, err := w.Device()
-	if err != nil {
-		return nil, errors.Wrap(err, "device")
-	}
-	defer src.Release()
+	handle := w.HWND()
 
-	dst, err := src.Compatible()
+	// Get the device context for screenshotting.
+	src, _, err := wapi.GetDC.Call(uintptr(handle))
+	if src == 0 {
+		return nil, fmt.Errorf("failed to prepare screen capture: %s", err)
+	}
+	defer wapi.ReleaseDC.Call(0, src)
+
+	// Grab a compatible DC for drawing.
+	dst, _, err := wapi.CreateCompatibleDC.Call(src)
 	if dst == 0 {
-		return nil, errors.Wrap(err, "context")
+		return nil, fmt.Errorf("failed to create DC for drawing: %s", err)
 	}
-	defer dst.Delete()
+	defer wapi.DeleteDC.Call(dst)
 
-	size := rect.Size()
+	// Determine the width/height of our capture.
+	width := rect.Dx()
+	height := rect.Dy()
 
-	info := wapi.BitmapInfo{
-		BmiHeader: wapi.BitmapInfoHeader{
-			BiSize:        wapi.BitmapInfoHeaderSize,
-			BiWidth:       int32(size.X),
-			BiHeight:      -int32(size.Y),
-			BiPlanes:      1,
-			BiBitCount:    32,
-			BiCompression: wapi.BitmapInfoHeaderCompression.RGB,
-		},
+	// Get the bitmap we're going to draw onto.
+	var bitmapInfo wapi.BitmapInfo
+	bitmapInfo.BmiHeader = wapi.BitmapInfoHeader{
+		BiSize:        uint32(reflect.TypeOf(bitmapInfo.BmiHeader).Size()),
+		BiWidth:       int32(width),
+		BiHeight:      -int32(height), // Negative value will flip image vertically.
+		BiPlanes:      1,
+		BiBitCount:    32,
+		BiCompression: wapi.BitmapInfoHeaderCompression.RGB,
 	}
 
-	bitmap, data, err := info.CreateSection(dst)
-	if err != nil {
-		return nil, errors.Wrap(err, "section")
+	bitmapData := unsafe.Pointer(uintptr(0))
+	bitmap, _, err := wapi.CreateDIBSection.Call(
+		dst,
+		uintptr(unsafe.Pointer(&bitmapInfo)),
+		0,
+		uintptr(unsafe.Pointer(&bitmapData)),
+		0, 0,
+	)
+	if bitmap == 0 {
+		return nil, fmt.Errorf("Failed to create bitmap for \"%s\" window", config.Current.Video.Capture.Window.Name)
 	}
-	defer bitmap.Delete()
+
+	defer wapi.DeleteObject.Call(bitmap)
 
 	// Select the object and paint it.
-	err = w.Select(bitmap)
-	if err != nil {
-		return nil, errors.Wrap(err, "bitmap select")
+	wapi.SelectObject.Call(dst, bitmap)
+
+	var ret uintptr
+	switch config.Current.Scale {
+	case 1:
+		ret, _, _ = wapi.BitBlt.Call(
+			dst,
+			0,
+			0,
+			uintptr(width),
+			uintptr(height),
+			src,
+			uintptr(rect.Min.X),
+			uintptr(rect.Min.Y),
+			wapi.BitBltRasterOperations.CaptureBLT|wapi.BitBltRasterOperations.SrcCopy,
+		)
+	default: // Scaled.
+		ret, _, _ = wapi.StretchBlt.Call(
+			dst,
+			0,
+			0,
+			uintptr(int(float64(width)*config.Current.Scale)),
+			uintptr(int(float64(height)*config.Current.Scale)),
+			src,
+			uintptr(rect.Min.X),
+			uintptr(rect.Min.Y),
+			uintptr(width),
+			uintptr(height),
+			wapi.BitBltRasterOperations.CaptureBLT|wapi.BitBltRasterOperations.SrcCopy,
+		)
+	}
+	if ret == 0 {
+		notify.Error("Window: Failed to capture \"%s\" window", config.Current.Video.Capture.Window.Name)
+		return nil, fmt.Errorf("bitblt returned: %d", ret)
 	}
 
-	err = dst.Copy(src, size, rect, config.Current.Scale)
-	if err != nil {
-		return nil, errors.Wrap(err, "bitmap copy")
-	}
+	// Convert the bitmap to an image.Image. We first start by directly
+	// creating a slice. This is unsafe but we know the underlying structure
+	// directly.
+	var slice []byte
+	sliceHdr := (*reflect.SliceHeader)(unsafe.Pointer(&slice))
+	sliceHdr.Data = uintptr(bitmapData)
+	sliceHdr.Len = width * height * 4
+	sliceHdr.Cap = sliceHdr.Len
 
-	slice := unsafe.Slice(&data, size.X*size.Y*4)
-
-	pix := make([]byte, len(slice))
-	for i := 0; i < len(pix); i += 4 {
-		pix[i] = byte(slice[i+2])
-		pix[i+2] = byte(slice[i])
-		pix[i+1] = byte(slice[i+1])
-		pix[i+3] = byte(slice[i+3])
+	// Using the raw data, grab the RGBA data and transform it into an image.RGBA
+	imageBytes := make([]byte, len(slice))
+	for i := 0; i < len(imageBytes); i += 4 {
+		imageBytes[i], imageBytes[i+2], imageBytes[i+1], imageBytes[i+3] =
+			slice[i+2], slice[i], slice[i+1], slice[i+3]
 	}
 
 	return &image.RGBA{
-		Pix:    pix,
-		Stride: 4 * size.X,
-		Rect:   image.Rectangle{Max: size},
+		Pix:    imageBytes,
+		Stride: 4 * width,
+		Rect: image.Rect(
+			0,
+			0,
+			width,
+			height,
+		),
 	}, nil
 }
 
@@ -115,7 +150,19 @@ func IsOpen() bool {
 }
 
 func Open() error {
-	windows, _, err := list()
+	go sync.OnceFunc(func() {
+		for ; ; time.Sleep(time.Second * 5) {
+			windows, err := list()
+			if err != nil {
+				notify.Warn("[Window] Failed to list windows (%v)", err)
+				continue
+			}
+
+			Sources = windows
+		}
+	})
+
+	windows, err := list()
 	if err != nil {
 		return err
 	}
@@ -149,7 +196,7 @@ func Reattach() error {
 	}
 
 	max := 5
-	windows, _, err := list()
+	windows, err := list()
 	if err != nil {
 		return err
 	}
@@ -176,37 +223,36 @@ func Reattach() error {
 	return nil
 }
 
-func list() ([]string, []uintptr, error) {
+func list() ([]string, error) {
 	lock.Lock()
 	defer lock.Unlock()
 
 	Sources = []string{}
 
-	err := wapi.EnumerateWindows(func(h uintptr, p uintptr) uintptr {
-		w := wapi.Window(h)
-
-		if w.Visible() {
-			return 1
+	err := wapi.EnumerateWindows(func(w wapi.Window) (stop bool) {
+		// Ignore windows that are visible to a user.
+		if w.InfoStatus() == wapi.WindowInfoStatusVisible {
+			return false // Don't stop.
 		}
 
+		// Ignore windows without valid titles or handles.
 		name, err := w.Title()
 		if err != nil {
-			// notify.Error("<ini:failed:find> a window title (%v)", err)
-			return 1
+			return false // Don't stop.
 		}
 
+		// Ignore the projector window to prevent recursive painting.
 		if name == config.ProjectorWindow {
-			return 1
+			return false // Don't stop.
 		}
 
 		Sources = append(Sources, name)
-		handles = append(handles, h)
 
-		return 1
+		return false // Don't stop.
 	})
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return Sources, handles, nil
+	return Sources, nil
 }

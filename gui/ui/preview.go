@@ -16,7 +16,6 @@ import (
 	"gioui.org/widget/material"
 
 	"github.com/pidgy/unitehud/avi/video"
-	"github.com/pidgy/unitehud/core/fonts"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/rgba/nrgba"
 	"github.com/pidgy/unitehud/gui/ux/area"
@@ -74,7 +73,6 @@ func (g *GUI) preview(a *areas, onclose func()) *preview {
 		ui.capture.images = []*button.ImageWidget{}
 		ui.capture.areas = []*area.Capture{
 			a.energy.Capture,
-			// a.ko.Capture,
 			a.objective.Capture,
 			a.score.Capture,
 			a.state.Capture,
@@ -284,13 +282,12 @@ func (g *GUI) previewUI() *preview {
 		app.Title("Preview"),
 		app.Size(unit.Dp(ui.dimensions.width), unit.Dp(ui.dimensions.height)),
 		app.MinSize(unit.Dp(ui.dimensions.width), unit.Dp(ui.dimensions.height)),
-		app.MaxSize(unit.Dp(ui.dimensions.width), unit.Dp(ui.windows.parent.dimensions.max.Y)),
+		// app.MaxSize(unit.Dp(ui.dimensions.width), unit.Dp(ui.windows.parent.dimensions.max.Y)),
 		app.Decorated(false),
 	)
 
 	ui.bar = title.New(
 		"Preview",
-		fonts.NewCollection(),
 		nil,
 		nil,
 		func() { ui.windows.this.Perform(system.ActionClose) },
@@ -357,8 +354,4 @@ func (p *preview) resize() {
 	if p != nil {
 		p.dimensions.resize = true
 	}
-}
-
-func dimensions(gtx layout.Context) layout.Dimensions {
-	return layout.Dimensions{Size: gtx.Constraints.Max}
 }

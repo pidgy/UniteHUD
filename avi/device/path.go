@@ -17,7 +17,10 @@ type Path struct {
 }
 
 type regexPath struct {
-	vid, pid, rev, dev *regexp.Regexp
+	vid,
+	pid,
+	rev,
+	dev *regexp.Regexp
 }
 
 var (

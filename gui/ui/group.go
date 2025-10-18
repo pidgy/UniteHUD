@@ -65,7 +65,7 @@ func (g *GUI) audios(text float32) *audios {
 	a := &audios{
 		in: capture{
 			list: &checklist.Widget{
-				Theme:         g.nav.Collection.NotoSans().Theme,
+				Theme:         g.nav.NotoSans().Theme,
 				WidthModifier: 1,
 				TextSize:      text,
 				Radio:         true,
@@ -95,7 +95,7 @@ func (g *GUI) audios(text float32) *audios {
 		},
 		out: capture{
 			list: &checklist.Widget{
-				Theme:         g.nav.Collection.NotoSans().Theme,
+				Theme:         g.nav.NotoSans().Theme,
 				WidthModifier: 1,
 				TextSize:      text,
 				Radio:         true,
@@ -179,7 +179,7 @@ func (g *GUI) audios(text float32) *audios {
 	return a
 }
 
-func (g *GUI) areas(collection fonts.Collection) *areas {
+func (g *GUI) areas(collection *fonts.Collection) *areas {
 	return &areas{
 		objective: &area.Widget{
 			Text:     "Objectives",
@@ -514,7 +514,7 @@ func (g *GUI) videos(text float32) *videos {
 		prev: device.ActiveName(),
 
 		list: &checklist.Widget{
-			Theme:    g.nav.Collection.NotoSans().Theme,
+			Theme:    g.nav.NotoSans().Theme,
 			TextSize: text,
 			Items:    []*checklist.Item{},
 			Callback: func(i *checklist.Item, _ *checklist.Widget) (check bool) {
@@ -560,7 +560,7 @@ func (g *GUI) videos(text float32) *videos {
 	/*
 		// v.window = capture{
 		// 	list: &checklist.Widget{
-		// 		Theme:    g.nav.Collection.NotoSans().Theme,
+		// 		Theme:    g.nav.NotoSans().Theme,
 		// 		TextSize: text,
 		// 		Items:    []*checklist.Item{},
 		// 		Callback: func(i *checklist.Item, _ *checklist.Widget) (check bool) {
@@ -629,7 +629,7 @@ func (g *GUI) videos(text float32) *videos {
 
 	v.device = capture{
 		list: &checklist.Widget{
-			Theme:    g.nav.Collection.NotoSans().Theme,
+			Theme:    g.nav.NotoSans().Theme,
 			TextSize: text,
 			Items: []*checklist.Item{
 				{
@@ -710,7 +710,7 @@ func (g *GUI) videos(text float32) *videos {
 
 	v.apis = capture{
 		list: &checklist.Widget{
-			Theme:    g.nav.Collection.NotoSans().Theme,
+			Theme:    g.nav.NotoSans().Theme,
 			TextSize: text,
 			Items:    []*checklist.Item{},
 			Callback: func(i *checklist.Item, this *checklist.Widget) (check bool) {
@@ -740,7 +740,7 @@ func (g *GUI) videos(text float32) *videos {
 					g.ToastOK(
 						config.Current.Video.Capture.Device.Name,
 						err.Error(),
-						OnToastOK(func() {
+						toastOnOK(func() {
 							defer v.apis.populate()
 
 							config.Current.Video.Capture.Device = prev
@@ -750,17 +750,20 @@ func (g *GUI) videos(text float32) *videos {
 								g.ToastOK(
 									config.Current.Video.Capture.Device.Name,
 									lang.Title(err.Error()),
-									OnToastOK(func() {
+									toastOnOK(func() {
 										defer v.apis.populate()
 
 										v.onevent(false) // Show preview.
 									}),
+									toastOnClose(nil),
 								)
 								return
 							}
 
 							v.onevent(false) // Show preview.
-						}))
+						}),
+						toastOnClose(nil),
+					)
 
 					return false
 				}
@@ -769,11 +772,12 @@ func (g *GUI) videos(text float32) *videos {
 					g.ToastOK(
 						config.Current.Video.Capture.Device.Name,
 						fmt.Sprintf("Using default API for this device (%s)", config.Current.Video.Capture.Device.API),
-						OnToastOK(func() {
+						toastOnOK(func() {
 							defer v.apis.populate()
 
 							v.onevent(false) // Show preview.
 						}),
+						toastOnClose(nil),
 					)
 
 					return false
@@ -803,7 +807,7 @@ func (g *GUI) videos(text float32) *videos {
 
 	v.codecs = capture{
 		list: &checklist.Widget{
-			Theme:    g.nav.Collection.NotoSans().Theme,
+			Theme:    g.nav.NotoSans().Theme,
 			TextSize: text,
 			Items:    []*checklist.Item{},
 			Callback: func(i *checklist.Item, this *checklist.Widget) (check bool) {
@@ -837,7 +841,7 @@ func (g *GUI) videos(text float32) *videos {
 					g.ToastOK(
 						config.Current.Video.Capture.Device.Name,
 						err.Error(),
-						OnToastOK(func() {
+						toastOnOK(func() {
 							defer v.codecs.populate()
 
 							config.Current.Video.Capture.Device = prev
@@ -847,7 +851,7 @@ func (g *GUI) videos(text float32) *videos {
 								g.ToastOK(
 									config.Current.Video.Capture.Device.Name,
 									err.Error(),
-									OnToastOK(func() {
+									toastOnOK(func() {
 										defer v.device.populate()
 										defer v.window.populate()
 										defer v.monitor.populate()
@@ -856,12 +860,15 @@ func (g *GUI) videos(text float32) *videos {
 
 										v.onevent(false) // Show preview.
 									}),
+									toastOnClose(nil),
 								)
 								return
 							}
 
 							v.onevent(false) // Show preview.
-						}))
+						}),
+						toastOnClose(nil),
+					)
 
 					return false
 				}
@@ -870,10 +877,11 @@ func (g *GUI) videos(text float32) *videos {
 					g.ToastOK(
 						config.Current.Video.Capture.Device.Name,
 						fmt.Sprintf("Using default codec for this device (%s)", config.Current.Video.Capture.Device.Codec),
-						OnToastOK(func() {
+						toastOnOK(func() {
 							defer v.codecs.populate()
 							v.onevent(false) // Show preview.
 						}),
+						toastOnClose(nil),
 					)
 
 					return false
@@ -902,7 +910,7 @@ func (g *GUI) videos(text float32) *videos {
 
 	v.platform = capture{
 		list: &checklist.Widget{
-			Theme: g.nav.Collection.NotoSans().Theme,
+			Theme: g.nav.NotoSans().Theme,
 			Items: []*checklist.Item{
 				{
 					Text:    lang.Title(config.DeviceSwitch),

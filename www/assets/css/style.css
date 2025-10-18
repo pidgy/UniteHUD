@@ -24,6 +24,11 @@ td {
     /*border: 1px solid red;*/
 }
 
+div[id=hud] {
+    width: 1920px;
+    height: 1080px;
+}
+
 div[class~=hud-container] {
     opacity: 0;
 }

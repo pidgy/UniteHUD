@@ -27,15 +27,16 @@ import (
 type loading struct {
 	message string
 	tick    <-chan time.Time
+	ops     op.Ops
 }
 
 func (g *GUI) loading() {
-	l := &loading{
+	ui := &loading{
 		message: "Loading...",
 		tick:    time.NewTicker(time.Millisecond * 250).C,
 	}
 
-	go l.while()
+	go ui.while()
 
 	width := 720
 	height := 440
@@ -43,7 +44,7 @@ func (g *GUI) loading() {
 	g.window.Option(
 		app.Title(exe.Title),
 		app.Size(unit.Dp(width), unit.Dp(height)),
-		app.MaxSize(unit.Dp(width), unit.Dp(height)),
+		// app.MaxSize(unit.Dp(width), unit.Dp(height)),
 		app.MinSize(unit.Dp(width), unit.Dp(height)),
 		app.WindowMode.Option(app.Windowed),
 		app.Decorated(false),
@@ -54,14 +55,12 @@ func (g *GUI) loading() {
 	dims := layout.Dimensions{}
 	inset := layout.Inset{}
 
-	messageLabel := material.Label(g.nav.Collection.Calibri().Theme, unit.Sp(18.5), l.message)
+	messageLabel := material.Label(g.nav.Calibri().Theme, unit.Sp(18.5), ui.message)
 	messageLabel.Alignment = text.Middle
 	messageLabel.Font.Weight = 50
 
 	g.window.Perform(system.ActionCenter)
 	g.window.Perform(system.ActionRaise)
-
-	var ops op.Ops
 
 	for is.Now == is.Loading {
 		switch event := g.window.NextEvent().(type) {
@@ -74,7 +73,7 @@ func (g *GUI) loading() {
 			g.next(is.Closing)
 			return
 		case system.FrameEvent:
-			gtx := layout.NewContext(&ops, event)
+			gtx := layout.NewContext(&ui.ops, event)
 			op.InvalidateOp{}.Add(gtx.Ops)
 
 			cursor.Draw(gtx)
@@ -100,15 +99,13 @@ func (g *GUI) loading() {
 			layout.S.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				return layout.Inset{Bottom: unit.Dp(25)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 					return inset.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-						messageLabel.Text = l.message
+						messageLabel.Text = ui.message
 						return messageLabel.Layout(gtx)
 					})
 				})
 			})
 
 			g.frame(gtx, event)
-
-			g.window.Invalidate()
 		default:
 			notify.Missed(event, "Loading")
 		}

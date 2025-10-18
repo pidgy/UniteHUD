@@ -335,8 +335,8 @@ func proc() {
 
 	go func() {
 		for ; ; time.Sleep(time.Second) {
-			ram.SetTitle(strings.Replace(process.RAM.String(), " ", "\t", 1))
-			cpu.SetTitle(strings.Replace(process.CPU.String(), " ", "\t", 1))
+			ram.SetTitle(strings.Replace(process.Usage.RAM.String(), " ", "\t", 1))
+			cpu.SetTitle(strings.Replace(process.Usage.CPU.String(), " ", "\t", 1))
 		}
 	}()
 }

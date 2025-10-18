@@ -51,6 +51,8 @@ type Widget struct {
 
 	inset layout.Inset
 	set   bool
+
+	Radio bool
 }
 
 var (

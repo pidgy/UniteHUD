@@ -64,12 +64,13 @@ func ForegroundAlt(n *color.NRGBA) {
 	*n = config.Current.Theme.ForegroundAlt
 }
 
-func Label(l *material.LabelStyle, format string, a ...interface{}) {
+func Label(l *material.LabelStyle, format string, a ...interface{}) *material.LabelStyle {
 	l.Text = format
 	if len(a) > 0 {
 		l.Text = fmt.Sprintf(format, a...)
 	}
 	l.Color = config.Current.Theme.Foreground
+	return l
 }
 
 func LabelAlpha(l *material.LabelStyle, a uint8) {

@@ -70,6 +70,16 @@ func Image(img image.Image, mat gocv.Mat, crop image.Rectangle, value int, team,
 	return nil
 }
 
+func PNG(img image.Image, file string) error {
+	f, err := os.Create(file)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	return png.Encode(f, img)
+}
+
 func Logs(feeds, lines []string, templates map[string]int) error {
 	_, err := createAllIfNotExist()
 	if err != nil {

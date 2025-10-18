@@ -258,11 +258,11 @@ func (n *notify) log(r nrgba.NRGBA, clock, dedup, unique bool, format string, a 
 		p1 := p1s[len(p1s)-1]
 		p2 := p2s[len(p2s)-1]
 		if p1 == p2 {
-			if dedup {
-				n.logs[i].count = 1
-			} else {
-				n.logs[i].count++
-			}
+			// if dedup {
+			// 	n.logs[i].count = 1
+			// } else {
+			n.logs[i].count++
+			// }
 
 			return
 		}

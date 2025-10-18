@@ -15,10 +15,17 @@ type (
 	Object uintptr
 	Window uintptr
 	Bytes  uintptr
+
+	// Callback function passed to (EnumerateWindows). Enumeration stops on first error returned.
+	EnumerateWindowsCallback func(w Window) (stop bool)
 )
 
 func (b Bitmap) Delete() {
 	DeleteObject.Call(b.id())
+}
+
+func (b Bitmap) id() uintptr {
+	return uintptr(b)
 }
 
 func (b *BitmapInfo) CreateSection(d Device) (bitmap Bitmap, data uintptr, err error) {
@@ -54,14 +61,14 @@ func (b Bytes) Slice(size image.Point) []byte {
 
 	length := size.X * size.Y * 4
 	slice := make([]byte, length)
-	for i := 0; i < length; i++ {
-		slice[i] = *(*byte)(unsafe.Pointer(data + uintptr(i)))
+	for i := uintptr(0); i < uintptr(length); i++ {
+		slice[i] = *(*byte)(unsafe.Pointer(data + i))
 	}
 	return slice
 }
 
 func (d Device) Compatible() (Device, error) {
-	dst, _, err := CreateCompatibleDC.Call(uintptr(d))
+	dst, _, err := CreateCompatibleDC.Call(d.id())
 	if dst == 0 {
 		return 0, err
 	}
@@ -99,18 +106,28 @@ func (d Device) Select(b Bitmap) (Object, error) {
 }
 
 func (d Device) Release() {
-	ReleaseDC.Call(0, uintptr(d))
+	ReleaseDC.Call(0, d.id())
 }
 
 func (d Device) Delete() {
-	DeleteDC.Call(uintptr(d))
+	DeleteDC.Call(d.id())
 }
 
-func EnumerateWindows(callback func(h uintptr, p uintptr) uintptr) error {
-	r, _, err := EnumWindows.Call(syscall.NewCallback(callback), 0, 0)
-	if r == 0 {
+func (d Device) id() uintptr {
+	return uintptr(d)
+}
+
+func EnumerateWindows(callback EnumerateWindowsCallback) error {
+	_, _, err := EnumWindows.Call(syscall.NewCallback(func(h, l uintptr) uintptr {
+		if callback(Window(h)) {
+			return 0 // Stop.
+		}
+		return 1
+	}), 0, 0)
+	if err != syscall.Errno(0) {
 		return err
 	}
+
 	return nil
 }
 
@@ -136,15 +153,15 @@ func MoveWindowNoSize(hwnd uintptr, pos image.Point) {
 	MoveWindow.Call(hwnd, uintptr(pos.X), uintptr(pos.Y), 0, 0, uintptr(1))
 }
 
-func NewWindow(name string) (Window, error) {
-	argv, err := syscall.UTF16PtrFromString(name)
+func NewWindow(title string) (Window, error) {
+	argv, err := syscall.UTF16PtrFromString(title)
 	if err != nil {
 		return 0, err
 	}
 
-	r, _, err := FindWindow.Call(0, uintptr(unsafe.Pointer(argv)))
+	r, _, _ := FindWindow.Call(0, uintptr(unsafe.Pointer(argv)))
 	if r == 0 {
-		return 0, err
+		return 0, fmt.Errorf("failed to find window with title: %s", title)
 	}
 
 	return Window(r), nil
@@ -152,6 +169,10 @@ func NewWindow(name string) (Window, error) {
 
 func (o Object) Delete() {
 	DeleteObject.Call(o.id())
+}
+
+func (o Object) id() uintptr {
+	return uintptr(o)
 }
 
 func ObjectSelect(hwnd1, hwnd2 uintptr) {
@@ -162,23 +183,28 @@ func (p Point) String() string {
 	return fmt.Sprintf("(%d,%d)", p.X, p.Y)
 }
 
+func (r Rect) Eq(r2 Rect) bool {
+	return r.Bottom == r2.Bottom && r.Left == r2.Left && r.Right == r2.Right && r.Top == r2.Top
+}
+
 func (r Rect) String() string {
-	return fmt.Sprintf("[%d,%d,%d,%d]", r.Left, r.Top, r.Right, r.Bottom)
+	return fmt.Sprintf("[L:%d,T:%d,R:%d,B:%d]", r.Left, r.Top, r.Right, r.Bottom)
 }
 
 func ShowWindowMinimizedRestore(hwnd uintptr) {
-	ShowWindow.Call(hwnd, ShowWindowFlags.ShowMinimized)
-	ShowWindow.Call(hwnd, ShowWindowFlags.Restore)
+	ShowWindow.Call(hwnd, ShowWindowFlags.ShowMinimized|ShowWindowFlags.Restore)
 }
 
 func ShowWindowHide(hwnd uintptr) {
 	ShowWindow.Call(hwnd, ShowWindowFlags.Hide)
 }
 
-func SetWindowDarkMode(hwnd uintptr) {
-	pv10, pv11 := 1, 1
-	DwmSetWindowAttribute.Call(hwnd, DwmWindowAttributeFlags.UseImmersiveDarkMode10, uintptr(unsafe.Pointer(&pv10)), uintptr(4))
-	DwmSetWindowAttribute.Call(hwnd, DwmWindowAttributeFlags.UseImmersiveDarkMode11, uintptr(unsafe.Pointer(&pv11)), uintptr(4))
+func SetWindowAlwaysOnTop(hwnd uintptr) {
+	go SetWindowPos.Call(hwnd, uintptr(HWNDInsertAfterFlags.TopMost), 0, 0, 0, 0, SetWindowPosFlags.NoMove|SetWindowPosFlags.NoSize)
+}
+
+func SetWindowNotAlwaysOnTop(hwnd uintptr) {
+	go SetWindowPos.Call(hwnd, uintptr(HWNDInsertAfterFlags.NoTopMost), 0, 0, 0, 0, SetWindowPosFlags.NoMove|SetWindowPosFlags.NoSize)
 }
 
 func SetWindowPosNone(hwnd uintptr, pt image.Point, size image.Point) {
@@ -201,13 +227,8 @@ func SetWindowPosShow(hwnd uintptr, pt image.Point, size image.Point) {
 	helpSetWindowPos(hwnd, pt, size, SetWindowPosFlags.Show)
 }
 
-func (b Bitmap) id() uintptr { return uintptr(b) }
-func (d Device) id() uintptr { return uintptr(d) }
-func (o Object) id() uintptr { return uintptr(o) }
-func (w Window) id() uintptr { return uintptr(w) }
-
 func (w Window) Device() (Device, error) {
-	r, _, err := GetDC.Call(w.id())
+	r, _, err := GetDC.Call(w.HWND())
 	if r == 0 {
 		return 0, err
 	}
@@ -215,24 +236,39 @@ func (w Window) Device() (Device, error) {
 }
 
 func (w Window) Select(b Bitmap) error {
-	r, _, err := SelectObject.Call(w.id(), b.id())
+	r, _, err := SelectObject.Call(w.HWND(), b.id())
 	if r == 0 {
 		return err
 	}
 	return nil
 }
 
+// Visible will determine if a window is "technically visible", see InfoStatus for "actually visible".
 func (w Window) Visible() bool {
-	f, _, _ := IsWindowVisible.Call(w.id())
+	f, _, _ := IsWindowVisible.Call(w.HWND())
 	return f == 1
 }
 
-func (w Window) Dimensions() (image.Rectangle, error) {
-	var rect Rect
-	r, _, err := GetClientRect.Call(w.id(), uintptr(unsafe.Pointer(&rect)))
+// InfoStatus will return the WindowInfoStatus field from GetWindowInfo, See: WindowInfoStatus.
+func (w Window) InfoStatus() WindowInfoStatus {
+	info := WindowInfo{}
+	r, _, _ := GetWindowInfo.Call(w.HWND(), uintptr(unsafe.Pointer(&info)))
 	if r == 0 {
-		return image.Rectangle{}, err
+		return WindowInfoStatusUnknown
 	}
+	return info.Status
+}
+
+func (w Window) Dimensions() (image.Rectangle, error) {
+	rect := Rect{}
+
+	_, _, err := GetClientRect.Call(w.HWND(), uintptr(unsafe.Pointer(&rect)))
+	if err != nil {
+		if err != syscall.Errno(0) {
+			return image.Rectangle{}, err
+		}
+	}
+
 	return image.Rect(0, 0, int(rect.Right), int(rect.Bottom)), nil
 }
 
@@ -242,12 +278,20 @@ func (w Window) Title() (string, error) {
 	maxCount := uint32(200)
 	str = &b[0]
 
-	r, _, err := GetWindowTextW.Call(w.id(), uintptr(unsafe.Pointer(str)), uintptr(maxCount))
+	r, _, _ := GetWindowTextW.Call(w.HWND(), uintptr(unsafe.Pointer(str)), uintptr(maxCount))
 	if r == 0 {
-		return "", err
+		return "", fmt.Errorf("invalid title or handle: %d", w.HWND())
 	}
 
 	return syscall.UTF16ToString(b), nil
+}
+
+func (w Window) HWND() uintptr {
+	return uintptr(w)
+}
+
+func (w *WindowPlacement) String() string {
+	return fmt.Sprintf("len: %d, flags: %d, cmd: %d, min: %s, max: %s, normal: %s, device: %s", w.Len, w.Flags, w.ShowCommand, w.Min, w.Max, w.Normal, w.Device)
 }
 
 // https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-systemparametersinfoa?redirectedfrom=MSDN

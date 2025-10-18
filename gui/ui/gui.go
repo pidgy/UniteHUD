@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"fmt"
 	"image"
 	"math"
 	"time"
@@ -14,7 +13,6 @@ import (
 
 	"github.com/pidgy/unitehud/avi/video/fps"
 	"github.com/pidgy/unitehud/avi/video/monitor"
-	"github.com/pidgy/unitehud/core/fonts"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/stats"
 	app1 "github.com/pidgy/unitehud/exe"
@@ -90,7 +88,7 @@ func New() *GUI {
 
 	notify.System("[UI] Generating")
 
-	notify.Announce("Taskbar Height: %d", monitor.TaskbarHeight())
+	notify.Debug("[UI] Taskbar Height: %d", monitor.TaskbarHeight())
 
 	UI = &GUI{
 		window: app.NewWindow(app.Title(app1.Title), app.Decorated(false)),
@@ -136,12 +134,10 @@ func New() *GUI {
 
 	UI.nav = title.New(
 		app1.Title,
-		fonts.NewCollection(),
 		UI.minimize,
 		UI.resize,
-		func() {
-			UI.window.Perform(system.ActionClose)
-		},
+		UI.Close,
+		// func() {UI.window.Perform(system.ActionClose)},
 	)
 
 	notify.System("[UI] Using %dx%d resolution", max.X, max.Y)
@@ -183,7 +179,7 @@ func (g *GUI) Open() {
 			case is.Configuring:
 				g.configure()
 			default:
-				g.ToastError(fmt.Errorf("Unexpected configuration... shutting down"))
+				g.ToastErrorf("Unexpected configuration, shutting down")
 				return
 			}
 		}
@@ -191,13 +187,11 @@ func (g *GUI) Open() {
 
 	go g.proc()
 
-	if app1.Debug {
-		// go g.debug()
+	if is.Now == is.Closing {
+		return
 	}
 
-	if is.Now != is.Closing {
-		app.Main()
-	}
+	app.Main()
 }
 
 func (g *GUI) attachWindowLeft(hwnd uintptr, width int) {
@@ -237,6 +231,8 @@ func (g *GUI) attachWindowRight(hwnd uintptr, width int) bool {
 }
 
 func (g *GUI) frame(gtx layout.Context, e system.FrameEvent) {
+	g.window.Invalidate()
+
 	e.Frame(gtx.Ops)
 
 	p, ok := g.nav.Dragging()
@@ -249,19 +245,23 @@ func (g *GUI) frame(gtx layout.Context, e system.FrameEvent) {
 }
 
 func (g *GUI) maximize() {
-	size := g.squeeze()
-
-	g.previous.position = g.position()
-	g.previous.size = g.dimensions.size
-
+	g.window.Perform(system.ActionMaximize)
 	g.dimensions.fullscreen = true
 	g.nav.NoDrag = true
 
-	wapi.SetWindowPosShow(
-		g.HWND,
-		image.Pt(0, 0).Add(image.Pt(g.inset.left, 0)),
-		size,
-	)
+	// size := g.squeeze()
+
+	// g.previous.position = g.position()
+	// g.previous.size = g.dimensions.size
+
+	// g.dimensions.fullscreen = true
+	// g.nav.NoDrag = true
+
+	// wapi.SetWindowPosShow(
+	// 	g.HWND,
+	// 	image.Pt(0, 0).Add(image.Pt(g.inset.left, 0)),
+	// 	size,
+	// )
 }
 
 func (g *GUI) minimize() {
@@ -314,17 +314,17 @@ func (g *GUI) proc() {
 	for ; is.Now != is.Closing; time.Sleep(time.Second) {
 		g.performance.uptime = process.Uptime()
 
-		if process.RAM.Float64() > peak.ram+100 {
-			peak.ram = process.RAM.Float64()
+		if process.Usage.RAM.Float64() > peak.ram+100 {
+			peak.ram = process.Usage.RAM.Float64()
 			notify.Replace("[UI] RAM", notify.Warn, "[UI] RAM Usage: %.0fMB", peak.ram)
 		}
-		go stats.RAM(process.RAM.Float64())
+		go stats.RAM(process.Usage.RAM.Float64())
 
-		if process.CPU.Float64() > peak.cpu+10 {
-			peak.cpu = process.CPU.Float64()
+		if process.Usage.CPU.Float64() > peak.cpu+10 {
+			peak.cpu = process.Usage.CPU.Float64()
 			notify.Replace("[UI] CPU Usage", notify.Warn, "[UI] CPU Usage: %.1f%s", peak.cpu, "%")
 		}
-		go stats.CPU(process.CPU.Float64())
+		go stats.CPU(process.Usage.CPU.Float64())
 	}
 }
 
@@ -393,15 +393,19 @@ func (g *GUI) squeeze() image.Point {
 }
 
 func (g *GUI) unmaximize() {
-	g.window.Option(app.MinSize(unit.Dp(g.dimensions.min.X), unit.Dp(g.dimensions.min.Y)))
+	g.window.Perform(system.ActionUnmaximize)
 	g.dimensions.fullscreen = false
 	g.nav.NoDrag = false
 
-	wapi.SetWindowPosShow(
-		g.HWND,
-		g.previous.position,
-		g.previous.size,
-	)
+	// g.window.Option(app.MinSize(unit.Dp(g.dimensions.min.X), unit.Dp(g.dimensions.min.Y)))
+	// g.dimensions.fullscreen = false
+	// g.nav.NoDrag = false
+
+	// wapi.SetWindowPosShow(
+	// 	g.HWND,
+	// 	g.previous.position,
+	// 	g.previous.size,
+	// )
 }
 
 func (g *GUI) unsetInsetLeft(left int) {

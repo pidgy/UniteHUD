@@ -1,7 +1,6 @@
 package wapi
 
 import (
-	"fmt"
 	"syscall"
 )
 
@@ -9,7 +8,7 @@ import (
 type BitmapInfo struct {
 	BmiHeader BitmapInfoHeader
 	BmiColors *RGBQuad
-} //
+}
 
 // http://msdn.microsoft.com/en-us/library/windows/desktop/dd183376.aspx
 type BitmapInfoHeader struct {
@@ -44,10 +43,6 @@ type Rect struct {
 	Left, Top, Right, Bottom int32
 }
 
-type Rect2 struct {
-	Left, Top, Right, Bottom int
-}
-
 // http://msdn.microsoft.com/en-us/library/windows/desktop/dd162938.aspx
 type RGBQuad struct {
 	RgbBlue     byte
@@ -58,29 +53,26 @@ type RGBQuad struct {
 
 // https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-windowinfo
 type WindowInfo struct {
-	/*
-	  DWORD cbSize;
-	  RECT  rcWindow;
-	  RECT  rcClient;
-	  DWORD dwStyle;
-	  DWORD dwExStyle;
-	  DWORD dwWindowStatus;
-	  UINT  cxWindowBorders;
-	  UINT  cyWindowBorders;
-	  ATOM  atomWindowType;
-	  WORD  wCreatorVersion;
-	*/
-	Size           uint32 // DWORD.
-	Window         Rect   // RECT.
-	Client         Rect   // RECT.
-	Style          uint32 // DWORD.
-	ExStyle        uint32 // DWORD.
-	Status         uint32 // DWORD.
-	BordersX       uint   // UINT.
-	BordersY       uint   // UINT.
-	Type           uint16 // ATOM.
-	CreatorVersion uint16 // WORD.
+	Size           uint32           // DWORD.
+	Window         Rect             // RECT.
+	Client         Rect             // RECT.
+	Style          uint32           // DWORD.
+	ExStyle        uint32           // DWORD.
+	Status         WindowInfoStatus // DWORD.
+	BordersX       uint             // UINT.
+	BordersY       uint             // UINT.
+	Type           uint16           // ATOM.
+	CreatorVersion uint16           // WORD.
 }
+
+// https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-windowinfo
+type WindowInfoStatus uint32
+
+const (
+	WindowInfoStatusNotVisible WindowInfoStatus = iota
+	WindowInfoStatusVisible
+	WindowInfoStatusUnknown
+)
 
 // https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-windowplacement
 type WindowPlacement struct {
@@ -103,23 +95,10 @@ type WindowPos struct {
 	flags           uint32
 }
 
-// https://learn.microsoft.com/en-us/windows/win32/hidpi/dpi-awareness-context
-type SetProcessDpiAwarenessContext int
-
-const (
-	Unaware SetProcessDpiAwarenessContext = iota
-	SystemAware
-	PerMonitorAware
-	PerMonitorAwareV2
-	UnawareGDIScaled
-)
-
 var (
 	MonitorFromWindowOptions = struct {
 		DefaultToPrimary uintptr
-	}{
-		DefaultToPrimary: 1,
-	}
+	}{1}
 
 	BitBltRasterOperations = struct {
 		SrcCopy,
@@ -138,26 +117,29 @@ var (
 		MergePaint: 0x00BB0226,
 		SrcInvert:  0x00660046,
 	}
+
 	BitmapInfoHeaderCompression = struct {
 		RGB uint32
-	}{
-		RGB: 0,
-	}
+	}{0}
+
 	CreateDIBSectionError = struct {
 		InvalidParameter uintptr
-	}{
-		InvalidParameter: 2,
-	}
+	}{2}
+
 	CreateDIBSectionUsage = struct {
 		RGBColors uint
-	}{
-		RGBColors: 0,
-	}
+	}{0}
+
 	CreateProcessFlags = struct {
 		NoWindow uint32
+	}{0x08000000}
+
+	CreateToolhelp32SnapshotFlags = struct {
+		SnapProcess uint32
 	}{
-		NoWindow: 0x08000000,
+		SnapProcess: 0x00000002,
 	}
+
 	DwmWindowAttributeFlags = struct {
 		Cloaked                uintptr
 		UseImmersiveDarkMode10 uintptr // Windows 10.
@@ -167,6 +149,7 @@ var (
 		UseImmersiveDarkMode10: 19,
 		UseImmersiveDarkMode11: 20,
 	}
+
 	GetDeviceCapsIndex = struct {
 		HorzRes,
 		VertRes uintptr
@@ -174,6 +157,7 @@ var (
 		8,
 		10,
 	}
+
 	GetWindowFlags = struct {
 		Child,
 		EnabledPopUp,
@@ -189,11 +173,25 @@ var (
 		Last:         1,
 		Prev:         3,
 	}
+
 	GetWindowLongFlags = struct {
 		Style uintptr
 	}{
 		Style: ^(uintptr(16) - 1), // -16
 	}
+
+	HWNDInsertAfterFlags = struct {
+		Bottom,
+		NoTopMost,
+		Top,
+		TopMost int32
+	}{
+		Bottom:    1,
+		NoTopMost: -2,
+		Top:       0,
+		TopMost:   -1,
+	}
+
 	SetWindowPosFlags = struct {
 		None,
 		NoSize,
@@ -209,6 +207,7 @@ var (
 		NoMove:     0x0002,
 		ShowWindow: 0x0040,
 	}
+
 	ShowWindowFlags = struct {
 		Hide,
 		Normal,
@@ -240,6 +239,7 @@ var (
 		ShowDefault:     10,
 		ForceMinimize:   11,
 	}
+
 	WindowStyleFlags = struct {
 		Caption,
 		MinimizeBox,
@@ -253,6 +253,31 @@ var (
 		OverlappedWindow uintptr
 	}{
 		Caption:     0x00C00000,
+		MinimizeBox: 0x00020000,
+		MaximizeBox: 0x00010000,
+		Overlapped:  0x00000000,
+		SysMenu:     0x00080000,
+		ThickFrame:  0x00040000,
+		Tiled:       0x00000000,
+		Visible:     0x10000000,
+	}
+
+	WindowStyles = struct {
+		Border,
+		Caption,
+		Child,
+		ChildWindow,
+		MinimizeBox,
+		MaximizeBox,
+		Overlapped,
+		SysMenu,
+		ThickFrame,
+		Tiled,
+		Visible uint32
+	}{
+		Border:      0x00800000,
+		Caption:     0x00C00000,
+		Child:       0x40000000,
 		MinimizeBox: 0x00020000,
 		MaximizeBox: 0x00010000,
 		Overlapped:  0x00000000,
@@ -276,7 +301,7 @@ var (
 
 	user32                       = syscall.MustLoadDLL("user32.dll")
 	BringWindowToTop             = user32.MustFindProc("BringWindowToTop")
-	EnumWindows                  = user32.MustFindProc("EnumWindows")
+	EnumWindows                  = user32.MustFindProc("EnumWindows") // https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-enumwindows
 	FindWindow                   = user32.MustFindProc("FindWindowW")
 	GetClientRect                = user32.MustFindProc("GetClientRect")
 	GetDC                        = user32.MustFindProc("GetDC")
@@ -339,6 +364,17 @@ func init() {
 		WindowStyleFlags.Caption | WindowStyleFlags.SysMenu | WindowStyleFlags.ThickFrame | WindowStyleFlags.MinimizeBox | WindowStyleFlags.MaximizeBox
 }
 
+// https://learn.microsoft.com/en-us/windows/win32/hidpi/dpi-awareness-context
+type SetProcessDpiAwarenessContext int
+
+const (
+	Unaware SetProcessDpiAwarenessContext = iota
+	SystemAware
+	PerMonitorAware
+	PerMonitorAwareV2
+	UnawareGDIScaled
+)
+
 // SetProcessDpiAwareness ensures that Windows API calls will tell us the scale factor for our
 // screen so that our screenshot works on hi-res displays.
 func SetProcessDPIAwareness(ctx SetProcessDpiAwarenessContext) error {
@@ -369,9 +405,4 @@ func SetThreadExecutionState(states ...ThreadExecutionState) error {
 		return err
 	}
 	return nil
-}
-
-func (w *WindowPlacement) String() string {
-	return fmt.Sprintf("len: %d, flags: %d, cmd: %d, min: %s, max: %s, normal: %s, device: %s",
-		w.Len, w.Flags, w.ShowCommand, w.Min, w.Max, w.Normal, w.Device)
 }

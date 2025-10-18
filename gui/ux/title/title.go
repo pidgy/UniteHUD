@@ -33,8 +33,8 @@ var (
 )
 
 type Widget struct {
-	Title      string
-	Collection fonts.Collection
+	Title string
+	*fonts.Collection
 
 	NoTip       bool
 	NoDrag      bool
@@ -85,7 +85,9 @@ type decorations struct {
 	}
 }
 
-func New(title string, collection fonts.Collection, minimize, resize, close func()) *Widget {
+func New(title string, minimize, resize, close func()) *Widget {
+	collection := fonts.NewCollection()
+
 	b := &Widget{
 		Title:      title,
 		Collection: collection,
@@ -292,14 +294,14 @@ func (b *Widget) Layout(gtx layout.Context, content layout.Widget) layout.Dimens
 
 			cursor.Is(pointer.CursorGrabbing)
 
+			b.dragging.is = true
+
 			if b.dragging.last.Round().Eq(e.Position.Round()) {
 				break
 			}
 			b.dragging.last = e.Position
 
 			b.dragging.diff = b.dragging.last.Sub(b.dragging.first)
-
-			b.dragging.is = true
 		}
 	}
 

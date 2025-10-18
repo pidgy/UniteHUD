@@ -87,7 +87,7 @@ type Widget struct {
 	frameFrequency int
 }
 
-func (a *Widget) Layout(gtx layout.Context, collection fonts.Collection, capture image.Rectangle, img image.Image, blank image.Point) (err error) {
+func (a *Widget) Layout(gtx layout.Context, collection *fonts.Collection, capture image.Rectangle, img image.Image, blank image.Point) (err error) {
 	if img == nil || capture.Max.X == 0 || a.Base.Max.X == 0 {
 		return nil
 	}
@@ -176,6 +176,7 @@ func (a *Widget) Layout(gtx layout.Context, collection fonts.Collection, capture
 		switch e.Kind {
 		case pointer.Enter:
 			if a.Hidden {
+				fmt.Printf("Hidden: %s\n", a.titleLabel.Text)
 				cursor.Is(pointer.CursorNotAllowed)
 				continue
 			}
@@ -278,7 +279,7 @@ func (a *Widget) Layout(gtx layout.Context, collection fonts.Collection, capture
 	pointer.InputOp{
 		Tag:   a,
 		Kinds: pointer.Press | pointer.Drag | pointer.Release | pointer.Leave | pointer.Enter | pointer.Move,
-		Grab:  a.Drag,
+		Grab:  !a.Hidden,
 	}.Add(gtx.Ops)
 	area.Pop()
 

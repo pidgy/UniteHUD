@@ -651,10 +651,10 @@ func Open() error {
 	}()
 
 	if exe.Debug {
-		err := Current.Remove()
-		if err != nil {
-			notify.Warn("[Config] Failed to reset debug config (%v)", err)
-		}
+		// err := Current.Remove()
+		// if err != nil {
+		// 	notify.Warn("[Config] Failed to delete debug config (%v)", err)
+		// }
 	}
 
 	if device == "" {

@@ -42,12 +42,10 @@ func (i *ImageWidget) Layout(th *material.Theme, gtx layout.Context) layout.Dime
 		hidden.Alignment = text.Middle
 		hidden.TextSize = unit.Sp(12)
 
-		decorate.Label(&hidden, hidden.Text)
-
 		layout.Inset{
 			Top:  unit.Dp(18),
 			Left: unit.Dp(29),
-		}.Layout(gtx, hidden.Layout)
+		}.Layout(gtx, decorate.Label(&hidden, hidden.Text).Layout)
 	}
 
 	dims := i.Widget.Layout(gtx)

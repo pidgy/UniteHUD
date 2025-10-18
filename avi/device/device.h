@@ -115,10 +115,12 @@ public:
     }
 
     _result = _dev->CreateClassEnumerator(guid, &_enum, 0);
-    if (FAILED(_result)) {
+    if (FAILED(_result)) 
+    {
       goto failed;
     }
-    if (_result != S_OK) {
+    if (_result != S_OK) 
+    {
       goto failed;
     }
 

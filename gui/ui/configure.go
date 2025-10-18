@@ -6,7 +6,6 @@ import (
 	"os/exec"
 	"time"
 
-	"gioui.org/io/key"
 	"gioui.org/io/pointer"
 	"gioui.org/io/system"
 	"gioui.org/layout"
@@ -33,6 +32,7 @@ import (
 	"github.com/pidgy/unitehud/gui/ux/area"
 	"github.com/pidgy/unitehud/gui/ux/button"
 	"github.com/pidgy/unitehud/gui/ux/decorate"
+	"github.com/pidgy/unitehud/gui/ux/keys"
 	"github.com/pidgy/unitehud/gui/ux/title"
 	"github.com/pidgy/unitehud/system/process"
 )
@@ -105,6 +105,8 @@ type configure struct {
 	}
 
 	*footer
+
+	tag any
 }
 
 var (
@@ -129,7 +131,7 @@ func (g *GUI) configure() {
 
 	g.window.Perform(system.ActionRaise)
 
-	var lastpos image.Point
+	lastPos := image.Pt(0, 0)
 
 	for is.Now == is.Configuring {
 		if ui.groups.ticks++; ui.groups.ticks > ui.groups.threshold {
@@ -145,23 +147,22 @@ func (g *GUI) configure() {
 			gtx := layout.NewContext(&ui.ops, event)
 			op.InvalidateOp{At: gtx.Now}.Add(gtx.Ops)
 
-			if !g.dimensions.size.Eq(event.Size) || !g.position().Eq(lastpos) {
+			if !g.dimensions.size.Eq(event.Size) || !g.position().Eq(lastPos) {
 				g.dimensions.size = event.Size
-				lastpos = g.position()
+				lastPos = g.position()
 
 				ui.windows.settings.resize()
 				ui.windows.preview.resize()
 			}
 
-			fps := device.FPS()
-
 			decorate.Background(gtx)
+
 			decorate.Label(&ui.footer.api, "API: %s", device.API(config.Current.Video.Capture.Device.API).String())
-			decorate.Label(&ui.footer.cpu, process.CPU.String())
-			decorate.Label(&ui.footer.ram, process.RAM.String())
+			decorate.Label(&ui.footer.cpu, process.Usage.CPU.String())
+			decorate.Label(&ui.footer.ram, process.Usage.RAM.String())
 			decorate.Label(&ui.footer.hz, "%s Hz", g.hz)
-			decorate.Label(&ui.footer.fps, "%.0f FPS", fps)
-			decorate.LabelColor(&ui.footer.fps, nrgba.Percent(fps/float64(config.Current.Video.Capture.Device.FPS)).Color())
+			decorate.Label(&ui.footer.fps, "%.0f FPS", device.FPS())
+			decorate.LabelColor(&ui.footer.fps, nrgba.Percent(device.FPS()/float64(config.Current.Video.Capture.Device.FPS)).Color())
 
 			g.nav.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				if ui.hideOptions {
@@ -367,13 +368,13 @@ func (g *GUI) configure() {
 
 			if ui.showCaptureAreas && ui.img != nil {
 				for _, area := range []*area.Widget{
-					ui.groups.areas.time,
-					ui.groups.areas.energy,
-					ui.groups.areas.score,
-					// ui.groups.areas.ko,
-					ui.groups.areas.objective,
 					ui.groups.areas.state,
 					ui.groups.areas.pressButtonToScore,
+					ui.groups.areas.time,
+					ui.groups.areas.energy,
+					ui.groups.areas.objective,
+					ui.groups.areas.score,
+					// ui.groups.areas.ko,
 				} {
 					err := area.Layout(gtx, g.nav.Collection, ui.constraints, ui.img, ui.inset)
 					if err != nil {
@@ -392,7 +393,6 @@ func (g *GUI) configure() {
 			switch {
 			case ui.hidePreview:
 				ui.img = splash.DeviceClickable()
-
 			case device.IsActive(), monitor.IsDisplay(), window.IsOpen():
 				var err error
 
@@ -415,24 +415,26 @@ func (g *GUI) configure() {
 				ui.img = splash.Default()
 			}
 
-			for _, event := range gtx.Events(g) {
-				switch e := event.(type) {
-				case key.Event:
-					switch e.Name {
-					case key.NameEscape:
-						ui.buttons.menu.home.Click(ui.buttons.menu.home)
-					}
-				}
+			// for _, event := range gtx.Events(g) {
+			// 	switch e := event.(type) {
+			// 	case key.Event:
+			// 		switch e.Name {
+			// 		case key.NameEscape:
+			// 			ui.buttons.menu.home.Click(ui.buttons.menu.home)
+			// 		}
+			// 	}
+			// }
+
+			// area := clip.Rect(gtx.Constraints).Push(gtx.Ops)
+			// key.InputOp{
+			// 	Tag:  g,
+			// 	Keys: key.Set(key.NameEscape),
+			// }.Add(gtx.Ops)
+			// area.Pop()
+
+			if keys.Esc.Up(gtx, ui.tag) != keys.None {
+				ui.buttons.menu.home.Click(ui.buttons.menu.home)
 			}
-
-			area := clip.Rect(gtx.Constraints).Push(gtx.Ops)
-
-			key.InputOp{
-				Tag:  g,
-				Keys: key.Set(key.NameEscape),
-			}.Add(gtx.Ops)
-
-			area.Pop()
 
 			g.frame(gtx, event)
 		default:
@@ -452,6 +454,8 @@ func (g *GUI) configureUI() *configure {
 		hidePreview: true,
 
 		listTextSize: float32(12),
+
+		tag: new(bool),
 	}
 
 	ui.groups.areas = g.areas(g.nav.Collection)
@@ -465,7 +469,7 @@ func (g *GUI) configureUI() *configure {
 
 	ui.buttons.menu.home = &button.Widget{
 		Text:            "🏠",
-		Font:            g.nav.Collection.NishikiTeki(),
+		Font:            g.nav.NishikiTeki(),
 		Pressed:         nrgba.Discord.Alpha(100),
 		TextSize:        unit.Sp(16),
 		TextInsetBottom: -1,
@@ -486,7 +490,7 @@ func (g *GUI) configureUI() *configure {
 			}
 
 			g.ToastYesNo("Save", "Save configuration changes?",
-				OnToastYes(func() {
+				toastOnYes(func() {
 					defer this.Deactivate()
 
 					server.Clear()
@@ -498,7 +502,7 @@ func (g *GUI) configureUI() *configure {
 
 					g.next(is.MainMenu)
 				}),
-				OnToastNo(func() {
+				toastOnNo(func() {
 					defer this.Deactivate()
 
 					server.Clear()
@@ -522,7 +526,7 @@ func (g *GUI) configureUI() *configure {
 		Text:            "⚙",
 		TextSize:        unit.Sp(18),
 		TextInsetBottom: -2,
-		Font:            g.nav.Collection.NishikiTeki(),
+		Font:            g.nav.NishikiTeki(),
 		OnHoverHint:     func() { g.nav.Tip("Open advanced settings") },
 		Pressed:         nrgba.Lilac,
 		BorderWidth:     unit.Sp(.1),
@@ -548,7 +552,7 @@ func (g *GUI) configureUI() *configure {
 
 	ui.buttons.menu.preview = &button.Widget{
 		Text:            "🗗",
-		Font:            g.nav.Collection.NishikiTeki(),
+		Font:            g.nav.NishikiTeki(),
 		TextSize:        unit.Sp(17),
 		TextInsetBottom: -1,
 		Pressed:         nrgba.BloodOrange,
@@ -575,7 +579,7 @@ func (g *GUI) configureUI() *configure {
 
 	ui.buttons.menu.save = &button.Widget{
 		Text:            "🖫",
-		Font:            g.nav.Collection.NishikiTeki(),
+		Font:            g.nav.NishikiTeki(),
 		Pressed:         nrgba.OfficeBlue,
 		TextSize:        unit.Sp(16),
 		TextInsetBottom: -1,
@@ -583,7 +587,7 @@ func (g *GUI) configureUI() *configure {
 		OnHoverHint:     func() { g.nav.Tip("Save configuration") },
 		Click: func(this *button.Widget) {
 			g.ToastYesNo("Save", "Save configuration changes?",
-				OnToastYes(func() {
+				toastOnYes(func() {
 					defer this.Deactivate()
 
 					server.Clear()
@@ -602,14 +606,14 @@ func (g *GUI) configureUI() *configure {
 
 					notify.System("[UI] Configuration saved to " + config.Current.File())
 				}),
-				OnToastNo(this.Deactivate),
+				toastOnNo(this.Deactivate),
 			)
 		},
 	}
 
 	ui.buttons.menu.hide = &button.Widget{
 		Text:            "⇊",
-		Font:            g.nav.Collection.NishikiTeki(),
+		Font:            g.nav.NishikiTeki(),
 		TextSize:        unit.Sp(16),
 		TextInsetBottom: -1,
 		Pressed:         nrgba.Gray,
@@ -630,7 +634,7 @@ func (g *GUI) configureUI() *configure {
 
 	ui.buttons.menu.capture = &button.Widget{
 		Text:            "⛶",
-		Font:            g.nav.Collection.NishikiTeki(),
+		Font:            g.nav.NishikiTeki(),
 		TextSize:        unit.Sp(16),
 		TextInsetBottom: -1,
 		Pressed:         nrgba.DarkSeafoam,
@@ -648,7 +652,7 @@ func (g *GUI) configureUI() *configure {
 
 	ui.buttons.menu.file = &button.Widget{
 		Text:            "📝",
-		Font:            g.nav.Collection.NishikiTeki(),
+		Font:            g.nav.NishikiTeki(),
 		Pressed:         nrgba.CoolBlue,
 		TextSize:        unit.Sp(16),
 		TextInsetBottom: -1,
@@ -682,7 +686,7 @@ func (g *GUI) configureUI() *configure {
 
 	ui.buttons.menu.reset = &button.Widget{
 		Text:            "💣",
-		Font:            g.nav.Collection.NishikiTeki(),
+		Font:            g.nav.NishikiTeki(),
 		Pressed:         nrgba.PaleRed,
 		TextSize:        unit.Sp(17),
 		TextInsetBottom: -1,
@@ -690,7 +694,7 @@ func (g *GUI) configureUI() *configure {
 		OnHoverHint:     func() { g.nav.Tip("Reset configuration") },
 		Click: func(this *button.Widget) {
 			g.ToastYesNo("Reset", fmt.Sprintf("Reset %s configuration?", config.Current.Gaming.Device),
-				OnToastYes(func() {
+				toastOnYes(func() {
 					defer this.Deactivate()
 					defer server.Clear()
 
@@ -717,46 +721,46 @@ func (g *GUI) configureUI() *configure {
 
 					notify.Announce("[UI] Reset UniteHUD %s configuration", config.Current.Gaming.Device)
 				}),
-				OnToastNo(this.Deactivate),
+				toastOnNo(this.Deactivate),
 			)
 		},
 	}
 
-	ui.labels.audio.in = material.Label(g.nav.Collection.Calibri().Theme, unit.Sp(12), "Audio Input")
+	ui.labels.audio.in = material.Label(g.nav.Calibri().Theme, unit.Sp(12), "Audio Input")
 	ui.labels.audio.in.Color = nrgba.Highlight.Color()
 	ui.labels.audio.in.Font.Weight = 100
 
-	ui.labels.audio.out = material.Label(g.nav.Collection.Calibri().Theme, unit.Sp(12), "Audio Output")
+	ui.labels.audio.out = material.Label(g.nav.Calibri().Theme, unit.Sp(12), "Audio Output")
 	ui.labels.audio.out.Color = nrgba.Highlight.Color()
 	ui.labels.audio.out.Font.Weight = 100
 
-	ui.labels.video.device = material.Label(g.nav.Collection.Calibri().Theme, unit.Sp(12), "Video Capture Device")
+	ui.labels.video.device = material.Label(g.nav.Calibri().Theme, unit.Sp(12), "Video Capture Device")
 	ui.labels.video.device.Color = nrgba.Highlight.Color()
 	ui.labels.video.device.Font.Weight = 100
 
-	ui.labels.video.monitor = material.Label(g.nav.Collection.Calibri().Theme, unit.Sp(12), "Monitor")
+	ui.labels.video.monitor = material.Label(g.nav.Calibri().Theme, unit.Sp(12), "Monitor")
 	ui.labels.video.monitor.Color = nrgba.Highlight.Color()
 	ui.labels.video.monitor.Font.Weight = 100
 
-	ui.labels.video.window = material.Label(g.nav.Collection.Calibri().Theme, unit.Sp(12), "Window")
+	ui.labels.video.window = material.Label(g.nav.Calibri().Theme, unit.Sp(12), "Window")
 	ui.labels.video.window.Color = nrgba.Highlight.Color()
 	ui.labels.video.window.Font.Weight = 100
 
-	ui.labels.video.api = material.Label(g.nav.Collection.Calibri().Theme, unit.Sp(12), "API")
+	ui.labels.video.api = material.Label(g.nav.Calibri().Theme, unit.Sp(12), "API")
 	ui.labels.video.api.Color = nrgba.Highlight.Color()
 	ui.labels.video.api.Font.Weight = 100
 
-	ui.labels.video.codec = material.Label(g.nav.Collection.Calibri().Theme, unit.Sp(12), "Codec")
+	ui.labels.video.codec = material.Label(g.nav.Calibri().Theme, unit.Sp(12), "Codec")
 	ui.labels.video.codec.Color = nrgba.Highlight.Color()
 	ui.labels.video.codec.Font.Weight = 100
 
 	ui.footer = &footer{
-		api: material.Label(g.nav.Collection.Calibri().Theme, unit.Sp(12), ""),
-		log: material.Label(g.nav.Collection.Calibri().Theme, unit.Sp(12), ""),
-		cpu: material.Label(g.nav.Collection.Calibri().Theme, unit.Sp(12), ""),
-		ram: material.Label(g.nav.Collection.Calibri().Theme, unit.Sp(12), ""),
-		fps: material.Label(g.nav.Collection.Calibri().Theme, unit.Sp(12), ""),
-		hz:  material.Label(g.nav.Collection.Calibri().Theme, unit.Sp(12), ""),
+		api: material.Label(g.nav.Calibri().Theme, unit.Sp(12), ""),
+		log: material.Label(g.nav.Calibri().Theme, unit.Sp(12), ""),
+		cpu: material.Label(g.nav.Calibri().Theme, unit.Sp(12), ""),
+		ram: material.Label(g.nav.Calibri().Theme, unit.Sp(12), ""),
+		fps: material.Label(g.nav.Calibri().Theme, unit.Sp(12), ""),
+		hz:  material.Label(g.nav.Calibri().Theme, unit.Sp(12), ""),
 	}
 
 	ui.footer.api.Color = nrgba.Highlight.Color()

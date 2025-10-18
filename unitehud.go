@@ -52,7 +52,7 @@ func signals() {
 }
 
 func main() {
-	defer ui.New().OnClose(func() { exe.Close() }).Open()
+	defer ui.New().OnClose(exe.Close).Open()
 
 	err := process.Open()
 	if err != nil {

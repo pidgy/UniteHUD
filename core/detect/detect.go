@@ -3,7 +3,6 @@ package detect
 import (
 	"fmt"
 	"image"
-	"regexp"
 	"strings"
 	"time"
 
@@ -33,18 +32,6 @@ var (
 
 	idling = true
 	images = false
-
-	regexes = struct {
-		defeated                   *regexp.Regexp
-		defeatedWithUnscoredPoints *regexp.Regexp
-		holdingPoints              *regexp.Regexp
-		scoreOptionPresent         *regexp.Regexp
-	}{
-		defeated:                   regexp.MustCompile(`^\[Detect\] \[[0-9][0-9]:[0-9][0-9]\] \[Self\] Defeated$`),
-		defeatedWithUnscoredPoints: regexp.MustCompile(`^\[Detect\] \[[0-9][0-9]:[0-9][0-9]\] \[Self\] Defeated with unscored points \([0-9]?[0-9]\)$`),
-		holdingPoints:              regexp.MustCompile(`^\[Detect\] \[[0-9][0-9]:[0-9][0-9]\] \[Self\] Holding [0-9]?[0-9] point?[a-z]$`),
-		scoreOptionPresent:         regexp.MustCompile(`^\[Detect\] \[[0-9][0-9]:[0-9][0-9]\] \[Self\] Score option present \([0-9]?[0-9]\)$`),
-	}
 )
 
 func Clock() {
@@ -130,12 +117,10 @@ func Defeated() {
 			}
 
 			str := "Defeated"
-			regex := regexes.defeated
 			if team.Self.KilledWithPoints {
 				str = fmt.Sprintf("%s with unscored points (%d)", str, server.Holding())
-				regex = regexes.defeatedWithUnscoredPoints
 			}
-			notify.FeedReplace(team.Self.NRGBA, regex, "[Detect] [%s] [Self] %s", server.Clock(), str)
+			notify.Feed(team.Self.NRGBA, "[Detect] [%s] [Self] %s", server.Clock(), str)
 
 			if state.Occured(time.Minute, state.Killed, state.KilledWithPoints, state.KilledWithoutPoints) {
 				server.SetDefeated()
@@ -192,7 +177,7 @@ func Energy() {
 
 		last := state.HoldingEnergy.Occured(time.Hour)
 		if last == nil || last.Value != points {
-			notify.FeedReplace(team.Self.NRGBA, regexes.holdingPoints, "[Detect] [%s] [Self] Holding %d %s", server.Clock(), points, plural("point", points))
+			notify.Feed(team.Self.NRGBA, "[Detect] [%s] [Self] Holding %d %s", server.Clock(), points, plural("point", points))
 
 			state.Add(state.HoldingEnergy, server.Clock(), points)
 
@@ -246,8 +231,6 @@ func Objectives() {
 		event := state.EventType(m.Value)
 		team := event.Team()
 
-		notify.Feed(team.NRGBA, "[Detect] PUT ME BACK [%s] %s", server.Clock(), event)
-
 		switch event {
 		case state.RegidragoSecureKO:
 			if time.Since(regidragoKO) < time.Minute {
@@ -298,8 +281,7 @@ func Objectives() {
 			bottom = time.Now()
 		}
 
-		// state.Add(event, server.Clock(), 0)
-		// notify.Feed(team.NRGBA, "[Detect] [%s] %s", server.Clock(), event)
+		notify.Feed(team.NRGBA, "[Detect] [%s] %s", server.Clock(), event)
 	}
 }
 
@@ -362,7 +344,7 @@ func Scores(by string) {
 			if r == match.Found {
 				state.Add(state.SelfScoreIndicator, server.Clock(), team.Energy.Holding)
 
-				notify.FeedReplace(t.NRGBA, regexes.scoreOptionPresent, "[Detect] [%s] [Self] Score option present (%d)", server.Clock(), team.Energy.Holding)
+				notify.Feed(t.NRGBA, "[Detect] [%s] [Self] Score option present (%d points)", server.Clock(), team.Energy.Holding)
 
 				// TODO: Should we sleep and save some resources?
 				// time.Sleep(time.Second)
@@ -530,7 +512,6 @@ func States() {
 				notify.Feed(team.Game.NRGBA, "[Detect] [%s] Match ended", team.Game)
 
 				// Purple score and objective results.
-
 				regielekis, regices, regirocks, registeels, regidragos, final := server.Objectives(team.Purple)
 				notify.Feed(
 					team.Purple.NRGBA,
@@ -546,7 +527,6 @@ func States() {
 				)
 
 				// Orange score and objective results.
-
 				regielekis, regices, regirocks, registeels, regidragos, final = server.Objectives(team.Orange)
 				notify.Feed(
 					team.Orange.NRGBA,
@@ -562,9 +542,7 @@ func States() {
 				)
 
 				// Self score and objective results.
-
 				notify.Feed(team.Self.NRGBA, "[Detect] [%s] %d", team.Self, self)
-
 				if !config.Current.Advanced.Notifications.Disabled.MatchStopped {
 					pwin, owin := "", ""
 					if p > o {

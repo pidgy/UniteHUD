@@ -1,8 +1,9 @@
 package electron
 
 import (
+	"context"
 	"fmt"
-	"math"
+	"image"
 	"path/filepath"
 	"syscall"
 	"time"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/exe"
+	"github.com/pidgy/unitehud/gui/ux/title"
 	"github.com/pidgy/unitehud/system/wapi"
 )
 
@@ -31,7 +33,7 @@ import (
 //! }
 
 const (
-	title = "UniteHUD Overlay"
+	name = "UniteHUD Overlay"
 )
 
 type debugger struct {
@@ -45,17 +47,6 @@ var (
 	active, hidden bool
 
 	html = filepath.Join(exe.Directory(), "www", "UniteHUD Client.html")
-
-	offscreen = astilectron.RectangleOptions{
-		PositionOptions: astilectron.PositionOptions{
-			X: astikit.IntPtr(-math.MaxInt32),
-			Y: astikit.IntPtr(-math.MaxInt32),
-		},
-		SizeOptions: astilectron.SizeOptions{
-			Height: astikit.IntPtr(0),
-			Width:  astikit.IntPtr(0),
-		},
-	}
 )
 
 func Active() bool {
@@ -64,7 +55,7 @@ func Active() bool {
 
 func Close() {
 	if !active {
-		notify.Warn("[Overlay Window] <ini:failed:close> (inactive)")
+		notify.Warn("[Electron] <ini:failed:close> (inactive)")
 		return
 	}
 	active = false
@@ -72,68 +63,121 @@ func Close() {
 
 	err := closeWindow()
 	if err != nil {
-		notify.Error("[Overlay Window] <ini:failed:close> (%v)", err)
+		notify.Error("[Electron] <ini:failed:close> (%v)", err)
 		return
 	}
 
 	err = closeApp()
 	if err != nil {
-		notify.Error("[Overlay Engine] <ini:failed:close> (%v)", err)
+		notify.Error("[Electron] <ini:failed:close> (%v)", err)
 		return
 	}
 }
 
-func Follow(hwnd uintptr, parent bool) {
-	if !active {
+var prev struct {
+	rect   wapi.Rect
+	hidden bool
+}
+
+func Follow(hwnd uintptr, size image.Point, force bool) {
+	if !active || hwnd == 0 {
+		notify.Debug("[Electron] Not following HWND:%d (active:%t) ", hwnd, active)
 		return
 	}
 
-	b := offscreen
-	if !parent {
-		r := &wapi.Rect{}
+	switch wapi.Window(hwnd).InfoStatus() {
+	case wapi.WindowInfoStatusNotVisible:
+		if !force {
+			Hide()
+		}
+	case wapi.WindowInfoStatusVisible:
+		if prev.hidden {
+			defer forceShow()
+		}
 
-		_, _, err := wapi.GetWindowRect.Call(hwnd, uintptr(unsafe.Pointer(r)))
+		next := wapi.Rect{}
+		_, _, err := wapi.GetWindowRect.Call(hwnd, uintptr(unsafe.Pointer(&next)))
 		if err != syscall.Errno(0) {
 			notify.Error("[Overlay Window] Failed to match overlay position (%v)", err)
 			return
 		}
 
-		b.PositionOptions = astilectron.PositionOptions{
-			X: astikit.IntPtr(int(r.Left)),
-			Y: astikit.IntPtr(int(r.Top)),
-		}
-		b.SizeOptions = astilectron.SizeOptions{
-			Width:  astikit.IntPtr(int(r.Right - r.Left)),
-			Height: astikit.IntPtr(int(r.Bottom - r.Top)),
-		}
-	}
+		insetY := (int(next.Bottom-next.Top) - size.Y)     // Video is always attached to top.
+		insetX := (int(next.Right-next.Left) - size.X) / 2 // Video is evenly set between minX -> maxX.
 
-	err := window.SetBounds(b)
-	if err != nil {
-		if active {
-			notify.Debug("[Overlay Window] <ini:failed:set> bounds (%v)", err)
-		}
-	}
+		next.Bottom -= int32(insetY)
+		next.Left += int32(insetX)
+		next.Right -= int32(insetX)
 
-	if !hidden {
+		if next.Eq(prev.rect) {
+			return
+		}
+		prev.rect = next
+
+		ctx, cfn := context.WithTimeout(context.Background(), time.Millisecond)
+		go func(ctx context.Context, _ context.CancelFunc, rect wapi.Rect) {
+			h := int(prev.rect.Bottom - prev.rect.Top)
+			scaleY := float64(h) / 1080
+
+			w := int(prev.rect.Right - prev.rect.Left)
+			scaleX := float64(w) / 1920
+
+			err = window.ExecuteJavaScript(fmt.Sprintf(`
+				document.getElementById('hud').style.transform = 'scaleX(%f) scaleY(%f)';
+		        document.getElementById('hud').style.transformOrigin = '0 0';
+			`, scaleX, scaleY))
+			if err != nil {
+				notify.Warn("[Electron] <ini:failed:set> custom Javascript (%v)", err)
+			}
+
+			insetY := int32(0)
+			if !force {
+				insetY = int32(title.Height)
+			}
+
+			err := window.SetBounds(
+				astilectron.RectangleOptions{
+					PositionOptions: astilectron.PositionOptions{
+						X: astikit.IntPtr(int(prev.rect.Left)),
+						Y: astikit.IntPtr(int(prev.rect.Top + insetY)),
+					},
+					SizeOptions: astilectron.SizeOptions{
+						Width:  astikit.IntPtr(w + title.Height),
+						Height: astikit.IntPtr(h + title.Height),
+					},
+				},
+			)
+			if err != nil {
+				notify.Error("[Electron] <ini:failed:set> bounds (%v)", err)
+			}
+
+		}(ctx, cfn, prev.rect)
+
 		err = window.MoveTop()
 		if err != nil {
-			notify.Debug("[Overlay Window] Failed to move on top (%v)", err)
+			notify.Debug("[Electron] <ini:failed:to> move on top (%v)", err)
 		}
 
-		err = window.Show()
-		if err != nil {
-			notify.Debug("[Overlay Window] Failed to show (%v)", err)
-		}
+		forceShow()
+	case wapi.WindowInfoStatusUnknown:
+		notify.Error("[Electron] Unknown Window Info Status")
+		return
 	}
+
+	prev.hidden = hidden
 }
 
 func Hide() {
+	if hidden {
+		return
+	}
 	hidden = true
+
+	notify.Debug("[Electron] Hiding overlay... (hidden:%t)", hidden)
 
 	err := window.Hide()
 	if err != nil {
-		notify.Error("[Overlay Window] Failed to hide (%v)", err)
+		notify.Error("[Electron] Failed to hide overlay (%v)", err)
 	}
 }
 
@@ -141,18 +185,17 @@ func Open() error {
 	if active {
 		return fmt.Errorf("window is active")
 	}
-	active = true
 	hidden = false
 
 	err := openApp()
 	if err != nil {
-		notify.Error("[Overlay Engine] <ini:failed:open> (%v)", err)
+		notify.Error("[Electron] <ini:failed:open> (%v)", err)
 		return err
 	}
 
 	err = openWindow()
 	if err != nil {
-		notify.Error("[Overlay Window] <ini:failed:open> (%v)", err)
+		notify.Error("[Electron] <ini:failed:open> (%v)", err)
 		return err
 	}
 
@@ -162,17 +205,16 @@ func Open() error {
 }
 
 func Show() {
-	hidden = false
-
-	err := window.Show()
-	if err != nil {
-		notify.Error("[Overlay Window] Failed to show (%v)", err)
+	if !hidden {
+		return
 	}
+
+	forceShow()
 }
 
 func closeApp() error {
-	notify.Debug("[Overlay Engine] Closing...")
-	defer notify.Debug("[Overlay Engine] Closed...")
+	notify.Debug("[Electron] Closing app...")
+	defer notify.Debug("[Electron] Closed app")
 
 	go app.Stop()
 	go app.Close()
@@ -186,8 +228,8 @@ func closeApp() error {
 }
 
 func closeWindow() error {
-	notify.Debug("[Overlay Window] Closing...")
-	defer notify.Debug("[Overlay Window] Closed...")
+	notify.Debug("[Electron] Closing window...")
+	defer notify.Debug("[Electron] Closed window")
 
 	err := window.UpdateCustomOptions(astilectron.WindowCustomOptions{MinimizeOnClose: astikit.BoolPtr(false)})
 	if err != nil {
@@ -202,26 +244,38 @@ func closeWindow() error {
 	return nil
 }
 
-func debug(prefix string) *debugger {
+func newDebugger(prefix string) *debugger {
 	return &debugger{
 		fmt: func(format string, v ...interface{}) { notify.Debug(prefix+" "+format, v...) },
 		ftl: func(format string, v ...interface{}) { notify.Debug(prefix+" [Fatal] "+format, v...) },
 	}
 }
-func (d *debugger) Fatal(v ...interface{})                 {} //d.ftl("%s", fmt.Sprint(v...)) }
-func (d *debugger) Fatalf(format string, v ...interface{}) {} //d.ftl(format, v...) }
-func (d *debugger) Print(v ...interface{})                 {} //d.fmt("%s", fmt.Sprint(v...)) }
-func (d *debugger) Printf(format string, v ...interface{}) {} //d.fmt(format, v...) }
+func (d *debugger) Fatal(v ...interface{})                 { d.ftl("%s", fmt.Sprint(v...)) }
+func (d *debugger) Fatalf(format string, v ...interface{}) { d.ftl(format, v...) }
+func (d *debugger) Print(v ...interface{})                 { d.fmt("%s", fmt.Sprint(v...)) }
+func (d *debugger) Printf(format string, v ...interface{}) { d.fmt(format, v...) }
+
+func forceShow() {
+	notify.Debug("[Electron] Showing overlay... (hidden:%t)", hidden)
+
+	hidden = false
+
+	err := window.Show()
+	if err != nil {
+		notify.Error("[Electron] Failed to show (%v)", err)
+	}
+}
 
 func openApp() error {
-	notify.Debug("[Overlay Engine] Opening...")
+	notify.Debug("[Electron] Opening app...")
+	defer notify.Debug("[Electron] Opened app")
 
 	var err error
 
 	app, err = astilectron.New(
-		debug("[Overlay Engine] "),
+		newDebugger("[Electron]"),
 		astilectron.Options{
-			AppName:            title,
+			AppName:            name,
 			CustomElectronPath: filepath.Join(exe.Directory(), exe.AssetDirectory, "electron", "vendor", "electron-windows-amd64", "UniteHUD Overlay.exe"),
 			BaseDirectoryPath:  ".",
 			DataDirectoryPath:  filepath.Join(exe.Directory(), exe.AssetDirectory, "electron"),
@@ -237,17 +291,9 @@ func openApp() error {
 
 	app.HandleSignals()
 
-	// closed := func(e astilectron.Event) (deleteListener bool) {
-	// 	notify.Debug("[Overlay Engine] %s", e.Name)
-	// 	return false
-	// }
-
-	// app.On(astilectron.EventNameAppCrash, closed)
-	// app.On(astilectron.EventNameAppCmdQuit, closed)
-	// app.On(astilectron.EventNameAppClose, closed)
 	app.On(astilectron.EventNameAppEventReady, func(e astilectron.Event) (deleteListener bool) {
-		notify.Debug("[Overlay Engine] event, %s", e.Name)
-		return false
+		notify.Debug("[Electron] event, %s", e.Name)
+		return true
 	})
 
 	err = app.Start()
@@ -256,7 +302,7 @@ func openApp() error {
 	}
 
 	go func() {
-		defer notify.Debug("[Overlay App] Exiting main loop")
+		defer notify.Debug("[Electron] Exiting main loop")
 		app.Wait()
 	}()
 
@@ -264,32 +310,34 @@ func openApp() error {
 }
 
 func openWindow() error {
-	notify.Debug("[Overlay Window] Opening window...")
-	defer notify.Debug("[Overlay Window] Opened window")
+	notify.Debug("[Electron] Opening window...")
+	defer notify.Debug("[Electron] Opened window")
 
 	var err error
 
-	window, err = app.NewWindow(html,
+	window, err = app.NewWindow(
+		html,
 		&astilectron.WindowOptions{
-			Title: astikit.StrPtr(title),
+			Title: astikit.StrPtr(name),
 			Show:  astikit.BoolPtr(true),
 
-			Width:  astikit.IntPtr(1280),
-			Height: astikit.IntPtr(720),
+			// Width:  astikit.IntPtr(1280),
+			// Height: astikit.IntPtr(720),
+			Width:  astikit.IntPtr(1920),
+			Height: astikit.IntPtr(1080),
 
-			// Fullscreen:  astikit.BoolPtr(true),
 			Minimizable: astikit.BoolPtr(true),
 			Resizable:   astikit.BoolPtr(false),
 			Movable:     astikit.BoolPtr(true),
-			// Center:      astikit.BoolPtr(true),
-			Closable: astikit.BoolPtr(true),
-
+			Closable:    astikit.BoolPtr(true),
 			Transparent: astikit.BoolPtr(true),
 			AlwaysOnTop: astikit.BoolPtr(true),
+			Focusable:   astikit.BoolPtr(false),
+			Frame:       astikit.BoolPtr(false),
 
+			// Fullscreen:  astikit.BoolPtr(true),
+			// Center:      astikit.BoolPtr(true),
 			// EnableLargerThanScreen: astikit.BoolPtr(false),
-			Focusable: astikit.BoolPtr(false),
-			Frame:     astikit.BoolPtr(false),
 			// HasShadow:              astikit.BoolPtr(false),
 
 			Icon: astikit.StrPtr(fmt.Sprintf("%s/icon/icon-browser.png", exe.AssetDirectory)),
@@ -308,23 +356,9 @@ func openWindow() error {
 		},
 	)
 	if err != nil {
-		notify.Error("[Overlay Window] <ini:failed:open> (%v)", err)
+		notify.Error("[Electron] <ini:failed:open> (%v)", err)
 		return err
 	}
-
-	// ev := func(e astilectron.Event, b bool) (deleteListener bool) {
-	// 	notify.Debug("[Overlay Window] %s", e.Name)
-	// 	active.window = b
-	// 	return false
-	// }
-	// opened := func(e astilectron.Event) (deleteListener bool) { return ev(e, true) }
-	// // closed := func(e astilectron.Event) (deleteListener bool) { return ev(e, false) }
-
-	// window.On(astilectron.EventNameWindowEventDidFinishLoad, opened)
-	// window.On(astilectron.EventNameWindowEventShow, opened)
-	// // window.On(astilectron.EventNameWindowEventClosed, closed)
-	// // window.On(astilectron.EventNameWindowEventHide, closed)
-	// // window.On(astilectron.EventNameWindowEventMinimize, closed)
 
 	errq := make(chan error)
 

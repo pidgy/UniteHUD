@@ -139,10 +139,7 @@ func (l *Loop) start() {
 
 func (l *Loop) render() (close bool) {
 	defer l.track(time.Now())
-
-	close = l.On(l.stats.min, l.stats.max, l.stats.avg)
-
-	return
+	return l.On(l.stats.min, l.stats.max, l.stats.avg)
 }
 
 func (l *Loop) track(now time.Time) {

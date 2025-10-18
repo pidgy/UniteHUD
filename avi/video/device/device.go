@@ -150,13 +150,13 @@ func CaptureRect(r image.Rectangle) (*image.RGBA, error) {
 	}
 
 	if !r.In(monitor.DefaultResolution) {
-		return nil, errors.Errorf("illegal boundaries: %s outside %s", r, monitor.DefaultResolution)
+		return nil, errors.Errorf("illegal boundaries: %s", r)
 	}
 
 	mrect := image.Rect(0, 0, size[1], size[0])
 
 	if !r.In(mrect) {
-		return splash.AsRGBA(splash.Invalid()), errors.Errorf("illegal boundaries: %s outside %s", r, mrect)
+		return splash.AsRGBA(splash.Invalid()), errors.Errorf("illegal boundaries: %s", r)
 	}
 
 	return img.RGBA(mat.Region(r))
@@ -297,7 +297,7 @@ func capture() error {
 
 	device, err := gocv.OpenVideoCaptureWithAPI(active.index, api.gocv)
 	if err != nil {
-		return errors.Errorf("this device does not support %s capture APIs", api.name)
+		return errors.Errorf("%s does not support %s capture APIs", config.Current.Video.Capture.Device.Name, api.name)
 	}
 
 	err = set(device)
@@ -433,6 +433,7 @@ func set(vc *gocv.VideoCapture) error {
 
 	required.fps = float64(config.Current.Video.Capture.Device.FPS)
 
+	// Image detection is only enabled for 1920x1080.
 	vc.Set(gocv.VideoCaptureFrameWidth, float64(required.resolution.X))
 	vc.Set(gocv.VideoCaptureFrameHeight, float64(required.resolution.Y))
 	vc.Set(gocv.VideoCaptureFPS, float64(config.Current.Video.Capture.Device.FPS))

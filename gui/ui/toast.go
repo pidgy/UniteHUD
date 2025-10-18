@@ -18,29 +18,25 @@ import (
 	"gioui.org/widget/material"
 
 	"github.com/pidgy/unitehud/avi/img/splash"
-	"github.com/pidgy/unitehud/core/fonts"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/rgba/nrgba"
 	"github.com/pidgy/unitehud/gui/ux/button"
 	"github.com/pidgy/unitehud/gui/ux/decorate"
+	"github.com/pidgy/unitehud/gui/ux/keys"
 	"github.com/pidgy/unitehud/gui/ux/title"
 	"github.com/pidgy/unitehud/system/ini"
 )
 
 type (
-	OnToastYes      func()
-	OnToastNo       func()
-	OnToastOK       func()
-	OnToastRemember func(b bool)
-	OnToastNeither  func()
-)
-
-const (
-	toastTextSize = unit.Sp(15)
+	toastOnYes      func()
+	toastOnNo       func()
+	toastOnOK       func()
+	toastOnRemember func(b bool)
+	toastOnClose    func()
 )
 
 type (
-	Bulletin struct {
+	bulletin struct {
 		Title string
 
 		Topics []struct {
@@ -49,68 +45,32 @@ type (
 		}
 	}
 
-	toast struct {
-		g *GUI
-
-		bar    *title.Widget
-		window *app.Window
-		label  material.LabelStyle
-		ops    op.Ops
-
-		forced bool
-	}
-
 	closeable struct {
 		*toast
 		waitq chan bool
 	}
 
+	toast struct {
+		g *GUI
+
+		label  material.LabelStyle
+		nav    *title.Widget
+		ops    op.Ops
+		window *app.Window
+
+		forced bool
+		open   bool
+	}
+
 	waiter interface {
-		close(*GUI)
+		close()
 		wait() waiter
 	}
 )
 
-var (
-	active = []*toast{}
+const (
+	toastTextSize = unit.Sp(15)
 )
-
-func (t *toast) close(g *GUI) {
-	t.window.Perform(system.ActionClose)
-
-	g.previous.toast.err = nil
-	g.previous.toast.active = false
-
-	for i := range active {
-		if t == active[i] {
-			active = append(active[:i], active[i+1:]...)
-			return
-		}
-	}
-}
-
-func (c *closeable) wait() waiter {
-	<-c.waitq
-	return c
-}
-
-func (c *closeable) ready() {
-	go func() { c.waitq <- true }()
-}
-
-func (g *GUI) toast(header, msg string, width, height float32) *toast {
-	msg = ini.Format(msg)
-	header = ini.Format(header)
-
-	notify.Debug("[Toast] %s: %s", header, msg)
-
-	if g.previous.toast.active {
-		return nil
-	}
-	g.previous.toast.active = true
-
-	return g.toastForce(header, msg, width, height)
-}
 
 func (g *GUI) ToastError(err error) {
 	if g.previous.toast.err != nil && err.Error() == g.previous.toast.err.Error() {
@@ -120,220 +80,218 @@ func (g *GUI) ToastError(err error) {
 	g.previous.toast.err = err
 	g.previous.toast.time = time.Now()
 
-	t := g.toastForce("Error", err.Error(), float32(400), float32(125))
+	t := g.makeToastForce("Error", err.Error(), float32(400), float32(125))
 	if t == nil {
+		notify.Error("[UI] Toast: Failed to show error: %v", err)
 		return
 	}
+	defer t.close()
 
-	g.toastOK2(t, OnToastOK(nil))
+	g.toastOK(t, nil)
 }
 
 func (g *GUI) ToastErrorf(format string, a ...interface{}) {
 	g.ToastError(fmt.Errorf(format, a...))
 }
 
-func (g *GUI) ToastNewsletter(header string, bulletin Bulletin, ok OnToastOK) {
-	t := g.toastForce(header, bulletin.Title, float32(600), float32(450))
+func (g *GUI) ToastNewsletter(header string, bulletin bulletin, c toastOnClose) {
+	if c != nil {
+		defer c()
+	}
+
+	t := g.makeToastForce(header, bulletin.Title, float32(600), float32(450))
 	if t == nil {
+		notify.Error("[UI] Toast: Failed to show Newsletter")
 		return
 	}
+	defer t.close()
 
 	t.label.TextSize = toastTextSize * 1.5
 
-	go func() {
-		notify.Debug("[UI] Toast: Opening Newsletter (active: %t)", g.previous.toast.active)
-		defer notify.Debug("[UI] Toast: Closing Newsletter (active: %t)", g.previous.toast.active)
-		defer t.close(g)
+	notify.Debug("[UI] Toast: Opening Newsletter")
+	defer notify.Debug("[UI] Toast: Closing Newsletter...")
 
-		okButton := &button.Widget{
-			Text:            "OK",
-			TextSize:        unit.Sp(16),
-			Font:            t.bar.Collection.Calibri(),
-			Pressed:         nrgba.Transparent80,
-			Released:        nrgba.DarkGray,
-			Size:            image.Pt(96, 32),
-			TextInsetBottom: -2,
+	okButton := &button.Widget{
+		Text:            "OK",
+		TextSize:        unit.Sp(16),
+		Font:            t.nav.Calibri(),
+		Pressed:         nrgba.Transparent80,
+		Released:        nrgba.DarkGray,
+		Size:            image.Pt(96, 32),
+		TextInsetBottom: -2,
 
-			Click: func(this *button.Widget) {
-				defer this.Deactivate()
+		Click: func(this *button.Widget) {
+			defer this.Deactivate()
 
-				if ok != nil {
-					ok()
-				}
+			t.window.Perform(system.ActionClose)
+		},
+	}
 
-				t.window.Perform(system.ActionClose)
+	topic := func(i int) (topics []layout.FlexChild) {
+		topics = append(topics, layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			subtitle := material.Label(t.nav.Calibri().Theme, toastTextSize, bulletin.Topics[i].Subtitle)
+			decorate.Label(&subtitle, subtitle.Text)
+			subtitle.TextSize = toastTextSize * 1.25
+			subtitle.Font.Weight = font.Bold
+			return subtitle.Layout(gtx)
+		}))
+
+		point := func(p string) layout.FlexChild {
+			return layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+				p := material.Label(t.nav.Calibri().Theme, toastTextSize, fmt.Sprintf("⬥ %s", p))
+				decorate.Label(&p, p.Text)
+				p.Font.Style = font.Italic
+				p.Alignment = text.Start
+				p.Font.Weight = font.Thin
+				return p.Layout(gtx)
+			})
+		}
+
+		for _, p := range bulletin.Topics[i].Points {
+			topics = append(topics, point(p))
+		}
+
+		return append(topics, layout.Rigid(layout.Spacer{Height: 25}.Layout))
+	}
+
+	children := []layout.FlexChild{}
+	for i := range bulletin.Topics {
+		children = append(children, topic(i)...)
+	}
+
+	list := material.List(
+		t.nav.Calibri().Theme,
+		&widget.List{
+			Scrollbar: widget.Scrollbar{},
+			List: layout.List{
+				Axis:        layout.Vertical,
+				ScrollToEnd: false,
+				Alignment:   layout.Start,
 			},
-		}
+		},
+	)
 
-		topic := func(i int) (topics []layout.FlexChild) {
-			topics = append(topics, layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-				subtitle := material.Label(t.bar.Collection.Calibri().Theme, toastTextSize, bulletin.Topics[i].Subtitle)
-				decorate.Label(&subtitle, subtitle.Text)
-				subtitle.TextSize = toastTextSize * 1.25
-				subtitle.Font.Weight = font.ExtraBold
-				return layout.W.Layout(gtx, subtitle.Layout)
-			}))
+	// decorate.List(&list)
+	decorate.Scrollbar(&list.ScrollbarStyle)
 
-			point := func(p string) layout.FlexChild {
-				return layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					p := material.Label(t.bar.Collection.Calibri().Theme, toastTextSize, fmt.Sprintf("⬥ %s", p))
-					decorate.Label(&p, p.Text)
-					p.Font.Style = font.Italic
-					p.Alignment = text.Start
-					return layout.W.Layout(gtx, p.Layout)
-				})
-			}
+	first := true
 
-			for _, p := range bulletin.Topics[i].Points {
-				topics = append(topics, point(p))
-				// topics = append(topics, layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-				// 	p := material.Label(t.bar.Collection.Calibri().Theme, toastTextSize, fmt.Sprintf("• %s", p))
-				// 	decorate.Label(&p, p.Text)
-				// 	p.Font.Style = font.Italic
-				// 	p.Alignment = text.Middle
-				// 	return layout.Center.Layout(gtx, p.Layout)
-				// }))
-			}
-
-			// topics = append(topics, layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			// 	point := func(j int) layout.FlexChild {
-			// 		return layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			// 			p := material.Label(t.bar.Collection.Calibri().Theme, toastTextSize, fmt.Sprintf("• %s", bulletin.Topics[i].Points[j]))
-			// 			decorate.Label(&p, p.Text)
-			// 			p.Font.Style = font.Italic
-			// 			p.Alignment = text.Middle
-			// 			return layout.W.Layout(gtx, p.Layout)
-			// 		})
-			// 	}
-
-			// 	points := []layout.FlexChild{}
-			// 	for j := range bulletin.Topics[i].Points {
-			// 		points = append(points, point(j))
-			// 	}
-
-			// 	return layout.Flex{
-			// 		Axis:      layout.Vertical,
-			// 		Alignment: layout.Middle,
-			// 	}.Layout(gtx, points...)
-			// }))
-
-			return append(topics, layout.Rigid(layout.Spacer{Height: 25}.Layout))
-		}
-
-		c := []layout.FlexChild{}
-		for i := range bulletin.Topics {
-			c = append(c, topic(i)...)
-		}
-
-		list := material.List(
-			t.bar.Collection.Calibri().Theme,
-			&widget.List{
-				Scrollbar: widget.Scrollbar{},
-				List: layout.List{
-					Axis:        layout.Vertical,
-					ScrollToEnd: false,
-					Alignment:   layout.Start,
-				},
-			},
-		)
-
-		// decorate.List(&list)
-		decorate.Scrollbar(&list.ScrollbarStyle)
-
-		for e := t.window.NextEvent(); ; e = t.window.NextEvent() {
-			if _, ok := e.(system.DestroyEvent); ok {
-				t.window.Perform(system.ActionClose)
-				return
-			}
-
-			event, ok := e.(system.FrameEvent)
-			if !ok {
-				notify.Missed(event, "ToastNewsletter")
-				continue
-			}
-
+	for {
+		switch event := t.window.NextEvent().(type) {
+		case system.DestroyEvent:
+			notify.Debug("[UI] Toast: DestroyEvent Newsletter \"%s\"", t.label.Text)
+			return
+		case system.FrameEvent:
 			gtx := layout.NewContext(&t.ops, event)
 
-			t.bar.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+			t.nav.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				return decorate.BackgroundAlt(gtx, func(gtx layout.Context) layout.Dimensions {
 					return layout.Flex{
-						Axis:      layout.Vertical,
-						Alignment: layout.Middle,
+						Axis: layout.Horizontal,
 					}.Layout(gtx,
-						layout.Flexed(.2, func(gtx layout.Context) layout.Dimensions {
-							decorate.Label(&t.label, t.label.Text)
+						layout.Flexed(.1, layout.Spacer{Width: 0}.Layout),
 
-							return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-								return decorate.Underline(gtx, t.label.Layout)
-							})
-						}),
-
-						layout.Flexed(.5, func(gtx layout.Context) layout.Dimensions {
-							return decorate.UnderlineBorder(gtx, func(gtx layout.Context) layout.Dimensions {
-								return list.Layout(gtx, 1, func(gtx layout.Context, index int) layout.Dimensions {
-									return layout.Flex{
-										Axis: layout.Vertical,
-									}.Layout(gtx, c...)
-								})
-							})
-						}),
-
-						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-							return decorate.Underline(gtx, layout.Spacer{Height: 10}.Layout)
-						}),
-
-						layout.Flexed(.2, func(gtx layout.Context) layout.Dimensions {
+						layout.Flexed(.8, func(gtx layout.Context) layout.Dimensions {
 							return layout.Flex{
-								Axis: layout.Horizontal,
+								Axis:      layout.Vertical,
+								Alignment: layout.Middle,
 							}.Layout(gtx,
-								layout.Rigid(layout.Spacer{Width: 5}.Layout),
+								layout.Rigid(layout.Spacer{Height: 10}.Layout),
 
-								layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-									return layout.Center.Layout(gtx, okButton.Layout)
+								layout.Flexed(.2, func(gtx layout.Context) layout.Dimensions {
+									return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+										return decorate.Underline(gtx, decorate.Label(&t.label, t.label.Text).Layout)
+									})
 								}),
 
-								layout.Rigid(layout.Spacer{Width: 5}.Layout),
+								layout.Flexed(.8, func(gtx layout.Context) layout.Dimensions {
+									return decorate.UnderlineBorder(gtx, func(gtx layout.Context) layout.Dimensions {
+										return list.Layout(gtx, 1, func(gtx layout.Context, index int) layout.Dimensions {
+											return layout.Flex{
+												Axis:      layout.Vertical,
+												Alignment: layout.Middle,
+												WeightSum: float32(len(children)),
+											}.Layout(gtx, children...)
+										})
+									})
+								}),
+
+								layout.Rigid(layout.Spacer{Height: 10}.Layout),
+
+								layout.Flexed(.2, func(gtx layout.Context) layout.Dimensions {
+									return layout.Flex{
+										Axis: layout.Horizontal,
+									}.Layout(gtx,
+										layout.Rigid(layout.Spacer{Width: 5}.Layout),
+
+										layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+											return layout.Center.Layout(gtx, okButton.Layout)
+										}),
+
+										layout.Rigid(layout.Spacer{Width: 5}.Layout),
+									)
+								}),
 							)
 						}),
+
+						layout.Flexed(.1, layout.Spacer{Width: 0}.Layout),
 					)
 				})
 			})
 
-			t.window.Perform(system.ActionCenter)
-			t.window.Perform(system.ActionRaise)
+			if first {
+				t.window.Perform(system.ActionCenter)
+				t.window.Perform(system.ActionRaise)
+				first = false
+			}
+
+			if keys.Esc.Up(gtx, t) != keys.None {
+				t.window.Perform(system.ActionClose)
+				break
+			}
 
 			t.window.Invalidate()
 
 			event.Frame(gtx.Ops)
+		default:
+			notify.Missed(event, "ToastNewsletter")
 		}
-	}()
+	}
 }
 
-func (g *GUI) ToastOK(header, msg string, ok OnToastOK) {
-	t := g.toast(header, msg, float32(400), float32(125))
-	if t == nil {
-		return
+func (g *GUI) ToastOK(header, msg string, ok toastOnOK, c toastOnClose) {
+	if c != nil {
+		defer c()
 	}
 
-	g.toastOK2(t, ok)
+	t := g.makeToast(header, msg, float32(400), float32(125))
+	if t == nil {
+		notify.Error("[UI] Toast: Failed to open dialog")
+		return
+	}
+	defer t.close()
+
+	g.toastOK(t, ok)
 }
 
 func (g *GUI) ToastSplash(header, msg string, img image.Image) waiter {
 	c := &closeable{
-		toast: g.toastForce(header, msg, float32(640), float32(360)),
+		toast: g.makeToastForce(header, msg, float32(640), float32(360)),
 		waitq: make(chan bool),
 	}
 	if c.toast == nil {
+		notify.Error("[UI] Toast: Failed to open Splash")
 		return c
 	}
 	defer c.ready()
 
 	go func() {
-		notify.Debug("[UI] Toast: Opening Splash (active: %t)", g.previous.toast.active)
-		defer notify.Debug("[UI] Toast: Closing Splash (active: %t)", g.previous.toast.active)
-		defer c.toast.close(g)
+		defer c.toast.close()
 
-		c.toast.bar.Hide = true
+		notify.Debug("[UI] Toast: Opening Splash \"%s\"", c.label.Text)
+		defer notify.Debug("[UI] Toast: Closing Splash: \"%s\"", c.label.Text)
+
+		c.toast.nav.Hide = true
 		c.label.TextSize = toastTextSize * 1.5
 		c.label.Color = nrgba.White.Color()
 
@@ -374,6 +332,7 @@ func (g *GUI) ToastSplash(header, msg string, img image.Image) waiter {
 			c.toast.window.Perform(system.ActionCenter)
 			c.toast.window.Perform(system.ActionRaise)
 			c.toast.window.Invalidate()
+
 			event.Frame(gtx.Ops)
 		}
 	}()
@@ -381,11 +340,15 @@ func (g *GUI) ToastSplash(header, msg string, img image.Image) waiter {
 	return c
 }
 
-func (g *GUI) ToastYesNo(header, msg string, y OnToastYes, n OnToastNo) {
-	g.ToastYesNoRememberDecision(header, msg, "", y, n, nil, nil)
+func (g *GUI) ToastYesNo(header, msg string, y toastOnYes, n toastOnNo) {
+	g.ToastYesNoRemember(header, msg, "", y, n, nil, nil)
 }
 
-func (g *GUI) ToastYesNoRememberDecision(header, msg, decision string, y OnToastYes, n OnToastNo, r OnToastRemember, x OnToastNeither) {
+func (g *GUI) ToastYesNoRemember(header, msg, decision string, y toastOnYes, n toastOnNo, c toastOnClose, r toastOnRemember) {
+	if c != nil {
+		defer c()
+	}
+
 	decision = ini.Format(decision)
 
 	h := float32(125)
@@ -393,89 +356,78 @@ func (g *GUI) ToastYesNoRememberDecision(header, msg, decision string, y OnToast
 		h = 150
 	}
 
-	t := g.toast(header, msg, 400, h)
+	t := g.makeToast(header, msg, 400, h)
 	if t == nil {
 		return
+	}
+	defer t.close()
+
+	notify.Debug("[UI] Toast: Opening ToastYesNoRemember: \"%s\"", t.label.Text)
+	defer notify.Debug("[UI] Toast: Closing ToastYesNoRemember: \"%s\"", t.label.Text)
+
+	check := material.CheckBox(t.nav.Calibri().Theme, &widget.Bool{}, titleFirstWord(decision))
+
+	yButton := &button.Widget{
+		Text:            "Yes",
+		TextSize:        unit.Sp(16),
+		Font:            t.nav.Calibri(),
+		Pressed:         nrgba.Transparent80,
+		Released:        nrgba.DarkGray,
+		Size:            image.Pt(96, 32),
+		TextInsetBottom: -2,
+		Click: func(this *button.Widget) {
+			if y != nil {
+				y()
+			}
+			if r != nil {
+				r(check.CheckBox.Value)
+			}
+			t.window.Perform(system.ActionClose)
+		},
+	}
+
+	nButton := &button.Widget{
+		Text:            "No",
+		TextSize:        unit.Sp(16),
+		Font:            t.nav.Calibri(),
+		Pressed:         nrgba.Transparent80,
+		Released:        nrgba.DarkGray,
+		Size:            image.Pt(96, 32),
+		TextInsetBottom: -2,
+		Click: func(this *button.Widget) {
+			if n != nil {
+				n()
+			}
+			if r != nil {
+				r(check.CheckBox.Value)
+			}
+			t.window.Perform(system.ActionClose)
+		},
+	}
+
+	remember := func() layout.FlexChild {
+		if decision == "" {
+			return layout.Rigid(layout.Spacer{}.Layout)
+		}
+
+		check.Color = nrgba.Discord.Color()
+
+		return layout.Flexed(.5, func(gtx layout.Context) layout.Dimensions {
+			return layout.Center.Layout(gtx, check.Layout)
+		})
 	}
 
 	first := true
 
-	go func() {
-		notify.Debug("[UI] Toast: Opening Yes/No/Remember (active: %t)", g.previous.toast.active)
-		defer notify.Debug("[UI] Toast: Closing Yes/No/Remember (active: %t)", g.previous.toast.active)
-		defer t.close(g)
-
-		check := material.CheckBox(t.bar.Collection.Calibri().Theme, &widget.Bool{}, titleFirstWord(decision))
-
-		yButton := &button.Widget{
-			Text:            "Yes",
-			TextSize:        unit.Sp(16),
-			Font:            t.bar.Collection.Calibri(),
-			Pressed:         nrgba.Transparent80,
-			Released:        nrgba.DarkGray,
-			Size:            image.Pt(96, 32),
-			TextInsetBottom: -2,
-			Click: func(this *button.Widget) {
-				if y != nil {
-					y()
-				}
-				if r != nil {
-					r(check.CheckBox.Value)
-				}
-				t.window.Perform(system.ActionClose)
-			},
-		}
-
-		nButton := &button.Widget{
-			Text:            "No",
-			TextSize:        unit.Sp(16),
-			Font:            t.bar.Collection.Calibri(),
-			Pressed:         nrgba.Transparent80,
-			Released:        nrgba.DarkGray,
-			Size:            image.Pt(96, 32),
-			TextInsetBottom: -2,
-			Click: func(this *button.Widget) {
-				if n != nil {
-					n()
-				}
-				if r != nil {
-					r(check.CheckBox.Value)
-				}
-				t.window.Perform(system.ActionClose)
-			},
-		}
-
-		remember := func() layout.FlexChild {
-			if decision == "" {
-				return layout.Rigid(layout.Spacer{}.Layout)
-			}
-
-			check.Color = nrgba.Discord.Color()
-
-			return layout.Flexed(.5, func(gtx layout.Context) layout.Dimensions {
-				return layout.Center.Layout(gtx, check.Layout)
-			})
-		}
-
-		for e := t.window.NextEvent(); ; e = t.window.NextEvent() {
-			if _, ok := e.(system.DestroyEvent); ok {
-				t.window.Perform(system.ActionClose)
-				// Clicked the close button instead of Yes/No.
-				if yButton.LastPressed.IsZero() && nButton.LastPressed.IsZero() && x != nil {
-					x()
-				}
-				return
-			}
-
-			event, ok := e.(system.FrameEvent)
-			if !ok {
-				notify.Missed(event, "ToastYesNoRememberDecision")
-				continue
-			}
-
+	for {
+		switch event := t.window.NextEvent().(type) {
+		case system.DestroyEvent:
+			notify.Debug("[UI] Toast: DestroyEvent ToastYesNoRemember \"%s\"", t.label.Text)
+			return
+		case system.FrameEvent:
 			gtx := layout.NewContext(&t.ops, event)
 
-			t.bar.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+			t.nav.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				return decorate.BackgroundAlt(gtx, func(gtx layout.Context) layout.Dimensions {
 					return layout.Flex{
 						Axis:      layout.Vertical,
@@ -484,8 +436,7 @@ func (g *GUI) ToastYesNoRememberDecision(header, msg, decision string, y OnToast
 						layout.Rigid(layout.Spacer{Height: 10}.Layout),
 
 						layout.Flexed(.5, func(gtx layout.Context) layout.Dimensions {
-							decorate.Label(&t.label, t.label.Text)
-							return layout.Center.Layout(gtx, t.label.Layout)
+							return layout.Center.Layout(gtx, decorate.Label(&t.label, t.label.Text).Layout)
 						}),
 
 						remember(),
@@ -519,14 +470,35 @@ func (g *GUI) ToastYesNoRememberDecision(header, msg, decision string, y OnToast
 				first = false
 			}
 
+			if keys.Esc.Up(gtx, t) != keys.None {
+				t.window.Perform(system.ActionClose)
+				break
+			}
+
 			t.window.Invalidate()
 
 			event.Frame(gtx.Ops)
+		default:
+			notify.Missed(event, "ToastYesNoRemember")
 		}
-	}()
+	}
 }
 
-func (g *GUI) toastForce(header, msg string, width, height float32) *toast {
+func (g *GUI) makeToast(header, msg string, width, height float32) *toast {
+	msg = ini.Format(msg)
+	header = ini.Format(header)
+
+	notify.Debug("[Toast] %s: %s", header, msg)
+
+	if g.previous.toast.active {
+		return nil
+	}
+	g.previous.toast.active = true
+
+	return g.makeToastForce(header, msg, width, height)
+}
+
+func (g *GUI) makeToastForce(header, msg string, width, height float32) *toast {
 	t := &toast{
 		g: g,
 
@@ -535,68 +507,59 @@ func (g *GUI) toastForce(header, msg string, width, height float32) *toast {
 			app.Decorated(false),
 			app.Size(unit.Dp(width), unit.Dp(height)),
 			app.MinSize(unit.Dp(width), unit.Dp(height)),
-			app.MaxSize(unit.Dp(width), unit.Dp(height))),
+			app.MaxSize(unit.Dp(width), unit.Dp(height)),
+		),
 
 		forced: true,
+		open:   true,
 	}
-	t.bar = title.New(header, fonts.NewCollection(), nil, nil, func() {
+	t.nav = title.New(header, nil, nil, func() {
 		t.window.Perform(system.ActionClose)
 	})
-	t.bar.NoTip = true
-	t.bar.NoDrag = true
+	t.nav.NoTip = true
+	t.nav.NoDrag = true
 
-	t.label = material.Label(t.bar.Collection.Calibri().Theme, toastTextSize, titleFirstWord(msg))
+	t.label = material.Label(t.nav.Calibri().Theme, toastTextSize, titleFirstWord(msg))
 	t.label.Alignment = text.Middle
-
-	active = append(active, t)
 
 	return t
 }
 
-func (g *GUI) toastOK2(t *toast, ok OnToastOK) {
+func (g *GUI) toastOK(t *toast, ok toastOnOK) {
+	notify.Debug("[UI] Toast: Opening OK \"%s\"", t.label.Text)
+	defer notify.Debug("[UI] Toast: Closing OK: \"%s\"", t.label.Text)
+
+	okButton := &button.Widget{
+		Text:            "OK",
+		TextSize:        unit.Sp(16),
+		Font:            t.nav.Calibri(),
+		Pressed:         nrgba.Transparent80,
+		Released:        nrgba.DarkGray,
+		Size:            image.Pt(96, 32),
+		TextInsetBottom: -2,
+
+		Click: func(this *button.Widget) {
+			defer this.Deactivate()
+
+			if ok != nil {
+				ok()
+			}
+
+			t.window.Perform(system.ActionClose)
+		},
+	}
+
 	first := true
 
-	go func() {
-		notify.Debug("[UI] Toast: Opening Ok (active: %t)", g.previous.toast.active)
-		defer notify.Debug("[UI] Toast: Closing Ok (active: %t)", g.previous.toast.active)
-		defer t.close(g)
-
-		okButton := &button.Widget{
-			Text:            "OK",
-			TextSize:        unit.Sp(16),
-			Font:            t.bar.Collection.Calibri(),
-			Pressed:         nrgba.Transparent80,
-			Released:        nrgba.DarkGray,
-			Size:            image.Pt(96, 32),
-			TextInsetBottom: -2,
-
-			Click: func(this *button.Widget) {
-				defer this.Deactivate()
-
-				if ok != nil {
-					ok()
-				}
-
-				t.window.Perform(system.ActionClose)
-			},
-		}
-
-		for e := t.window.NextEvent(); ; e = t.window.NextEvent() {
-			if _, ok := e.(system.DestroyEvent); ok {
-				t.window.Perform(system.ActionClose)
-				okButton.Click(okButton)
-				return
-			}
-
-			event, ok := e.(system.FrameEvent)
-			if !ok {
-				notify.Missed(event, "ToastOk")
-				continue
-			}
-
+	for {
+		switch event := t.window.NextEvent().(type) {
+		case system.DestroyEvent:
+			notify.Debug("[UI] Toast: DestroyEvent OK \"%s\"", t.label.Text)
+			return
+		case system.FrameEvent:
 			gtx := layout.NewContext(&t.ops, event)
 
-			t.bar.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+			t.nav.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				return decorate.BackgroundAlt(gtx, func(gtx layout.Context) layout.Dimensions {
 					return layout.Flex{
 						Axis:      layout.Vertical,
@@ -634,11 +597,16 @@ func (g *GUI) toastOK2(t *toast, ok OnToastOK) {
 				first = false
 			}
 
-			t.window.Invalidate()
+			if keys.Esc.Up(gtx, t) != keys.None {
+				t.window.Perform(system.ActionClose)
+				break
+			}
 
 			event.Frame(gtx.Ops)
+		default:
+			notify.Missed(event, "ToastOk")
 		}
-	}()
+	}
 }
 
 func titleFirstWord(s string) string {
@@ -646,4 +614,24 @@ func titleFirstWord(s string) string {
 		return ""
 	}
 	return strings.ToUpper(s[:1]) + s[1:]
+}
+
+func (t *toast) close() {
+	defer notify.Debug("[UI] Toast: Closed \"%s\") (active: %t)", t.label.Text, t.g.previous.toast.active)
+
+	t.window.Perform(system.ActionClose)
+
+	t.g.previous.toast.err = nil
+	t.g.previous.toast.active = false
+
+	t.open = false
+}
+
+func (c *closeable) ready() {
+	go func() { c.waitq <- true }()
+}
+
+func (c *closeable) wait() waiter {
+	<-c.waitq
+	return c
 }

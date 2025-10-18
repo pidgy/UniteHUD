@@ -17,7 +17,6 @@ import (
 
 	"github.com/pidgy/unitehud/avi/video/device"
 	"github.com/pidgy/unitehud/core/config"
-	"github.com/pidgy/unitehud/core/fonts"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/rgba/nrgba"
 	"github.com/pidgy/unitehud/exe"
@@ -158,7 +157,6 @@ func (g *GUI) settingsUI() *settings {
 
 	ui.bar = title.New(
 		"Settings",
-		fonts.NewCollection(),
 		nil,
 		nil,
 		func() { ui.windows.this.Perform(system.ActionClose) },
@@ -170,7 +168,7 @@ func (g *GUI) settingsUI() *settings {
 		app.Title("Settings"),
 		app.Size(unit.Dp(ui.dimensions.width), unit.Dp(ui.dimensions.height)),
 		app.MinSize(unit.Dp(ui.dimensions.width), unit.Dp(ui.dimensions.height)),
-		app.MaxSize(unit.Dp(ui.dimensions.width), unit.Dp(ui.windows.parent.dimensions.max.Y)),
+		// app.MaxSize(unit.Dp(ui.dimensions.width), unit.Dp(ui.windows.parent.dimensions.max.Y)),
 		app.Decorated(false),
 	)
 

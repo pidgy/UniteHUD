@@ -1,11 +1,13 @@
 package ui
 
 import (
+	"fmt"
 	"image"
 	"time"
 	"unsafe"
 
 	"gioui.org/app"
+	"gioui.org/font"
 	"gioui.org/io/key"
 	"gioui.org/io/pointer"
 	"gioui.org/io/system"
@@ -15,17 +17,19 @@ import (
 	"gioui.org/op/paint"
 	"gioui.org/unit"
 	"gioui.org/widget"
+	"gioui.org/widget/material"
 
 	"github.com/pidgy/unitehud/avi/img/splash"
 	"github.com/pidgy/unitehud/avi/video"
+	"github.com/pidgy/unitehud/avi/video/device"
 	"github.com/pidgy/unitehud/avi/video/fps"
-	"github.com/pidgy/unitehud/core/fonts"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/rgba/nrgba"
 	"github.com/pidgy/unitehud/gui/is"
 	"github.com/pidgy/unitehud/gui/ux/button"
 	"github.com/pidgy/unitehud/gui/ux/decorate"
 	"github.com/pidgy/unitehud/gui/ux/electron"
+	"github.com/pidgy/unitehud/gui/ux/keys"
 	"github.com/pidgy/unitehud/gui/ux/title"
 	"github.com/pidgy/unitehud/system/wapi"
 )
@@ -39,15 +43,12 @@ type projector struct {
 	nav struct {
 		*title.Widget
 
-		overlay *button.Widget
+		overlay     *button.Widget
+		fps         *button.Widget
+		alwaysOnTop *button.Widget
 	}
 
 	window *app.Window
-
-	visibility struct {
-		seen,
-		hidden bool
-	}
 
 	dimensions struct {
 		size,
@@ -56,12 +57,18 @@ type projector struct {
 		maximized,
 		fullscreened,
 		moving bool
-
 		smoothing int
 	}
 
 	hover,
 	clicked time.Time
+
+	keybinds keys.Bind
+	tag      any
+
+	rect wapi.Rect
+
+	imgDims layout.Dimensions
 }
 
 func (g *GUI) projector(onclose func()) {
@@ -71,11 +78,12 @@ func (g *GUI) projector(onclose func()) {
 	defer onclose()
 
 	toast := g.ToastSplash("UniteHUD Projector", "Loading...", splash.Projector()).wait()
-	defer toast.close(g)
+	defer toast.close()
 
 	ui := g.projectorUI()
-
-	defer ui.nav.Remove(ui.nav.Add(ui.nav.overlay))
+	defer ui.nav.Remove(ui.nav.overlay)
+	defer ui.nav.Remove(ui.nav.fps)
+	defer ui.nav.Remove(ui.nav.alwaysOnTop)
 
 	err := electron.Open()
 	if err != nil {
@@ -84,23 +92,52 @@ func (g *GUI) projector(onclose func()) {
 	}
 	defer electron.Close()
 
-	defer fps.NewLoop(&fps.LoopOptions{
-		Async: true,
-		FPS:   1,
-		On: func(min, max, avg time.Duration) (close bool) {
-			if ui.hwnd != 0 {
-				go electron.Follow(ui.hwnd, ui.visibility.hidden)
-			}
-			return
-		},
-	}).Stop()
+	defer fps.NewLoop(
+		&fps.LoopOptions{
+			Async: true,
+			FPS:   2,
+			On: func(min, max, avg time.Duration) (close bool) {
+				if ui.hwnd == 0 {
+					return
+				}
 
-	toast.close(g)
+				if !ui.nav.overlay.Radio {
+					electron.Hide()
+					return false
+				}
+
+				if _, ok := ui.nav.Dragging(); ok {
+					electron.Hide()
+					return false
+				}
+
+				go electron.Follow(ui.hwnd, ui.imgDims.Size, ui.dimensions.fullscreened)
+
+				return false
+			},
+		}).Stop()
+
+	toast.close()
 
 	ui.window.Perform(system.ActionCenter)
 	ui.window.Perform(system.ActionRaise)
 
 	var ops op.Ops
+
+	fpsLabel := material.Label(ui.nav.Calibri().Theme, 16, "FPS: 60")
+	fpsLabel.Color = nrgba.Red.Color()
+	fpsLabel.Font.Weight = font.SemiBold
+
+	type FrameTiming struct {
+		Start, End      time.Time
+		FrameCount      int
+		FramesPerSecond float64
+	}
+
+	timingWindow := time.Second
+	timings := []FrameTiming{}
+	frameTotal, frameCounter := 0, 0
+	timingStart := time.Time{}
 
 	for {
 		if is.Now != is.MainMenu {
@@ -111,17 +148,11 @@ func (g *GUI) projector(onclose func()) {
 		case system.DestroyEvent:
 			notify.System("[UI] Closing Projector...")
 			return
-		case system.StageEvent:
-			if !ui.visibility.seen {
-				ui.visibility.seen = true
-			} else {
-				ui.visibility.hidden = !ui.visibility.hidden
-			}
 		case app.ViewEvent:
-			ui.hwnd = event.HWND
-			ui.visibility.hidden = false
+			if ui.hwnd == 0 {
+				ui.hwnd = event.HWND
+			}
 		case system.FrameEvent:
-
 			gtx := layout.NewContext(&ops, event)
 
 			if ui.dimensions.fullscreened {
@@ -131,25 +162,8 @@ func (g *GUI) projector(onclose func()) {
 			}
 
 			for _, e := range gtx.Events(g) {
-				switch event := e.(type) {
-				case key.Event:
-					if event.State != key.Release {
-						continue
-					}
-
-					switch event.Name {
-					case key.NameF11:
-						ui.fullscreen()
-					case key.NameEscape:
-						if ui.dimensions.fullscreened {
-							ui.fullscreen()
-						}
-					default:
-						if ui.dimensions.fullscreened {
-							ui.nav.Hide = false
-						}
-					}
-				case pointer.Event:
+				event, ok := e.(pointer.Event)
+				if ok {
 					switch event.Kind {
 					case pointer.Release:
 						if time.Since(ui.clicked) < time.Second/2 {
@@ -158,70 +172,59 @@ func (g *GUI) projector(onclose func()) {
 						} else {
 							ui.clicked = time.Now()
 						}
-					case pointer.Move, pointer.Enter:
-						// if !ui.dimensions.fullscreened {
-						// 	break
-						// }
-						// ui.hover = time.Now()
-						// ui.bar.Hide = false
 					}
 				}
 			}
 
-			fit := widget.Contain
-
 			ui.nav.Layout(gtx,
 				func(gtx layout.Context) layout.Dimensions {
 					return decorate.BackgroundAlt(gtx, func(gtx layout.Context) layout.Dimensions {
-						layout.Flex{
-							Axis: layout.Horizontal,
-						}.Layout(gtx, layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-							return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-								img, err := video.Capture()
-								if err != nil {
-									g.ToastError(err)
-									g.next(is.MainMenu)
-								}
+						layout.Stack{}.Layout(gtx,
+							layout.Stacked(func(gtx layout.Context) layout.Dimensions {
+								return layout.Flex{
+									Axis: layout.Horizontal,
+								}.Layout(gtx,
+									layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+										return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+											img, err := video.Capture()
+											if err != nil {
+												g.ToastError(err)
+												g.next(is.MainMenu)
+											}
 
-								return widget.Image{
-									Fit:      fit,
-									Src:      paint.NewImageOp(img),
-									Position: layout.Center,
-								}.Layout(gtx)
-							})
-						}))
+											ui.imgDims = widget.Image{
+												Fit:      widget.Contain,
+												Src:      paint.NewImageOp(img),
+												Position: layout.Center,
+											}.Layout(gtx)
 
-						layout.Flex{
-							Axis: layout.Horizontal,
-						}.Layout(
-							gtx,
-							layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-								return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-									if ui.overlay == nil {
-										return layout.Dimensions{Size: gtx.Constraints.Max}
+											return ui.imgDims
+										})
+									}),
+								)
+							}),
+							layout.Stacked(func(gtx layout.Context) layout.Dimensions {
+								if ui.nav.fps.Radio {
+									fpsLabel.Text = "Window: 0FPS\nDevice: 0FPS"
+									if device.IsActive() {
+										fpsLabel.Text = fmt.Sprintf("Window: %dFPS\nDevice: %.0fFPS", frameTotal, device.FPS())
 									}
 
-									return widget.Image{
-										Fit:      widget.Unscaled,
-										Src:      paint.NewImageOp(ui.overlay),
-										Position: layout.Center,
-									}.Layout(gtx)
-								})
+									return layout.Inset{
+										Top:  unit.Dp(2),
+										Left: unit.Dp(2),
+									}.Layout(gtx, decorate.Label(&fpsLabel, fpsLabel.Text).Layout)
+								}
+
+								return layout.Dimensions{}
 							}),
 						)
 
 						area := clip.Rect(gtx.Constraints).Push(gtx.Ops)
-
 						pointer.InputOp{
 							Tag:   g,
 							Kinds: pointer.Enter | pointer.Move | pointer.Release,
 						}.Add(gtx.Ops)
-
-						key.InputOp{
-							Tag:  g,
-							Keys: key.Set(key.NameEscape),
-						}.Add(gtx.Ops)
-
 						area.Pop()
 
 						return layout.Dimensions{Size: gtx.Constraints.Max}
@@ -229,14 +232,43 @@ func (g *GUI) projector(onclose func()) {
 				},
 			)
 
-			event.Frame(gtx.Ops)
-
-			ui.window.Invalidate()
+			switch ui.keybinds.Up(gtx, ui.tag) {
+			case keys.Ctrl("W"):
+				ui.window.Perform(system.ActionClose)
+			case keys.Ctrl("F"), key.NameF11:
+				ui.fullscreen()
+			case key.NameEscape:
+				if ui.dimensions.fullscreened {
+					ui.fullscreen()
+				}
+			}
 
 			p, ok := ui.nav.Dragging()
 			if ok {
 				ui.setWindowPos(p)
 			}
+
+			ui.window.Invalidate()
+
+			if timingStart.IsZero() {
+				timingStart = gtx.Now
+			}
+
+			if interval := gtx.Now.Sub(timingStart); interval >= timingWindow {
+				timings = append(timings, FrameTiming{
+					Start:           timingStart,
+					End:             gtx.Now,
+					FrameCount:      frameCounter,
+					FramesPerSecond: float64(frameCounter) / interval.Seconds(),
+				})
+				frameTotal = frameCounter
+				frameCounter = 0
+				timingStart = gtx.Now
+			}
+
+			event.Frame(gtx.Ops)
+
+			frameCounter++
 		default:
 			notify.Missed(event, "Projector")
 		}
@@ -268,12 +300,18 @@ func (ui *projector) fullscreen() {
 }
 
 func (g *GUI) projectorUI() *projector {
-	ui := &projector{}
+	ui := &projector{
+		keybinds: keys.New().Bind(keys.NoMod, key.NameEscape, key.NameF11).Bind(key.ModCtrl, "W"),
+		tag:      new(bool),
+		rect:     wapi.Rect{},
+	}
 
 	ui.nav.Widget = title.New(
 		"UniteHUD Projector",
-		fonts.NewCollection(),
-		func() { ui.window.Perform(system.ActionMinimize) },
+		func() {
+			// electron.Hide()
+			ui.window.Perform(system.ActionMinimize)
+		},
 		ui.fullscreen,
 		func() { ui.window.Perform(system.ActionClose) },
 	)
@@ -281,27 +319,83 @@ func (g *GUI) projectorUI() *projector {
 
 	ui.nav.overlay = &button.Widget{
 		Text:            "⛶×",
-		Font:            ui.nav.Collection.NishikiTeki(),
-		OnHoverHint:     func() { ui.nav.Tip("Hide HUD overlay") },
+		Font:            ui.nav.NishikiTeki(),
+		OnHoverHint:     func() { ui.nav.Tip("Hide UniteHUD Overlay HUD") },
 		Released:        nrgba.Transparent80,
 		Pressed:         nrgba.SilverPurple,
+		TextSize:        unit.Sp(16),
+		TextInsetBottom: -1,
+		Radio:           true,
+
+		Click: func(this *button.Widget) {
+			defer this.Deactivate()
+
+			if this.Radio {
+				this.OnHoverHint = func() { ui.nav.Tip("Show UniteHUD Overlay HUD") }
+				this.Text = "⛶"
+				this.Radio = false
+			} else {
+				this.OnHoverHint = func() { ui.nav.Tip("Hide UniteHUD Overlay HUD") }
+				this.Text = "⛶×"
+				this.Radio = true
+			}
+		},
+	}
+	ui.nav.Add(ui.nav.overlay)
+
+	ui.nav.fps = &button.Widget{
+		Text:            "fps",
+		Font:            ui.nav.NishikiTeki(),
+		OnHoverHint:     func() { ui.nav.Tip("Show FPS values on UniteHUD Overlay HUD") },
+		Released:        nrgba.Transparent80,
+		Pressed:         nrgba.PastelGreen,
+		TextSize:        unit.Sp(12),
+		TextInsetBottom: -1,
+
+		Click: func(this *button.Widget) {
+			defer this.Deactivate()
+
+			if this.Radio {
+				this.OnHoverHint = func() { ui.nav.Tip("Show FPS values on UniteHUD Overlay HUD") }
+				this.Radio = false
+				this.Pressed = nrgba.PastelGreen
+				this.Released = nrgba.Transparent80
+			} else {
+				this.OnHoverHint = func() { ui.nav.Tip("Hide FPS values on UniteHUD Overlay HUD") }
+				this.Radio = true
+				this.Pressed = nrgba.Transparent80
+				this.Released = nrgba.PastelGreen.Alpha(80)
+			}
+		},
+	}
+	ui.nav.Add(ui.nav.fps)
+
+	ui.nav.alwaysOnTop = &button.Widget{
+		Text:            "📌",
+		Font:            ui.nav.NishikiTeki(),
+		OnHoverHint:     func() { ui.nav.Tip("Show UniteHUD Overlay HUD above all windows") },
+		Released:        nrgba.Transparent80,
+		Pressed:         nrgba.Lilac,
 		TextSize:        unit.Sp(16),
 		TextInsetBottom: -1,
 
 		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
-			if this.Text == "⛶×" {
-				this.OnHoverHint = func() { ui.nav.Tip("Show HUD overlay") }
-				this.Text = "⛶"
-				electron.Hide()
+			if this.Radio {
+				this.OnHoverHint = func() { ui.nav.Tip("Show UniteHUD Overlay HUD above all windows") }
+				this.Text = "📌"
+				this.Radio = false
+				wapi.SetWindowNotAlwaysOnTop(ui.hwnd)
 			} else {
-				this.OnHoverHint = func() { ui.nav.Tip("Hide HUD overlay ") }
-				this.Text = "⛶×"
-				electron.Show()
+				this.OnHoverHint = func() { ui.nav.Tip("Hide UniteHUD Overlay HUD under active windows") }
+				this.Text = "📌×"
+				this.Radio = true
+				wapi.SetWindowAlwaysOnTop(ui.hwnd)
 			}
 		},
 	}
+	ui.nav.Add(ui.nav.alwaysOnTop)
 
 	ui.dimensions.size = image.Pt(1280, 720)
 
@@ -317,7 +411,7 @@ func (g *GUI) projectorUI() *projector {
 
 func (ui *projector) setWindowPos(shift image.Point) {
 	if ui.dimensions.fullscreened || ui.hwnd == 0 || ui.dimensions.moving {
-		notify.Warn("[UI] <ini:failed:set> overlay position")
+		notify.Warn("[UI] <ini:failed:set> overlay position (hwnd:%d, fullscreen:%t, moving:%t)", ui.hwnd, ui.dimensions.fullscreened, ui.dimensions.moving)
 		return
 	}
 
@@ -328,6 +422,8 @@ func (ui *projector) setWindowPos(shift image.Point) {
 	ui.dimensions.smoothing = 0
 
 	go func() {
+		notify.Debug("[UI] Projector: Setting window position from drag shift=%s", shift.String())
+
 		ui.dimensions.moving = true
 		defer func() { ui.dimensions.moving = false }()
 
@@ -336,10 +432,11 @@ func (ui *projector) setWindowPos(shift image.Point) {
 		}
 		ui.dimensions.shift = shift
 
-		r := &wapi.Rect{}
-		wapi.GetWindowRect.Call(ui.hwnd, uintptr(unsafe.Pointer(r)))
-		pos := image.Pt(int(r.Left), int(r.Top)).Add(shift)
+		wapi.GetWindowRect.Call(ui.hwnd, uintptr(unsafe.Pointer(&ui.rect)))
+		pos := image.Pt(int(ui.rect.Left), int(ui.rect.Top)).Add(shift)
 
-		wapi.SetWindowPosNoSize(ui.hwnd, pos)
+		defer notify.Debug("[UI] Projector: Setting window position from drag shift=%s", shift.String())
+
+		go wapi.SetWindowPosNoSize(ui.hwnd, pos)
 	}()
 }
