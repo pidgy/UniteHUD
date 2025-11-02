@@ -63,6 +63,7 @@ var prev = {
     "bottom": [], // {"name": "registeel", "team": "purple"}
     "events": [],
     "debug": false,
+    "objectives": [],
 };
 
 
@@ -97,13 +98,19 @@ function clear(err = '') {
     $(`.objectives-circle.purple`).css('opacity', 0);
     $(`.objectives-circle.none`).css('opacity', 1);
 
-    for (var i = 1; i <= 3; i++) {
-        $(`.objectives-${i}.bottom`).filter("img").attr('src', cached.img.objectives.bottom[i]);
-        $(`.objectives-${i}`).filter("img").css('opacity', .75);
-        if (i == 1) {
-            $(`.objectives-${i}.central`).filter("img").css('opacity', .75);
-        }
-    }
+    $("div").filter(function() {
+        return this.className.match(/objectives-circle.[orange|purple]/);
+    }).each(function() {
+        $(this).filter("img").attr('src', 'assets/img/objective.png').css('opacity', 0);
+    });
+
+    $("div").filter(function() {
+        return this.className.match(/objectives-circle.none/);
+    }).each(function() {
+        $(this).filter("img").attr('src', 'assets/img/objective.png').css('opacity', 1);
+    });
+
+    $(`.objectives-1.central`).filter("img").attr('src', 'assets/img/objective.png').css('opacity', 1);
 }
 
 function error(err) {
@@ -186,7 +193,6 @@ async function render(data) {
 
     // Render scores.
     {
-
         // Render purple score.
         {
             var phtml = `<div class="animated">${data.purple.value}</div>`;
@@ -230,95 +236,53 @@ async function render(data) {
         }
     }
 
-    // Render top objectives.
+    // Render objectives.
     {
-        $('div')
-            .filter('.hud-container.objectives-container.top')
-            .children('img')
-            .attr('src', cached.img.objectives.top);
+        var order = [`.objectives-1.top`, `.objectives-2.top`, `.objectives-3.top`, `.objectives-1.bottom`, `.objectives-2.bottom`, `.objectives-3.bottom`];
 
-        var elekis = {
-            "none": ["none", "orange", "purple"],
-            "purple": ["purple", "orange", "none"],
-            "orange": ["orange", "purple", "none"],
-        }
+        data.objectives.forEach(function(o, i) {
+            switch (o.name) {
+                case "final":
+                    $(`.objectives-1.central`).filter("img").css({
+                        'opacity': 1,
+                        'animation': 'secured 1s cubic-bezier(.36,.07,.19,.97) both'
+                    });
 
-        for (var i in data.regis) {
-            i = parseInt(i);
+                    $(`.objectives-1.central .objectives-circle.purple`).css('opacity', 0);
+                    $(`.objectives-1.central .objectives-circle.orange`).css('opacity', 0);
+                    $(`.objectives-1.central .objectives-circle.none`).css('opacity', 0);
+                    $(`.objectives-1.central .objectives-circle.${o.team}`).css('opacity', 1);
 
-            if (data.regis[i] == "none") {
-                $(`.objectives-${i+1}.top`).filter("img").css({
-                    'opacity': .75,
-                    'animation': 'none'
-                });
-            } else {
-                $(`.objectives-${i+1}.top`).filter("img").css({
-                    'opacity': 1,
-                    'animation': 'secured 1s cubic-bezier(.36,.07,.19,.97) both'
-                });
+                    $(`.objectives-1.central`).filter("img").attr('src', `${cached.img.objectives.central}`);
 
-                if (data.regis[i] != prev.regis[i]) {
-                    $(`.${data.regis[i]}-score span`).css('animation', 'scored 1s cubic-bezier(.36,.07,.19,.97) both');
-                    prev.regis[i] = data.regis[i];
-                }
+                    break;
+                default:
+                    $(order[i]).filter("img").css({
+                        'opacity': 1,
+                        'animation': 'secured 1s cubic-bezier(.36,.07,.19,.97) both'
+                    });
+
+                    $(`${order[i]} .objectives-circle.purple`).css('opacity', 0);
+                    $(`${order[i]} .objectives-circle.orange`).css('opacity', 0);
+                    $(`${order[i]} .objectives-circle.none`).css('opacity', 0);
+                    $(`${order[i]} .objectives-circle.${o.team}`).css('opacity', 1);
+
+                    $(order[i]).filter("img").attr('src', `${cached.assets.img}/${o.name}.png`);
             }
+        })
 
-            $(`.objectives-${i+1}.top .objectives-circle.${elekis[data.regis[i]][0]}`).css('opacity', 1);
-            $(`.objectives-${i+1}.top .objectives-circle.${elekis[data.regis[i]][1]}`).css('opacity', 0);
-            $(`.objectives-${i+1}.top .objectives-circle.${elekis[data.regis[i]][2]}`).css('opacity', 0);
-        }
-    }
-
-    // Render central objectives.
-    {
-        $('div')
-            .filter('.hud-container.objectives-container.central')
-            .children('img')
-            .attr('src', cached.img.objectives.central);
-
-        if (data.final_objective) {
-            $(`.objectives-1.central .objectives-circle.none`).css('opacity', 0);
-            $(`.objectives-1.central .objectives-circle.${data.final_objective}`).css('opacity', 1);
-            $(`.objectives-1.central`).filter("img").css({
-                'opacity': 1,
-                'animation': 'secured 1s cubic-bezier(.36,.07,.19,.97) both'
-            });
-        } else {
-            $(`.objectives-1.central .objectives-circle.purple`).css('opacity', 0);
-            $(`.objectives-1.central .objectives-circle.orange`).css('opacity', 0);
-            $(`.objectives-1.central .objectives-circle.none`).css('opacity', 1);
-            $(`.objectives-1.central`).filter("img").css({
+        // Set the remaining to none.
+        var left = 6 - data.objectives.length;
+        console.log(`left: ${left}`);
+        for (var i = 5; i > 5 - left; i--) {
+            $(`${order[i]} .objectives-circle.purple`).css('opacity', 0);
+            $(`${order[i]} .objectives-circle.orange`).css('opacity', 0);
+            $(`${order[i]} .objectives-circle.none`).css('opacity', 1);
+            $(order[i]).filter("img").attr('src', `assets/img/objective.png`);
+            $(order[i]).filter("img").css({
                 'opacity': .75,
                 'animation': 'none'
             });
-        }
-    }
-
-    // Render bottom objectives.
-    {
-        for (var i = 0; i < 3; i++) {
-            $(`.objectives-${i+1}.bottom .objectives-circle.purple`).css('opacity', 0);
-            $(`.objectives-${i+1}.bottom .objectives-circle.orange`).css('opacity', 0);
-            $(`.objectives-${i+1}.bottom .objectives-circle.none`).css('opacity', 0);
-
-            if (data.bottom.length <= i) {
-                $(`.objectives-${i+1}.bottom .objectives-circle.purple`).css('opacity', 0);
-                $(`.objectives-${i+1}.bottom .objectives-circle.orange`).css('opacity', 0);
-                $(`.objectives-${i+1}.bottom .objectives-circle.none`).css('opacity', 1);
-
-                $(`.objectives-${i+1}.bottom`).filter("img").attr('src', cached.img.objectives.bottom[i]).css({
-                    'opacity': .75,
-                    'animation': 'none'
-                });
-            } else {
-                var obj = data.bottom[i];
-                $(`.objectives-${i+1}.bottom .objectives-circle.${obj.team}`).css('opacity', 1);
-
-                $(`.objectives-${i+1}.bottom`).filter("img").attr('src', `${cached.assets.img}/${obj.name}.png`).css({
-                    'opacity': 1,
-                    'animation': 'secured 1s cubic-bezier(.36,.07,.19,.97) both'
-                });
-            }
         }
     }
 }
@@ -342,11 +306,12 @@ $(document).ready(() => {
         properties = { opacity: opacity, },
         duration = 5 * 1000,
         complete = () => { clear(); }
-    );
+    ); // Fade in bottom logo on startup.
     clear();
 
     switch (true) {
         case window.location.search.includes('debug'):
+            $('body').css('background', 'black')
             sync(debug.start, 1000);
             break;
         case window.location.search.includes('http'):
@@ -367,7 +332,7 @@ const debug = {
     get object() { return console.info(debug.data); },
     get json() { return console.info(JSON.stringify(debug.data, null, 2)); },
     get reset() {
-        $('body').css('background-image', 'url("assets/img/sample-bg.png")');
+        // $('body').css('background-image', 'url("assets/img/sample-bg.png")').css('background-repeat', 'no-repeat').css('background-size', 'cover');
 
         return debug.data = {
             "profile": "player",
@@ -383,7 +348,8 @@ const debug = {
             "events": [],
             "debug": true,
             "match": true,
-            "final_objective": "purple"
+            "final_objective": "",
+            "objectives": [], // [ {"name": "registeel", "team": "purple", "time": "123456789"}, ... ]
         };
     },
     ready: {

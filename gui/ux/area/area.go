@@ -3,10 +3,6 @@ package area
 import (
 	"fmt"
 	"image"
-	"image/color"
-	"image/png"
-	"os"
-	"syscall"
 	"time"
 
 	"gioui.org/io/pointer"
@@ -17,19 +13,15 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 
-	"github.com/pidgy/unitehud/avi/video"
 	"github.com/pidgy/unitehud/avi/video/device"
 	"github.com/pidgy/unitehud/avi/video/monitor"
 	"github.com/pidgy/unitehud/avi/video/window"
 	"github.com/pidgy/unitehud/core/fonts"
-	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/rgba/nrgba"
-	"github.com/pidgy/unitehud/exe"
 	"github.com/pidgy/unitehud/gui/cursor"
 	"github.com/pidgy/unitehud/gui/ux/button"
 	"github.com/pidgy/unitehud/gui/ux/decorate"
 	"github.com/pidgy/unitehud/gui/ux/title"
-	"github.com/pidgy/unitehud/system/wapi"
 )
 
 var (
@@ -37,16 +29,6 @@ var (
 	Match  = nrgba.Green
 	Miss   = nrgba.Red
 )
-
-type Capture struct {
-	Option      string
-	File        string
-	Base        image.Rectangle
-	DefaultBase image.Rectangle
-
-	MatchedColor color.NRGBA
-	MatchedText  string
-}
 
 type Widget struct {
 	Text          string
@@ -69,7 +51,7 @@ type Widget struct {
 
 	nrgba.NRGBA
 
-	Drag, Focus bool
+	Drag, Draggable, Focus bool
 
 	lastDimsSize image.Point
 	lastRelease  time.Time
@@ -176,7 +158,11 @@ func (a *Widget) Layout(gtx layout.Context, collection *fonts.Collection, captur
 		switch e.Kind {
 		case pointer.Enter:
 			if a.Hidden {
-				fmt.Printf("Hidden: %s\n", a.titleLabel.Text)
+				cursor.Is(pointer.CursorNotAllowed)
+				continue
+			}
+
+			if !a.Draggable {
 				cursor.Is(pointer.CursorNotAllowed)
 				continue
 			}
@@ -202,13 +188,18 @@ func (a *Widget) Layout(gtx layout.Context, collection *fonts.Collection, captur
 				continue
 			}
 
+			if !a.Draggable {
+				cursor.Is(pointer.CursorNotAllowed)
+				continue
+			}
+
 			cursor.Is(pointer.CursorCrosshair)
 		case pointer.Release:
 			if a.Hidden {
 				continue
 			}
 
-			if a.Drag {
+			if a.Draggable && a.Drag {
 				a.Drag = false
 
 				baseMinXScale := float32(a.Min.X) * float32(img.Bounds().Max.X)
@@ -240,6 +231,11 @@ func (a *Widget) Layout(gtx layout.Context, collection *fonts.Collection, captur
 				continue
 			}
 
+			if !a.Draggable {
+				cursor.Is(pointer.CursorNotAllowed)
+				continue
+			}
+
 			if !a.Drag {
 				break
 			}
@@ -247,6 +243,11 @@ func (a *Widget) Layout(gtx layout.Context, collection *fonts.Collection, captur
 			fallthrough
 		case pointer.Drag:
 			if a.Hidden {
+				continue
+			}
+
+			if !a.Draggable {
+				cursor.Is(pointer.CursorNotAllowed)
 				continue
 			}
 
@@ -327,48 +328,6 @@ func (a *Widget) Layout(gtx layout.Context, collection *fonts.Collection, captur
 	)
 
 	return
-}
-
-func (c *Capture) Open() error {
-	img, err := video.CaptureRect(c.Base)
-	if err != nil {
-		return fmt.Errorf("<ini:failed:capture> %s (%v)", c.File, err)
-	}
-
-	fd, err := os.Create(c.File)
-	if err != nil {
-		return err
-	}
-	defer fd.Close()
-
-	err = png.Encode(fd, img)
-	if err != nil {
-		return fmt.Errorf("Failed to create %s (%v)", c.File, err)
-	}
-
-	argv, err := syscall.UTF16PtrFromString(os.Getenv("windir") + "\\system32\\cmd.exe /C " + fmt.Sprintf("\"%s\\%s\"", exe.Directory(), c.File))
-	if err != nil {
-		return fmt.Errorf("<ini:failed:open> %s (%v)", c.File, err)
-	}
-
-	var sI syscall.StartupInfo
-	var pI syscall.ProcessInformation
-
-	err = syscall.CreateProcess(nil, argv, nil, nil, true, wapi.CreateProcessFlags.NoWindow, nil, nil, &sI, &pI)
-	if err != nil {
-		return fmt.Errorf("<ini:failed:open> %s (%v)", c.File, err)
-	}
-
-	return nil
-}
-
-func (c *Capture) Rectangle() image.Rectangle {
-	return c.Base
-}
-
-func (c *Capture) reset() {
-	notify.Debug("[UI] Resetting %s capture area %s", c.Option, c.DefaultBase)
-	c.Base = c.DefaultBase
 }
 
 func (a *Widget) Reset() {

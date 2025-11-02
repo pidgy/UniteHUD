@@ -12,7 +12,6 @@ import (
 	"github.com/pidgy/unitehud/avi/video"
 	"github.com/pidgy/unitehud/avi/video/device"
 	"github.com/pidgy/unitehud/avi/video/monitor"
-	"github.com/pidgy/unitehud/avi/video/window"
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/match"
 	"github.com/pidgy/unitehud/core/notify"
@@ -20,6 +19,7 @@ import (
 	"github.com/pidgy/unitehud/core/state"
 	"github.com/pidgy/unitehud/core/stats/history"
 	"github.com/pidgy/unitehud/core/team"
+	"github.com/pidgy/unitehud/exe"
 	"github.com/pidgy/unitehud/system/desktop"
 	"github.com/pidgy/unitehud/system/desktop/clicked"
 	"github.com/pidgy/unitehud/system/lang"
@@ -27,10 +27,10 @@ import (
 )
 
 var (
-	Pause, Resume = func() { idling = true }, func() { idling = false }
+	Pause, Resume = func() { paused = true }, func() { paused = false }
 	Images        = func(b bool) { images = b }
 
-	idling = true
+	paused = true
 	images = false
 )
 
@@ -40,14 +40,14 @@ func Clock() {
 			continue
 		}
 
-		matrix, img, err := capture(config.Current.XY.Time)
+		matrix, _, err := capture(config.Current.XY.Time)
 		if err != nil {
 			notify.Error("[Detect] <ini:failed:capture> clock area (%v)", err)
 			matrix.Close()
 			continue
 		}
 
-		min, sec, kitchen := match.Time(matrix, img)
+		min, sec, kitchen := match.Time(matrix)
 		if min+sec == 0 {
 			every(time.Second * 5) // Let's back off and save cpu cycles.
 			matrix.Close()
@@ -74,11 +74,15 @@ func Defeated() {
 	modified := config.Current.TemplatesKilled(team.Game.Name)
 	unmodified := config.Current.TemplatesKilled(team.Game.Name)
 
+	reset := func() {
+		modified = config.Current.TemplatesKilled(team.Game.Name)
+		unmodified = config.Current.TemplatesKilled(team.Game.Name)
+	}
+
 	// Frequent, used to invalidate Self score detection by justifying the held energy drop.
-	for every(time.Second) {
+	for every(time.Second, reset) {
 		if config.Current.Advanced.Matching.Disabled.Defeated {
-			modified = config.Current.TemplatesKilled(team.Game.Name)
-			unmodified = config.Current.TemplatesKilled(team.Game.Name)
+			reset()
 			continue
 		}
 
@@ -135,13 +139,16 @@ func Defeated() {
 
 func Energy() {
 	assured := make(map[int]int)
-
 	confirmScore := -1
 
-	for every(team.Energy.Delay) {
+	reset := func() {
+		assured = make(map[int]int)
+		confirmScore = -1
+	}
+
+	for every(team.Energy.Delay, reset) {
 		if config.Current.Advanced.Matching.Disabled.Energy {
-			assured = make(map[int]int)
-			confirmScore = -1
+			reset()
 			continue
 		}
 
@@ -203,15 +210,16 @@ func Energy() {
 }
 
 func Objectives() {
-	top, bottom, central := time.Time{}, time.Time{}, time.Time{}
-	regidragoKO := time.Time{}
-
+	top, bottom, central, regidragoKO := time.Time{}, time.Time{}, time.Time{}, time.Time{}
 	cooldown := time.Second * 3
 
-	for every(time.Second) {
+	reset := func() {
+		top, bottom, central, regidragoKO = time.Time{}, time.Time{}, time.Time{}, time.Time{}
+	}
+
+	for every(time.Second, reset) {
 		if config.Current.Advanced.Matching.Disabled.Objectives {
-			top, bottom, central = time.Time{}, time.Time{}, time.Time{}
-			regidragoKO = time.Time{}
+			reset()
 			continue
 		}
 
@@ -229,59 +237,81 @@ func Objectives() {
 		}
 
 		event := state.EventType(m.Value)
-		team := event.Team()
+		t := event.Team()
 
 		switch event {
 		case state.RegidragoSecureKO:
-			if time.Since(regidragoKO) < time.Minute {
+			if time.Since(regidragoKO) < cooldown {
 				matrix.Close()
 				continue
 			}
-			regidragoKO = time.Now()
-		case state.RegidragoSecurePurple, state.RegidragoSecureOrange:
-			if time.Since(regidragoKO) > time.Minute {
+
+			notify.Feed(t.NRGBA, "[Detect] [%s] %s", server.Clock(), event)
+
+			for i := 0; i < 3; i++ {
+				m, r = match.Matches(matrix, img, config.Current.TemplatesPostSecure(team.Game.Name))
+				if r == match.Found {
+					break
+				}
+			}
+			if r != match.Found {
+				notify.Warn("[Detect] Missed Regidrago secure...")
+				if exe.Debug {
+					name := fmt.Sprintf("debug/regidrago_miss_%d_%d_%d_%s.png", time.Now().Hour(), time.Now().Minute(), time.Now().Second(), time.Now().Format("05.000"))
+					notify.Debug("[Detect] Saving %s...", name)
+					err := save.PNG(img, name)
+					if err != nil {
+						notify.Error("Failed to save regidrago miss (%v)", err)
+					}
+				}
+				matrix.Close()
 				continue
 			}
-			server.SetRegidrago(team)
-			regidragoKO = time.Time{}
+
+			regidragoKO = time.Now()
+
+			event = state.EventType(m.Value)
+			t = event.Team()
+
+			server.SetRegidrago(t)
 		case state.RegielekiSecureOrange, state.RegielekiSecurePurple:
 			if time.Since(top) < cooldown {
 				matrix.Close()
 				continue
 			}
-			server.SetRegieleki(team)
+			server.SetRegieleki(t)
 			top = time.Now()
 		case state.FinalObjectiveSecureOrange, state.FinalObjectiveSecurePurple:
 			if time.Since(central) < cooldown {
 				matrix.Close()
 				continue
 			}
-			server.SetFinalObjective(team)
+			server.SetFinalObjective(t)
 			central = time.Now()
 		case state.RegiceSecureOrange, state.RegiceSecurePurple:
 			if time.Since(bottom) < cooldown {
 				matrix.Close()
 				continue
 			}
-			server.SetRegice(team)
+			server.SetRegice(t)
 			bottom = time.Now()
 		case state.RegirockSecureOrange, state.RegirockSecurePurple:
 			if time.Since(bottom) < cooldown {
 				matrix.Close()
 				continue
 			}
-			server.SetRegirock(team)
+			server.SetRegirock(t)
 			bottom = time.Now()
 		case state.RegisteelSecureOrange, state.RegisteelSecurePurple:
 			if time.Since(bottom) < cooldown {
 				matrix.Close()
 				continue
 			}
-			server.SetRegisteel(team)
+			server.SetRegisteel(t)
 			bottom = time.Now()
 		}
 
-		notify.Feed(team.NRGBA, "[Detect] [%s] %s", server.Clock(), event)
+		notify.Feed(t.NRGBA, "[Detect] [%s] %s", server.Clock(), event)
 	}
 }
 
@@ -443,7 +473,7 @@ func States() {
 	starting := config.Current.TemplatesStarting()
 	ending := append(config.Current.TemplatesEnding(), config.Current.TemplatesSurrender()...)
 
-	for every(time.Second * 2) {
+	for every(time.Second) {
 		curr := starting
 		if server.Seconds() != 0 {
 			curr = ending
@@ -523,7 +553,7 @@ func States() {
 					regirocks, plural("Regirock", regirocks),
 					registeels, plural("Registeel", registeels),
 					regidragos, plural("Regidrago", regidragos),
-					final, plural("Groudons", final),
+					final, plural("Groudon", final),
 				)
 
 				// Orange score and objective results.
@@ -538,7 +568,7 @@ func States() {
 					regirocks, plural("Regirock", regirocks),
 					registeels, plural("Registeel", registeels),
 					regidragos, plural("Regidrago", regidragos),
-					final, plural("Groudons", final),
+					final, plural("Groudon", final),
 				)
 
 				// Self score and objective results.
@@ -570,19 +600,19 @@ func States() {
 	}
 }
 
-func Window() {
-	for ; ; time.Sleep(time.Second * 2) {
-		if config.Current.Video.Capture.Window.Lost == "" {
-			continue
-		}
+// func Window() {
+// 	for ; ; time.Sleep(time.Second * 2) {
+// 		if config.Current.Video.Capture.Window.Lost == "" {
+// 			continue
+// 		}
 
-		err := window.Reattach()
-		if err != nil {
-			notify.Error("[Detect] Failed to reattach window (%v)", err)
-			continue
-		}
-	}
-}
+// 		err := window.Reattach()
+// 		if err != nil {
+// 			notify.Error("[Detect] Failed to reattach window (%v)", err)
+// 			continue
+// 		}
+// 	}
+// }
 
 func capture(area image.Rectangle) (gocv.Mat, *image.RGBA, error) {
 	img, err := video.CaptureRect(area)
@@ -658,15 +688,19 @@ func plural(s string, size int) string {
 	return s + "s"
 }
 
-func every(d time.Duration) bool {
+func every(d time.Duration, resets ...func()) bool {
 	for {
 		time.Sleep(d)
 		if config.Current.Advanced.DecreasedCaptureLevel > 0 {
 			time.Sleep(time.Second * config.Current.Advanced.DecreasedCaptureLevel)
 		}
 
-		if !idling {
+		if !paused {
 			return true
+		}
+
+		for _, fn := range resets {
+			fn()
 		}
 	}
 }

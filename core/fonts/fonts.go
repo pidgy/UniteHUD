@@ -9,8 +9,8 @@ import (
 	"gioui.org/font/opentype"
 	"gioui.org/text"
 	"gioui.org/widget/material"
-
 	"github.com/google/uuid"
+
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/exe"
 )

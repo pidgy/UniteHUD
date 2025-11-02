@@ -81,6 +81,7 @@ type main struct {
 		window,
 		cpu, cpuGraph,
 		ram, ramGraph,
+		threads, threadsGraph,
 		holding,
 		connectedClients,
 		symbol,
@@ -185,6 +186,35 @@ func (g *GUI) main() {
 
 	tray.SetStartStopTitle("Start")
 
+	if config.Current.Remember.Discord == config.DiscordStandby {
+		go g.ToastYesNoRemember(
+			exe.Title,
+			"<ini:toast:connect_discord>",
+			"<ini:toast:connect_discord_remember>",
+			toastOnYes(func() {
+				config.Current.Advanced.Discord.Disabled = false
+			}),
+			toastOnNo(func() {
+				config.Current.Advanced.Discord.Disabled = true
+			}),
+			toastOnClose(
+				nil,
+			),
+			toastOnRemember(func(b bool) {
+				config.Current.Remember.Discord = config.DiscordDisabled
+				if b {
+					config.Current.Remember.Discord = config.DiscordEnabled
+				}
+
+				err := config.Current.Save()
+				if err != nil {
+					notify.Error("[UI] <ini:failed:save> UniteHUD configuration (%v)", err)
+					return
+				}
+			}),
+		)
+	}
+
 	for is.Now == is.MainMenu {
 		if !g.open {
 			time.Sleep(time.Millisecond * 10)
@@ -215,9 +245,12 @@ func (g *GUI) main() {
 			decorate.Label(&ui.labels.cpuGraph, stats.CPUGraph())
 			decorate.Label(&ui.labels.ram, process.Usage.RAM.String())
 			decorate.Label(&ui.labels.ramGraph, stats.RAMGraph())
+			decorate.Label(&ui.labels.threads, process.Usage.Threads.String())
+			decorate.Label(&ui.labels.threadsGraph, stats.ThreadsGraph())
 			decorate.Label(&ui.labels.holding, ui.labels.holding.Text)
 			decorate.ForegroundAlt(&ui.labels.cpuGraph.Color)
 			decorate.ForegroundAlt(&ui.labels.ramGraph.Color)
+			decorate.ForegroundAlt(&ui.labels.threadsGraph.Color)
 
 			g.nav.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				return ui.split.vertical.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
@@ -293,7 +326,17 @@ func (g *GUI) main() {
 
 						layout.Inset{
 							Top:  unit.Dp(28),
-							Left: unit.Dp(float32(gtx.Constraints.Max.X - 408)),
+							Left: unit.Dp(float32(gtx.Constraints.Max.X - 560)),
+						}.Layout(gtx, ui.labels.threads.Layout)
+
+						layout.Inset{
+							Top:  unit.Dp(1),
+							Left: unit.Dp(float32(gtx.Constraints.Max.X - 600)),
+						}.Layout(gtx, ui.labels.threadsGraph.Layout)
+
+						layout.Inset{
+							Top:  unit.Dp(28),
+							Left: unit.Dp(float32(gtx.Constraints.Max.X - 410)),
 						}.Layout(gtx, ui.labels.cpu.Layout)
 
 						layout.Inset{
@@ -303,7 +346,7 @@ func (g *GUI) main() {
 
 						layout.Inset{
 							Top:  unit.Dp(28),
-							Left: unit.Dp(float32(gtx.Constraints.Max.X - 248)),
+							Left: unit.Dp(float32(gtx.Constraints.Max.X - 255)),
 						}.Layout(gtx, ui.labels.ram.Layout)
 
 						layout.Inset{
@@ -553,9 +596,9 @@ func (g *GUI) main() {
 				if g.dimensions.fullscreen {
 					g.nav.Resize()
 				}
-				if g.Running {
-					ui.buttons.stop.Click(ui.buttons.stop)
-				}
+				// if g.Running {
+				// 	ui.buttons.stop.Click(ui.buttons.stop)
+				// }
 			case key.NameF11:
 				g.nav.Resize()
 			}
@@ -726,6 +769,14 @@ func (g *GUI) mainUI() *main {
 		ui.labels.ramGraph = material.H5(g.nav.Cascadia().Theme, "")
 		ui.labels.ramGraph.Color = nrgba.Gray.Color()
 		ui.labels.ramGraph.TextSize = unit.Sp(9)
+
+		ui.labels.threads = material.H5(g.nav.Calibri().Theme, "")
+		ui.labels.threads.Alignment = text.Middle
+		ui.labels.threads.TextSize = unit.Sp(14)
+
+		ui.labels.threadsGraph = material.H5(g.nav.Cascadia().Theme, "")
+		ui.labels.threadsGraph.Color = nrgba.Gray.Color()
+		ui.labels.threadsGraph.TextSize = unit.Sp(9)
 
 		ui.labels.holding = material.H5(g.nav.Calibri().Theme, "")
 		ui.labels.holding.Color = nrgba.Gold.Color()
@@ -1226,35 +1277,6 @@ func (g *GUI) onFirstFrame(ui *main) {
 				},
 			},
 			toastOnClose(nil),
-		)
-	}
-
-	if config.Current.Remember.Discord == config.DiscordStandby {
-		go g.ToastYesNoRemember(
-			exe.Title,
-			"<ini:toast:connect_discord>",
-			"<ini:toast:connect_discord_remember>",
-			toastOnYes(func() {
-				config.Current.Advanced.Discord.Disabled = false
-			}),
-			toastOnNo(func() {
-				config.Current.Advanced.Discord.Disabled = true
-			}),
-			toastOnClose(
-				nil,
-			),
-			toastOnRemember(func(b bool) {
-				config.Current.Remember.Discord = config.DiscordDisabled
-				if b {
-					config.Current.Remember.Discord = config.DiscordEnabled
-				}
-
-				err := config.Current.Save()
-				if err != nil {
-					notify.Error("[UI] <ini:failed:save> UniteHUD configuration (%v)", err)
-					return
-				}
-			}),
 		)
 	}
 }

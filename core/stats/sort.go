@@ -2,22 +2,11 @@ package stats
 
 import "sort"
 
-type (
-	sortable []struct {
-		Name      string
-		Matches   int
-		Average   int
-		Frequency float32
-	}
-)
-
-func (s *sortable) add(name string, m, a int, f float32) {
-	*s = append(*s, struct {
-		Name      string
-		Matches   int
-		Average   int
-		Frequency float32
-	}{name, m, a, f})
+type sortable []struct {
+	Name      string
+	Matches   int
+	Average   int
+	Frequency float32
 }
 
 func (s sortable) Len() int { return len(s) }
@@ -40,4 +29,13 @@ func (s sortable) Swap(i, j int) {
 
 func (s sortable) Sort() {
 	sort.Sort(s)
+}
+
+func (s *sortable) add(name string, m, a int, f float32) {
+	*s = append(*s, struct {
+		Name      string
+		Matches   int
+		Average   int
+		Frequency float32
+	}{name, m, a, f})
 }

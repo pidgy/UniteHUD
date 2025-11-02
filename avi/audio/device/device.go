@@ -29,13 +29,6 @@ type Device interface {
 	String() string
 }
 
-func Is(d Device, name string) bool {
-	if name == Default {
-		return d.IsDefault()
-	}
-	return d.Name() == name
-}
-
 func Free(ctx *malgo.AllocatedContext) error {
 	err := ctx.Uninit()
 	if err != nil {
@@ -45,6 +38,13 @@ func Free(ctx *malgo.AllocatedContext) error {
 	ctx.Free()
 
 	return nil
+}
+
+func Is(d Device, name string) bool {
+	if name == Default {
+		return d.IsDefault()
+	}
+	return d.Name() == name
 }
 
 func String(d Device) string {

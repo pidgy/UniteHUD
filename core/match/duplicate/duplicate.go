@@ -31,10 +31,6 @@ func New(value int, mat, region gocv.Mat) *Duplicate {
 	}
 }
 
-func (d *Duplicate) Region() gocv.Mat {
-	return d.region.Clone()
-}
-
 func (d *Duplicate) Close() {
 	if d == nil {
 		return

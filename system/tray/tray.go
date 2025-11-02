@@ -89,6 +89,11 @@ func Open() error {
 					menu.website.event()
 				case <-menu.startstop.ClickedCh:
 					menu.startstop.event()
+					if menu.startstop.Checked() {
+						menu.startstop.Uncheck()
+					} else {
+						menu.startstop.Check()
+					}
 				case <-menu.hide.ClickedCh:
 					menu.hide.event()
 				case <-menu.exit.ClickedCh:
@@ -333,10 +338,17 @@ func proc() {
 	ram := systray.AddMenuItem("RAM\t0MB", "RAM")
 	ram.Disable()
 
+	threads := systray.AddMenuItem("Threads\t0", "Threads")
+	threads.Disable()
+
 	go func() {
 		for ; ; time.Sleep(time.Second) {
-			ram.SetTitle(strings.Replace(process.Usage.RAM.String(), " ", "\t", 1))
 			cpu.SetTitle(strings.Replace(process.Usage.CPU.String(), " ", "\t", 1))
+			ram.SetTitle(strings.Replace(process.Usage.RAM.String(), " ", "\t", 1))
+			threads.SetTitle(strings.Replace(process.Usage.Threads.String(), " ", "\t", 1))
+			threads.Check()
+			ram.Check()
+			cpu.Check()
 		}
 	}()
 }

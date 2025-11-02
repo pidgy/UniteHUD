@@ -60,7 +60,7 @@ func Energy(matrix gocv.Mat, img image.Image) (Result, []int, int) {
 
 			results[i] = mat
 
-			gocv.MatchTemplate(region, template.Mat, &mat, gocv.TmCcoeffNormed, template.Mask)
+			gocv.MatchTemplate(region, template.Mat, &mat, config.DefaultMatchMethod, template.Mask)
 		}
 
 		for i := range results {
@@ -141,27 +141,6 @@ func SelfScore(matrix gocv.Mat, img image.Image) (*Match, Result) {
 	return Matches(matrix, img, templates)
 }
 
-func SelfScored(matrix gocv.Mat, img image.Image) (*Match, Result) {
-	templates := []*template.Template{}
-	for _, t := range config.Current.TemplatesScoring(team.Game.Name) {
-		if state.EventType(t.Value) == state.PostScore {
-			templates = append(templates, t)
-		}
-	}
-	return Matches(matrix, img, templates)
-}
-
-func SelfScoring(matrix gocv.Mat, img image.Image) (*Match, Result) {
-	templates := []*template.Template{}
-	for _, t := range config.Current.TemplatesScoring(team.Game.Name) {
-		e := state.EventType(t.Value)
-		if e == state.PreScore || e == state.SelfScoreIndicator {
-			templates = append(templates, t)
-		}
-	}
-	return Matches(matrix, img, templates)
-}
-
 func SelfScoreIndicator(matrix gocv.Mat, img image.Image) (*Match, Result) {
 	templates := []*template.Template{}
 	for _, t := range config.Current.TemplatesScoring(team.Game.Name) {
@@ -169,5 +148,26 @@ func SelfScoreIndicator(matrix gocv.Mat, img image.Image) (*Match, Result) {
 			templates = append(templates, t)
 		}
 	}
-	return MatchesWithAcceptance(matrix, img, templates, .85)
+	return MatchesWithAcceptance(matrix, img, templates, .80)
 }
+
+// func SelfScored(matrix gocv.Mat, img image.Image) (*Match, Result) {
+// 	templates := []*template.Template{}
+// 	for _, t := range config.Current.TemplatesScoring(team.Game.Name) {
+// 		if state.EventType(t.Value) == state.PostScore {
+// 			templates = append(templates, t)
+// 		}
+// 	}
+// 	return Matches(matrix, img, templates)
+// }
+
+// func SelfScoring(matrix gocv.Mat, img image.Image) (*Match, Result) {
+// 	templates := []*template.Template{}
+// 	for _, t := range config.Current.TemplatesScoring(team.Game.Name) {
+// 		e := state.EventType(t.Value)
+// 		if e == state.PreScore || e == state.SelfScoreIndicator {
+// 			templates = append(templates, t)
+// 		}
+// 	}
+// 	return Matches(matrix, img, templates)
+// }

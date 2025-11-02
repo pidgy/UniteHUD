@@ -47,7 +47,7 @@ func AsTimeImage(mat gocv.Mat, kitchen string) (image.Image, error) {
 	return crop, nil
 }
 
-func Time(matrix gocv.Mat, img *image.RGBA) (minutes, seconds int64, kitchen string) {
+func Time(matrix gocv.Mat) (minutes, seconds int64, kitchen string) {
 	clock := [4]int64{-1, -1, -1, -1}
 	locs := []int{math.MaxInt32, math.MaxInt32, math.MaxInt32, math.MaxInt32}
 	cols := []int{0, 0, 0, 0}
@@ -81,7 +81,7 @@ func Time(matrix gocv.Mat, img *image.RGBA) (minutes, seconds int64, kitchen str
 
 			results = append(results, mat)
 
-			gocv.MatchTemplate(region, template.Mat, &mat, gocv.TmCcoeffNormed, mask)
+			gocv.MatchTemplate(region, template.Mat, &mat, config.DefaultMatchMethod, mask)
 		}
 
 		for i := range results {

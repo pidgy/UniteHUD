@@ -28,8 +28,8 @@ type BitmapInfoHeader struct {
 // https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-monitorinfo
 type MonitorInfo struct {
 	cbSize   uint32
-	Monitor  Rect
-	WorkArea Rect
+	Monitor  Rectangle
+	WorkArea Rectangle
 	Flags    uint32
 }
 
@@ -39,7 +39,7 @@ type Point struct {
 }
 
 // Windows RECT structure.
-type Rect struct {
+type Rectangle struct {
 	Left, Top, Right, Bottom int32
 }
 
@@ -54,8 +54,8 @@ type RGBQuad struct {
 // https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-windowinfo
 type WindowInfo struct {
 	Size           uint32           // DWORD.
-	Window         Rect             // RECT.
-	Client         Rect             // RECT.
+	Window         Rectangle        // RECT.
+	Client         Rectangle        // RECT.
 	Style          uint32           // DWORD.
 	ExStyle        uint32           // DWORD.
 	Status         WindowInfoStatus // DWORD.
@@ -81,8 +81,8 @@ type WindowPlacement struct {
 	ShowCommand uint
 	Min         Point
 	Max         Point
-	Normal      Rect
-	Device      Rect
+	Normal      Rectangle
+	Device      Rectangle
 }
 
 type WindowPos struct {

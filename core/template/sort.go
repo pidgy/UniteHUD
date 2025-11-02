@@ -32,24 +32,6 @@ func NewSortable() Sortable {
 	}
 }
 
-func (t *Sortable) Cache(t2 *Template, p image.Point, value float32) {
-	if t2.Value == 0 {
-		p = image.Pt(math.MaxInt32, math.MaxInt32)
-	}
-
-	file := filter.Strip(t2.File)
-
-	c, ok := t.cache[file]
-	if !ok {
-		t.cache[file] = cached{p, value, 1}
-		t.templates = append(t.templates, t2)
-	} else {
-		c.seen++
-		t.cache[file] = c
-		t.invalid = true
-	}
-}
-
 func ByLocation(t Sortable) bool {
 	if t.invalid || len(t.cache) == 0 || len(t.cache) > 3 {
 		return false
@@ -71,6 +53,24 @@ func ByValues(t Sortable) bool {
 	sort.Sort(byValues(t))
 
 	return t.Value() > 0 && t.Value() < 100
+}
+
+func (t *Sortable) Cache(t2 *Template, p image.Point, value float32) {
+	if t2.Value == 0 {
+		p = image.Pt(math.MaxInt32, math.MaxInt32)
+	}
+
+	file := filter.Strip(t2.File)
+
+	c, ok := t.cache[file]
+	if !ok {
+		t.cache[file] = cached{p, value, 1}
+		t.templates = append(t.templates, t2)
+	} else {
+		c.seen++
+		t.cache[file] = c
+		t.invalid = true
+	}
 }
 
 func (t *Sortable) Value() int {

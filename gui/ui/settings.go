@@ -20,7 +20,6 @@ import (
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/rgba/nrgba"
 	"github.com/pidgy/unitehud/exe"
-	app1 "github.com/pidgy/unitehud/exe"
 	"github.com/pidgy/unitehud/gui/ux"
 	"github.com/pidgy/unitehud/gui/ux/button"
 	"github.com/pidgy/unitehud/gui/ux/checklist"
@@ -453,7 +452,7 @@ func (g *GUI) settingsUI() *settings {
 
 					config.Current.Advanced.Notifications.Disabled.All = false
 
-					desktop.Notification(app1.Title).
+					desktop.Notification(exe.Title).
 						Says("Testing 1, 2, 3").
 						When(clicked.VisitWebsite).
 						Send()

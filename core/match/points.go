@@ -16,21 +16,6 @@ import (
 	"github.com/pidgy/unitehud/exe"
 )
 
-func (m *Match) points(matrix gocv.Mat) Result {
-	switch m.Team.Name {
-	case team.Purple.Name, team.Orange.Name:
-		return m.regular(matrix)
-	case team.First.Name:
-		team.First.Alias = team.Purple.Name
-		if m.Point.X > m.Max.X/2 {
-			team.First.Alias = team.Orange.Name
-		}
-		return m.first(matrix)
-	}
-
-	return Invalid
-}
-
 func (m *Match) first(matrix gocv.Mat) Result {
 	r := NotFound
 
@@ -84,7 +69,7 @@ func (m *Match) first(matrix gocv.Mat) Result {
 
 			results[i] = mat
 
-			gocv.MatchTemplate(region, template.Mat, &mat, gocv.TmCcoeffNormed, template.Mask)
+			gocv.MatchTemplate(region, template.Mat, &mat, config.DefaultMatchMethod, template.Mask)
 		}
 
 		for i := range results {
@@ -144,6 +129,21 @@ func (m *Match) first(matrix gocv.Mat) Result {
 	// return m.validate(matrix, p)
 }
 
+func (m *Match) points(matrix gocv.Mat) Result {
+	switch m.Team.Name {
+	case team.Purple.Name, team.Orange.Name:
+		return m.regular(matrix)
+	case team.First.Name:
+		team.First.Alias = team.Purple.Name
+		if m.Point.X > m.Max.X/2 {
+			team.First.Alias = team.Orange.Name
+		}
+		return m.first(matrix)
+	}
+
+	return Invalid
+}
+
 func (m *Match) regular(matrix gocv.Mat) Result {
 	r := NotFound
 
@@ -200,7 +200,7 @@ func (m *Match) regular(matrix gocv.Mat) Result {
 
 			results[i] = mat
 
-			gocv.MatchTemplate(region, template.Mat, &mat, gocv.TmCcoeffNormed, template.Mask)
+			gocv.MatchTemplate(region, template.Mat, &mat, config.DefaultMatchMethod, template.Mask)
 		}
 
 		for i := range results {

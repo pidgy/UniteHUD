@@ -35,49 +35,6 @@ type Session struct {
 	context *malgo.AllocatedContext
 }
 
-func Open() error {
-	ctx, err := malgo.InitContext(
-		[]malgo.Backend{
-			malgo.BackendDsound,
-			malgo.BackendWasapi,
-			malgo.BackendWinmm,
-		},
-		malgo.ContextConfig{
-			ThreadPriority: malgo.ThreadPriorityDefault,
-		},
-		func(m string) {
-			// notify.Debug("[Audio Session] %s", strings.Split(m, "\n")[0])
-		},
-	)
-	if err != nil {
-		return err
-	}
-
-	in, err := input.New(ctx, config.Current.Audio.Capture.Device.Name)
-	if err != nil {
-		notify.Warn("[Audio] <ini:failed:create> input (%v)", err)
-	}
-
-	out, err := output.New(ctx, config.Current.Audio.Playback.Device.Name)
-	if err != nil {
-		notify.Warn("[Audio] <ini:failed:create> output (%v)", err)
-	}
-
-	Current = &Session{
-		Input:  in,
-		Output: out,
-
-		buffer: bytes.NewBuffer(make([]byte, 0)),
-
-		errorq: make(chan error),
-		waitq:  make(chan bool),
-
-		context: ctx,
-	}
-
-	return Start()
-}
-
 func Close() {
 	notify.System("[Audio] Closing...")
 	defer notify.Debug("[Audio] Closed")
@@ -135,6 +92,49 @@ func Label() string {
 	}
 
 	return fmt.Sprintf("%s %s → %s %s", speakers[0], strings.Split(Current.Input.Name(), " (")[0], speakers[1], strings.Split(Current.Output.Name(), " (")[0])
+}
+
+func Open() error {
+	ctx, err := malgo.InitContext(
+		[]malgo.Backend{
+			malgo.BackendDsound,
+			malgo.BackendWasapi,
+			malgo.BackendWinmm,
+		},
+		malgo.ContextConfig{
+			ThreadPriority: malgo.ThreadPriorityDefault,
+		},
+		func(m string) {
+			// notify.Debug("[Audio Session] %s", strings.Split(m, "\n")[0])
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	in, err := input.New(ctx, config.Current.Audio.Capture.Device.Name)
+	if err != nil {
+		notify.Warn("[Audio] <ini:failed:create> input (%v)", err)
+	}
+
+	out, err := output.New(ctx, config.Current.Audio.Playback.Device.Name)
+	if err != nil {
+		notify.Warn("[Audio] <ini:failed:create> output (%v)", err)
+	}
+
+	Current = &Session{
+		Input:  in,
+		Output: out,
+
+		buffer: bytes.NewBuffer(make([]byte, 0)),
+
+		errorq: make(chan error),
+		waitq:  make(chan bool),
+
+		context: ctx,
+	}
+
+	return Start()
 }
 
 func Output(name string) (err error) {

@@ -12,7 +12,7 @@ import (
 
 func TestTemplateStatistics(t *testing.T) {
 	exe.Debug = true
-	templateStatistics(stats.Counts())
+	saveTemplateStatistics(stats.Counts())
 }
 
 func TestMergeTemplateStatistics(t *testing.T) {

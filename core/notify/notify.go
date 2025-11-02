@@ -53,15 +53,19 @@ type notify struct {
 var feed = &notify{}
 
 func Announce(format string, a ...any) {
-	feed.log(colorSystem, true, false, false, format, a...)
+	feed.log(colorSystem, true, false, format, a...)
 }
 
 func Append(c nrgba.NRGBA, format string, a ...any) {
-	feed.log(c, false, false, false, format, a...)
+	feed.log(c, false, false, format, a...)
 }
 
 func Bool(b bool, format string, a ...any) {
-	feed.log(nrgba.Bool(b), false, false, false, format, a...)
+	feed.log(nrgba.Bool(b), false, false, format, a...)
+}
+
+func CLS() {
+	feed.logs = feed.logs[:0]
 }
 
 func Clear() {
@@ -72,24 +76,20 @@ func Clear() {
 	Time = nil
 }
 
-func CLS() {
-	feed.logs = feed.logs[:0]
-}
-
 func Debug(format string, a ...any) {
 	if !exe.Debug {
 		return
 	}
 
-	feed.log(colorDebug, true, true, false, format, a...)
+	feed.log(colorDebug, true, false, format, a...)
 }
 
 func Error(format string, a ...any) {
-	feed.log(colorError, true, false, false, format, a...)
+	feed.log(colorError, true, false, format, a...)
 }
 
 func Feed(color nrgba.NRGBA, format string, a ...any) {
-	feed.log(color, true, false, false, format, a...)
+	feed.log(color, true, false, format, a...)
 }
 
 func FeedReplace(color nrgba.NRGBA, r *regexp.Regexp, format string, a ...any) {
@@ -113,7 +113,7 @@ func FeedStrings() (s []string) {
 }
 
 func FeedUnique(color nrgba.NRGBA, format string, a ...any) {
-	feed.log(color, true, false, true, format, a...)
+	feed.log(color, true, true, format, a...)
 }
 
 func Feeds() []Post {
@@ -204,22 +204,22 @@ func Replace(prefix string, log func(format string, a ...any), format string, a 
 }
 
 func System(format string, a ...any) {
-	feed.log(colorSystem, true, false, true, format, a...)
+	feed.log(colorSystem, true, true, format, a...)
 }
 
 func SystemAppend(format string, a ...any) {
-	feed.log(colorSystem.Alpha(200), false, false, false, format, a...)
+	feed.log(colorSystem.Alpha(200), false, false, format, a...)
 }
 
 func Unique(c nrgba.NRGBA, format string, a ...any) {
-	feed.log(c, true, false, true, format, a...)
+	feed.log(c, true, true, format, a...)
 }
 
 func Warn(format string, a ...any) {
-	feed.log(colorWarn, true, false, false, format, a...)
+	feed.log(colorWarn, true, false, format, a...)
 }
 
-func (n *notify) log(r nrgba.NRGBA, clock, dedup, unique bool, format string, a ...any) {
+func (n *notify) log(r nrgba.NRGBA, clock, unique bool, format string, a ...any) {
 	format = ini.Format(fmt.Sprintf(format, a...))
 
 	p := Post{

@@ -10,6 +10,11 @@ import (
 	"github.com/pidgy/unitehud/core/rgba/nrgba"
 )
 
+const (
+	delay      = time.Millisecond * 1850
+	acceptance = .84
+)
+
 // Team represents a team side in Pokémon Unite.
 type Team struct {
 	Name                 string `json:"name"`
@@ -26,11 +31,6 @@ type Team struct {
 	Acceptance float32
 	Delay      time.Duration
 }
-
-const (
-	delay      = time.Millisecond * 1850
-	acceptance = .84
-)
 
 var (
 	// Energy represents the number of balls held by self.
@@ -128,7 +128,21 @@ var (
 		Acceptance: .8,
 		Delay:      time.Second,
 	}
+
+	nameOf = map[string]*Team{
+		Orange.Name: Orange,
+		Purple.Name: Purple,
+		Self.Name:   Self,
+		Energy.Name: Energy,
+		Game.Name:   Game,
+		Time.Name:   Time,
+		First.Name:  First,
+	}
 )
+
+func By(name string) *Team {
+	return nameOf[name]
+}
 
 func Clear() {
 	for _, t := range []*Team{Orange, Purple, Self, Energy, Game, Time, First} {
@@ -150,6 +164,10 @@ func Color(name string) nrgba.NRGBA {
 	default:
 		return None.NRGBA
 	}
+}
+
+func Delay(team string) time.Duration {
+	return nameOf[team].Delay
 }
 
 // Comparable returns a smaller ROI to help increase duplication accuracy assurance.
@@ -182,22 +200,4 @@ func (t *Team) Crop(p image.Point) image.Rectangle {
 
 func (t *Team) String() string {
 	return t.title
-}
-
-var nameOf = map[string]*Team{
-	Orange.Name: Orange,
-	Purple.Name: Purple,
-	Self.Name:   Self,
-	Energy.Name: Energy,
-	Game.Name:   Game,
-	Time.Name:   Time,
-	First.Name:  First,
-}
-
-func Delay(team string) time.Duration {
-	return nameOf[team].Delay
-}
-
-func By(name string) *Team {
-	return nameOf[name]
 }

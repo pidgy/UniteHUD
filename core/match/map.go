@@ -50,10 +50,6 @@ type Objectives struct {
 	Bottom bool
 }
 
-func objectives(matrix gocv.Mat, img *image.RGBA) (Objectives, bool) {
-	return Objectives{}, true
-}
-
 func goals(matrix gocv.Mat, img *image.RGBA) (Goals, bool) {
 	templates := config.Current.TemplatesGoals(team.Game.Name)
 
@@ -69,7 +65,7 @@ func goals(matrix gocv.Mat, img *image.RGBA) (Goals, bool) {
 
 			results = append(results, mat)
 
-			gocv.MatchTemplate(matrix, template.Mat, &mat, gocv.TmCcoeffNormed, mask)
+			gocv.MatchTemplate(matrix, template.Mat, &mat, config.DefaultMatchMethod, mask)
 		}
 
 		for i := range results {
@@ -111,4 +107,8 @@ func goals(matrix gocv.Mat, img *image.RGBA) (Goals, bool) {
 	}
 
 	return Goals{}, true
+}
+
+func objectives(matrix gocv.Mat, img *image.RGBA) (Objectives, bool) {
+	return Objectives{}, true
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"image"
 	"path/filepath"
+	"sync"
 	"syscall"
 	"time"
 	"unsafe"
@@ -45,6 +46,7 @@ var (
 	app            *astilectron.Astilectron
 	window         *astilectron.Window
 	active, hidden bool
+	ctx, cancel    = context.WithCancel(context.Background())
 
 	html = filepath.Join(exe.Directory(), "www", "UniteHUD Client.html")
 )
@@ -75,9 +77,11 @@ func Close() {
 }
 
 var prev struct {
-	rect   wapi.Rect
+	rect   wapi.Rectangle
 	hidden bool
 }
+
+var lock = &sync.Mutex{}
 
 func Follow(hwnd uintptr, size image.Point, force bool) {
 	if !active || hwnd == 0 {
@@ -85,20 +89,27 @@ func Follow(hwnd uintptr, size image.Point, force bool) {
 		return
 	}
 
+	// if !lock.TryLock() {
+	// 	notify.Error("[Electron] Failed to follow window (busy)")
+	// 	return
+	// }
+	// defer lock.Unlock()
+
 	switch wapi.Window(hwnd).InfoStatus() {
 	case wapi.WindowInfoStatusNotVisible:
 		if !force {
 			Hide()
 		}
 	case wapi.WindowInfoStatusVisible:
-		if prev.hidden {
-			defer forceShow()
+		err := Show()
+		if err != nil {
+			notify.Error("[Electron] <ini:failed:to> show HUD (%v)", err)
 		}
 
-		next := wapi.Rect{}
-		_, _, err := wapi.GetWindowRect.Call(hwnd, uintptr(unsafe.Pointer(&next)))
+		next := wapi.Rectangle{}
+		_, _, err = wapi.GetWindowRect.Call(hwnd, uintptr(unsafe.Pointer(&next)))
 		if err != syscall.Errno(0) {
-			notify.Error("[Overlay Window] Failed to match overlay position (%v)", err)
+			notify.Error("[Electron] Failed to find projector dimensions (%v)", err)
 			return
 		}
 
@@ -114,51 +125,40 @@ func Follow(hwnd uintptr, size image.Point, force bool) {
 		}
 		prev.rect = next
 
-		ctx, cfn := context.WithTimeout(context.Background(), time.Millisecond)
-		go func(ctx context.Context, _ context.CancelFunc, rect wapi.Rect) {
-			h := int(prev.rect.Bottom - prev.rect.Top)
-			scaleY := float64(h) / 1080
+		// err = window.ExecuteJavaScript(`document.getElementById('hud').style.opacity = 0;`)
+		// if err != nil {
+		// 	notify.Warn("[Electron] <ini:failed:set> HUD opacity (%v)", err)
+		// }
 
-			w := int(prev.rect.Right - prev.rect.Left)
-			scaleX := float64(w) / 1920
+		w := int(next.Right - next.Left)
+		h := int(next.Bottom - next.Top)
 
-			err = window.ExecuteJavaScript(fmt.Sprintf(`
-				document.getElementById('hud').style.transform = 'scaleX(%f) scaleY(%f)';
-		        document.getElementById('hud').style.transformOrigin = '0 0';
-			`, scaleX, scaleY))
-			if err != nil {
-				notify.Warn("[Electron] <ini:failed:set> custom Javascript (%v)", err)
-			}
+		err = window.ExecuteJavaScript(fmt.Sprintf(`
+			document.getElementById('hud').style.transform = 'scaleX(%f) scaleY(%f)';
+			document.getElementById('hud').style.transformOrigin = '0 0';`,
+			float64(w)/1920,
+			float64(h)/1080,
+		))
+		if err != nil {
+			notify.Warn("[Electron] <ini:failed:set> HUD scale (%v)", err)
+			break
+		}
 
-			insetY := int32(0)
-			if !force {
-				insetY = int32(title.Height)
-			}
+		err = trySetBounds(next, w, h, force)
+		if err != nil {
+			notify.Error("[Electron] <ini:failed:set> HUD bounds (%v)", err)
+			break
+		}
 
-			err := window.SetBounds(
-				astilectron.RectangleOptions{
-					PositionOptions: astilectron.PositionOptions{
-						X: astikit.IntPtr(int(prev.rect.Left)),
-						Y: astikit.IntPtr(int(prev.rect.Top + insetY)),
-					},
-					SizeOptions: astilectron.SizeOptions{
-						Width:  astikit.IntPtr(w + title.Height),
-						Height: astikit.IntPtr(h + title.Height),
-					},
-				},
-			)
-			if err != nil {
-				notify.Error("[Electron] <ini:failed:set> bounds (%v)", err)
-			}
-
-		}(ctx, cfn, prev.rect)
+		// err = window.ExecuteJavaScript(`document.getElementById('hud').style.opacity = 1;`)
+		// if err != nil {
+		// 	notify.Warn("[Electron] <ini:failed:unset> HUD opacity (%v)", err)
+		// }no
 
 		err = window.MoveTop()
 		if err != nil {
-			notify.Debug("[Electron] <ini:failed:to> move on top (%v)", err)
+			notify.Error("[Electron] <ini:failed:to> move HUD to top (%v)", err)
 		}
-
-		forceShow()
 	case wapi.WindowInfoStatusUnknown:
 		notify.Error("[Electron] Unknown Window Info Status")
 		return
@@ -175,17 +175,20 @@ func Hide() {
 
 	notify.Debug("[Electron] Hiding overlay... (hidden:%t)", hidden)
 
-	err := window.Hide()
+	// err := window.Hide()
+	// if err != nil {
+	// 	notify.Error("[Electron] Failed to hide overlay (%v)", err)
+	// }
+	err := window.ExecuteJavaScript(`document.getElementById('hud').style.opacity = 0;`)
 	if err != nil {
-		notify.Error("[Electron] Failed to hide overlay (%v)", err)
+		notify.Warn("[Electron] <ini:failed:set> HUD opacity (%v)", err)
 	}
 }
 
-func Open() error {
+func Open(size image.Point) error {
 	if active {
 		return fmt.Errorf("window is active")
 	}
-	hidden = false
 
 	err := openApp()
 	if err != nil {
@@ -193,7 +196,7 @@ func Open() error {
 		return err
 	}
 
-	err = openWindow()
+	err = openWindow(size)
 	if err != nil {
 		notify.Error("[Electron] <ini:failed:open> (%v)", err)
 		return err
@@ -204,25 +207,34 @@ func Open() error {
 	return nil
 }
 
-func Show() {
+func Show() error {
 	if !hidden {
-		return
+		return nil
 	}
+	hidden = false
 
-	forceShow()
+	notify.Debug("[Electron] Showing overlay...")
+
+	// err :=
+	return window.ExecuteJavaScript(`document.getElementById('hud').style.opacity = 1;`)
+	// if err != nil {
+	// notify.Warn("[Electron] <ini:failed:set> HUD opacity (%v)", err)
+	// }
+
+	// return window.Show()
 }
 
 func closeApp() error {
 	notify.Debug("[Electron] Closing app...")
 	defer notify.Debug("[Electron] Closed app")
 
-	go app.Stop()
-	go app.Close()
-
 	err := app.Quit()
 	if err != nil {
 		return err
 	}
+
+	app.Stop()
+	app.Close()
 
 	return nil
 }
@@ -255,17 +267,6 @@ func (d *debugger) Fatalf(format string, v ...interface{}) { d.ftl(format, v...)
 func (d *debugger) Print(v ...interface{})                 { d.fmt("%s", fmt.Sprint(v...)) }
 func (d *debugger) Printf(format string, v ...interface{}) { d.fmt(format, v...) }
 
-func forceShow() {
-	notify.Debug("[Electron] Showing overlay... (hidden:%t)", hidden)
-
-	hidden = false
-
-	err := window.Show()
-	if err != nil {
-		notify.Error("[Electron] Failed to show (%v)", err)
-	}
-}
-
 func openApp() error {
 	notify.Debug("[Electron] Opening app...")
 	defer notify.Debug("[Electron] Opened app")
@@ -283,6 +284,7 @@ func openApp() error {
 			VersionElectron:    astilectron.DefaultVersionElectron,
 			VersionAstilectron: astilectron.DefaultVersionAstilectron,
 			AcceptTCPTimeout:   time.Hour * 24,
+			ElectronSwitches:   []string{"disable-http-cache"},
 		},
 	)
 	if err != nil {
@@ -309,25 +311,30 @@ func openApp() error {
 	return nil
 }
 
-func openWindow() error {
+func openWindow(size image.Point) error {
 	notify.Debug("[Electron] Opening window...")
 	defer notify.Debug("[Electron] Opened window")
 
 	var err error
 
+	url := html
+	if exe.Debug {
+		url = fmt.Sprintf("%s?debug", url)
+	}
+
 	window, err = app.NewWindow(
-		html,
+		url,
 		&astilectron.WindowOptions{
 			Title: astikit.StrPtr(name),
 			Show:  astikit.BoolPtr(true),
 
-			// Width:  astikit.IntPtr(1280),
-			// Height: astikit.IntPtr(720),
-			Width:  astikit.IntPtr(1920),
-			Height: astikit.IntPtr(1080),
+			Width:  astikit.IntPtr(size.X),
+			Height: astikit.IntPtr(size.Y),
+			// Width:  astikit.IntPtr(1920),
+			// Height: astikit.IntPtr(1080),
 
 			Minimizable: astikit.BoolPtr(true),
-			Resizable:   astikit.BoolPtr(false),
+			Resizable:   astikit.BoolPtr(true),
 			Movable:     astikit.BoolPtr(true),
 			Closable:    astikit.BoolPtr(true),
 			Transparent: astikit.BoolPtr(true),
@@ -351,7 +358,7 @@ func openWindow() error {
 			},
 
 			Custom: &astilectron.WindowCustomOptions{
-				MinimizeOnClose: astikit.BoolPtr(true),
+				MinimizeOnClose: astikit.BoolPtr(false),
 			},
 		},
 	)
@@ -368,7 +375,7 @@ func openWindow() error {
 			errq <- errors.Wrap(err, "overlay window")
 			return
 		}
-		errq <- errors.Wrap(window.Show(), "overlay window")
+		errq <- errors.Wrap(Show(), "show hud")
 	}()
 
 	err = <-errq
@@ -376,5 +383,53 @@ func openWindow() error {
 		return err
 	}
 
+	app.On(astilectron.EventNameWindowEventShow, func(e astilectron.Event) (deleteListener bool) {
+		notify.Debug("[Electron] event, %s", e.Name)
+		return true
+	})
+
 	return nil
+}
+
+func trySetBounds(next wapi.Rectangle, w, h int, force bool) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	errq := make(chan error)
+
+	go func(errq chan error) {
+		now := time.Now()
+		defer func() { fmt.Printf("took %dms\n", time.Since(now).Milliseconds()) }()
+
+		htmlInsetY := int32(0)
+		if !force {
+			htmlInsetY = int32(title.Height)
+		}
+
+		err := window.SetBounds(
+			astilectron.RectangleOptions{
+				PositionOptions: astilectron.PositionOptions{
+					X: astikit.IntPtr(int(next.Left)),
+					Y: astikit.IntPtr(int(next.Top + htmlInsetY)),
+				},
+				SizeOptions: astilectron.SizeOptions{
+					Width:  astikit.IntPtr(w + title.Height),
+					Height: astikit.IntPtr(h + title.Height),
+				},
+			},
+		)
+		if err != nil {
+			errq <- err
+			return
+		}
+
+		close(errq)
+	}(errq)
+
+	select {
+	case err := <-errq:
+		return err
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }

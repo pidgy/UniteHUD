@@ -8,10 +8,11 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/pkg/errors"
+
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/system/wapi"
-	"github.com/pkg/errors"
 )
 
 var (
@@ -149,6 +150,10 @@ func IsOpen() bool {
 	return !Lost()
 }
 
+func Lost() bool {
+	return config.Current.Video.Capture.Window.Lost != ""
+}
+
 func Open() error {
 	go sync.OnceFunc(func() {
 		for ; ; time.Sleep(time.Second * 5) {
@@ -184,44 +189,40 @@ func Open() error {
 	return nil
 }
 
-func Lost() bool {
-	return config.Current.Video.Capture.Window.Lost != ""
-}
+// var reattachAttempts = 0
 
-var attempts = 0
+// func Reattach() error {
+// 	if !Lost() {
+// 		return nil
+// 	}
 
-func Reattach() error {
-	if !Lost() {
-		return nil
-	}
+// 	max := 5
+// 	windows, err := list()
+// 	if err != nil {
+// 		return err
+// 	}
 
-	max := 5
-	windows, err := list()
-	if err != nil {
-		return err
-	}
+// 	for _, win := range windows {
+// 		if win == config.Current.Video.Capture.Window.Lost {
+// 			config.Current.Video.Capture.Window.Name = win
 
-	for _, win := range windows {
-		if win == config.Current.Video.Capture.Window.Lost {
-			config.Current.Video.Capture.Window.Name = win
+// 			notify.Announce("[Window] Found \"%s\" window", config.Current.Video.Capture.Window.Name)
+// 			config.Current.Video.Capture.Window.Lost = ""
+// 			reattachAttempts = 0
 
-			notify.Announce("[Window] Found \"%s\" window", config.Current.Video.Capture.Window.Name)
-			config.Current.Video.Capture.Window.Lost = ""
-			attempts = 0
+// 			return nil
+// 		}
+// 	}
 
-			return nil
-		}
-	}
+// 	reattachAttempts++
+// 	if reattachAttempts == max {
+// 		config.Current.Video.Capture.Window.Name = config.MainDisplay
+// 		config.Current.Video.Capture.Window.Lost = ""
+// 		reattachAttempts = 0
+// 	}
 
-	attempts++
-	if attempts == max {
-		config.Current.Video.Capture.Window.Name = config.MainDisplay
-		config.Current.Video.Capture.Window.Lost = ""
-		attempts = 0
-	}
-
-	return nil
-}
+// 	return nil
+// }
 
 func list() ([]string, error) {
 	lock.Lock()

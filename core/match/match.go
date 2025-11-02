@@ -15,6 +15,15 @@ import (
 	"github.com/pidgy/unitehud/core/template"
 )
 
+const (
+	Duplicate Result = -3
+	Invalid   Result = -2
+	Missed    Result = -1
+	NotFound  Result = 0
+	Found     Result = 1
+	Override  Result = 2
+)
+
 type Match struct {
 	image.Point
 	*template.Template
@@ -25,15 +34,6 @@ type Match struct {
 
 	Value int
 }
-
-const (
-	Duplicate Result = -3
-	Invalid   Result = -2
-	Missed    Result = -1
-	NotFound  Result = 0
-	Found     Result = 1
-	Override  Result = 2
-)
 
 func (m *Match) AsImage(mat gocv.Mat, points int) (image.Image, error) {
 	if config.Current.Advanced.Matching.Disabled.Previews {
@@ -66,6 +66,32 @@ func (m *Match) AsImage(mat gocv.Mat, points int) (image.Image, error) {
 	return crop, nil
 }
 
+func (m *Match) process(matrix gocv.Mat) Result {
+	switch m.Template.Category {
+	case "killed":
+		m.Value = team.Energy.Holding
+		return Found
+	case "scored": // Orange, Purple scoring.
+		crop := m.Team.Crop(m.Point)
+		if crop.Min.X < 0 || crop.Min.Y < 0 || crop.Max.X > matrix.Cols() || crop.Max.Y > matrix.Rows() {
+			return Invalid
+		}
+
+		return m.points(matrix.Region(crop))
+	case "scoring", "game": // Self scoring.
+		// TODO: Do we need to wrap?
+		// return Found, state.EventType(m.Template.Value).Int()
+		fallthrough
+	default:
+		m.Value = m.Template.Value // Use team.Energy.Holding.
+		return Found
+	}
+}
+
+func (m *Match) rectangle() image.Rectangle {
+	return image.Rect(m.Point.X, m.Point.Y, m.Point.X+m.Template.Mat.Cols(), m.Point.Y+m.Template.Mat.Rows())
+}
+
 func Matches(matrix gocv.Mat, img image.Image, templates []*template.Template) (*Match, Result) {
 	return MatchesWithAcceptance(matrix, img, templates, config.Current.Acceptance)
 }
@@ -91,7 +117,7 @@ func MatchesWithAcceptance(matrix gocv.Mat, img image.Image, templates []*templa
 			continue
 		}
 
-		gocv.MatchTemplate(matrix, template.Mat, &results[i], gocv.TmCcoeffNormed, template.Mask)
+		gocv.MatchTemplate(matrix, template.Mat, &results[i], config.DefaultMatchMethod, template.Mask)
 	}
 
 	for i, mat := range results {
@@ -115,30 +141,4 @@ func MatchesWithAcceptance(matrix gocv.Mat, img image.Image, templates []*templa
 	}
 
 	return m, NotFound
-}
-
-func (m *Match) process(matrix gocv.Mat) Result {
-	switch m.Template.Category {
-	case "killed":
-		m.Value = team.Energy.Holding
-		return Found
-	case "scored": // Orange, Purple scoring.
-		crop := m.Team.Crop(m.Point)
-		if crop.Min.X < 0 || crop.Min.Y < 0 || crop.Max.X > matrix.Cols() || crop.Max.Y > matrix.Rows() {
-			return Invalid
-		}
-
-		return m.points(matrix.Region(crop))
-	case "scoring", "game": // Self scoring.
-		// TODO: Do we need to wrap?
-		// return Found, state.EventType(m.Template.Value).Int()
-		fallthrough
-	default:
-		m.Value = m.Template.Value // Use team.Energy.Holding.
-		return Found
-	}
-}
-
-func (m *Match) rectangle() image.Rectangle {
-	return image.Rect(m.Point.X, m.Point.Y, m.Point.X+m.Template.Mat.Cols(), m.Point.Y+m.Template.Mat.Rows())
 }

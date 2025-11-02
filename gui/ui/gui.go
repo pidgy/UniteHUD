@@ -2,7 +2,6 @@ package ui
 
 import (
 	"image"
-	"math"
 	"time"
 	"unsafe"
 
@@ -15,7 +14,7 @@ import (
 	"github.com/pidgy/unitehud/avi/video/monitor"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/stats"
-	app1 "github.com/pidgy/unitehud/exe"
+	"github.com/pidgy/unitehud/exe"
 	"github.com/pidgy/unitehud/gui/is"
 	"github.com/pidgy/unitehud/gui/ux/title"
 	"github.com/pidgy/unitehud/system/process"
@@ -91,7 +90,7 @@ func New() *GUI {
 	notify.Debug("[UI] Taskbar Height: %d", monitor.TaskbarHeight())
 
 	UI = &GUI{
-		window: app.NewWindow(app.Title(app1.Title), app.Decorated(false)),
+		window: app.NewWindow(app.Title(exe.Title), app.Decorated(false)),
 
 		HWND: 0,
 
@@ -133,7 +132,7 @@ func New() *GUI {
 	}
 
 	UI.nav = title.New(
-		app1.Title,
+		exe.Title,
 		UI.minimize,
 		UI.resize,
 		UI.Close,
@@ -153,13 +152,13 @@ func Close() {
 	}
 }
 
+func (g *GUI) Close() {
+	g.next(is.Closing)
+}
+
 func (g *GUI) OnClose(fn func()) *GUI {
 	g.onClose = fn
 	return g
-}
-
-func (g *GUI) Close() {
-	g.next(is.Closing)
 }
 
 func (g *GUI) Open() {
@@ -297,15 +296,15 @@ func (g *GUI) moveWindow(shift image.Point) {
 	}()
 }
 
-func (g *GUI) position() image.Point {
-	r := &wapi.Rect{}
-	wapi.GetWindowRect.Call(g.HWND, uintptr(unsafe.Pointer(r)))
-	return image.Pt(int(r.Left), int(r.Top))
-}
-
 func (g *GUI) next(i is.What) {
 	notify.Debug("[UI] Next state set to \"%s\"", i)
 	is.Now = i
+}
+
+func (g *GUI) position() image.Point {
+	r := &wapi.Rectangle{}
+	wapi.GetWindowRect.Call(g.HWND, uintptr(unsafe.Pointer(r)))
+	return image.Pt(int(r.Left), int(r.Top))
 }
 
 func (g *GUI) proc() {
@@ -318,13 +317,13 @@ func (g *GUI) proc() {
 			peak.ram = process.Usage.RAM.Float64()
 			notify.Replace("[UI] RAM", notify.Warn, "[UI] RAM Usage: %.0fMB", peak.ram)
 		}
-		go stats.RAM(process.Usage.RAM.Float64())
 
 		if process.Usage.CPU.Float64() > peak.cpu+10 {
 			peak.cpu = process.Usage.CPU.Float64()
 			notify.Replace("[UI] CPU Usage", notify.Warn, "[UI] CPU Usage: %.1f%s", peak.cpu, "%")
 		}
-		go stats.CPU(process.Usage.CPU.Float64())
+
+		go stats.Procs(process.Usage.CPU.Float64(), process.Usage.RAM.Float64(), process.Usage.Threads.Float64())
 	}
 }
 
@@ -432,8 +431,4 @@ func (g *GUI) unsetInsetRight(right int) {
 	if g.dimensions.smoothing == g.dimensions.threshold {
 		wapi.MoveWindowNoSize(g.HWND, g.position())
 	}
-}
-
-func max(i, j int) int {
-	return int(math.Max(float64(i), float64(j)))
 }

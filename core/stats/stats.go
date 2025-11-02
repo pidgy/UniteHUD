@@ -27,8 +27,9 @@ var (
 
 	matches = make(map[string]int)
 
-	cpus = []float64{0}
-	rams = []float64{0}
+	cpus    = []float64{0}
+	rams    = []float64{0}
+	threads = []float64{0}
 
 	statsq = make(chan func(), 1024)
 )
@@ -43,6 +44,16 @@ func init() {
 	statsq <- func() {
 		clear()
 	}
+}
+
+func CPUGraph() string {
+	return asciigraph.Plot(cpus,
+		asciigraph.LowerBound(0),
+		asciigraph.UpperBound(100),
+		asciigraph.Height(5),
+		asciigraph.Width(20),
+		asciigraph.Precision(0),
+	)
 }
 
 func Clear() {
@@ -115,29 +126,6 @@ func Counts() map[string]int {
 	}
 
 	return <-fq
-}
-
-func CPU(v float64) {
-	if v < 0 {
-		return
-	}
-	statsq <- func() {
-		if len(cpus) == maxX {
-			cpus = append(cpus[:1], round(v))
-		} else {
-			cpus = append(cpus, round(v))
-		}
-	}
-}
-
-func CPUGraph() string {
-	return asciigraph.Plot(cpus,
-		asciigraph.LowerBound(0),
-		asciigraph.UpperBound(100),
-		asciigraph.Height(5),
-		asciigraph.Width(20),
-		asciigraph.Precision(0),
-	)
 }
 
 func Data() {
@@ -249,20 +237,28 @@ func Lines() []string {
 	return <-lineq
 }
 
-func RAM(v float64) {
-	if v < 0 {
-		return
-	}
-
+func Procs(cpu, ram, thread float64) {
 	statsq <- func() {
-		if v == rams[len(rams)-1] {
-			return
+		if ram > 0 && ram != rams[len(rams)-1] {
+			if len(rams) == maxX {
+				rams = append(rams[:1], round(ram))
+			} else {
+				rams = append(rams, round(ram))
+			}
 		}
 
-		if len(rams) == maxX {
-			rams = append(rams[:1], round(v))
+		if cpu > 0 {
+			if len(cpus) == maxX {
+				cpus = append(cpus[:1], round(cpu))
+			} else {
+				cpus = append(cpus, round(cpu))
+			}
+		}
+
+		if len(threads) == maxX {
+			threads = append(threads[:1], round(thread))
 		} else {
-			rams = append(rams, round(v))
+			threads = append(threads, round(thread))
 		}
 	}
 }
@@ -271,6 +267,16 @@ func RAMGraph() string {
 	return asciigraph.Plot(rams,
 		asciigraph.LowerBound(0),
 		asciigraph.UpperBound(1000),
+		asciigraph.Height(5),
+		asciigraph.Width(20),
+		asciigraph.Precision(0),
+	)
+}
+
+func ThreadsGraph() string {
+	return asciigraph.Plot(threads,
+		asciigraph.LowerBound(0),
+		asciigraph.UpperBound(100),
 		asciigraph.Height(5),
 		asciigraph.Width(20),
 		asciigraph.Precision(0),

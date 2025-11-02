@@ -10,9 +10,10 @@ import (
 	"time"
 
 	"github.com/gen2brain/malgo"
+	"github.com/pkg/errors"
+
 	"github.com/pidgy/unitehud/avi/audio/device"
 	"github.com/pidgy/unitehud/core/notify"
-	"github.com/pkg/errors"
 )
 
 type Device struct {

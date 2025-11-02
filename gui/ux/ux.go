@@ -4,7 +4,7 @@ import "gioui.org/layout"
 
 type (
 	Then struct {
-		T func()
+		Do func()
 	}
 
 	Thener interface {
@@ -16,4 +16,4 @@ type (
 	}
 )
 
-func (t Then) Then() { t.T() }
+func (t Then) Then() { t.Do() }

@@ -8,19 +8,6 @@ import (
 	"github.com/pidgy/unitehud/exe"
 )
 
-type Event struct {
-	EventType
-	time.Time
-	Clock  string
-	Value  int
-	Vetoed bool
-
-	Verified bool
-}
-
-// EventType indicates the result and state of an event.
-type EventType int
-
 // See [EventType.String] for literal descriptions.
 const (
 	Custom EventType = iota - 2
@@ -70,14 +57,130 @@ const (
 	RegidragoSecureOrange
 )
 
+type Event struct {
+	EventType
+	time.Time
+	Clock  string
+	Value  int
+	Vetoed bool
+
+	Verified bool
+}
+
+// EventType indicates the result and state of an event.
+type EventType int
+
 var (
 	Events = []*Event{{EventType: Nothing, Time: exe.Uptime}}
 
 	past = Events
 )
 
+func Add(e EventType, clock string, points int) {
+	event := &Event{
+		EventType: e,
+		Time:      time.Now(),
+		Clock:     clock,
+		Value:     points,
+	}
+
+	Events = append([]*Event{event}, Events...)
+	past = append([]*Event{event}, past...)
+}
+
+func Clear() {
+	Events = []*Event{{EventType: Nothing, Time: exe.Uptime}}
+}
+
+func Dump() (string, bool) {
+	if len(Events) == 0 {
+		return "No event data is available to display...", false
+	}
+
+	str := "Event History"
+	for i := len(Events) - 1; i >= 0; i-- {
+		e := Events[i]
+
+		str = fmt.Sprintf("%s\n%s", str, e.String())
+		if e.Value != -1 {
+			str += fmt.Sprintf(" (%d)", e.Value)
+		}
+		if e.Vetoed {
+			str += " (Vetoed)"
+		}
+		if e.Verified {
+			str += " (Verified)"
+		}
+	}
+
+	return str, true
+}
+
+func (e *Event) Eq(e2 *Event) bool {
+	if e2 == nil {
+		return e == nil
+	}
+
+	return e.EventType == e2.EventType &&
+		e.Value == e2.Value &&
+		e.Vetoed == e2.Vetoed &&
+		e.Verified == e2.Verified
+}
+
+func (e *Event) String() string {
+	s := fmt.Sprintf("[%02d:%02d:%02d] [Event] [%s] %s", e.Time.Hour(), e.Time.Minute(), e.Time.Second(), e.Clock, e.EventType)
+	if e.Value > 0 {
+		s = fmt.Sprintf("%s %d", s, e.Value)
+	}
+	return s
+}
+
+func (e *Event) Strip() string {
+	s := fmt.Sprintf("[%s] %s", e.Clock, e.EventType)
+	if e.Value > 0 {
+		s = fmt.Sprintf("%s %d", s, e.Value)
+	}
+	return s
+}
+
+func (this EventType) Before(that EventType) bool {
+	for i := len(Events) - 1; i >= 0; i-- {
+		switch {
+		case Events[i].EventType == this:
+			return true
+		case Events[i].EventType == that:
+			return false
+		}
+	}
+
+	return false
+}
+
+func (this EventType) Either(those ...EventType) bool {
+	for _, that := range those {
+		if this == that {
+			return true
+		}
+	}
+	return false
+}
+
 func (e EventType) Int() int {
 	return int(e)
+}
+
+func (this EventType) Occured(since time.Duration) *Event {
+	for _, event := range Events {
+		if time.Since(event.Time) > since {
+			return nil
+		}
+
+		if this == event.EventType {
+			return event
+		}
+	}
+
+	return nil
 }
 
 func (e EventType) String() string {
@@ -177,109 +280,6 @@ func (e EventType) String() string {
 	}
 }
 
-func Add(e EventType, clock string, points int) {
-	event := &Event{
-		EventType: e,
-		Time:      time.Now(),
-		Clock:     clock,
-		Value:     points,
-	}
-
-	Events = append([]*Event{event}, Events...)
-	past = append([]*Event{event}, past...)
-}
-
-func Clear() {
-	Events = []*Event{{EventType: Nothing, Time: exe.Uptime}}
-}
-
-func Dump() (string, bool) {
-	if len(Events) == 0 {
-		return "No event data is available to display...", false
-	}
-
-	str := "Event History"
-	for i := len(Events) - 1; i >= 0; i-- {
-		e := Events[i]
-
-		str = fmt.Sprintf("%s\n%s", str, e.String())
-		if e.Value != -1 {
-			str += fmt.Sprintf(" (%d)", e.Value)
-		}
-		if e.Vetoed {
-			str += " (Vetoed)"
-		}
-		if e.Verified {
-			str += " (Verified)"
-		}
-	}
-
-	return str, true
-}
-
-func (e *Event) Eq(e2 *Event) bool {
-	if e2 == nil {
-		return e == nil
-	}
-
-	return e.EventType == e2.EventType &&
-		e.Value == e2.Value &&
-		e.Vetoed == e2.Vetoed &&
-		e.Verified == e2.Verified
-}
-
-func (e *Event) String() string {
-	s := fmt.Sprintf("[%02d:%02d:%02d] [Event] [%s] %s", e.Time.Hour(), e.Time.Minute(), e.Time.Second(), e.Clock, e.EventType)
-	if e.Value > 0 {
-		s = fmt.Sprintf("%s %d", s, e.Value)
-	}
-	return s
-}
-
-func (e *Event) Strip() string {
-	s := fmt.Sprintf("[%s] %s", e.Clock, e.EventType)
-	if e.Value > 0 {
-		s = fmt.Sprintf("%s %d", s, e.Value)
-	}
-	return s
-}
-
-func (this EventType) Before(that EventType) bool {
-	for i := len(Events) - 1; i >= 0; i-- {
-		switch {
-		case Events[i].EventType == this:
-			return true
-		case Events[i].EventType == that:
-			return false
-		}
-	}
-
-	return false
-}
-
-func (this EventType) Either(those ...EventType) bool {
-	for _, that := range those {
-		if this == that {
-			return true
-		}
-	}
-	return false
-}
-
-func (this EventType) Occured(since time.Duration) *Event {
-	for _, event := range Events {
-		if time.Since(event.Time) > since {
-			return nil
-		}
-
-		if this == event.EventType {
-			return event
-		}
-	}
-
-	return nil
-}
-
 func (this EventType) Team() *team.Team {
 	switch this {
 	case SelfScoreIndicator, PreScore, PostScore, Killed, KilledWithPoints, KilledWithoutPoints, HoldingEnergy:
@@ -291,13 +291,6 @@ func (this EventType) Team() *team.Team {
 	default:
 		return team.Game
 	}
-}
-
-func Start() *Event {
-	if len(Events) == 0 {
-		return &Event{}
-	}
-	return Events[0]
 }
 
 func First(e EventType, since time.Duration) *Event {
@@ -317,6 +310,14 @@ func First(e EventType, since time.Duration) *Event {
 		return events[len(events)-1]
 	}
 	return nil
+}
+
+func Idle() time.Duration {
+	if len(Events) < 2 {
+		return 0
+	}
+
+	return time.Since(Events[0].Time)
 }
 
 func Last() *Event {
@@ -397,12 +398,11 @@ func Since(e EventType) time.Duration {
 	return 0
 }
 
-func Idle() time.Duration {
-	if len(Events) < 2 {
-		return 0
+func Start() *Event {
+	if len(Events) == 0 {
+		return &Event{}
 	}
-
-	return time.Since(Events[0].Time)
+	return Events[0]
 }
 
 func Strings(since time.Duration) []string {

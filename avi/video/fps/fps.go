@@ -7,13 +7,6 @@ import (
 	"github.com/pidgy/unitehud/core/notify"
 )
 
-func Milliseconds(fps int) time.Duration {
-	if fps < 1 {
-		fps = 60
-	}
-	return time.Millisecond * time.Duration(float64(1000)/float64(fps))
-}
-
 // Hz handles frames-per-second arithmetic using interval ticks.
 type Hz struct {
 	window  time.Duration
@@ -45,6 +38,13 @@ type LoopOptions struct {
 
 	interval time.Duration
 	syncq    chan bool
+}
+
+func Milliseconds(fps int) time.Duration {
+	if fps < 1 {
+		fps = 60
+	}
+	return time.Millisecond * time.Duration(float64(1000)/float64(fps))
 }
 
 // NewHz will return a new FPS tracker.

@@ -70,8 +70,22 @@ func Image(img image.Image, mat gocv.Mat, crop image.Rectangle, value int, team,
 	return nil
 }
 
-func PNG(img image.Image, file string) error {
-	f, err := os.Create(file)
+func PNG(img image.Image, path string) error {
+	if !strings.HasSuffix(path, ".png") {
+		return fmt.Errorf("%s: invalid path, missing png extension", path)
+	}
+
+	path = filepath.Join(exe.Directory(), saved, path)
+
+	p := strings.Split(path, "/")
+	for i := 1; i < len(p); i++ {
+		err := createDirIfNotExist(strings.Join(p[0:i], "/"))
+		if err != nil {
+			return err
+		}
+	}
+
+	f, err := os.Create(path)
 	if err != nil {
 		return err
 	}
@@ -108,7 +122,7 @@ func Logs(feeds, lines []string, templates map[string]int) error {
 		}
 	}
 
-	return templateStatistics(templates)
+	return saveTemplateStatistics(templates)
 }
 
 func Open() error {
@@ -203,21 +217,7 @@ func name(name, subdir, clock string, value int) string {
 	)
 }
 
-func sortedJSON(r json.RawMessage) json.RawMessage {
-	var i interface{}
-	err := json.Unmarshal(r, &i)
-	if err != nil {
-		return r
-	}
-
-	b, err := json.MarshalIndent(i, "", "    ")
-	if err != nil {
-		return r
-	}
-	return b
-}
-
-func templateStatistics(t map[string]int) error {
+func saveTemplateStatistics(t map[string]int) error {
 	// Append and save statistics from today.
 	today := filepath.Join(exe.Directory(), saved, Directory, templates)
 
@@ -287,4 +287,18 @@ func templateStatistics(t map[string]int) error {
 	}
 
 	return nil
+}
+
+func sortedJSON(r json.RawMessage) json.RawMessage {
+	var i interface{}
+	err := json.Unmarshal(r, &i)
+	if err != nil {
+		return r
+	}
+
+	b, err := json.MarshalIndent(i, "", "    ")
+	if err != nil {
+		return r
+	}
+	return b
 }

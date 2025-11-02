@@ -66,9 +66,11 @@ type projector struct {
 	keybinds keys.Bind
 	tag      any
 
-	rect wapi.Rect
+	rect wapi.Rectangle
 
 	imgDims layout.Dimensions
+
+	ops op.Ops
 }
 
 func (g *GUI) projector(onclose func()) {
@@ -85,7 +87,7 @@ func (g *GUI) projector(onclose func()) {
 	defer ui.nav.Remove(ui.nav.fps)
 	defer ui.nav.Remove(ui.nav.alwaysOnTop)
 
-	err := electron.Open()
+	err := electron.Open(ui.dimensions.size)
 	if err != nil {
 		notify.Error("[UI] Failed to render overlay (%v)", err)
 		return
@@ -122,8 +124,6 @@ func (g *GUI) projector(onclose func()) {
 	ui.window.Perform(system.ActionCenter)
 	ui.window.Perform(system.ActionRaise)
 
-	var ops op.Ops
-
 	fpsLabel := material.Label(ui.nav.Calibri().Theme, 16, "FPS: 60")
 	fpsLabel.Color = nrgba.Red.Color()
 	fpsLabel.Font.Weight = font.SemiBold
@@ -153,7 +153,7 @@ func (g *GUI) projector(onclose func()) {
 				ui.hwnd = event.HWND
 			}
 		case system.FrameEvent:
-			gtx := layout.NewContext(&ops, event)
+			gtx := layout.NewContext(&ui.ops, event)
 
 			if ui.dimensions.fullscreened {
 				ui.nav.Hide = time.Since(ui.hover) > time.Second*2
@@ -276,6 +276,8 @@ func (g *GUI) projector(onclose func()) {
 }
 
 func (ui *projector) fullscreen() {
+	electron.Hide()
+
 	ui.dimensions.fullscreened = !ui.dimensions.fullscreened
 	ui.nav.Hide = ui.dimensions.fullscreened
 
@@ -285,6 +287,7 @@ func (ui *projector) fullscreen() {
 		t = wapi.ThreadExecutionStateDisplayRequired
 
 		ui.window.Option(app.Fullscreen.Option())
+
 	} else {
 		t = wapi.ThreadExecutionStateSystemRequired
 
@@ -303,7 +306,7 @@ func (g *GUI) projectorUI() *projector {
 	ui := &projector{
 		keybinds: keys.New().Bind(keys.NoMod, key.NameEscape, key.NameF11).Bind(key.ModCtrl, "W"),
 		tag:      new(bool),
-		rect:     wapi.Rect{},
+		rect:     wapi.Rectangle{},
 	}
 
 	ui.nav.Widget = title.New(

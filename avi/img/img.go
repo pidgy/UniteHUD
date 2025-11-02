@@ -125,6 +125,14 @@ func NRGBA(mat gocv.Mat) (*image.NRGBA, error) {
 	return img, nil
 }
 
+func (p *PNGPool) Get() *png.EncoderBuffer {
+	return p.sync.Get().(*png.EncoderBuffer)
+}
+
+func (p *PNGPool) Put(e *png.EncoderBuffer) {
+	p.sync.Put(e)
+}
+
 func RGBA(mat gocv.Mat) (*image.RGBA, error) {
 	i, err := mat.ToImage()
 	if err != nil {
@@ -137,12 +145,4 @@ func RGBA(mat gocv.Mat) (*image.RGBA, error) {
 	default:
 		return nil, fmt.Errorf("<ini:failed:convert> %T to an RGBA image", i)
 	}
-}
-
-func (p *PNGPool) Get() *png.EncoderBuffer {
-	return p.sync.Get().(*png.EncoderBuffer)
-}
-
-func (p *PNGPool) Put(e *png.EncoderBuffer) {
-	p.sync.Put(e)
 }

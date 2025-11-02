@@ -26,11 +26,6 @@ type Device struct {
 	reconnects int
 }
 
-func (d *Device) Is(name string) bool { return device.Is(d, name) }
-func (d *Device) IsDefault() bool     { return d.isDefault }
-func (d *Device) IsDisabled() bool    { return d.name == device.Disabled }
-func (d *Device) Name() string        { return d.name }
-
 func New(ctx *malgo.AllocatedContext, name string) (*Device, error) {
 	if name == device.Disabled {
 		return &Device{name: device.Disabled}, nil
@@ -71,6 +66,22 @@ func (d *Device) Close() {
 
 	close(d.closingq)
 	<-d.closedq
+}
+
+func (d *Device) Is(name string) bool {
+	return device.Is(d, name)
+}
+
+func (d *Device) IsDefault() bool {
+	return d.isDefault
+}
+
+func (d *Device) IsDisabled() bool {
+	return d.name == device.Disabled
+}
+
+func (d *Device) Name() string {
+	return d.name
 }
 
 // Playback streams samples from a reader to the sound device.

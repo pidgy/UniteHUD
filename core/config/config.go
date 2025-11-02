@@ -44,10 +44,9 @@ const (
 	DiscordStandby  = -1
 	DiscordDisabled = 0
 	DiscordEnabled  = 1
-)
 
-var (
-	first = false
+	DefaultAcceptance  = .85
+	DefaultMatchMethod = gocv.TmCcoeffNormed
 )
 
 type Config struct {
@@ -186,6 +185,8 @@ type Theme struct {
 var (
 	Current Config
 	cached  Config
+
+	first = false
 )
 
 func Cached() Config {
@@ -222,12 +223,12 @@ func (c *Config) Reload() {
 	validate()
 }
 
-func (c *Config) Report(crash string) {
-	c.Crashed = crash
-}
-
 func (c *Config) Remove() error {
 	return os.Remove(c.File())
+}
+
+func (c *Config) Report(crash string) {
+	c.Crashed = crash
 }
 
 func (c *Config) Reset() error {
@@ -290,7 +291,7 @@ func (c *Config) SaveTemp() (string, error) {
 
 func (c *Config) ScoringOption() image.Rectangle {
 	return image.Rectangle{
-		Min: image.Pt(c.XY.Energy.Min.X, c.XY.Energy.Min.Y),
+		Min: image.Pt(c.XY.Energy.Min.X, c.XY.Energy.Min.Y-75),
 		Max: image.Pt(c.XY.Energy.Max.X, c.XY.Energy.Max.Y-75),
 	}
 }
@@ -307,15 +308,6 @@ func (c *Config) SetDefaultTheme() {
 	c.Theme.BordersActive = nrgba.Active.Alpha(100).Color()
 	c.Theme.ScrollbarBackground = nrgba.Transparent.Color()
 	c.Theme.ScrollbarForeground = nrgba.Discord.Alpha(100).Color()
-}
-
-func (c *Config) Total() (total int) {
-	for k := range c.templates {
-		for _, v := range c.templates[k] {
-			total += len(v)
-		}
-	}
-	return
 }
 
 func (c *Config) TemplateMatchMap() map[string]int {
@@ -380,6 +372,10 @@ func (c *Config) TemplatesSecure(n string) []*template.Template {
 	return c.templates["secure"][n]
 }
 
+func (c *Config) TemplatesPostSecure(n string) []*template.Template {
+	return c.templates["post-secure"][n]
+}
+
 func (c *Config) TemplatesScored(n string) []*template.Template {
 	return c.templates["scored"][n]
 }
@@ -434,6 +430,7 @@ func (c *Config) UnsetHiddenThemes() {
 		notify.System("[Config] Default themes applied to %s", strings.Join(applied, ", "))
 	}
 }
+
 func (c *Config) deviceAsset(dir, file string) string {
 	return filepath.Join(c.deviceAssets(), dir, file)
 }
@@ -473,8 +470,13 @@ func (c *Config) loadDeviceAssets() {
 				filter.New(team.Game, c.deviceAsset(team.Game.Name, "registeel_ally.png"), state.RegisteelSecurePurple.Int(), false),
 				filter.New(team.Game, c.deviceAsset(team.Game.Name, "registeel_enemy.png"), state.RegisteelSecureOrange.Int(), false),
 				filter.New(team.Game, c.deviceAsset(team.Game.Name, "regidrago_ko.png"), state.RegidragoSecureKO.Int(), false),
+			},
+		},
+		"post-secure": {
+			team.Game.Name: {
 				filter.New(team.Game, c.deviceAsset(team.Game.Name, "regidrago_ally.png"), state.RegidragoSecurePurple.Int(), false),
 				filter.New(team.Game, c.deviceAsset(team.Game.Name, "regidrago_enemy.png"), state.RegidragoSecureOrange.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "regidrago_enemy_alt.png"), state.RegidragoSecureOrange.Int(), false),
 			},
 		},
 		"ko": {
@@ -517,6 +519,8 @@ func (c *Config) loadDeviceAssets() {
 				// filter.New(team.Game, c.deviceAsset(team.Game.Name, "post_scoring.png"), state.PostScore.Int(), false),
 				// filter.New(team.Game, c.deviceAsset(team.Game.Name, "press_button_to_score.png"), state.SelfScoreIndicator.Int(), false),
 				filter.New(team.Game, c.deviceAsset(team.Game.Name, "press_button_to_score_alt.png"), state.SelfScoreIndicator.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "press_button_to_score_alt_alt.png"), state.SelfScoreIndicator.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "press_button_to_score_alt_alt_alt.png"), state.SelfScoreIndicator.Int(), false),
 			},
 		},
 		"scored": {
@@ -668,7 +672,7 @@ func Open() error {
 	Current = Config{
 		Scale:      1,
 		Shift:      Shift{},
-		Acceptance: .91,
+		Acceptance: DefaultAcceptance,
 	}
 	defer Current.loadDeviceAssets()
 
@@ -688,7 +692,7 @@ func Open() error {
 	Current.XY.Energy = image.Rect(908, 764, 1008, 864)
 	Current.XY.Scores = image.Rect(500, 50, 1500, 250)
 	Current.XY.Time = image.Rect(846, 0, 1046, 100)
-	Current.XY.Objectives = image.Rect(425, 215, 1200, 325)
+	Current.XY.Objectives = image.Rect(500, 50, 1180, 401)
 	Current.XY.KOs = image.Rect(730, 130, 1160, 310)
 
 	// Default advanced settings.
@@ -760,6 +764,7 @@ func openNotNew(device string) error {
 		return err
 	}
 	first = false
+
 	return nil
 }
 
@@ -815,6 +820,9 @@ func validate() {
 			team.First.Name:  {},
 		},
 		"secure": {
+			team.Game.Name: {},
+		},
+		"post-secure": {
 			team.Game.Name: {},
 		},
 		"points": {

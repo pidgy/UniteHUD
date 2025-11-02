@@ -17,6 +17,11 @@ import (
 	"github.com/pidgy/unitehud/avi/video/monitor"
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/notify"
+	"github.com/pidgy/unitehud/exe"
+)
+
+const (
+	Disabled = "Disabled"
 )
 
 type (
@@ -57,19 +62,13 @@ type (
 	}
 )
 
-const (
-	Disabled = "Disabled"
-)
-
 var (
 	CodecAny  = codec{"any"}
 	CodecXRGB = codec{"XRGB"}
 	CodecNV12 = codec{"NV12"}
 	CodecYUY2 = codec{"YUY2"}
 	CodecMJPG = codec{"MJPG"}
-)
 
-var (
 	active = &dev{}
 
 	required = properties{
@@ -85,10 +84,29 @@ var (
 		apis:    make([]api, int(gocv.VideoCaptureXINE)+1), // Max API value: gocv.VideoCaptureXINE.
 		codecs:  []codec{CodecAny, CodecXRGB, CodecNV12, CodecYUY2, CodecMJPG},
 	}
+
+	captures float32
 )
 
 func init() {
 	active.reset()
+
+	go func() {
+		if !exe.Debug {
+			return
+		}
+
+		last := captures
+		for range time.NewTicker(time.Minute).C {
+			if int(last) == int(captures) {
+				continue
+			}
+
+			notify.Debug("[Device] Captures per second: %.1f", captures/60)
+			last = captures
+			captures = 0
+		}
+	}()
 
 	go func() {
 		for i := gocv.VideoCaptureAny; i < gocv.VideoCaptureXINE; i++ {
@@ -159,17 +177,19 @@ func CaptureRect(r image.Rectangle) (*image.RGBA, error) {
 		return splash.AsRGBA(splash.Invalid()), errors.Errorf("illegal boundaries: %s", r)
 	}
 
+	captures++
+
 	return img.RGBA(mat.Region(r))
 }
 
 func Close() {
 	if active.index == config.NoVideoCaptureDevice {
-		notify.Debug("[Video] Device disabled, ignoring close")
+		notify.Debug("[Device] Device disabled, ignoring close")
 		return
 	}
 
-	notify.Debug("[Video] Closing %s", active.name)
-	defer notify.Debug("[Video] %s closed", active.name)
+	notify.Debug("[Device] Closing %s", active.name)
+	defer notify.Debug("[Device] %s closed", active.name)
 
 	stop()
 
@@ -210,7 +230,7 @@ func Name(index int) string {
 
 	cached.devices[index], err = device.VideoCaptureDeviceName(index)
 	if err != nil {
-		notify.Error("[Video] <ini:failed:find> device %d name (%v)", index, err)
+		notify.Error("[Device] <ini:failed:find> device %d name (%v)", index, err)
 		return fmt.Sprintf("%d", index)
 	}
 
@@ -219,12 +239,12 @@ func Name(index int) string {
 
 func Open() error {
 	if config.Current.Video.Capture.Device.Index == config.NoVideoCaptureDevice {
-		notify.Debug("[Video] Disabled, ignorning call to open")
+		notify.Debug("[Device] Disabled, ignorning call to open")
 		return nil
 	}
 
 	if active.index != config.NoVideoCaptureDevice {
-		notify.Debug("[Video] Open ignored, %s is already active", active.name)
+		notify.Debug("[Device] Open ignored, %s is already active", active.name)
 		return nil
 	}
 
@@ -235,7 +255,7 @@ func Open() error {
 	}
 	if idx != config.Current.Video.Capture.Device.Index {
 		config.Current.Video.Capture.Device.Index = idx
-		notify.Warn("[Video] Invalid index for %s", config.Current.Video.Capture.Device.Name)
+		notify.Warn("[Device] Invalid index for %s", config.Current.Video.Capture.Device.Name)
 	}
 
 	active.index = config.Current.Video.Capture.Device.Index
@@ -243,7 +263,7 @@ func Open() error {
 	active.closeq = make(chan bool)
 	active.closedq = make(chan bool)
 
-	notify.System("[Video] Opening %s", active.name)
+	notify.System("[Device] Opening %s", active.name)
 
 	err := capture()
 	if err != nil {
@@ -293,7 +313,7 @@ func capture() error {
 
 	api := API(config.Current.Video.Capture.Device.API)
 
-	notify.Debug("[Video] Capturing %s with %s API", active.name, config.Current.Video.Capture.Device.API)
+	notify.Debug("[Device] Capturing %s with %s API", active.name, config.Current.Video.Capture.Device.API)
 
 	device, err := gocv.OpenVideoCaptureWithAPI(active.index, api.gocv)
 	if err != nil {
@@ -320,7 +340,7 @@ func capture() error {
 			ok := device.Read(&mat)
 			if !ok {
 				defer active.reset()
-				notify.Error("[Video] <ini:failed:capture> %s", active.name)
+				notify.Error("[Device] <ini:failed:capture> %s", active.name)
 				lock.Unlock()
 				goto close
 			}
@@ -341,7 +361,7 @@ func capture() error {
 	close:
 		err := device.Close()
 		if err != nil {
-			notify.Warn("[Video] <ini:failed:close> %s (%v)", active.name, err)
+			notify.Warn("[Device] <ini:failed:close> %s (%v)", active.name, err)
 		}
 	}()
 
@@ -362,7 +382,7 @@ func (c codec) cc4(vc *gocv.VideoCapture) float64 {
 }
 
 func (d *dev) reset() {
-	notify.Debug("[Video] Resetting %s device", d.name)
+	notify.Debug("[Device] Resetting %s device", d.name)
 
 	lock.Lock()
 	defer lock.Unlock()
@@ -375,7 +395,7 @@ func (d *dev) reset() {
 	config.Current.Video.Capture.Device.API = config.DefaultVideoCaptureAPI
 	config.Current.Video.Capture.Device.Codec = config.DefaultVideoCaptureCodec
 
-	notify.System("[Video] Capturing %s", config.Current.Video.Capture.Window.Name)
+	notify.System("[Device] Capturing %s", config.Current.Video.Capture.Window.Name)
 
 	d.name = Disabled
 	d.index = config.NoVideoCaptureDevice
@@ -392,7 +412,7 @@ func index(name string) int {
 	for i := 0; i < 10; i++ {
 		n, err := device.VideoCaptureDeviceName(i)
 		if err != nil {
-			notify.Error("[Video] <ini:failed:find> %s (%v)", name, err)
+			notify.Error("[Device] <ini:failed:find> %s (%v)", name, err)
 			return config.NoVideoCaptureDevice
 		}
 		if n == name {
@@ -454,14 +474,14 @@ func set(vc *gocv.VideoCapture) error {
 		return errors.Errorf("<ini:failed:set> property: %.0f FPS", required.fps)
 	}
 
-	notify.System("[Video] Configured %s", active.name)
-	notify.System("[Video]   Codec       %s → %s", p.codec, active.applied.codec)
-	notify.System("[Video]   FPS         %.0f FPS → %.0f FPS", p.fps, active.applied.fps)
-	notify.System("[Video]   Resolution  %s → %s", p.resolution, active.applied.resolution)
-	notify.System("[Video]   Backend     %s → %s", p.backend, active.applied.backend)
-	notify.System("[Video]   Bitrate     %.0f kb/s", active.applied.bitrate)
-	notify.System("[Video]   BufferSize  %d", active.applied.buffersize)
-	notify.System("[Video]   RGB         %t → %t", p.rgb, active.applied.rgb)
+	notify.System("[Device] Configured %s", active.name)
+	notify.System("[Device]   Codec       %s → %s", p.codec, active.applied.codec)
+	notify.System("[Device]   FPS         %.0f FPS → %.0f FPS", p.fps, active.applied.fps)
+	notify.System("[Device]   Resolution  %s → %s", p.resolution, active.applied.resolution)
+	notify.System("[Device]   Backend     %s → %s", p.backend, active.applied.backend)
+	notify.System("[Device]   Bitrate     %.0f kb/s", active.applied.bitrate)
+	notify.System("[Device]   BufferSize  %d", active.applied.buffersize)
+	notify.System("[Device]   RGB         %t → %t", p.rgb, active.applied.rgb)
 
 	return nil
 }
@@ -476,7 +496,7 @@ func stop() {
 			}
 			return
 		case <-t.C:
-			notify.Error("[Video] <ini:failed:stop> %s", active.name)
+			notify.Error("[Device] <ini:failed:stop> %s", active.name)
 			return
 		}
 	}

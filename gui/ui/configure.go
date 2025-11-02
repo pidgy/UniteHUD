@@ -37,15 +37,6 @@ import (
 	"github.com/pidgy/unitehud/system/process"
 )
 
-type footer struct {
-	api material.LabelStyle
-	log material.LabelStyle
-	cpu material.LabelStyle
-	ram material.LabelStyle
-	fps material.LabelStyle
-	hz  material.LabelStyle
-}
-
 type configure struct {
 	ops op.Ops
 
@@ -78,6 +69,7 @@ type configure struct {
 			preview  *button.Widget
 			file     *button.Widget
 			reset    *button.Widget
+			lock     *button.Widget
 		}
 	}
 
@@ -109,6 +101,15 @@ type configure struct {
 	tag any
 }
 
+type footer struct {
+	api material.LabelStyle
+	log material.LabelStyle
+	cpu material.LabelStyle
+	ram material.LabelStyle
+	fps material.LabelStyle
+	hz  material.LabelStyle
+}
+
 var (
 	hideTrue  = true
 	hideFalse = false
@@ -127,6 +128,7 @@ func (g *GUI) configure() {
 	defer g.nav.Remove(g.nav.Add(ui.buttons.menu.capture))
 	defer g.nav.Remove(g.nav.Add(ui.buttons.menu.file))
 	defer g.nav.Remove(g.nav.Add(ui.buttons.menu.reset))
+	defer g.nav.Remove(g.nav.Add(ui.buttons.menu.lock))
 	g.nav.Open()
 
 	g.window.Perform(system.ActionRaise)
@@ -165,6 +167,10 @@ func (g *GUI) configure() {
 			decorate.LabelColor(&ui.footer.fps, nrgba.Percent(device.FPS()/float64(config.Current.Video.Capture.Device.FPS)).Color())
 
 			g.nav.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+				if keys.Esc.Up(gtx, ui.tag) != keys.None {
+					ui.buttons.menu.home.Click(ui.buttons.menu.home)
+				}
+
 				if ui.hideOptions {
 					return layout.Flex{
 						Alignment: layout.Baseline,
@@ -432,10 +438,6 @@ func (g *GUI) configure() {
 			// }.Add(gtx.Ops)
 			// area.Pop()
 
-			if keys.Esc.Up(gtx, ui.tag) != keys.None {
-				ui.buttons.menu.home.Click(ui.buttons.menu.home)
-			}
-
 			g.frame(gtx, event)
 		default:
 			notify.Missed(event, "Configure")
@@ -565,6 +567,8 @@ func (g *GUI) configureUI() *configure {
 				return
 			}
 
+			ui.hidePreview = false
+
 			ui.windows.preview = g.preview(ui.groups.areas, func() {
 				ui.windows.preview = nil
 
@@ -644,6 +648,7 @@ func (g *GUI) configureUI() *configure {
 			ui.showCaptureAreas = !ui.showCaptureAreas
 			if ui.showCaptureAreas {
 				this.Text = "⛶×"
+				ui.hidePreview = false
 			} else {
 				this.Text = "⛶"
 			}
@@ -723,6 +728,30 @@ func (g *GUI) configureUI() *configure {
 				}),
 				toastOnNo(this.Deactivate),
 			)
+		},
+	}
+
+	ui.buttons.menu.lock = &button.Widget{
+		Text:            "🔓",
+		Font:            g.nav.NishikiTeki(),
+		Pressed:         nrgba.PastelYellow,
+		TextSize:        unit.Sp(17),
+		TextInsetBottom: -1,
+		Disabled:        false,
+		OnHoverHint:     func() { g.nav.Tip("Lock capture areas to prevent mouse dragging") },
+		Click: func(this *button.Widget) {
+			ui.groups.areas.time.Draggable = !ui.groups.areas.time.Draggable
+			ui.groups.areas.energy.Draggable = !ui.groups.areas.energy.Draggable
+			ui.groups.areas.objective.Draggable = !ui.groups.areas.objective.Draggable
+			ui.groups.areas.pressButtonToScore.Draggable = !ui.groups.areas.pressButtonToScore.Draggable
+			ui.groups.areas.score.Draggable = !ui.groups.areas.score.Draggable
+			ui.groups.areas.state.Draggable = !ui.groups.areas.state.Draggable
+
+			if ui.groups.areas.time.Draggable {
+				this.Text = "🔓"
+			} else {
+				this.Text = "🔒"
+			}
 		},
 	}
 

@@ -449,7 +449,7 @@ func (b *Widget) Layout(gtx layout.Context, content layout.Widget) layout.Dimens
 func (b *Widget) OnClose(fn func(*button.Widget)) ux.Thener {
 	tmp := b.buttons.close.Click
 	b.buttons.close.Click = fn
-	return ux.Then{T: func() { b.buttons.close.Click = tmp }}
+	return ux.Then{Do: func() { b.buttons.close.Click = tmp }}
 }
 
 func (b *Widget) Open() {

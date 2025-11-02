@@ -18,8 +18,8 @@ import (
 )
 
 type part struct {
-	value float64
-	label string
+	float64 float64
+	string  string
 
 	float       float64
 	prev, usage int64
@@ -32,12 +32,13 @@ type process struct {
 }
 
 type stats struct {
-	CPU part
-	RAM part
+	CPU     part
+	RAM     part
+	Threads part
 }
 
 var (
-	Usage = stats{CPU: part{value: 0, label: "CPU 0%"}, RAM: part{value: 0, label: "RAM 0MB"}}
+	Usage = stats{CPU: part{float64: 0, string: "CPU 0%"}, RAM: part{float64: 0, string: "RAM 0MB"}, Threads: part{float64: 0, string: "Routines: 0"}}
 )
 
 func init() {}
@@ -59,11 +60,11 @@ func Open() error {
 }
 
 func (p *part) String() string {
-	return p.label
+	return p.string
 }
 
 func (p *part) Float64() float64 {
-	return p.value
+	return p.float64
 }
 
 func Uptime() string {
@@ -162,8 +163,8 @@ func (p *part) cpu(h syscall.Handle) {
 
 	v := delta / p.float
 	if v > 0 {
-		p.value = v
-		p.label = fmt.Sprintf("CPU %.1f%s", p.value, "%")
+		p.float64 = v
+		p.string = fmt.Sprintf("CPU: %.1f%s", p.float64, "%")
 	}
 }
 
@@ -173,29 +174,29 @@ func (p *part) ram() {
 
 	v := float64(memory.Sys) / 1024 / 1024
 	if v > 1000 {
-		p.value = v / 1000
-		p.label = fmt.Sprintf("RAM %.1fGB", p.value)
+		p.float64 = v / 1000
+		p.string = fmt.Sprintf("RAM: %.1fGB", p.float64)
 	} else {
-		p.value = v
-		p.label = fmt.Sprintf("RAM %.1fMB", p.value)
+		p.float64 = v
+		p.string = fmt.Sprintf("RAM: %.1fMB", p.float64)
+	}
+}
+
+func (p *part) threads() {
+	if n := float64(runtime.NumGoroutine()); n != p.float64 {
+		p.float64 = n
+		p.string = fmt.Sprintf("Threads: %.0fε", p.float64)
+		notify.Debug("[Process] %s", p.string)
 	}
 }
 
 func poll(h syscall.Handle) {
-	// cpus := float64(runtime.NumCPU()) - 2
-	// prev, usage := int64(0), int64(0)
-
 	Usage.CPU.cpu(h)
 
-	num := 0
 	for ; ; time.Sleep(time.Second * 2) {
 		Usage.CPU.cpu(h)
 		Usage.RAM.ram()
-
-		if exe.Debug && runtime.NumGoroutine() != num {
-			num = runtime.NumGoroutine()
-			notify.Debug("[Process] Hyperthreads: %d", num)
-		}
+		Usage.Threads.threads()
 	}
 }
 

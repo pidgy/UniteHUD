@@ -105,15 +105,6 @@ func N(n color.NRGBA) RGBA {
 	return RGBA(n)
 }
 
-func (r RGBA) Color() color.RGBA {
-	return color.RGBA(r)
-}
-
-func (r RGBA) Alpha(a uint8) RGBA {
-	r.A = a
-	return r
-}
-
 func Objective(name string) RGBA {
 	switch name {
 	case "regice":
@@ -126,4 +117,13 @@ func Objective(name string) RGBA {
 		return Regieleki
 	}
 	return System
+}
+
+func (r RGBA) Color() color.RGBA {
+	return color.RGBA(r)
+}
+
+func (r RGBA) Alpha(a uint8) RGBA {
+	r.A = a
+	return r
 }

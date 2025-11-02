@@ -183,11 +183,11 @@ func (p Point) String() string {
 	return fmt.Sprintf("(%d,%d)", p.X, p.Y)
 }
 
-func (r Rect) Eq(r2 Rect) bool {
+func (r Rectangle) Eq(r2 Rectangle) bool {
 	return r.Bottom == r2.Bottom && r.Left == r2.Left && r.Right == r2.Right && r.Top == r2.Top
 }
 
-func (r Rect) String() string {
+func (r Rectangle) String() string {
 	return fmt.Sprintf("[L:%d,T:%d,R:%d,B:%d]", r.Left, r.Top, r.Right, r.Bottom)
 }
 
@@ -235,6 +235,15 @@ func (w Window) Device() (Device, error) {
 	return Device(r), nil
 }
 
+func (w Window) Dimensions() (image.Rectangle, error) {
+	rect, err := w.Rect()
+	if err != nil {
+		return image.Rectangle{}, err
+	}
+
+	return image.Rect(0, 0, int(rect.Right), int(rect.Bottom)), nil
+}
+
 func (w Window) Select(b Bitmap) error {
 	r, _, err := SelectObject.Call(w.HWND(), b.id())
 	if r == 0 {
@@ -243,10 +252,8 @@ func (w Window) Select(b Bitmap) error {
 	return nil
 }
 
-// Visible will determine if a window is "technically visible", see InfoStatus for "actually visible".
-func (w Window) Visible() bool {
-	f, _, _ := IsWindowVisible.Call(w.HWND())
-	return f == 1
+func (w Window) HWND() uintptr {
+	return uintptr(w)
 }
 
 // InfoStatus will return the WindowInfoStatus field from GetWindowInfo, See: WindowInfoStatus.
@@ -259,17 +266,15 @@ func (w Window) InfoStatus() WindowInfoStatus {
 	return info.Status
 }
 
-func (w Window) Dimensions() (image.Rectangle, error) {
-	rect := Rect{}
-
-	_, _, err := GetClientRect.Call(w.HWND(), uintptr(unsafe.Pointer(&rect)))
+func (w Window) Rect() (Rectangle, error) {
+	r := Rectangle{}
+	_, _, err := GetClientRect.Call(w.HWND(), uintptr(unsafe.Pointer(&r)))
 	if err != nil {
 		if err != syscall.Errno(0) {
-			return image.Rectangle{}, err
+			return r, err
 		}
 	}
-
-	return image.Rect(0, 0, int(rect.Right), int(rect.Bottom)), nil
+	return r, nil
 }
 
 func (w Window) Title() (string, error) {
@@ -286,8 +291,10 @@ func (w Window) Title() (string, error) {
 	return syscall.UTF16ToString(b), nil
 }
 
-func (w Window) HWND() uintptr {
-	return uintptr(w)
+// Visible will determine if a window is "technically visible", see InfoStatus for "actually visible".
+func (w Window) Visible() bool {
+	f, _, _ := IsWindowVisible.Call(w.HWND())
+	return f == 1
 }
 
 func (w *WindowPlacement) String() string {
@@ -295,8 +302,8 @@ func (w *WindowPlacement) String() string {
 }
 
 // https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-systemparametersinfoa?redirectedfrom=MSDN
-func WorkArea() (Rect, error) {
-	var r Rect
+func WorkArea() (Rectangle, error) {
+	var r Rectangle
 
 	v, _, err := SystemParametersInfoA.Call(SystemParametersInfoOptions.GetWorkArea, 0, uintptr(unsafe.Pointer(&r)), 0)
 	if v == 0 {

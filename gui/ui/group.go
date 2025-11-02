@@ -182,12 +182,13 @@ func (g *GUI) audios(text float32) *audios {
 func (g *GUI) areas(collection *fonts.Collection) *areas {
 	return &areas{
 		objective: &area.Widget{
-			Text:     "Objectives",
-			TextSize: unit.Sp(13),
-			Theme:    collection.Calibri().Theme,
-			Min:      config.Current.XY.Objectives.Min,
-			Max:      config.Current.XY.Objectives.Max,
-			NRGBA:    area.Locked,
+			Text:      "Objectives",
+			TextSize:  unit.Sp(13),
+			Theme:     collection.Calibri().Theme,
+			Min:       config.Current.XY.Objectives.Min,
+			Max:       config.Current.XY.Objectives.Max,
+			NRGBA:     area.Locked,
+			Draggable: true,
 			Match: func(w *area.Widget) (bool, error) {
 				if !g.Preview {
 					w.NRGBA = area.Locked
@@ -227,12 +228,13 @@ func (g *GUI) areas(collection *fonts.Collection) *areas {
 		},
 
 		energy: &area.Widget{
-			Text:     "Aeos",
-			TextSize: unit.Sp(13),
-			Theme:    collection.Calibri().Theme,
-			Min:      config.Current.XY.Energy.Min,
-			Max:      config.Current.XY.Energy.Max,
-			NRGBA:    area.Locked,
+			Text:      "Aeos",
+			TextSize:  unit.Sp(13),
+			Theme:     collection.Calibri().Theme,
+			Min:       config.Current.XY.Energy.Min,
+			Max:       config.Current.XY.Energy.Max,
+			NRGBA:     area.Locked,
+			Draggable: true,
 			Match: func(w *area.Widget) (bool, error) {
 				if !g.Preview {
 					w.NRGBA = area.Locked
@@ -294,12 +296,13 @@ func (g *GUI) areas(collection *fonts.Collection) *areas {
 		},
 
 		time: &area.Widget{
-			Text:     "Time",
-			TextSize: unit.Sp(12),
-			Theme:    collection.Calibri().Theme,
-			Min:      config.Current.XY.Time.Min,
-			Max:      config.Current.XY.Time.Max,
-			NRGBA:    area.Locked,
+			Text:      "Time",
+			TextSize:  unit.Sp(12),
+			Theme:     collection.Calibri().Theme,
+			Min:       config.Current.XY.Time.Min,
+			Max:       config.Current.XY.Time.Max,
+			NRGBA:     area.Locked,
+			Draggable: true,
 			Match: func(w *area.Widget) (bool, error) {
 				if !g.Preview {
 					w.NRGBA = area.Locked
@@ -317,7 +320,7 @@ func (g *GUI) areas(collection *fonts.Collection) *areas {
 				}
 				defer matrix.Close()
 
-				m, s, k := match.Time(matrix, img)
+				m, s, k := match.Time(matrix)
 				if m+s != 0 {
 					w.NRGBA = area.Match
 					w.Subtext = k
@@ -347,6 +350,7 @@ func (g *GUI) areas(collection *fonts.Collection) *areas {
 			Min:           config.Current.XY.Scores.Min,
 			Max:           config.Current.XY.Scores.Max,
 			NRGBA:         area.Locked,
+			Draggable:     true,
 			Match: func(w *area.Widget) (bool, error) {
 				if !g.Preview {
 					w.NRGBA = area.Locked
@@ -399,10 +403,11 @@ func (g *GUI) areas(collection *fonts.Collection) *areas {
 		state: &area.Widget{
 			Hidden: true,
 
-			Text:    "State",
-			Subtext: match.NotFound.String(),
-			Theme:   collection.Calibri().Theme,
-			NRGBA:   area.Locked.Alpha(0),
+			Text:      "State",
+			Subtext:   match.NotFound.String(),
+			Theme:     collection.Calibri().Theme,
+			NRGBA:     area.Locked.Alpha(0),
+			Draggable: true,
 			Match: func(w *area.Widget) (bool, error) {
 				if !g.Preview {
 					w.NRGBA = area.Locked
@@ -467,6 +472,7 @@ func (g *GUI) areas(collection *fonts.Collection) *areas {
 			Min:           config.Current.ScoringOption().Min,
 			Max:           config.Current.ScoringOption().Max,
 			NRGBA:         area.Locked,
+			Draggable:     true,
 			Match: func(w *area.Widget) (bool, error) {
 				if !g.Preview {
 					w.NRGBA = area.Locked

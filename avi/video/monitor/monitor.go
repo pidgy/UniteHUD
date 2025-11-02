@@ -104,31 +104,9 @@ func CaptureRect(rect image.Rectangle) (*image.RGBA, error) {
 // }, nil
 //}
 
-func TaskbarHeight() int {
-	r, err := wapi.WorkArea()
-	if err != nil {
-		notify.Error("[Video] <ini:failed:find> monitor info: %v", err)
-		return 0
-	}
-
-	return Resolution().Max.Y - int(r.Bottom)
-}
-
 func IsDisplay() bool {
 	_, ok := displays.Load(config.Current.Video.Capture.Window.Name)
 	return ok
-}
-
-func Resolution() image.Rectangle {
-	if IsDisplay() {
-		n, ok := displays.Load(config.Current.Video.Capture.Window.Name)
-		if !ok {
-			return DefaultResolution
-		}
-
-		return screenshot.GetDisplayBounds(n.(int))
-	}
-	return screenshot.GetDisplayBounds(0)
 }
 
 func Open() {
@@ -150,7 +128,7 @@ func Open() {
 		case r.Eq(m):
 			name = config.MainDisplay
 		case i == 0 && r.Dx() > m.Dx() && r.Dy() > m.Dy():
-			notify.Warn("[Video] Rescaling display #%d from %s to %s", i, r, m)
+			notify.Warn("[Monitor] Rescaling display #%d from %s to %s", i, r, m)
 			name = config.MainDisplay
 		case r.Min.X < m.Min.X:
 			leftDisplays++
@@ -165,7 +143,7 @@ func Open() {
 			bottomDisplays++
 			name = display("Bottom", bottomDisplays)
 		default:
-			notify.Error("[Video] <ini:failed:locate> display #%d [%s] relative to %s [%s]", i, r, config.MainDisplay, m)
+			notify.Error("[Monitor] <ini:failed:locate> display #%d [%s] relative to %s [%s]", i, r, config.MainDisplay, m)
 			continue
 		}
 
@@ -175,6 +153,28 @@ func Open() {
 
 	Sources = sourcesTmp
 	displays = displaysTmp
+}
+
+func Resolution() image.Rectangle {
+	if IsDisplay() {
+		n, ok := displays.Load(config.Current.Video.Capture.Window.Name)
+		if !ok {
+			return DefaultResolution
+		}
+
+		return screenshot.GetDisplayBounds(n.(int))
+	}
+	return screenshot.GetDisplayBounds(0)
+}
+
+func TaskbarHeight() int {
+	r, err := wapi.WorkArea()
+	if err != nil {
+		notify.Error("[Monitor] <ini:failed:find> monitor info: %v", err)
+		return 0
+	}
+
+	return Resolution().Max.Y - int(r.Bottom)
 }
 
 func captureFullscreen() (*image.RGBA, error) {

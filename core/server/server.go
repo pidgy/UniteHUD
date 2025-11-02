@@ -28,6 +28,7 @@ import (
 const (
 	Address = "127.0.0.1:17069"
 
+	ObjectiveFinal     = "final" // "rayquaza", "groudon", etc.
 	ObjectiveRegice    = "regice"
 	ObjectiveRegidrago = "regidrago"
 	ObjectiveRegieleki = "regieleki"
@@ -84,25 +85,23 @@ type score struct {
 	Surrendered bool   `json:"surrendered"`
 }
 
-var current = &info{
-	State:   reset(),
-	clients: map[string]time.Time{},
-	mutex:   &sync.Mutex{},
-}
+var (
+	current = &info{
+		State:   reset(),
+		clients: map[string]time.Time{},
+		mutex:   &sync.Mutex{},
+	}
 
-var track struct {
-	ws   []byte
-	http []byte
-}
+	track struct {
+		ws   []byte
+		http []byte
+	}
+)
 
 func Clear() {
 	started := current.State.Ready
 	current.State = reset()
 	current.State.Ready = started
-}
-
-func Clock() string {
-	return fmt.Sprintf("%02d:%02d", current.State.Seconds/60, current.State.Seconds%60)
 }
 
 func Clients() int {
@@ -117,6 +116,10 @@ func Clients() int {
 	}
 
 	return len(current.clients)
+}
+
+func Clock() string {
+	return fmt.Sprintf("%02d:%02d", current.State.Seconds/60, current.State.Seconds%60)
 }
 
 func Game() *State {
@@ -286,10 +289,6 @@ func Open() error {
 	return nil
 }
 
-func listen() {
-	panic(http.ListenAndServe(Address, nil))
-}
-
 func Match() bool {
 	return current.State.InMatch
 }
@@ -307,6 +306,26 @@ func ObjectivesSecured() []Objective {
 
 func Ready() bool {
 	return current.State.Ready
+}
+
+func RegicesSecured(t *team.Team) int {
+	n := 0
+	for _, b := range current.State.Objectives {
+		if b.Name == ObjectiveRegice && b.Team == t.Name {
+			n++
+		}
+	}
+	return n
+}
+
+func RegidragosSecured(t *team.Team) int {
+	n := 0
+	for _, b := range current.State.Objectives {
+		if b.Name == ObjectiveRegidrago && b.Team == t.Name {
+			n++
+		}
+	}
+	return n
 }
 
 func RegielekiAdv() *team.Team {
@@ -330,26 +349,6 @@ func RegielekiAdv() *team.Team {
 	default:
 		return team.None
 	}
-}
-
-func RegicesSecured(t *team.Team) int {
-	n := 0
-	for _, b := range current.State.Objectives {
-		if b.Name == ObjectiveRegice && b.Team == t.Name {
-			n++
-		}
-	}
-	return n
-}
-
-func RegidragosSecured(t *team.Team) int {
-	n := 0
-	for _, b := range current.State.Objectives {
-		if b.Name == ObjectiveRegidrago && b.Team == t.Name {
-			n++
-		}
-	}
-	return n
 }
 
 func Regielekis() []string {
@@ -476,6 +475,16 @@ func SetEnergy(b int) {
 	current.State.Energy = b
 }
 
+func SetFinalObjective(t *team.Team) {
+	current.State.FinalObjective = t.Name
+
+	current.Objectives = append(current.Objectives, Objective{
+		Team: t.Name,
+		Name: ObjectiveFinal,
+		Time: time.Now().Unix(),
+	})
+}
+
 func SetKO(t *team.Team) {
 	switch t.Name {
 	case team.Purple.Name:
@@ -493,8 +502,12 @@ func SetMatchStopped() {
 	current.State.InMatch = false
 }
 
-func SetFinalObjective(t *team.Team) {
-	current.State.FinalObjective = t.Name
+func SetRegice(t *team.Team) {
+	current.Objectives = append(current.Objectives, Objective{
+		Team: t.Name,
+		Name: ObjectiveRegice,
+		Time: time.Now().Unix(),
+	})
 }
 
 func SetRegidrago(t *team.Team) {
@@ -505,15 +518,13 @@ func SetRegidrago(t *team.Team) {
 	})
 }
 
-func SetRegice(t *team.Team) {
+func SetRegieleki(t *team.Team) {
 	current.Objectives = append(current.Objectives, Objective{
 		Team: t.Name,
-		Name: ObjectiveRegice,
+		Name: ObjectiveRegieleki,
 		Time: time.Now().Unix(),
 	})
-}
 
-func SetRegieleki(t *team.Team) {
 	for i, t2 := range current.Regilekis {
 		if t2 == team.None.Name {
 			current.State.Regilekis[i] = t.Name
@@ -560,6 +571,16 @@ func SetRegisteel(t *team.Team) {
 	})
 }
 
+func SetNotReady() {
+	current.State.Ready = false
+	state.Add(state.ServerStopped, Clock(), -1)
+}
+
+func SetReady() {
+	current.State.Ready = true
+	state.Add(state.ServerStarted, Clock(), -1)
+}
+
 func SetScore(t *team.Team, v int) {
 	s := score{
 		Team:  t.Name,
@@ -596,16 +617,6 @@ func SetScoreSurrendered(t *team.Team) {
 	}
 }
 
-func SetReady() {
-	current.State.Ready = true
-	state.Add(state.ServerStarted, Clock(), -1)
-}
-
-func SetNotReady() {
-	current.State.Ready = false
-	state.Add(state.ServerStopped, Clock(), -1)
-}
-
 func SetTime(minutes, seconds int64) {
 	current.State.lastSecondsUpdate = time.Now()
 
@@ -633,6 +644,10 @@ func (i *info) client(r *http.Request) time.Time {
 	i.clients[key] = time.Now()
 
 	return i.clients[key]
+}
+
+func listen() {
+	panic(http.ListenAndServe(Address, nil))
 }
 
 func metrics() {
