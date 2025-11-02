@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"time"
 
+	"gioui.org/app"
 	"gioui.org/io/pointer"
 	"gioui.org/io/system"
 	"gioui.org/layout"
@@ -145,6 +146,8 @@ func (g *GUI) configure() {
 		case system.DestroyEvent:
 			ui.buttons.menu.home.Click(ui.buttons.menu.home)
 			g.next(is.Closing)
+		case app.ViewEvent:
+			g.HWND = event.HWND
 		case system.FrameEvent:
 			gtx := layout.NewContext(&ui.ops, event)
 			op.InvalidateOp{At: gtx.Now}.Add(gtx.Ops)
@@ -535,7 +538,7 @@ func (g *GUI) configureUI() *configure {
 		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
-			if ui.windows.settings.open() {
+			if ui.windows.settings.isOpen() {
 				ui.windows.settings.close()
 				return
 			}

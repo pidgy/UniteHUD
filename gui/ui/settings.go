@@ -30,6 +30,7 @@ import (
 	"github.com/pidgy/unitehud/system/desktop/clicked"
 	"github.com/pidgy/unitehud/system/discord"
 	"github.com/pidgy/unitehud/system/ini"
+	"github.com/pidgy/unitehud/system/wapi"
 )
 
 type section struct {
@@ -48,8 +49,7 @@ type settings struct {
 	bar *title.Widget
 
 	windows struct {
-		parent *GUI
-		this   *app.Window
+		this *app.Window
 	}
 
 	state struct {
@@ -85,8 +85,8 @@ func (g *GUI) settings(onclose func()) *settings {
 	go func() {
 		defer onclose()
 
-		ui.windows.parent.setInsetRight(ui.dimensions.width)
-		defer ui.windows.parent.unsetInsetRight(ui.dimensions.width)
+		g.setInsetRight(ui.dimensions.width)
+		defer g.unsetInsetRight(ui.dimensions.width)
 
 		ui.state.open = true
 		defer func() {
@@ -112,7 +112,7 @@ func (g *GUI) settings(onclose func()) *settings {
 				return
 			case app.ViewEvent:
 				ui.hwnd = event.HWND
-				ui.windows.parent.attachWindowRight(ui.hwnd, ui.dimensions.width)
+				g.attachWindowRight(ui.hwnd, ui.dimensions.width)
 			case system.FrameEvent:
 				if !ui.state.open {
 					go ui.windows.this.Perform(system.ActionClose)
@@ -120,7 +120,18 @@ func (g *GUI) settings(onclose func()) *settings {
 
 				if ui.dimensions.resize {
 					ui.dimensions.resize = false
-					ui.windows.parent.attachWindowRight(ui.hwnd, ui.dimensions.width)
+					g.attachWindowRight(ui.hwnd, ui.dimensions.width)
+				}
+
+				if g.HWND != 0 {
+					switch wapi.Window(g.HWND).InfoStatus() {
+					case wapi.WindowInfoStatusNotVisible:
+						// ui.windows.this.Perform(system.ActionMinimize)
+					case wapi.WindowInfoStatusVisible:
+						if wapi.Window(ui.hwnd).InfoStatus() == wapi.WindowInfoStatusNotVisible {
+							ui.windows.this.Perform(system.ActionRaise)
+						}
+					}
 				}
 
 				gtx := layout.NewContext(&ui.ops, event)
@@ -151,8 +162,6 @@ func (g *GUI) settingsUI() *settings {
 	ui.dimensions.width = 350
 	ui.dimensions.height = 700
 	ui.dimensions.resize = true
-
-	ui.windows.parent = g
 
 	ui.bar = title.New(
 		"Settings",
@@ -332,6 +341,15 @@ func (g *GUI) settingsUI() *settings {
 			Radio:    true,
 			TextSize: 12,
 			Items: []*checklist.Item{
+				{
+					Text: "30 FPS",
+					Checked: widget.Bool{
+						Value: false,
+					},
+					Callback: func(this *checklist.Item) {
+						config.Current.Video.Capture.Device.FPS = 30
+					},
+				},
 				{
 					Text: "60 FPS",
 					Checked: widget.Bool{
@@ -813,7 +831,7 @@ func (s *settings) fill() layout.FlexChild {
 	})
 }
 
-func (s *settings) open() bool {
+func (s *settings) isOpen() bool {
 	return s != nil
 }
 
@@ -821,8 +839,4 @@ func (s *settings) resize() {
 	if s != nil {
 		s.dimensions.resize = true
 	}
-}
-
-func (s *settings) spacer(gtx layout.Context) layout.Dimensions {
-	return layout.Inset{Bottom: 10}.Layout(gtx, decorate.Border)
 }

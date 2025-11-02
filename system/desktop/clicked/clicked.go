@@ -7,13 +7,6 @@ type Action struct {
 }
 
 var (
-	VisitWebsite = Action{
-		then: toast.Action{
-			Type:      toast.Protocol,
-			Content:   "Download",
-			Arguments: "https://unitehud.dev",
-		},
-	}
 	OpenUniteHUD = Action{
 		then: toast.Action{
 			Type:      toast.Foreground,
@@ -21,11 +14,20 @@ var (
 			Arguments: "",
 		},
 	}
+
 	ViewDetails = Action{
 		then: toast.Action{
 			Type:      toast.Foreground,
 			Content:   "View Details",
 			Arguments: "UniteHUD.exe",
+		},
+	}
+
+	VisitWebsite = Action{
+		then: toast.Action{
+			Type:      toast.Protocol,
+			Content:   "Download",
+			Arguments: "https://unitehud.dev",
 		},
 	}
 )

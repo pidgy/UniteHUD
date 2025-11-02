@@ -22,6 +22,14 @@ func New(f filter.Filter, m gocv.Mat, category, subcategory string) *Template {
 	}
 }
 
+func Collection(t ...[]*Template) []*Template {
+	c := []*Template{}
+	for _, p := range t {
+		c = append(c, p...)
+	}
+	return c
+}
+
 func (t *Template) AsTransparent() *Template {
 	gocv.CvtColor(t.Mat, &t.Mask, gocv.ColorBGRAToBGR)
 	return t

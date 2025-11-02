@@ -23,6 +23,7 @@ import (
 	"github.com/pidgy/unitehud/core/server"
 	"github.com/pidgy/unitehud/core/state"
 	"github.com/pidgy/unitehud/core/team"
+	"github.com/pidgy/unitehud/core/template"
 	"github.com/pidgy/unitehud/gui/ux/area"
 	"github.com/pidgy/unitehud/gui/ux/checklist"
 	"github.com/pidgy/unitehud/system/lang"
@@ -378,18 +379,19 @@ func (g *GUI) areas(collection *fonts.Collection) *areas {
 						return true, nil
 					case match.NotFound:
 						w.NRGBA = area.Miss
-						w.Subtext = fmt.Sprintf("%s", r.String())
+						w.Subtext = r.String()
 					case match.Missed:
 						w.NRGBA = nrgba.DarkerYellow.Alpha(0x99)
 						w.Subtext = fmt.Sprintf("%d?", m.Value)
 					case match.Invalid:
 						w.NRGBA = area.Miss
-						w.Subtext = fmt.Sprintf("%s", r.String())
+						w.Subtext = r.String()
 					}
 				}
 
 				return false, nil
 			},
+
 			Cooldown: team.Purple.Delay,
 
 			Capture: &area.Capture{
@@ -425,9 +427,7 @@ func (g *GUI) areas(collection *fonts.Collection) *areas {
 				}
 				defer matrix.Close()
 
-				templates := append(config.Current.TemplatesStarting(), append(config.Current.TemplatesEnding(), config.Current.TemplatesSurrender()...)...)
-
-				m, r := match.Matches(matrix, img, templates)
+				m, r := match.Matches(matrix, img, template.Collection(config.Current.TemplatesStarting(), config.Current.TemplatesEnding(), config.Current.TemplatesSurrender()))
 				if r == match.Found {
 					w.Subtext = state.EventType(m.Value).String()
 					w.NRGBA = area.Match
@@ -458,8 +458,8 @@ func (g *GUI) areas(collection *fonts.Collection) *areas {
 			Capture: &area.Capture{
 				Option:      "State",
 				File:        "state_area.png",
-				Base:        video.StateArea(),
-				DefaultBase: video.StateArea(),
+				Base:        config.Current.XY.States,
+				DefaultBase: config.Current.XY.States,
 			},
 		},
 
@@ -469,8 +469,8 @@ func (g *GUI) areas(collection *fonts.Collection) *areas {
 			Text:          "Self-Score",
 			TextAlignLeft: true,
 			Theme:         collection.Calibri().Theme,
-			Min:           config.Current.ScoringOption().Min,
-			Max:           config.Current.ScoringOption().Max,
+			Min:           config.Current.XY.SelfScore.Min,
+			Max:           config.Current.XY.SelfScore.Max,
 			NRGBA:         area.Locked,
 			Draggable:     true,
 			Match: func(w *area.Widget) (bool, error) {
@@ -506,8 +506,8 @@ func (g *GUI) areas(collection *fonts.Collection) *areas {
 			Capture: &area.Capture{
 				Option:      "Self-Score",
 				File:        "self_score_area.png",
-				Base:        config.Current.ScoringOption(),
-				DefaultBase: config.Current.ScoringOption(),
+				Base:        config.Current.XY.SelfScore,
+				DefaultBase: config.Current.XY.SelfScore,
 			},
 		},
 	}

@@ -65,7 +65,7 @@ var (
 		NRGBA:     nrgba.White,
 		Duplicate: duplicate.New(-1, gocv.NewMat(), gocv.NewMat()),
 
-		Delay:      time.Second * 2,
+		Delay:      time.Second,
 		Acceptance: .8,
 	}
 

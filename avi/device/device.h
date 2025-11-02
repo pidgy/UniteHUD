@@ -48,19 +48,20 @@ extern "C"
   free(x);                                                                     \
   x = NULL
 
-typedef struct __props
+typedef struct _props
 {
 private:
-  IPropertyBag* _bag = NULL;
-  IEnumMoniker* _enum = NULL;
-  IMoniker* _moniker = NULL;
-  ICreateDevEnum* _dev = NULL;
-  HRESULT _result = -1;
+  IPropertyBag* propertyBag = NULL;
+  IEnumMoniker* enumMoniker = NULL;
+  IMoniker* moniker = NULL;
+  ICreateDevEnum* devEnum = NULL;
+  HRESULT hresult = -1;
 
   template<class T>
   void _release(T** ppT...)
   {
-    if (*ppT) {
+    if (*ppT) 
+    {
       (*ppT)->Release();
       *ppT = NULL;
       return;
@@ -69,33 +70,35 @@ private:
 
   void _failed()
   {
-    if (SUCCEEDED(_result)) {
-      _result = -1;
+    if (SUCCEEDED(hresult)) 
+    {
+      hresult = -1;
     }
   }
 
 public:
   operator bool() const
   {
-    return this && _bag && _enum && _moniker && SUCCEEDED(_result);
+    return this && propertyBag && enumMoniker && moniker && SUCCEEDED(hresult);
   }
 
-  ~__props()
+  ~_props()
   {
-    _release(&_moniker);
-    _release(&_enum);
-    _release(&_bag);
-    _release(&_dev);
+    _release(&moniker);
+    _release(&enumMoniker);
+    _release(&propertyBag);
+    _release(&devEnum);
 
     CoUninitialize();
   }
 
-  __props(int index, DeviceType type)
+  _props(int index, DeviceType type)
   {
-    ULONG n;
+    ULONG num;
     GUID guid;
 
-    switch (type) {
+    switch (type) 
+    {
       case DeviceTypeAudioCapture:
         guid = CLSID_AudioInputDeviceCategory;
         break;
@@ -108,43 +111,44 @@ public:
 
     CoInitializeEx(NULL, COINIT_SPEED_OVER_MEMORY);
 
-    _result = CoCreateInstance(
-      CLSID_SystemDeviceEnum, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&_dev));
-    if (FAILED(_result)) {
-      goto failed;
-    }
-
-    _result = _dev->CreateClassEnumerator(guid, &_enum, 0);
-    if (FAILED(_result)) 
-    {
-      goto failed;
-    }
-    if (_result != S_OK) 
+    hresult = CoCreateInstance(CLSID_SystemDeviceEnum, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&devEnum));
+    if (FAILED(hresult)) 
     {
       goto failed;
     }
 
-    for (int i = 0; i <= index; i++) {
-      _result = _enum->Next(1, &_moniker, &n);
-      if (FAILED(_result)) {
+    hresult = devEnum->CreateClassEnumerator(guid, &enumMoniker, 0);
+    if (hresult != S_OK) 
+    {
+      goto failed;
+    }
+
+    for (int i = 0; i <= index; i++) 
+    {
+      hresult = enumMoniker->Next(1, &moniker, &num);
+      if (FAILED(hresult)) 
+      {
         goto failed;
       }
     }
-    if (n != 1) {
+    if (num != 1) 
+    {
       goto failed;
     }
 
-    _result = _moniker->BindToStorage(0, 0, IID_PPV_ARGS(&_bag));
-    if (FAILED(_result)) {
+    hresult = moniker->BindToStorage(0, 0, IID_PPV_ARGS(&propertyBag));
+    if (FAILED(hresult)) 
+    {
       goto failed;
     }
 
     return;
+
   failed:
     _failed();
   }
 
-  HRESULT result() { return _result; }
+  HRESULT result() { return hresult; }
 
   LONG int32(LPCOLESTR name)
   {
@@ -153,7 +157,8 @@ public:
 
     VariantInit(&v);
 
-    if (SUCCEEDED(_bag->Read(name, &v, NULL))) {
+    if (SUCCEEDED(propertyBag->Read(name, &v, NULL))) 
+    {
       l = v.lVal;
     }
 
@@ -169,7 +174,8 @@ public:
 
     VariantInit(&v);
 
-    if (SUCCEEDED(_bag->Read(name, &v, NULL))) {
+    if (SUCCEEDED(propertyBag->Read(name, &v, NULL)))
+    {
       UINT l = SysStringByteLen(v.bstrVal);
       s = (LPSTR)calloc(l, sizeof(char));
       snprintf(s, l, "%S", v.bstrVal);
@@ -180,29 +186,31 @@ public:
     return s;
   }
 
-} _props;
+} props;
 
 static int
-_deviceInit(Device* device, int index, DeviceType type)
+cDeviceInit(Device* device, int index, DeviceType type)
 {
-  _props props(index, type);
-  if (!props) {
-    return props.result();
+  props p(index, type);
+  if (!p) 
+  {
+    return -1;
   }
 
-  device->Name = props.string(L"FriendlyName");
-  device->Path = props.string(L"DevicePath");
-  device->WaveInID = props.int32(L"WaveInID");
-  device->Description = props.string(L"Description");
+  device->Name = p.string(L"FriendlyName");
+  device->Path = p.string(L"DevicePath");
+  device->WaveInID = p.int32(L"WaveInID");
+  device->Description = p.string(L"Description");
 
-  return props.result();
+  return p.result();
 }
 
 static char*
-_deviceProp(int index, DeviceType type, LPCOLESTR prop)
+cDeviceProp(int index, DeviceType type, LPCOLESTR prop)
 {
-  _props props(index, type);
-  if (!props) {
+  props props(index, type);
+  if (!props) 
+  {
     return NULL;
   }
 

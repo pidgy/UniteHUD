@@ -6,7 +6,6 @@ import (
 	"github.com/pidgy/unitehud/avi/img/splash"
 	"github.com/pidgy/unitehud/avi/video/device"
 	"github.com/pidgy/unitehud/avi/video/monitor"
-	"github.com/pidgy/unitehud/avi/video/window"
 	"github.com/pidgy/unitehud/core/notify"
 )
 
@@ -24,8 +23,8 @@ func Active(i Input, name string) bool {
 		return device.IsActive() && (name == device.ActiveName() || name == "")
 	case Monitor:
 		return !device.IsActive() && (monitor.Active(name) || name == "")
-	case Window:
-		return !device.IsActive() && window.IsOpen()
+	// case Window:
+	// 	return !device.IsActive() && window.IsOpen()
 	default:
 		return false
 	}
@@ -36,16 +35,18 @@ func Capture() (img *image.RGBA, err error) {
 		return device.Capture()
 	}
 
-	if monitor.IsDisplay() {
-		return monitor.Capture()
-	}
+	return monitor.Capture()
 
-	img, err = window.Capture()
-	if err != nil {
-		return monitor.Capture()
-	}
+	// if monitor.IsDisplay() {
+	// 	return monitor.Capture()
+	// }
 
-	return
+	// img, err = window.Capture()
+	// if err != nil {
+	// 	return monitor.Capture()
+	// }
+
+	// return
 }
 
 func CaptureRect(rect image.Rectangle) (img *image.RGBA, err error) {
@@ -53,11 +54,13 @@ func CaptureRect(rect image.Rectangle) (img *image.RGBA, err error) {
 		return device.CaptureRect(rect)
 	}
 
-	if monitor.IsDisplay() {
-		return monitor.CaptureRect(rect)
-	}
+	return monitor.CaptureRect(rect)
 
-	return window.Capture()
+	// if monitor.IsDisplay() {
+	// 	return monitor.CaptureRect(rect)
+	// }
+
+	// return window.Capture()
 }
 
 func Close() {
@@ -73,9 +76,9 @@ func Open() error {
 	return device.Open()
 }
 
-func Windows() []string {
-	return window.Sources
-}
+// func Windows() []string {
+// 	return window.Sources
+// }
 
 func Screens() []string {
 	return monitor.Sources
@@ -87,10 +90,15 @@ func StateArea() image.Rectangle {
 		notify.Error("[Video] <ini:failed:capture> area for state events (%v)", err)
 		return image.Rect(0, 0, 0, 0)
 	}
+
 	if img == nil {
 		img = splash.DeviceRGBA()
+
 	}
 
 	b := img.Bounds()
-	return image.Rect(b.Max.X/3, 0, b.Max.X-b.Max.X/3, b.Max.Y/2)
+	r := image.Rect(b.Max.X/3, 0, b.Max.X-b.Max.X/3, b.Max.Y/2)
+
+	println(r.String())
+	return r
 }

@@ -19,6 +19,7 @@ import (
 	"github.com/pidgy/unitehud/core/state"
 	"github.com/pidgy/unitehud/core/stats/history"
 	"github.com/pidgy/unitehud/core/team"
+	"github.com/pidgy/unitehud/core/template"
 	"github.com/pidgy/unitehud/exe"
 	"github.com/pidgy/unitehud/system/desktop"
 	"github.com/pidgy/unitehud/system/desktop/clicked"
@@ -363,7 +364,7 @@ func Scores(by string) {
 				continue
 			}
 
-			matrix, img, err := capture(config.Current.ScoringOption())
+			matrix, img, err := capture(config.Current.XY.SelfScore)
 			if err != nil {
 				notify.Error("[Detect] [%s] [Self] <ini:failed:capture> energy area (%v)", server.Clock(), err)
 				matrix.Close()
@@ -468,10 +469,8 @@ func Scores(by string) {
 }
 
 func States() {
-	area := image.Rectangle{}
-
 	starting := config.Current.TemplatesStarting()
-	ending := append(config.Current.TemplatesEnding(), config.Current.TemplatesSurrender()...)
+	ending := template.Collection(config.Current.TemplatesEnding(), config.Current.TemplatesSurrender())
 
 	for every(time.Second) {
 		curr := starting
@@ -479,11 +478,7 @@ func States() {
 			curr = ending
 		}
 
-		if area.Empty() {
-			area = video.StateArea()
-		}
-
-		matrix, img, err := capture(area)
+		matrix, img, err := capture(config.Current.XY.States)
 		if err != nil {
 			notify.Error("[Detect] <ini:failed:capture> state area (%v)", err)
 			matrix.Close()
@@ -495,6 +490,7 @@ func States() {
 			matrix.Close()
 			continue
 		}
+
 		state.Add(state.EventType(m.Template.Value), server.Clock(), -1)
 
 		switch e := state.EventType(m.Value); e {
@@ -574,7 +570,7 @@ func States() {
 				// Self score and objective results.
 				notify.Feed(team.Self.NRGBA, "[Detect] [%s] %d", team.Self, self)
 				if !config.Current.Advanced.Notifications.Disabled.MatchStopped {
-					pwin, owin := "", ""
+					pwin, owin := "(Tie)", "(Tie)"
 					if p > o {
 						pwin = "(Won)"
 					} else if o > p {

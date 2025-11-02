@@ -154,6 +154,8 @@ type Config struct {
 		Time       image.Rectangle
 		Objectives image.Rectangle
 		KOs        image.Rectangle
+		SelfScore  image.Rectangle
+		States     image.Rectangle
 	}
 
 	// Unsaved configurations.
@@ -287,13 +289,6 @@ func (c *Config) SaveTemp() (string, error) {
 	}
 
 	return path, nil
-}
-
-func (c *Config) ScoringOption() image.Rectangle {
-	return image.Rectangle{
-		Min: image.Pt(c.XY.Energy.Min.X, c.XY.Energy.Min.Y-75),
-		Max: image.Pt(c.XY.Energy.Max.X, c.XY.Energy.Max.Y-75),
-	}
 }
 
 func (c *Config) SetDefaultTheme() {
@@ -694,6 +689,8 @@ func Open() error {
 	Current.XY.Time = image.Rect(846, 0, 1046, 100)
 	Current.XY.Objectives = image.Rect(500, 50, 1180, 401)
 	Current.XY.KOs = image.Rect(730, 130, 1160, 310)
+	Current.XY.SelfScore = image.Rect(925, 750, 1000, 800)
+	Current.XY.States = image.Rect(640, 0, 1280, 540)
 
 	// Default advanced settings.
 	Current.Advanced.Notifications.Muted = false // Notifications.

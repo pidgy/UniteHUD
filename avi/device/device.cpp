@@ -11,17 +11,17 @@ DeviceFree(Device* device)
 int
 DeviceInit(Device* device, int index, DeviceType type)
 {
-  return _deviceInit(device, index, type);
+  return cDeviceInit(device, index, type);
 }
 
 char*
 DeviceName(int index, DeviceType type)
 {
-  return _deviceProp(index, type, L"FriendlyName");
+  return cDeviceProp(index, type, L"FriendlyName");
 }
 
 char*
 DevicePath(int index, DeviceType type)
 {
-  return _deviceProp(index, type, L"DevicePath");
+  return cDeviceProp(index, type, L"DevicePath");
 }

@@ -398,9 +398,6 @@ func trySetBounds(next wapi.Rectangle, w, h int, force bool) error {
 	errq := make(chan error)
 
 	go func(errq chan error) {
-		now := time.Now()
-		defer func() { fmt.Printf("took %dms\n", time.Since(now).Milliseconds()) }()
-
 		htmlInsetY := int32(0)
 		if !force {
 			htmlInsetY = int32(title.Height)
