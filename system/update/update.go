@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/go-version"
 
 	"github.com/pidgy/unitehud/core/notify"
+	"github.com/pidgy/unitehud/core/rgba/nrgba"
 	"github.com/pidgy/unitehud/exe"
 	"github.com/pidgy/unitehud/system/desktop"
 	"github.com/pidgy/unitehud/system/desktop/clicked"
@@ -81,6 +82,6 @@ func Check() {
 	}
 
 	for _, n := range q.News {
-		notify.Announce("[News] %s", n)
+		notify.Feed(nrgba.Highlight, "[News] %s", n)
 	}
 }
