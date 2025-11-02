@@ -1,7 +1,6 @@
 package split
 
 import (
-	"fmt"
 	"image"
 
 	"gioui.org/io/pointer"
@@ -104,9 +103,6 @@ func (h *Horizontal) Layout(gtx layout.Context, top, bottom layout.Widget) layou
 				if h.Ratio > h.base {
 					h.Ratio = h.base
 				}
-
-				fmt.Printf("%.5f\n", h.Ratio+deltaRatio)
-
 			case pointer.Release:
 				fallthrough
 			case pointer.Cancel:

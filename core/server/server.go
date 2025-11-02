@@ -173,9 +173,7 @@ func Open() error {
 		defer fps.NewLoop(&fps.LoopOptions{
 			FPS: 120,
 			On: func(min, max, avg time.Duration) (close bool) {
-				if exe.Debug {
-					defer fmt.Printf("HTTP /stream min=%s, max=%s, avg=%s\n", min, max, avg)
-				}
+				defer notify.Debug("HTTP /stream min=%s, max=%s, avg=%s\n", min, max, avg)
 
 				img, err := video.Capture()
 				if err != nil {
