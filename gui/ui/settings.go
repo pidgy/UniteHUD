@@ -30,7 +30,6 @@ import (
 	"github.com/pidgy/unitehud/system/desktop/clicked"
 	"github.com/pidgy/unitehud/system/discord"
 	"github.com/pidgy/unitehud/system/ini"
-	"github.com/pidgy/unitehud/system/wapi"
 )
 
 type section struct {
@@ -124,14 +123,14 @@ func (g *GUI) settings(onclose func()) *settings {
 				}
 
 				if g.HWND != 0 {
-					switch wapi.Window(g.HWND).InfoStatus() {
-					case wapi.WindowInfoStatusNotVisible:
-						// ui.windows.this.Perform(system.ActionMinimize)
-					case wapi.WindowInfoStatusVisible:
-						if wapi.Window(ui.hwnd).InfoStatus() == wapi.WindowInfoStatusNotVisible {
-							ui.windows.this.Perform(system.ActionRaise)
-						}
-					}
+					// switch wapi.Window(g.HWND).InfoStatus() {
+					// case wapi.WindowInfoStatusNotVisible:
+					// 	// ui.windows.this.Perform(system.ActionMinimize)
+					// case wapi.WindowInfoStatusVisible:
+					// 	if wapi.Window(ui.hwnd).InfoStatus() == wapi.WindowInfoStatusNotVisible {
+					// 		ui.windows.this.Perform(system.ActionRaise)
+					// 	}
+					// }
 				}
 
 				gtx := layout.NewContext(&ui.ops, event)

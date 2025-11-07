@@ -693,7 +693,7 @@ func (g *GUI) videos(text float32) *videos {
 					Text:  "Disabled",
 					Value: config.NoVideoCaptureDevice,
 					Checked: widget.Bool{
-						Value: device.IsActive(),
+						Value: !device.IsActive(),
 					},
 				},
 			}

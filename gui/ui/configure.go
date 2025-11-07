@@ -689,6 +689,13 @@ func (g *GUI) configureUI() *configure {
 			}
 
 			ui.groups.areas = g.areas(g.nav.Collection)
+
+			if device.IsActive() {
+				err := device.Restart()
+				if err != nil {
+					g.ToastError(err)
+				}
+			}
 		},
 	}
 
