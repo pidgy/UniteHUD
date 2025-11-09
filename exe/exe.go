@@ -12,7 +12,7 @@ const (
 	Title           = "UniteHUD"
 	TitleAndVersion = Title + " " + Version
 	Version         = "v" + VersionSemVer
-	VersionSemVer   = "4.1.1"
+	VersionSemVer   = "4.1.2"
 )
 
 var (

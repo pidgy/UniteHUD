@@ -396,9 +396,9 @@ func (g *GUI) unmaximize() {
 	g.dimensions.fullscreen = false
 	g.nav.NoDrag = false
 
-	// g.window.Option(app.MinSize(unit.Dp(g.dimensions.min.X), unit.Dp(g.dimensions.min.Y)))
-	// g.dimensions.fullscreen = false
-	// g.nav.NoDrag = false
+	g.window.Option(app.MinSize(unit.Dp(g.dimensions.min.X), unit.Dp(g.dimensions.min.Y)))
+	g.dimensions.fullscreen = false
+	g.nav.NoDrag = false
 
 	// wapi.SetWindowPosShow(
 	// 	g.HWND,
