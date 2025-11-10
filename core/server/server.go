@@ -48,7 +48,7 @@ type State struct {
 	Config         bool        `json:"config"`
 	Debug          bool        `json:"debug"`
 	Defeated       []int64     `json:"defeated"`
-	Energy         int         `json:"balls"`
+	Energy         int         `json:"energy"`
 	Events         []string    `json:"events"`
 	FinalObjective string      `json:"final_objective"`
 	InMatch        bool        `json:"match"`

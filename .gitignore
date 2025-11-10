@@ -2,9 +2,10 @@ tmp/
 .vscode/
 *.exe
 .pat
-config.unitehud
+*.unitehud
 TODO.txt
 lib/
 saved/
 system/save/*.json
 bin/
+*.iss

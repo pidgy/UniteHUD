@@ -33,10 +33,10 @@ type Team struct {
 }
 
 var (
-	// Energy represents the number of balls held by self.
+	// Energy represents the amount of energy held by self.
 	Energy = &Team{
-		Name:  "balls",
-		title: "Balls",
+		Name:  "energy",
+		title: "Energy",
 
 		NRGBA:     nrgba.Purple,
 		Duplicate: duplicate.New(-1, gocv.NewMat(), gocv.NewMat()),
