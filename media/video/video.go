@@ -3,10 +3,10 @@ package video
 import (
 	"image"
 
-	"github.com/pidgy/unitehud/av/img/splash"
-	"github.com/pidgy/unitehud/av/video/device"
-	"github.com/pidgy/unitehud/av/video/monitor"
 	"github.com/pidgy/unitehud/core/notify"
+	"github.com/pidgy/unitehud/media/img/splash"
+	"github.com/pidgy/unitehud/media/video/device"
+	"github.com/pidgy/unitehud/media/video/monitor"
 )
 
 type Input string

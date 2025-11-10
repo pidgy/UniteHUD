@@ -13,15 +13,15 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 
-	"github.com/pidgy/unitehud/av/video/device"
-	"github.com/pidgy/unitehud/av/video/monitor"
-	"github.com/pidgy/unitehud/av/video/window"
 	"github.com/pidgy/unitehud/core/fonts"
 	"github.com/pidgy/unitehud/core/rgba/nrgba"
 	"github.com/pidgy/unitehud/gui/cursor"
 	"github.com/pidgy/unitehud/gui/ux/button"
 	"github.com/pidgy/unitehud/gui/ux/decorate"
 	"github.com/pidgy/unitehud/gui/ux/title"
+	"github.com/pidgy/unitehud/media/video/device"
+	"github.com/pidgy/unitehud/media/video/monitor"
+	"github.com/pidgy/unitehud/media/video/window"
 )
 
 var (

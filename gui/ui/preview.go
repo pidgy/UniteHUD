@@ -15,7 +15,6 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 
-	"github.com/pidgy/unitehud/av/video"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/rgba/nrgba"
 	"github.com/pidgy/unitehud/gui/ux/area"
@@ -23,6 +22,7 @@ import (
 	"github.com/pidgy/unitehud/gui/ux/decorate"
 	"github.com/pidgy/unitehud/gui/ux/screen"
 	"github.com/pidgy/unitehud/gui/ux/title"
+	"github.com/pidgy/unitehud/media/video"
 )
 
 type preview struct {

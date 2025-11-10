@@ -1,4 +1,4 @@
-package input
+package output
 
 import (
 	"fmt"
@@ -7,8 +7,8 @@ import (
 	"github.com/gen2brain/malgo"
 	"github.com/pkg/errors"
 
-	"github.com/pidgy/unitehud/av/audio/device"
 	"github.com/pidgy/unitehud/core/notify"
+	"github.com/pidgy/unitehud/media/audio/device"
 )
 
 type Device struct {
@@ -18,21 +18,20 @@ type Device struct {
 	name      string
 	isDefault bool
 
-	reconnects int
+	config malgo.DeviceConfig
 
 	active            bool
 	closingq, closedq chan bool
 
-	config malgo.DeviceConfig
+	reconnects int
 }
 
-var (
-	disabled = &Device{name: device.Disabled}
-)
-
 func New(ctx *malgo.AllocatedContext, name string) (*Device, error) {
-	if name == device.Disabled || name == "" {
-		return disabled, nil
+	if name == device.Disabled {
+		return &Device{name: device.Disabled}, nil
+	}
+	if name == "" {
+		return &Device{name: device.Disabled}, nil
 	}
 
 	for _, d := range Devices(ctx) {
@@ -40,7 +39,7 @@ func New(ctx *malgo.AllocatedContext, name string) (*Device, error) {
 			continue
 		}
 
-		d.config = malgo.DefaultDeviceConfig(malgo.Capture)
+		d.config = malgo.DefaultDeviceConfig(malgo.Playback)
 		d.config.Capture.Format = malgo.FormatS16
 		d.config.Capture.Channels = 1
 		d.config.Playback.Format = malgo.FormatS16
@@ -51,18 +50,19 @@ func New(ctx *malgo.AllocatedContext, name string) (*Device, error) {
 		return d, nil
 	}
 
-	return disabled, fmt.Errorf("<ini:failed:find> capture device: %s", name)
+	return nil, fmt.Errorf("<ini:failed:find> playback device: %s", name)
 }
 
 func (d *Device) Active() bool {
-	return d.active
+	return d == nil || d.active
 }
 
 func (d *Device) Close() {
 	if !d.Active() {
 		return
 	}
-	notify.System("[Audio Input] Closing %s", d.name)
+
+	notify.System("[Audio Output] Closing %s", d.name)
 
 	close(d.closingq)
 	<-d.closedq
@@ -77,36 +77,39 @@ func (d *Device) IsDefault() bool {
 }
 
 func (d *Device) IsDisabled() bool {
-	return d == nil || d.name == device.Disabled
+	return d.name == device.Disabled
 }
 
 func (d *Device) Name() string {
 	return d.name
 }
 
-func (d *Device) Start(mctx malgo.Context, w io.ReadWriter) error {
+// Playback streams samples from a reader to the sound device.
+// The function initializes a playback device in the default context using
+// provide stream configuration.
+// Playback will commence playing the samples provided from the reader until either the
+// reader returns an error, or the context signals done.
+func (d *Device) Start(mctx malgo.Context, r io.ReadWriter) error {
 	if d.IsDisabled() {
 		return nil
 	}
 
 	if d.Active() {
-		return errors.Wrap(fmt.Errorf("already active"), d.String())
+		return errors.Wrap(fmt.Errorf("already active"), d.name)
 	}
 
-	defer notify.Debug("[Audio Input] Started %s", d)
+	defer notify.Debug("[Audio Output] Started %s", d.Name())
 
 	errq := make(chan error)
+
 	go func() {
-		defer notify.Debug("[Audio Input] Closed %s", d)
+		defer notify.Debug("[Audio Output] Closed %s", d.Name())
 
 		d.closingq = make(chan bool)
 		d.closedq = make(chan bool)
-
 		d.active = true
-		defer func() {
-			d.active = false
-		}()
 
+		defer func() { d.active = false }()
 		defer close(d.closedq)
 
 		callbacks := malgo.DeviceCallbacks{
@@ -115,13 +118,17 @@ func (d *Device) Start(mctx malgo.Context, w io.ReadWriter) error {
 					return
 				}
 
-				_, err := w.Write(inputSamples)
+				if frameCount == 0 {
+					return
+				}
+
+				_, err := io.ReadFull(r, outputSamples)
 				if err != nil {
 					if err == io.EOF || err == io.ErrUnexpectedEOF {
 						d.reconnects++
 						return
 					}
-					notify.Error("[Audio Input] Capture error (%v)", errors.Wrap(err, d.String()))
+					notify.Warn("[Audio Output] Playback error (%v)", errors.Wrap(err, d.name))
 				}
 			},
 		}
@@ -141,7 +148,7 @@ func (d *Device) Start(mctx malgo.Context, w io.ReadWriter) error {
 		defer func() {
 			err := device.Stop()
 			if err != nil {
-				notify.Error("[Audio Input] <ini:failed:stop> device (%v)", err)
+				notify.Error("[Audio Output] <ini:failed:stop> device (%v)", err)
 				return
 			}
 		}()
@@ -158,23 +165,23 @@ func (d *Device) String() string {
 }
 
 func (d *Device) Type() device.Type {
-	return device.Input
+	return device.Output
 }
 
-func Devices(ctx *malgo.AllocatedContext) (captures []*Device) {
-	d, err := ctx.Devices(malgo.Capture)
+func Devices(ctx *malgo.AllocatedContext) (playbacks []*Device) {
+	d, err := ctx.Devices(malgo.Playback)
 	if err != nil {
-		notify.Error("[Audio Input] <ini:failed:find> devices (%v)", err)
+		notify.Error("[Audio Output] <ini:failed:find> devices (%v)", err)
 		return nil
 	}
 
 	for _, info := range d {
-		full, err := ctx.DeviceInfo(malgo.Capture, info.ID, malgo.Shared)
+		full, err := ctx.DeviceInfo(malgo.Playback, info.ID, malgo.Shared)
 		if err != nil {
-			notify.Warn("[Audio Input] <ini:failed:poll> device \"%s\" (%v)", info.ID, err)
+			notify.Warn("[Audio Output] <ini:failed:find> device information for %s (%v)", info.ID, err)
 		}
 
-		captures = append(captures, &Device{
+		playbacks = append(playbacks, &Device{
 			ID:      info.ID.String(),
 			Formats: full.Formats,
 
@@ -183,5 +190,5 @@ func Devices(ctx *malgo.AllocatedContext) (captures []*Device) {
 		})
 	}
 
-	return captures
+	return playbacks
 }

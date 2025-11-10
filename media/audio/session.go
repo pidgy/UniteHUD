@@ -8,11 +8,11 @@ import (
 
 	"github.com/gen2brain/malgo"
 
-	"github.com/pidgy/unitehud/av/audio/device"
-	"github.com/pidgy/unitehud/av/audio/input"
-	"github.com/pidgy/unitehud/av/audio/output"
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/notify"
+	"github.com/pidgy/unitehud/media/audio/device"
+	"github.com/pidgy/unitehud/media/audio/input"
+	"github.com/pidgy/unitehud/media/audio/output"
 )
 
 const (

@@ -5,8 +5,6 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/pidgy/unitehud/av/audio"
-	"github.com/pidgy/unitehud/av/video"
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/detect"
 	"github.com/pidgy/unitehud/core/notify"
@@ -15,6 +13,8 @@ import (
 	"github.com/pidgy/unitehud/core/team"
 	"github.com/pidgy/unitehud/exe"
 	"github.com/pidgy/unitehud/gui/ui"
+	"github.com/pidgy/unitehud/media/audio"
+	"github.com/pidgy/unitehud/media/video"
 	"github.com/pidgy/unitehud/system/discord"
 	"github.com/pidgy/unitehud/system/ini"
 	"github.com/pidgy/unitehud/system/process"

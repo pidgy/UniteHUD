@@ -10,14 +10,14 @@ import (
 	"github.com/pkg/errors"
 	"gocv.io/x/gocv"
 
-	"github.com/pidgy/unitehud/av/device"
-	"github.com/pidgy/unitehud/av/img"
-	"github.com/pidgy/unitehud/av/img/splash"
-	"github.com/pidgy/unitehud/av/video/fps"
-	"github.com/pidgy/unitehud/av/video/monitor"
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/exe"
+	"github.com/pidgy/unitehud/media/device"
+	"github.com/pidgy/unitehud/media/img"
+	"github.com/pidgy/unitehud/media/img/splash"
+	"github.com/pidgy/unitehud/media/video/fps"
+	"github.com/pidgy/unitehud/media/video/monitor"
 )
 
 const (

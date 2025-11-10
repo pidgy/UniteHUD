@@ -17,13 +17,13 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 
-	"github.com/pidgy/unitehud/av/img/splash"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/rgba/nrgba"
 	"github.com/pidgy/unitehud/gui/ux/button"
 	"github.com/pidgy/unitehud/gui/ux/decorate"
 	"github.com/pidgy/unitehud/gui/ux/keys"
 	"github.com/pidgy/unitehud/gui/ux/title"
+	"github.com/pidgy/unitehud/media/img/splash"
 	"github.com/pidgy/unitehud/system/ini"
 )
 

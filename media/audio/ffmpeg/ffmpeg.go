@@ -12,8 +12,8 @@ import (
 	"github.com/gen2brain/malgo"
 	"github.com/pkg/errors"
 
-	"github.com/pidgy/unitehud/av/audio/device"
 	"github.com/pidgy/unitehud/core/notify"
+	"github.com/pidgy/unitehud/media/audio/device"
 )
 
 type Device struct {

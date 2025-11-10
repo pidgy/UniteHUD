@@ -12,9 +12,6 @@ import (
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
-	"github.com/pidgy/unitehud/av/audio"
-	"github.com/pidgy/unitehud/av/video"
-	"github.com/pidgy/unitehud/av/video/device"
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/fonts"
 	"github.com/pidgy/unitehud/core/match"
@@ -26,6 +23,9 @@ import (
 	"github.com/pidgy/unitehud/core/template"
 	"github.com/pidgy/unitehud/gui/ux/area"
 	"github.com/pidgy/unitehud/gui/ux/checklist"
+	"github.com/pidgy/unitehud/media/audio"
+	"github.com/pidgy/unitehud/media/video"
+	"github.com/pidgy/unitehud/media/video/device"
 	"github.com/pidgy/unitehud/system/lang"
 )
 

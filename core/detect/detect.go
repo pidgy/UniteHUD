@@ -8,10 +8,6 @@ import (
 
 	"gocv.io/x/gocv"
 
-	"github.com/pidgy/unitehud/av/img/splash"
-	"github.com/pidgy/unitehud/av/video"
-	"github.com/pidgy/unitehud/av/video/device"
-	"github.com/pidgy/unitehud/av/video/monitor"
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/match"
 	"github.com/pidgy/unitehud/core/notify"
@@ -21,6 +17,10 @@ import (
 	"github.com/pidgy/unitehud/core/team"
 	"github.com/pidgy/unitehud/core/template"
 	"github.com/pidgy/unitehud/exe"
+	"github.com/pidgy/unitehud/media/img/splash"
+	"github.com/pidgy/unitehud/media/video"
+	"github.com/pidgy/unitehud/media/video/device"
+	"github.com/pidgy/unitehud/media/video/monitor"
 	"github.com/pidgy/unitehud/system/desktop"
 	"github.com/pidgy/unitehud/system/desktop/clicked"
 	"github.com/pidgy/unitehud/system/lang"

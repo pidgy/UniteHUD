@@ -8,9 +8,9 @@ import (
 	"os"
 	"syscall"
 
-	"github.com/pidgy/unitehud/av/video"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/exe"
+	"github.com/pidgy/unitehud/media/video"
 	"github.com/pidgy/unitehud/system/wapi"
 )
 

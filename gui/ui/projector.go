@@ -19,10 +19,6 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 
-	"github.com/pidgy/unitehud/av/img/splash"
-	"github.com/pidgy/unitehud/av/video"
-	"github.com/pidgy/unitehud/av/video/device"
-	"github.com/pidgy/unitehud/av/video/fps"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/rgba/nrgba"
 	"github.com/pidgy/unitehud/gui/is"
@@ -31,6 +27,10 @@ import (
 	"github.com/pidgy/unitehud/gui/ux/electron"
 	"github.com/pidgy/unitehud/gui/ux/keys"
 	"github.com/pidgy/unitehud/gui/ux/title"
+	"github.com/pidgy/unitehud/media/img/splash"
+	"github.com/pidgy/unitehud/media/video"
+	"github.com/pidgy/unitehud/media/video/device"
+	"github.com/pidgy/unitehud/media/video/fps"
 	"github.com/pidgy/unitehud/system/wapi"
 )
 
