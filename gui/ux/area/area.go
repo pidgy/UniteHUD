@@ -13,9 +13,9 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 
-	"github.com/pidgy/unitehud/avi/video/device"
-	"github.com/pidgy/unitehud/avi/video/monitor"
-	"github.com/pidgy/unitehud/avi/video/window"
+	"github.com/pidgy/unitehud/av/video/device"
+	"github.com/pidgy/unitehud/av/video/monitor"
+	"github.com/pidgy/unitehud/av/video/window"
 	"github.com/pidgy/unitehud/core/fonts"
 	"github.com/pidgy/unitehud/core/rgba/nrgba"
 	"github.com/pidgy/unitehud/gui/cursor"

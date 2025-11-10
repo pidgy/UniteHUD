@@ -10,8 +10,8 @@ import (
 	"gioui.org/layout"
 	"gioui.org/unit"
 
-	"github.com/pidgy/unitehud/avi/video/fps"
-	"github.com/pidgy/unitehud/avi/video/monitor"
+	"github.com/pidgy/unitehud/av/video/fps"
+	"github.com/pidgy/unitehud/av/video/monitor"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/stats"
 	"github.com/pidgy/unitehud/exe"

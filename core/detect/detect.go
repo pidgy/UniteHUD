@@ -8,10 +8,10 @@ import (
 
 	"gocv.io/x/gocv"
 
-	"github.com/pidgy/unitehud/avi/img/splash"
-	"github.com/pidgy/unitehud/avi/video"
-	"github.com/pidgy/unitehud/avi/video/device"
-	"github.com/pidgy/unitehud/avi/video/monitor"
+	"github.com/pidgy/unitehud/av/img/splash"
+	"github.com/pidgy/unitehud/av/video"
+	"github.com/pidgy/unitehud/av/video/device"
+	"github.com/pidgy/unitehud/av/video/monitor"
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/match"
 	"github.com/pidgy/unitehud/core/notify"

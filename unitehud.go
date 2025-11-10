@@ -5,8 +5,8 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/pidgy/unitehud/avi/audio"
-	"github.com/pidgy/unitehud/avi/video"
+	"github.com/pidgy/unitehud/av/audio"
+	"github.com/pidgy/unitehud/av/video"
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/detect"
 	"github.com/pidgy/unitehud/core/notify"

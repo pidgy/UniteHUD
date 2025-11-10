@@ -12,9 +12,9 @@ import (
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
-	"github.com/pidgy/unitehud/avi/audio"
-	"github.com/pidgy/unitehud/avi/video"
-	"github.com/pidgy/unitehud/avi/video/device"
+	"github.com/pidgy/unitehud/av/audio"
+	"github.com/pidgy/unitehud/av/video"
+	"github.com/pidgy/unitehud/av/video/device"
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/fonts"
 	"github.com/pidgy/unitehud/core/match"

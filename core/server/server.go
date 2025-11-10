@@ -13,9 +13,9 @@ import (
 
 	"nhooyr.io/websocket"
 
-	"github.com/pidgy/unitehud/avi/img"
-	"github.com/pidgy/unitehud/avi/video"
-	"github.com/pidgy/unitehud/avi/video/fps"
+	"github.com/pidgy/unitehud/av/img"
+	"github.com/pidgy/unitehud/av/video"
+	"github.com/pidgy/unitehud/av/video/fps"
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/rgba/nrgba"

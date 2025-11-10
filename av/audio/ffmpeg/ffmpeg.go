@@ -12,7 +12,7 @@ import (
 	"github.com/gen2brain/malgo"
 	"github.com/pkg/errors"
 
-	"github.com/pidgy/unitehud/avi/audio/device"
+	"github.com/pidgy/unitehud/av/audio/device"
 	"github.com/pidgy/unitehud/core/notify"
 )
 
