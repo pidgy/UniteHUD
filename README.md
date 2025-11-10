@@ -1,13 +1,16 @@
 # <img src='https://github.com/pidgy/UniteHUD/blob/master/assets/icon/icon.png' width='32'>  UniteHUD
 
 Pokémon UNITE Scoreboard HUD Overlay
+
 ----
-### v3
-Download at **[unitehud.dev](https://unitehud.dev)**
+### Downloads 
+**[UniteHUD.dev](https://unitehud.dev)**
 
 ----
 ### Support UniteHUD
 <a href="https://www.buymeacoffee.com/pidgy" target="_blank"><img src="https://i.imgur.com/TNfrDMT.png" width="100" height="100"></a>
+
+[![Go Reference](https://pkg.go.dev/badge/github.com/pidgy/unitehud.svg)](https://pkg.go.dev/github.com/pidgy/unitehud)
 
 ----
 
