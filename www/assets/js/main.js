@@ -273,7 +273,6 @@ async function render(data) {
 
         // Set the remaining to none.
         var left = 6 - data.objectives.length;
-        console.log(`left: ${left}`);
         for (var i = 5; i > 5 - left; i--) {
             $(`${order[i]} .objectives-circle.purple`).css('opacity', 0);
             $(`${order[i]} .objectives-circle.orange`).css('opacity', 0);
@@ -311,7 +310,7 @@ $(document).ready(() => {
 
     switch (true) {
         case window.location.search.includes('debug'):
-            $('body').css('background', 'black')
+            // $('body').css('background', 'black')
             sync(debug.start, 1000);
             break;
         case window.location.search.includes('http'):

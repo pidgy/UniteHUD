@@ -191,12 +191,17 @@ func (r Rectangle) String() string {
 	return fmt.Sprintf("[L:%d,T:%d,R:%d,B:%d]", r.Left, r.Top, r.Right, r.Bottom)
 }
 
+// ? ShowWindowMinimizedRestore: ShowWindowFlags.ShowMinimized not working.
 func ShowWindowMinimizedRestore(hwnd uintptr) {
 	ShowWindow.Call(hwnd, ShowWindowFlags.ShowMinimized|ShowWindowFlags.Restore)
 }
 
 func ShowWindowHide(hwnd uintptr) {
 	ShowWindow.Call(hwnd, ShowWindowFlags.Hide)
+}
+
+func ShowWindowRestore(hwnd uintptr) {
+	ShowWindow.Call(hwnd, ShowWindowFlags.Restore)
 }
 
 func SetWindowAlwaysOnTop(hwnd uintptr) {

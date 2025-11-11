@@ -66,7 +66,7 @@ type settings struct {
 
 	sections struct {
 		header,
-		reports,
+		logs,
 		accessibility,
 		language,
 		video,
@@ -94,7 +94,7 @@ func (g *GUI) settings(onclose func()) *settings {
 
 		sections := []*section{
 			ui.sections.header,
-			ui.sections.reports,
+			ui.sections.logs,
 			ui.sections.accessibility,
 			ui.sections.language,
 			ui.sections.video,
@@ -195,8 +195,8 @@ func (g *GUI) settingsUI() *settings {
 		description: material.H6(ui.bar.Collection.Calibri().Theme, "Advanced Settings"),
 	}
 
-	ui.sections.reports = &section{
-		title:       material.Label(ui.bar.Collection.Calibri().Theme, 14, "📝 Reports"),
+	ui.sections.logs = &section{
+		title:       material.Label(ui.bar.Collection.Calibri().Theme, 14, "📝 Logs"),
 		description: material.Caption(ui.bar.Collection.Calibri().Theme, "Adjust types of notices reported"),
 		widget: &checklist.Widget{
 			Theme:    ui.bar.Collection.NotoSans().Theme,

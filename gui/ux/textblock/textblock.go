@@ -119,6 +119,6 @@ func alpha(index, nposts int) uint8 {
 	if index == nposts {
 		return 255
 	}
-	p := float32(index+1) / float32(nposts)
+	p := (float32(index) + .5) / float32(nposts)
 	return uint8(float32(200) * p)
 }

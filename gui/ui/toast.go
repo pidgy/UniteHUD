@@ -297,43 +297,40 @@ func (g *GUI) ToastSplash(header, msg string, img image.Image) waiter {
 
 		op := paint.NewImageOp(img)
 
-		for e := c.toast.window.NextEvent(); ; e = c.toast.window.NextEvent() {
-			if _, ok := e.(system.DestroyEvent); ok {
+		for {
+			switch event := c.toast.window.NextEvent().(type) {
+			case system.DestroyEvent:
 				c.toast.window.Perform(system.ActionClose)
 				return
-			}
+			case system.FrameEvent:
+				gtx := layout.NewContext(&c.toast.ops, event)
 
-			event, ok := e.(system.FrameEvent)
-			if !ok {
-				notify.Missed(event, "ToastSplash")
-				continue
-			}
+				layout.Stack{}.Layout(gtx,
+					layout.Expanded(func(gtx layout.Context) layout.Dimensions {
+						return widget.Image{
+							Src:   op,
+							Scale: float32(splash.Loading().Bounds().Dx()) / float32(gtx.Constraints.Max.X),
+							Fit:   widget.Cover,
+						}.Layout(gtx)
+					}),
+				)
 
-			gtx := layout.NewContext(&c.toast.ops, event)
-
-			layout.Stack{}.Layout(gtx,
-				layout.Expanded(func(gtx layout.Context) layout.Dimensions {
-					return widget.Image{
-						Src:   op,
-						Scale: float32(splash.Loading().Bounds().Dx()) / float32(gtx.Constraints.Max.X),
-						Fit:   widget.Cover,
-					}.Layout(gtx)
-				}),
-			)
-
-			layout.S.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-				return layout.Inset{Bottom: unit.Dp(25)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-					return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-						return c.label.Layout(gtx)
+				layout.S.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+					return layout.Inset{Bottom: unit.Dp(25)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+						return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+							return c.label.Layout(gtx)
+						})
 					})
 				})
-			})
 
-			c.toast.window.Perform(system.ActionCenter)
-			c.toast.window.Perform(system.ActionRaise)
-			c.toast.window.Invalidate()
+				c.toast.window.Perform(system.ActionCenter)
+				c.toast.window.Perform(system.ActionRaise)
+				c.toast.window.Invalidate()
 
-			event.Frame(gtx.Ops)
+				event.Frame(gtx.Ops)
+			default:
+				notify.Missed(event, "ToastSplash")
+			}
 		}
 	}()
 

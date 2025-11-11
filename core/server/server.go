@@ -220,8 +220,8 @@ func Open() error {
 		}
 
 		c, err := websocket.Accept(w, r, &websocket.AcceptOptions{
-			OriginPatterns:     []string{"127.0.0.1", "localhost", "0.0.0.0"},
-			InsecureSkipVerify: true,
+			OriginPatterns: []string{"127.0.0.1", "localhost", "0.0.0.0", "unitehud.dev"},
+			// InsecureSkipVerify: true,
 		})
 		if err != nil {
 			notify.Error("[Server] WebSocket connection failed (%v)", err)

@@ -35,13 +35,15 @@ var menu = struct {
 	logs      toggle
 	website   toggle
 	startstop toggle
-	hide      toggle
+	hideshow  toggle
 	exit      toggle
 
 	hwnd uintptr
 
 	eventq     chan func()
 	startstopq chan bool
+
+	hidden bool
 }{
 	eventq:     make(chan func(), 1024),
 	startstopq: make(chan bool, 1024),
@@ -70,7 +72,7 @@ func Open() error {
 			proc()
 			configuration()
 			menu.logs = logs()
-			menu.hide = hide()
+			menu.hideshow = hideshow()
 			menu.startstop = startstop()
 			menu.website = website()
 			menu.exit = exit()
@@ -94,8 +96,8 @@ func Open() error {
 					} else {
 						menu.startstop.Check()
 					}
-				case <-menu.hide.ClickedCh:
-					menu.hide.event()
+				case <-menu.hideshow.ClickedCh:
+					menu.hideshow.event()
 				case <-menu.exit.ClickedCh:
 					menu.exit.event()
 				}
@@ -273,24 +275,34 @@ func header(title, version string) toggle {
 		event: func() {
 			notify.Debug("[Tray] Raising HWND: %d", menu.hwnd)
 
-			wapi.ShowWindowMinimizedRestore(menu.hwnd)
-
-			menu.hide.SetTitle("Hide")
-			menu.hide.Enable()
+			if menu.hidden {
+				menu.hideshow.event()
+			} else {
+				wapi.SetWindowPosNoSizeNoMoveShowWindow(menu.hwnd)
+			}
 		},
 	}
 }
 
-func hide() toggle {
+func hideshow() toggle {
 	systray.AddSeparator()
 
 	return toggle{
-		MenuItem: systray.AddMenuItem("Hide", "Minimize to system tray"),
+		MenuItem: systray.AddMenuItem("Hide", "Hide UniteHUD in System Tray"),
 		event: func() {
 			notify.Debug("[Tray] Hiding/Showing HWND: %d", menu.hwnd)
 
-			wapi.ShowWindowHide(menu.hwnd)
-			menu.hide.Disable()
+			if menu.hidden {
+				wapi.ShowWindowRestore(menu.hwnd)
+				menu.hideshow.SetTitle("Hide")
+				menu.hideshow.SetTooltip("Hide UniteHUD in System Tray")
+			} else {
+				wapi.ShowWindowHide(menu.hwnd)
+				menu.hideshow.SetTitle("Show")
+				menu.hideshow.SetTooltip("Restore UniteHUD on your Desktop")
+			}
+
+			menu.hidden = !menu.hidden
 		},
 	}
 }

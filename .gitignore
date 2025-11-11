@@ -10,3 +10,4 @@ system/save/*.json
 bin/
 *.iss
 *.syso
+.release/

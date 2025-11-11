@@ -43,8 +43,8 @@ type projector struct {
 	nav struct {
 		*title.Widget
 
-		overlay     *button.Widget
-		fps         *button.Widget
+		overlay,
+		fps,
 		alwaysOnTop *button.Widget
 	}
 
@@ -86,6 +86,8 @@ func (g *GUI) projector(onclose func()) {
 	defer ui.nav.Remove(ui.nav.overlay)
 	defer ui.nav.Remove(ui.nav.fps)
 	defer ui.nav.Remove(ui.nav.alwaysOnTop)
+
+	notify.System("[UI] Opening Projector...")
 
 	err := electron.Open(ui.dimensions.size)
 	if err != nil {

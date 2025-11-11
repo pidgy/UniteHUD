@@ -67,7 +67,8 @@ type main struct {
 		file,
 		startstop,
 		hideTop,
-		hideRight *button.Widget
+		hideRight,
+		alwaysOnTop *button.Widget
 	}
 
 	split struct {
@@ -145,6 +146,7 @@ func (g *GUI) main() {
 	defer g.nav.Remove(g.nav.Add(ui.navButtons.obs))
 	defer g.nav.Remove(g.nav.Add(ui.navButtons.logs))
 	defer g.nav.Remove(g.nav.Add(ui.navButtons.record))
+	defer g.nav.Remove(g.nav.Add(ui.navButtons.alwaysOnTop))
 
 	// defer g.header.Remove(g.header.Add(ui.menu.stats))
 	// defer g.header.Remove(g.header.Add(ui.menu.results))
@@ -596,9 +598,9 @@ func (g *GUI) main() {
 				if g.dimensions.fullscreen {
 					g.nav.Resize()
 				}
-				// if g.Running {
-				// 	ui.buttons.stop.Click(ui.buttons.stop)
-				// }
+				if g.Running {
+					ui.buttons.stop.Click(ui.buttons.stop)
+				}
 			case key.NameF11:
 				g.nav.Resize()
 			}
@@ -725,6 +727,10 @@ func (g *GUI) mainUI() *main {
 		Click: func(this *button.ImageWidget) {
 			if !ui.buttons.stop.Disabled {
 				ui.buttons.stop.Click(ui.buttons.stop)
+			}
+
+			if ui.navButtons.alwaysOnTop.Radio {
+				ui.navButtons.alwaysOnTop.Click(ui.navButtons.alwaysOnTop)
 			}
 
 			g.next(is.Configuring)
@@ -1059,7 +1065,7 @@ func (g *GUI) mainUI() *main {
 		Font:        g.nav.NishikiTeki(),
 		OnHoverHint: func() { g.nav.Tip("Record matched events") },
 		Pressed:     nrgba.Pinkity.Alpha(100),
-		TextSize:    15,
+		TextSize:    14,
 
 		Click: func(this *button.Widget) {
 			title := "Record"
@@ -1068,6 +1074,7 @@ func (g *GUI) mainUI() *main {
 				config.Current.Record = true
 				notify.System("[UI] Recording captured events in %s", save.Directory)
 				this.Text = "■"
+				this.TextSize = 15
 
 				err := save.Logs(notify.FeedStrings(), stats.Lines(), stats.Counts())
 				if err != nil {
@@ -1081,6 +1088,7 @@ func (g *GUI) mainUI() *main {
 				yes = func() {
 					notify.System("[UI] Saved captured events in %s", save.Directory)
 					this.Text = "🎬"
+					this.TextSize = 14
 
 					err := save.Open()
 					if err != nil {
@@ -1199,6 +1207,32 @@ func (g *GUI) mainUI() *main {
 			} else {
 				this.Text = "⇈"
 				this.OnHoverHint = func() { g.nav.Tip("Hide Main Menu configuration area") }
+			}
+		},
+	}
+
+	ui.navButtons.alwaysOnTop = &button.Widget{
+		Text:            "📌",
+		Font:            g.nav.NishikiTeki(),
+		OnHoverHint:     func() { g.nav.Tip("Show UniteHUD Overlay HUD above all windows") },
+		Released:        nrgba.Transparent80,
+		Pressed:         nrgba.Lilac,
+		TextSize:        unit.Sp(16),
+		TextInsetBottom: -1,
+
+		Click: func(this *button.Widget) {
+			defer this.Deactivate()
+
+			if this.Radio {
+				this.OnHoverHint = func() { g.nav.Tip("Show UniteHUD Overlay HUD above all windows") }
+				this.Text = "📌"
+				this.Radio = false
+				wapi.SetWindowNotAlwaysOnTop(g.HWND)
+			} else {
+				this.OnHoverHint = func() { g.nav.Tip("Hide UniteHUD Overlay HUD under active windows") }
+				this.Text = "📌×"
+				this.Radio = true
+				wapi.SetWindowAlwaysOnTop(g.HWND)
 			}
 		},
 	}

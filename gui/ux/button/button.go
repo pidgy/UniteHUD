@@ -23,7 +23,8 @@ type Widget struct {
 	TextSize        unit.Sp
 	TextInsetBottom unit.Dp
 	TextColor       nrgba.NRGBA
-	lastText        string
+
+	lastText string
 
 	label material.LabelStyle
 

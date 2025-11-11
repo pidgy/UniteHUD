@@ -160,7 +160,7 @@ func Lines() []string {
 		defer close(lineq)
 
 		if len(averages) == 0 {
-			notify.Warn("[Stats] No matched image template statistics to display...")
+			notify.Warn("[Stats] No image template statistics to display...")
 			return
 		}
 
@@ -229,7 +229,7 @@ func Lines() []string {
 			table.Render()
 		}
 
-		notify.System("[Stats] Matched image template statistics")
+		notify.System("[Stats] Fetched image template statistics")
 
 		lineq <- strings.Split(buf.String(), "\n")
 	}

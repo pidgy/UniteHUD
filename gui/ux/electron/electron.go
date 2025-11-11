@@ -46,7 +46,6 @@ var (
 	app            *astilectron.Astilectron
 	window         *astilectron.Window
 	active, hidden bool
-	ctx, cancel    = context.WithCancel(context.Background())
 
 	html = filepath.Join(exe.Directory(), "www", "UniteHUD Client.html")
 )
@@ -317,21 +316,14 @@ func openWindow(size image.Point) error {
 
 	var err error
 
-	url := html
-	if exe.Debug {
-		url = fmt.Sprintf("%s?debug", url)
-	}
-
 	window, err = app.NewWindow(
-		url,
+		html,
 		&astilectron.WindowOptions{
 			Title: astikit.StrPtr(name),
 			Show:  astikit.BoolPtr(true),
 
 			Width:  astikit.IntPtr(size.X),
 			Height: astikit.IntPtr(size.Y),
-			// Width:  astikit.IntPtr(1920),
-			// Height: astikit.IntPtr(1080),
 
 			Minimizable: astikit.BoolPtr(true),
 			Resizable:   astikit.BoolPtr(true),
@@ -345,13 +337,13 @@ func openWindow(size image.Point) error {
 			// Fullscreen:  astikit.BoolPtr(true),
 			// Center:      astikit.BoolPtr(true),
 			// EnableLargerThanScreen: astikit.BoolPtr(false),
-			// HasShadow:              astikit.BoolPtr(false),
+			HasShadow: astikit.BoolPtr(false),
 
 			Icon: astikit.StrPtr(fmt.Sprintf("%s/icon/icon-browser.png", exe.AssetDirectory)),
 
 			WebPreferences: &astilectron.WebPreferences{
-				WebSecurity:             astikit.BoolPtr(false),
-				DevTools:                astikit.BoolPtr(exe.Debug),
+				WebSecurity: astikit.BoolPtr(false),
+				// DevTools:                astikit.BoolPtr(exe.Debug),
 				Images:                  astikit.BoolPtr(true),
 				Javascript:              astikit.BoolPtr(true),
 				NodeIntegrationInWorker: astikit.BoolPtr(true),

@@ -4,9 +4,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pidgy/unitehud/avi/img/splash"
-	"github.com/pidgy/unitehud/core/config"
 	"gocv.io/x/gocv"
+
+	"github.com/pidgy/unitehud/core/config"
+	"github.com/pidgy/unitehud/media/img/splash"
 )
 
 func BenchmarkTimeNow(b *testing.B) {

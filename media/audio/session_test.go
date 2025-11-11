@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pidgy/unitehud/avi/audio/ffmpeg"
+	"github.com/pidgy/unitehud/media/audio/ffmpeg"
 )
 
 func TestFFMPEG(t *testing.T) {
