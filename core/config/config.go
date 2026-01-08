@@ -455,10 +455,9 @@ func (c *Config) loadDeviceAssets() {
 			team.Game.Name: {
 				filter.New(team.Game, c.deviceAsset(team.Game.Name, "groudon_ally.png"), state.FinalObjectiveGroudonSecurePurple.Int(), false),
 				filter.New(team.Game, c.deviceAsset(team.Game.Name, "groudon_enemy.png"), state.FinalObjectiveGroudonSecureOrange.Int(), false),
-				filter.New(team.Game, c.deviceAsset(team.Game.Name, "kyogre_ally.png"), state.FinalObjectiveKyogreSecurePurple.Int(), false),
-				/*
-					!!! filter.New(team.Game, c.deviceAsset(team.Game.Name, "kyogre_enemy.png"), state.FinalObjectiveKyogreSecureOrange.Int(), false),
-				*/
+
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "kyogre_ko.png"), state.FinalObjectiveKyogreSecureKO.Int(), false),
+
 				filter.New(team.Game, c.deviceAsset(team.Game.Name, "rayquaza_ally.png"), state.FinalObjectiveRayquazaSecurePurple.Int(), false),
 				filter.New(team.Game, c.deviceAsset(team.Game.Name, "rayquaza_enemy.png"), state.FinalObjectiveRayquazaSecureOrange.Int(), false),
 
@@ -476,9 +475,14 @@ func (c *Config) loadDeviceAssets() {
 		},
 		"post-secure": {
 			team.Game.Name: {
-				filter.New(team.Game, c.deviceAsset(team.Game.Name, "regidrago_ally.png"), state.RegidragoSecurePurple.Int(), false),
-				filter.New(team.Game, c.deviceAsset(team.Game.Name, "regidrago_enemy.png"), state.RegidragoSecureOrange.Int(), false),
-				filter.New(team.Game, c.deviceAsset(team.Game.Name, "regidrago_enemy_alt.png"), state.RegidragoSecureOrange.Int(), false),
+				// filter.New(team.Game, c.deviceAsset(team.Game.Name, "regidrago_ally.png"), state.RegidragoSecurePurple.Int(), false),
+				// filter.New(team.Game, c.deviceAsset(team.Game.Name, "regidrago_enemy.png"), state.RegidragoSecureOrange.Int(), false),
+				// filter.New(team.Game, c.deviceAsset(team.Game.Name, "regidrago_enemy_alt.png"), state.RegidragoSecureOrange.Int(), false),
+
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "post_secure_ally.png"), state.KOPurple.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "post_secure_enemy.png"), state.KOOrange.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "post_secure_enemy_alt.png"), state.KOOrange.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "post_secure_enemy_alt_alt.png"), state.KOOrange.Int(), false),
 			},
 		},
 		"ko": {

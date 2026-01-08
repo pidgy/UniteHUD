@@ -271,7 +271,15 @@ func Objectives() {
 
 			regidragoKO = time.Now()
 
-			event = state.EventType(m.Value)
+			switch state.EventType(m.Value) {
+			case state.KOPurple:
+				event = state.RegidragoSecurePurple
+			case state.KOOrange:
+				event = state.RegidragoSecureOrange
+			default:
+				notify.Error("[Detect] Failed to determine %s (%s)", event, m.Team)
+			}
+			// event = state.EventType(m.Value)
 			t = event.Team()
 
 			server.SetRegidrago(t)
@@ -283,12 +291,50 @@ func Objectives() {
 			server.SetRegieleki(t)
 			top = time.Now()
 		case state.FinalObjectiveGroudonSecureOrange, state.FinalObjectiveGroudonSecurePurple,
-			state.FinalObjectiveKyogreSecureOrange, state.FinalObjectiveKyogreSecurePurple,
+			state.FinalObjectiveKyogreSecureKO,
 			state.FinalObjectiveRayquazaSecureOrange, state.FinalObjectiveRayquazaSecurePurple:
 			if time.Since(central) < cooldown {
 				matrix.Close()
 				continue
 			}
+
+			notify.Feed(t.NRGBA, "[Detect] [%s] %s", server.Clock(), event)
+
+			if event == state.FinalObjectiveKyogreSecureKO {
+				for i := 0; i < 3; i++ {
+					m, r = match.Matches(matrix, img, config.Current.TemplatesPostSecure(team.Game.Name))
+					if r != match.Found {
+						continue
+					}
+					switch state.EventType(m.Value) {
+					case state.KOPurple:
+						event = state.FinalObjectiveKyogreSecurePurple
+					case state.KOOrange:
+						event = state.FinalObjectiveKyogreSecureOrange
+					default:
+						notify.Error("[Detect] Failed to determine %s (%s)", event, m.Team)
+					}
+
+					t = event.Team()
+
+					break
+				}
+
+				if r != match.Found {
+					notify.Warn("[Detect] Missed Kyogre secure...")
+					if exe.Debug {
+						name := fmt.Sprintf("debug/regidrago_miss_%d_%d_%d_%s.png", time.Now().Hour(), time.Now().Minute(), time.Now().Second(), time.Now().Format("05.000"))
+						notify.Debug("[Detect] Saving %s...", name)
+						err := save.PNG(img, name)
+						if err != nil {
+							notify.Error("[Detect] Failed to save kyogre miss (%v)", err)
+						}
+					}
+					matrix.Close()
+					continue
+				}
+			}
+
 			server.SetFinalObjective(t, event)
 			central = time.Now()
 		case state.RegiceSecureOrange, state.RegiceSecurePurple:

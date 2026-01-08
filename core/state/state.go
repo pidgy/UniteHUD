@@ -48,12 +48,13 @@ const (
 	KOStreakPurple
 	KOOrange
 	KOStreakOrange
-	FinalObjectiveGroudonSecureOrange
 	FinalObjectiveGroudonSecurePurple
-	FinalObjectiveKyogreSecureOrange
+	FinalObjectiveGroudonSecureOrange
+	FinalObjectiveKyogreSecureKO
 	FinalObjectiveKyogreSecurePurple
-	FinalObjectiveRayquazaSecureOrange
+	FinalObjectiveKyogreSecureOrange
 	FinalObjectiveRayquazaSecurePurple
+	FinalObjectiveRayquazaSecureOrange
 	SurrenderOrange
 	SurrenderPurple
 	RegidragoSecureKO
@@ -288,6 +289,8 @@ func (e EventType) String() string {
 		return "[Purple] Groudon"
 	case FinalObjectiveGroudonSecureOrange:
 		return "[Orange] Groudon"
+	case FinalObjectiveKyogreSecureKO:
+		return "Kyogre KO"
 	case FinalObjectiveKyogreSecurePurple:
 		return "[Purple] Kyogre"
 	case FinalObjectiveKyogreSecureOrange:
