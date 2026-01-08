@@ -133,8 +133,8 @@ func current() activity {
 		state.RegirockSecurePurple,
 		state.RegielekiSecureOrange,
 		state.RegielekiSecurePurple,
-		state.FinalObjectiveSecureOrange,
-		state.FinalObjectiveSecurePurple,
+		state.FinalObjectiveGroudonSecureOrange,
+		state.FinalObjectiveGroudonSecurePurple,
 	)
 
 	ignoreFinalStretch := false
@@ -195,8 +195,8 @@ func current() activity {
 	// Could be middle of a match, check for objectives.
 	for _, event := range events {
 		switch e := event.EventType; e {
-		case state.FinalObjectiveSecureOrange, state.RegisteelSecureOrange, state.RegiceSecureOrange, state.RegirockSecureOrange, state.RegielekiSecureOrange,
-			state.FinalObjectiveSecurePurple, state.RegisteelSecurePurple, state.RegiceSecurePurple, state.RegirockSecurePurple, state.RegielekiSecurePurple:
+		case state.FinalObjectiveGroudonSecureOrange, state.RegisteelSecureOrange, state.RegiceSecureOrange, state.RegirockSecureOrange, state.RegielekiSecureOrange,
+			state.FinalObjectiveGroudonSecurePurple, state.RegisteelSecurePurple, state.RegiceSecurePurple, state.RegirockSecurePurple, state.RegielekiSecurePurple:
 
 			dontReplaceFor(time.Second * 10)
 
@@ -275,9 +275,7 @@ func reconnect() {
 		rpc.cleanup()
 	}
 
-	retries := 0
-
-	for wait := time.Second; rpc.conn == nil; time.Sleep(wait) {
+	for wait := time.Second * 3; rpc.conn == nil; time.Sleep(wait) {
 		if config.Current.Advanced.Discord.Disabled || config.Current.Remember.Discord == config.DiscordStandby {
 			wait = time.Second
 			continue
@@ -285,12 +283,6 @@ func reconnect() {
 		wait = wait << 1
 
 		notify.Feed(nrgba.Discord, "[Discord] Connecting...")
-
-		if retries++; retries == 5 {
-			notify.Warn("[Discord] Exhausted connection attempts. RPC has been disabled")
-			config.Current.Advanced.Discord.Disabled = true
-			continue
-		}
 
 		rpc, err = connect()
 		if err != nil {

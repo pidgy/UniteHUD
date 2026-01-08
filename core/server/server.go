@@ -220,8 +220,8 @@ func Open() error {
 		}
 
 		c, err := websocket.Accept(w, r, &websocket.AcceptOptions{
-			OriginPatterns: []string{"127.0.0.1", "localhost", "0.0.0.0", "unitehud.dev"},
-			// InsecureSkipVerify: true,
+			OriginPatterns:     []string{"127.0.0.1", "localhost", "0.0.0.0"},
+			InsecureSkipVerify: true,
 		})
 		if err != nil {
 			notify.Error("[Server] WebSocket connection failed (%v)", err)
@@ -473,12 +473,12 @@ func SetEnergy(b int) {
 	current.State.Energy = b
 }
 
-func SetFinalObjective(t *team.Team) {
+func SetFinalObjective(t *team.Team, e state.EventType) {
 	current.State.FinalObjective = t.Name
 
 	current.Objectives = append(current.Objectives, Objective{
 		Team: t.Name,
-		Name: ObjectiveFinal,
+		Name: e.ObjectiveString(),
 		Time: time.Now().Unix(),
 	})
 }

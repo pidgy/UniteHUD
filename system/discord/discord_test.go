@@ -20,7 +20,7 @@ func TestStatus(t *testing.T) {
 	server.SetScore(team.Orange, 120)
 
 	a := current()
-	for e := state.Nothing; e <= state.FinalObjectiveSecurePurple; e++ {
+	for e := state.Nothing; e <= state.FinalObjectiveGroudonSecurePurple; e++ {
 		state.Add(e, "9:45", 12)
 		a = current()
 		fmt.Printf("(%s) Discord: %s: \"%s\"\n", e, a.Details, a.State)

@@ -6,7 +6,7 @@ import (
 )
 
 func TestPast(t *testing.T) {
-	Add(FinalObjectiveSecureOrange, "10:00", 0)
+	Add(FinalObjectiveGroudonSecureOrange, "10:00", 0)
 	Add(RegiceSecureOrange, "10:00", 0)
 	Add(RegirockSecureOrange, "10:00", 0)
 	Add(RegisteelSecureOrange, "10:00", 0)

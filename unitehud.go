@@ -2,9 +2,6 @@
 package main
 
 import (
-	"os"
-	"os/signal"
-
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/detect"
 	"github.com/pidgy/unitehud/core/notify"
@@ -32,9 +29,8 @@ func init() {
 	}
 }
 
-func signals() {
-	signal.Notify(exe.Chan(), os.Interrupt)
-	<-exe.Chan()
+func close() {
+	exe.WaitForSignal()
 
 	notify.Announce("[UniteHUD] Closing...")
 
@@ -48,7 +44,7 @@ func signals() {
 		notify.Warn("[UniteHUD] <ini:failed:save> logs (%v)", err)
 	}
 
-	os.Exit(0)
+	exe.Exit()
 }
 
 func main() {
@@ -112,7 +108,7 @@ func main() {
 	go detect.Scores(team.First.Name)
 	go update.Check()
 
-	go signals()
+	go close()
 
 	notify.Announce("[UniteHUD] Initialized")
 }

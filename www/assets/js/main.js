@@ -6,20 +6,7 @@ const cached = {
         title: `UniteHUD`,
     },
     assets: {
-        get img() { return 'assets/img/sprites'; },
-    },
-    img: {
-        objectives: {
-            get top() { return `${cached.assets.img}/regieleki.png`; },
-            get central() { return `${cached.assets.img}/groudon.png`; },
-            get bottom() {
-                return [
-                    `${cached.assets.img}/regice.png`,
-                    `${cached.assets.img}/regirock.png`,
-                    `${cached.assets.img}/registeel.png`,
-                ];
-            },
-        },
+        get sprites() { return 'assets/img/sprites'; },
     },
 }
 
@@ -241,8 +228,15 @@ async function render(data) {
         var order = [`.objectives-1.top`, `.objectives-2.top`, `.objectives-3.top`, `.objectives-1.bottom`, `.objectives-2.bottom`, `.objectives-3.bottom`];
 
         data.objectives.forEach(function(o, i) {
-            switch (o.name) {
-                case "final":
+            switch (true) {
+                case o.name.startsWith("final_"):
+                    var args = o.name.split("_");
+                    if (args.length < 2) {
+                        error(`invalid final objective name: ${o.name}`);
+                        break;
+                    }
+
+                    var name = args[1];
                     $(`.objectives-1.central`).filter("img").css({
                         'opacity': 1,
                         'animation': 'secured 1s cubic-bezier(.36,.07,.19,.97) both'
@@ -253,7 +247,7 @@ async function render(data) {
                     $(`.objectives-1.central .objectives-circle.none`).css('opacity', 0);
                     $(`.objectives-1.central .objectives-circle.${o.team}`).css('opacity', 1);
 
-                    $(`.objectives-1.central`).filter("img").attr('src', `${cached.img.objectives.central}`);
+                    $(`.objectives-1.central`).filter("img").attr('src', `${cached.assets.sprites}/${name}.png`);
 
                     break;
                 default:
@@ -267,7 +261,9 @@ async function render(data) {
                     $(`${order[i]} .objectives-circle.none`).css('opacity', 0);
                     $(`${order[i]} .objectives-circle.${o.team}`).css('opacity', 1);
 
-                    $(order[i]).filter("img").attr('src', `${cached.assets.img}/${o.name}.png`);
+                    $(order[i]).filter("img").attr('src', `${cached.assets.sprites}/${o.name}.png`);
+
+                    break;
             }
         })
 

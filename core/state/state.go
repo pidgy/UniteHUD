@@ -48,8 +48,12 @@ const (
 	KOStreakPurple
 	KOOrange
 	KOStreakOrange
-	FinalObjectiveSecureOrange
-	FinalObjectiveSecurePurple
+	FinalObjectiveGroudonSecureOrange
+	FinalObjectiveGroudonSecurePurple
+	FinalObjectiveKyogreSecureOrange
+	FinalObjectiveKyogreSecurePurple
+	FinalObjectiveRayquazaSecureOrange
+	FinalObjectiveRayquazaSecurePurple
 	SurrenderOrange
 	SurrenderPurple
 	RegidragoSecureKO
@@ -169,6 +173,19 @@ func (e EventType) Int() int {
 	return int(e)
 }
 
+func (e EventType) ObjectiveString() string {
+	switch e {
+	case FinalObjectiveGroudonSecurePurple, FinalObjectiveGroudonSecureOrange:
+		return "groudon"
+	case FinalObjectiveKyogreSecurePurple, FinalObjectiveKyogreSecureOrange:
+		return "kyogre"
+	case FinalObjectiveRayquazaSecureOrange, FinalObjectiveRayquazaSecurePurple:
+		return "rayquaza"
+	default:
+		return fmt.Sprintf("unknown_objective_string_%d", e.Int())
+	}
+}
+
 func (this EventType) Occured(since time.Duration) *Event {
 	for _, event := range Events {
 		if time.Since(event.Time) > since {
@@ -267,10 +284,18 @@ func (e EventType) String() string {
 		return "[Purple] KO Streak"
 	case KOStreakOrange:
 		return "[Orange] KO Streak"
-	case FinalObjectiveSecurePurple:
+	case FinalObjectiveGroudonSecurePurple:
 		return "[Purple] Groudon"
-	case FinalObjectiveSecureOrange:
+	case FinalObjectiveGroudonSecureOrange:
 		return "[Orange] Groudon"
+	case FinalObjectiveKyogreSecurePurple:
+		return "[Purple] Kyogre"
+	case FinalObjectiveKyogreSecureOrange:
+		return "[Orange] Kyogre"
+	case FinalObjectiveRayquazaSecurePurple:
+		return "[Purple] Rayquaza"
+	case FinalObjectiveRayquazaSecureOrange:
+		return "[Orange] Rayquaza"
 	case SurrenderPurple:
 		return "[Purple] Surrendered"
 	case SurrenderOrange:
@@ -284,9 +309,9 @@ func (this EventType) Team() *team.Team {
 	switch this {
 	case SelfScoreIndicator, PreScore, PostScore, Killed, KilledWithPoints, KilledWithoutPoints, HoldingEnergy:
 		return team.Self
-	case OrangeScore, RegielekiSecureOrange, RegiceSecureOrange, RegirockSecureOrange, RegisteelSecureOrange, RegidragoSecureOrange, FinalObjectiveSecureOrange:
+	case OrangeScore, RegielekiSecureOrange, RegiceSecureOrange, RegirockSecureOrange, RegisteelSecureOrange, RegidragoSecureOrange, FinalObjectiveGroudonSecureOrange, FinalObjectiveKyogreSecureOrange, FinalObjectiveRayquazaSecureOrange:
 		return team.Orange
-	case FirstScored, PurpleScore, RegielekiSecurePurple, RegiceSecurePurple, RegirockSecurePurple, RegisteelSecurePurple, RegidragoSecurePurple, FinalObjectiveSecurePurple:
+	case FirstScored, PurpleScore, RegielekiSecurePurple, RegiceSecurePurple, RegirockSecurePurple, RegisteelSecurePurple, RegidragoSecurePurple, FinalObjectiveGroudonSecurePurple, FinalObjectiveKyogreSecurePurple, FinalObjectiveRayquazaSecurePurple:
 		return team.Purple
 	default:
 		return team.Game

@@ -2,6 +2,7 @@ package exe
 
 import (
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
 	"time"
@@ -12,7 +13,7 @@ const (
 	Title           = "UniteHUD"
 	TitleAndVersion = Title + " " + Version
 	Version         = "v" + VersionSemVer
-	VersionSemVer   = "4.2.0"
+	VersionSemVer   = "4.3.0"
 )
 
 var (
@@ -23,10 +24,6 @@ var (
 
 	dir = ""
 )
-
-func Chan() chan os.Signal {
-	return sigq
-}
 
 func Close() {
 	if sigq == nil {
@@ -47,6 +44,19 @@ func Directory() string {
 	return dir
 }
 
+func Exit() {
+	os.Exit(0)
+}
+
+// func Sigq() chan os.Signal {
+// 	return sigq
+// }
+
 func VersionDash() string {
 	return strings.ReplaceAll(Version, ".", "-")
+}
+
+func WaitForSignal() os.Signal {
+	signal.Notify(sigq, os.Interrupt)
+	return <-sigq
 }

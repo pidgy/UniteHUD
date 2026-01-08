@@ -282,12 +282,14 @@ func Objectives() {
 			}
 			server.SetRegieleki(t)
 			top = time.Now()
-		case state.FinalObjectiveSecureOrange, state.FinalObjectiveSecurePurple:
+		case state.FinalObjectiveGroudonSecureOrange, state.FinalObjectiveGroudonSecurePurple,
+			state.FinalObjectiveKyogreSecureOrange, state.FinalObjectiveKyogreSecurePurple,
+			state.FinalObjectiveRayquazaSecureOrange, state.FinalObjectiveRayquazaSecurePurple:
 			if time.Since(central) < cooldown {
 				matrix.Close()
 				continue
 			}
-			server.SetFinalObjective(t)
+			server.SetFinalObjective(t, event)
 			central = time.Now()
 		case state.RegiceSecureOrange, state.RegiceSecurePurple:
 			if time.Since(bottom) < cooldown {
@@ -691,12 +693,14 @@ func every(d time.Duration, resets ...func()) bool {
 			time.Sleep(time.Second * config.Current.Advanced.DecreasedCaptureLevel)
 		}
 
-		if !paused {
-			return true
+		if paused {
+			for _, fn := range resets {
+				fn()
+			}
+
+			continue
 		}
 
-		for _, fn := range resets {
-			fn()
-		}
+		return true // Continue looping.
 	}
 }
