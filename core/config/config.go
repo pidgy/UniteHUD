@@ -462,7 +462,15 @@ func (c *Config) loadDeviceAssets() {
 				filter.New(team.Game, c.deviceAsset(team.Game.Name, "rayquaza_enemy.png"), state.FinalObjectiveRayquazaSecureOrange.Int(), false),
 
 				filter.New(team.Game, c.deviceAsset(team.Game.Name, "regieleki_ally.png"), state.RegielekiSecurePurple.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "regieleki_ally_alt_alt.PNG"), state.RegielekiSecurePurple.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "regieleki_ally_alt_alt_alt.png"), state.RegielekiSecurePurple.Int(), false),
+
 				filter.New(team.Game, c.deviceAsset(team.Game.Name, "regieleki_enemy.png"), state.RegielekiSecureOrange.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "regieleki_enemy_alt.PNG"), state.RegielekiSecureOrange.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "regieleki_enemy_alt_alt.png"), state.RegielekiSecureOrange.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "regieleki_enemy_alt_alt_alt.PNG"), state.RegielekiSecureOrange.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "regieleki_enemy_alt_alt_alt_alt.png"), state.RegielekiSecureOrange.Int(), false),
+
 				filter.New(team.Game, c.deviceAsset(team.Game.Name, "regice_ally.png"), state.RegiceSecurePurple.Int(), false),
 				filter.New(team.Game, c.deviceAsset(team.Game.Name, "regice_enemy.png"), state.RegiceSecureOrange.Int(), false),
 				filter.New(team.Game, c.deviceAsset(team.Game.Name, "regice_enemy_alt.png"), state.RegiceSecureOrange.Int(), false),

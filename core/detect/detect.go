@@ -212,7 +212,7 @@ func Energy() {
 
 func Objectives() {
 	top, bottom, central, regidragoKO := time.Time{}, time.Time{}, time.Time{}, time.Time{}
-	cooldown := time.Second * 3
+	cooldown := time.Second * 15
 
 	reset := func() {
 		top, bottom, central, regidragoKO = time.Time{}, time.Time{}, time.Time{}, time.Time{}
