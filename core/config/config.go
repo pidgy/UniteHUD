@@ -41,9 +41,9 @@ const (
 	DeviceSwitch     = "switch"
 
 	// Discord primitives.
-	DiscordStandby  = -1
-	DiscordDisabled = 0
-	DiscordEnabled  = 1
+	DiscordRememberStandby  = -1
+	DiscordRememberDisabled = 0
+	DiscordRememberEnabled  = 1
 
 	DefaultAcceptance  = .85
 	DefaultMatchMethod = gocv.TmCcoeffNormed
@@ -123,7 +123,7 @@ type Config struct {
 	}
 
 	Remember struct {
-		Discord int
+		Discord int16
 	}
 
 	Scale float64
@@ -719,7 +719,7 @@ func Open() error {
 	Current.Advanced.Locale = ini.EnUS // Locale.
 
 	// Default persistent settings.
-	Current.Remember.Discord = DiscordStandby
+	Current.Remember.Discord = DiscordRememberStandby
 
 	b, err := os.ReadFile(Current.File())
 	if err != nil {

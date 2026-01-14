@@ -6,11 +6,11 @@ import (
 )
 
 var (
-	title = cases.Title(language.AmericanEnglish)
+	Cases = cases.Title(language.AmericanEnglish)
 )
 
 func Title(s string) string {
-	return title.String(s)
+	return Cases.String(s)
 }
 
 func Translate(s string) string {

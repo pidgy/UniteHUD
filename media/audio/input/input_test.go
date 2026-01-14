@@ -8,8 +8,7 @@ import (
 	"time"
 
 	"github.com/gen2brain/malgo"
-
-	"github.com/pidgy/unitehud/core/config"
+	"github.com/pidgy/unitehud/media/device"
 )
 
 // ffmpeg -f dshow -i audio="AVerMedia HD Capture GC573 1" -vn -sn -f mp3 pipe:1 -v none
@@ -54,10 +53,22 @@ func TestFFMpeg(t *testing.T) {
 }
 
 func TestNewFromVideoCaptureDevice(t *testing.T) {
-	config.Current.Video.Capture.Device.Index = 1
+	v, err := device.VideoCaptureDevice(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(v.Name, v.Path.String())
+
+	v, err = device.VideoCaptureDevice(0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(v.Name, v.Path.String())
+
+	t.Log("------------------")
 
 	ctx, err := malgo.InitContext(
-		[]malgo.Backend{malgo.BackendDsound, malgo.BackendWasapi},
+		[]malgo.Backend{malgo.BackendDsound},
 		malgo.ContextConfig{
 			ThreadPriority: malgo.ThreadPriorityHigh,
 			Alsa: malgo.AlsaContextConfig{
@@ -79,9 +90,12 @@ func TestNewFromVideoCaptureDevice(t *testing.T) {
 	}
 
 	for _, d := range d {
-		malgo.InitDevice(ctx.Context, malgo.DeviceConfig{}, malgo.DeviceCallbacks{})
-		println("\t", d.String())
+		t.Log(d.Name(), d.ID.String())
+		// malgo.InitDevice(ctx.Context, malgo.DeviceConfig{}, malgo.DeviceCallbacks{})
+		// println("\t", d.String())
 	}
+
+	println("done")
 }
 
 // TestDevices to parse discovered devices.

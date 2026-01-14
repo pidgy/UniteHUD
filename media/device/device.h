@@ -1,26 +1,24 @@
 // Exported.
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 #include <stdlib.h>
-  typedef const int DeviceType;
+typedef const int DeviceType;
 
-  const DeviceType DeviceTypeAudioCapture = 0x01;
-  const DeviceType DeviceTypeVideoCapture = 0x02;
+const DeviceType DeviceTypeAudioCapture = 0x01;
+const DeviceType DeviceTypeVideoCapture = 0x02;
 
-  typedef struct _Device
-  {
-    char *Name, *Description, *Path;
-    long WaveInID;
-  } Device;
+typedef struct _Device {
+  char *Name, *Description, *Path;
+  long WaveInID;
+} Device;
 
-  void DeviceFree(Device* device);
-  int DeviceInit(Device* device, int index, DeviceType t);
-  char* DeviceName(int index, DeviceType t);
-  char* DevicePath(int index, DeviceType t);
+void DeviceFree(Device *device);
+int DeviceInit(Device *device, int index, DeviceType t);
+char *DeviceName(int index, DeviceType t);
+char *DevicePath(int index, DeviceType t);
 
 #ifdef __cplusplus
 }
@@ -48,42 +46,34 @@ extern "C"
   free(x);                                                                     \
   x = NULL
 
-typedef struct _props
-{
+typedef struct _props {
 private:
-  IPropertyBag* propertyBag = NULL;
-  IEnumMoniker* enumMoniker = NULL;
-  IMoniker* moniker = NULL;
-  ICreateDevEnum* devEnum = NULL;
+  IPropertyBag *propertyBag = NULL;
+  IEnumMoniker *enumMoniker = NULL;
+  IMoniker *moniker = NULL;
+  ICreateDevEnum *devEnum = NULL;
   HRESULT hresult = -1;
 
-  template<class T>
-  void _release(T** ppT...)
-  {
-    if (*ppT) 
-    {
+  template <class T> void _release(T **ppT...) {
+    if (*ppT) {
       (*ppT)->Release();
       *ppT = NULL;
       return;
     }
   };
 
-  void _failed()
-  {
-    if (SUCCEEDED(hresult)) 
-    {
+  void _failed() {
+    if (SUCCEEDED(hresult)) {
       hresult = -1;
     }
   }
 
 public:
-  operator bool() const
-  {
+  operator bool() const {
     return this && propertyBag && enumMoniker && moniker && SUCCEEDED(hresult);
   }
 
-  ~_props()
-  {
+  ~_props() {
     _release(&moniker);
     _release(&enumMoniker);
     _release(&propertyBag);
@@ -92,53 +82,46 @@ public:
     CoUninitialize();
   }
 
-  _props(int index, DeviceType type)
-  {
+  _props(int index, DeviceType type) {
     ULONG num;
     GUID guid;
 
-    switch (type) 
-    {
-      case DeviceTypeAudioCapture:
-        guid = CLSID_AudioInputDeviceCategory;
-        break;
-      case DeviceTypeVideoCapture:
-        guid = CLSID_VideoInputDeviceCategory;
-        break;
-      default:
-        goto failed;
+    switch (type) {
+    case DeviceTypeAudioCapture:
+      guid = CLSID_AudioInputDeviceCategory;
+      break;
+    case DeviceTypeVideoCapture:
+      guid = CLSID_VideoInputDeviceCategory;
+      break;
+    default:
+      goto failed;
     }
 
     CoInitializeEx(NULL, COINIT_SPEED_OVER_MEMORY);
 
-    hresult = CoCreateInstance(CLSID_SystemDeviceEnum, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&devEnum));
-    if (FAILED(hresult)) 
-    {
+    hresult = CoCreateInstance(CLSID_SystemDeviceEnum, NULL,
+                               CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&devEnum));
+    if (FAILED(hresult)) {
       goto failed;
     }
 
     hresult = devEnum->CreateClassEnumerator(guid, &enumMoniker, 0);
-    if (hresult != S_OK) 
-    {
+    if (hresult != S_OK) {
       goto failed;
     }
 
-    for (int i = 0; i <= index; i++) 
-    {
+    for (int i = 0; i <= index; i++) {
       hresult = enumMoniker->Next(1, &moniker, &num);
-      if (FAILED(hresult)) 
-      {
+      if (FAILED(hresult)) {
         goto failed;
       }
     }
-    if (num != 1) 
-    {
+    if (num != 1) {
       goto failed;
     }
 
     hresult = moniker->BindToStorage(0, 0, IID_PPV_ARGS(&propertyBag));
-    if (FAILED(hresult)) 
-    {
+    if (FAILED(hresult)) {
       goto failed;
     }
 
@@ -150,15 +133,13 @@ public:
 
   HRESULT result() { return hresult; }
 
-  LONG int32(LPCOLESTR name)
-  {
+  LONG int32(LPCOLESTR name) {
     LONG l;
     VARIANT v;
 
     VariantInit(&v);
 
-    if (SUCCEEDED(propertyBag->Read(name, &v, NULL))) 
-    {
+    if (SUCCEEDED(propertyBag->Read(name, &v, NULL))) {
       l = v.lVal;
     }
 
@@ -167,15 +148,13 @@ public:
     return l;
   }
 
-  LPSTR string(LPCOLESTR name)
-  {
+  LPSTR string(LPCOLESTR name) {
     LPSTR s = NULL;
     VARIANT v;
 
     VariantInit(&v);
 
-    if (SUCCEEDED(propertyBag->Read(name, &v, NULL)))
-    {
+    if (SUCCEEDED(propertyBag->Read(name, &v, NULL))) {
       UINT l = SysStringByteLen(v.bstrVal);
       s = (LPSTR)calloc(l, sizeof(char));
       snprintf(s, l, "%S", v.bstrVal);
@@ -188,12 +167,9 @@ public:
 
 } props;
 
-static int
-cDeviceInit(Device* device, int index, DeviceType type)
-{
+static int cDeviceInit(Device *device, int index, DeviceType type) {
   props p(index, type);
-  if (!p) 
-  {
+  if (!p) {
     return -1;
   }
 
@@ -205,12 +181,9 @@ cDeviceInit(Device* device, int index, DeviceType type)
   return p.result();
 }
 
-static char*
-cDeviceProp(int index, DeviceType type, LPCOLESTR prop)
-{
+static char *cDeviceProp(int index, DeviceType type, LPCOLESTR prop) {
   props props(index, type);
-  if (!props) 
-  {
+  if (!props) {
     return NULL;
   }
 

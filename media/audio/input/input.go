@@ -9,6 +9,7 @@ import (
 
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/media/audio/device"
+	media "github.com/pidgy/unitehud/media/device"
 )
 
 type Device struct {
@@ -30,25 +31,38 @@ var (
 	disabled = &Device{name: device.Disabled}
 )
 
+func Custom() {
+	/*
+		ma_device_config config = ma_device_config_init(ma_device_type_playback);
+		config.playback.pDeviceID = &pPlaybackInfos[chosenPlaybackDeviceIndex].id;
+		config.playback.format    = MY_FORMAT;
+		config.playback.channels  = MY_CHANNEL_COUNT;
+		config.sampleRate         = MY_SAMPLE_RATE;
+		config.dataCallback       = data_callback;
+		config.pUserData          = pMyCustomData;
+	*/
+}
+
+func (d *Device) withDefaultConfig() *Device {
+	d.config = malgo.DefaultDeviceConfig(malgo.Capture)
+	d.config.Capture.Format = malgo.FormatS16
+	d.config.Capture.Channels = 1
+	d.config.Playback.Format = malgo.FormatS16
+	d.config.Playback.Channels = 1
+	d.config.SampleRate = 44100
+	d.config.Alsa.NoMMap = 1
+	return d
+}
+
 func New(ctx *malgo.AllocatedContext, name string) (*Device, error) {
 	if name == device.Disabled || name == "" {
 		return disabled, nil
 	}
 
 	for _, d := range Devices(ctx) {
-		if !device.Is(d, name) {
-			continue
+		if device.Is(d, name) {
+			return d.withDefaultConfig(), nil
 		}
-
-		d.config = malgo.DefaultDeviceConfig(malgo.Capture)
-		d.config.Capture.Format = malgo.FormatS16
-		d.config.Capture.Channels = 1
-		d.config.Playback.Format = malgo.FormatS16
-		d.config.Playback.Channels = 1
-		d.config.SampleRate = 44100
-		d.config.Alsa.NoMMap = 1
-
-		return d, nil
 	}
 
 	return disabled, fmt.Errorf("<ini:failed:find> capture device: %s", name)
@@ -180,6 +194,20 @@ func Devices(ctx *malgo.AllocatedContext) (captures []*Device) {
 
 			name:      info.Name(),
 			isDefault: info.IsDefault != 0,
+		})
+	}
+
+	for i := 0; i < 10; i++ {
+		d, err := media.VideoCaptureDevice(i)
+		if err != nil {
+			notify.Warn("[Audio Input] Invalid device at index %d", i)
+			continue
+		}
+
+		captures = append(captures, &Device{
+			ID: d.Path.String(),
+
+			name: fmt.Sprintf("%s (Video Device)", d.Name),
 		})
 	}
 

@@ -6,6 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 const (
@@ -13,12 +16,14 @@ const (
 	Title           = "UniteHUD"
 	TitleAndVersion = Title + " " + Version
 	Version         = "v" + VersionSemVer
-	VersionSemVer   = "4.3.0"
+	VersionSemVer   = "4.4.0"
 )
 
 var (
 	Debug  = strings.Contains(strings.ToLower(os.Args[0]), "debug")
 	Uptime = time.Now()
+
+	Caser = cases.Title(language.English)
 
 	sigq = make(chan os.Signal, 1)
 
@@ -47,10 +52,6 @@ func Directory() string {
 func Exit() {
 	os.Exit(0)
 }
-
-// func Sigq() chan os.Signal {
-// 	return sigq
-// }
 
 func VersionDash() string {
 	return strings.ReplaceAll(Version, ".", "-")

@@ -41,27 +41,28 @@ type Objective struct {
 	Team        string `json:"team"`
 	Time        int64  `json:"time"`
 	Surrendered bool   `json:"surrendered"`
+	isFinal     bool
 }
 
 type State struct {
-	Objectives     []Objective `json:"objectives"`
-	Config         bool        `json:"config"`
-	Debug          bool        `json:"debug"`
-	Defeated       []int64     `json:"defeated"`
-	Energy         int         `json:"energy"`
-	Events         []string    `json:"events"`
-	FinalObjective string      `json:"final_objective"`
-	InMatch        bool        `json:"match"`
-	Orange         *score      `json:"orange"`
-	Purple         *score      `json:"purple"`
-	Platform       string      `json:"platform"`
-	Ready          bool        `json:"ready"`
-	Regilekis      []string    `json:"regis"`
-	Regidragos     []string    `json:"regidragos"`
-	Seconds        int64       `json:"seconds"`
-	Self           *score      `json:"self"`
-	Stacks         int         `json:"stacks"`
-	Version        string      `json:"version"`
+	Objectives         []Objective `json:"objectives"`
+	Config             bool        `json:"config"`
+	Debug              bool        `json:"debug"`
+	Defeated           []int64     `json:"defeated"`
+	Energy             int         `json:"energy"`
+	Events             []string    `json:"events"`
+	FinalObjectiveTeam string      `json:"final_objective"`
+	InMatch            bool        `json:"match"`
+	Orange             *score      `json:"orange"`
+	Purple             *score      `json:"purple"`
+	Platform           string      `json:"platform"`
+	Ready              bool        `json:"ready"`
+	Regilekis          []string    `json:"regis"`
+	Regidragos         []string    `json:"regidragos"`
+	Seconds            int64       `json:"seconds"`
+	Self               *score      `json:"self"`
+	Stacks             int         `json:"stacks"`
+	Version            string      `json:"version"`
 
 	lastSecondsUpdate time.Time
 }
@@ -122,8 +123,15 @@ func Clock() string {
 	return fmt.Sprintf("%02d:%02d", current.State.Seconds/60, current.State.Seconds%60)
 }
 
-func Game() *State {
-	return current.State
+func FinalObjectiveName() string {
+	if current.State.FinalObjectiveTeam != "" {
+		for _, o := range current.Objectives {
+			if o.isFinal {
+				return o.Name
+			}
+		}
+	}
+	return "Final Objective"
 }
 
 func Holding() int {
@@ -292,7 +300,7 @@ func Match() bool {
 }
 
 func Objectives(t *team.Team) (regielekis, regices, regirocks, registeels, regidragos, finals int) {
-	if current.State.FinalObjective == t.Name {
+	if current.State.FinalObjectiveTeam == t.Name {
 		finals = 1
 	}
 	return RegielekisSecured(t), RegicesSecured(t), RegirocksSecured(t), RegisteelsSecured(t), RegidragosSecured(t), finals
@@ -416,10 +424,6 @@ func Scores() (orange, purple, self int) {
 	return current.State.Orange.Value, current.State.Purple.Value, current.State.Self.Value
 }
 
-func Seconds() int64 {
-	return current.State.Seconds
-}
-
 func SetBottomObjective(t *team.Team, name string, n int) {
 	o := Objective{
 		Team: t.Name,
@@ -474,12 +478,13 @@ func SetEnergy(b int) {
 }
 
 func SetFinalObjective(t *team.Team, e state.EventType) {
-	current.State.FinalObjective = t.Name
+	current.State.FinalObjectiveTeam = t.Name
 
 	current.Objectives = append(current.Objectives, Objective{
-		Team: t.Name,
-		Name: e.ObjectiveString(),
-		Time: time.Now().Unix(),
+		Team:    t.Name,
+		Name:    lang.Cases.String(e.ObjectiveString()),
+		Time:    time.Now().Unix(),
+		isFinal: true,
 	})
 }
 
@@ -628,6 +633,10 @@ func SetTime(minutes, seconds int64) {
 	current.State.Seconds = minutes*60 + seconds
 }
 
+func Seconds() int64 {
+	return current.State.Seconds
+}
+
 func (i *info) client(r *http.Request) time.Time {
 	i.mutex.Lock()
 	defer i.mutex.Unlock()
@@ -682,12 +691,12 @@ func reset() *State {
 			Value:       0,
 			Surrendered: false,
 		},
-		Seconds:        0,
-		Energy:         0,
-		Regilekis:      []string{team.None.Name, team.None.Name, team.None.Name},
-		FinalObjective: "",
-		Objectives:     []Objective{},
-		Version:        exe.Version,
-		Defeated:       []int64{},
+		Seconds:            0,
+		Energy:             0,
+		Regilekis:          []string{team.None.Name, team.None.Name, team.None.Name},
+		FinalObjectiveTeam: "",
+		Objectives:         []Objective{},
+		Version:            exe.Version,
+		Defeated:           []int64{},
 	}
 }

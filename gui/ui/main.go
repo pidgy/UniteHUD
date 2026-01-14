@@ -188,8 +188,10 @@ func (g *GUI) main() {
 
 	tray.SetStartStopTitle("Start")
 
-	if config.Current.Remember.Discord == config.DiscordStandby {
-		go g.ToastYesNoRemember(
+	if !discord.Connected() && !discord.Asked && config.Current.Remember.Discord == config.DiscordRememberStandby {
+		was := config.Current.Advanced.Discord.Disabled
+
+		g.ToastYesNoRemember(
 			exe.Title,
 			"<ini:toast:connect_discord>",
 			"<ini:toast:connect_discord_remember>",
@@ -199,19 +201,27 @@ func (g *GUI) main() {
 			toastOnNo(func() {
 				config.Current.Advanced.Discord.Disabled = true
 			}),
-			toastOnClose(
-				nil,
-			),
-			toastOnRemember(func(b bool) {
-				config.Current.Remember.Discord = config.DiscordDisabled
-				if b {
-					config.Current.Remember.Discord = config.DiscordEnabled
+			toastOnClose(func() {
+				discord.Asked = true
+
+				if was == config.Current.Advanced.Discord.Disabled {
+					config.Current.Advanced.Discord.Disabled = true
 				}
 
 				err := config.Current.Save()
 				if err != nil {
 					notify.Error("[UI] <ini:failed:save> UniteHUD configuration (%v)", err)
 					return
+				}
+			}),
+			toastOnRemember(func(b bool) {
+				if !b {
+					return
+				}
+
+				config.Current.Remember.Discord = config.DiscordRememberDisabled
+				if config.Current.Advanced.Discord.Disabled {
+					config.Current.Remember.Discord = config.DiscordRememberEnabled
 				}
 			}),
 		)
@@ -290,7 +300,7 @@ func (g *GUI) main() {
 							Left: unit.Dp(2),
 							Top:  unit.Dp(.1),
 						}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-							if config.Current.Advanced.Discord.Disabled {
+							if !discord.Connected() {
 								ui.labels.discord.Color.A = 127
 								ui.labels.discord.Text = "👾 Discord RPC Disabled"
 							} else {
@@ -1278,7 +1288,7 @@ func (g *GUI) onFirstFrame(ui *main) {
 	go wapi.SetWindowLongPtrA.Call(g.HWND, wapi.GetWindowLongFlags.Style, wapi.WindowStyleFlags.OverlappedWindow)
 
 	if config.IsNew() {
-		go g.ToastNewsletter(
+		g.ToastNewsletter(
 			exe.Title,
 			bulletin{
 				Title: fmt.Sprintf("Welcome to %s!", exe.TitleAndVersion),

@@ -111,11 +111,6 @@ type footer struct {
 	hz  material.LabelStyle
 }
 
-var (
-	hideTrue  = true
-	hideFalse = false
-)
-
 func (g *GUI) configure() {
 	ui := g.configureUI()
 

@@ -9,8 +9,6 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gocv.io/x/gocv"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/fonts"
@@ -124,6 +122,10 @@ func (g *GUI) audios(text float32) *audios {
 						},
 					},
 				},
+			},
+
+			populate: func() {
+
 			},
 		},
 	}
@@ -800,10 +802,10 @@ func (g *GUI) videos(text float32) *videos {
 			for _, api := range device.APIs() {
 				v.apis.list.Items = append(v.apis.list.Items,
 					&checklist.Item{
-						Text:  cases.Title(language.English, cases.NoLower).String(api),
+						Text:  lang.Cases.String(api),
 						Value: device.API(api).Value(),
 						Checked: widget.Bool{
-							Value: api == config.Current.Video.Capture.Device.API,
+							Value: strings.EqualFold(api, config.Current.Video.Capture.Device.API),
 						},
 					},
 				)
@@ -904,9 +906,9 @@ func (g *GUI) videos(text float32) *videos {
 			for _, c := range device.Codecs() {
 				v.codecs.list.Items = append(v.codecs.list.Items,
 					&checklist.Item{
-						Text: cases.Title(language.English, cases.NoLower).String(c.String()),
+						Text: lang.Cases.String(c.String()),
 						Checked: widget.Bool{
-							Value: c.String() == config.Current.Video.Capture.Device.Codec,
+							Value: strings.EqualFold(c.String(), config.Current.Video.Capture.Device.Codec),
 						},
 					},
 				)

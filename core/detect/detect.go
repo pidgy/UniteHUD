@@ -291,8 +291,8 @@ func Objectives() {
 			server.SetRegieleki(t)
 			top = time.Now()
 		case state.FinalObjectiveGroudonSecureOrange, state.FinalObjectiveGroudonSecurePurple,
-			state.FinalObjectiveKyogreSecureKO,
-			state.FinalObjectiveRayquazaSecureOrange, state.FinalObjectiveRayquazaSecurePurple:
+			state.FinalObjectiveRayquazaSecureOrange, state.FinalObjectiveRayquazaSecurePurple,
+			state.FinalObjectiveKyogreSecureKO:
 			if time.Since(central) < cooldown {
 				matrix.Close()
 				continue
@@ -585,11 +585,16 @@ func States() {
 			if o+p+self != 0 {
 				notify.Feed(team.Game.NRGBA, "[Detect] [%s] Match ended", team.Game)
 
+				f := ""
+
 				// Purple score and objective results.
 				regielekis, regices, regirocks, registeels, regidragos, final := server.Objectives(team.Purple)
+				if final > 0 {
+					f = fmt.Sprintf(" [+%d %s]", final, plural(server.FinalObjectiveName(), final))
+				}
 				notify.Feed(
 					team.Purple.NRGBA,
-					"[Detect] [%s] %s [+%d %s] [+%d %s] [+%d %s] [+%d %s] [+%d %s] [+%d %s]",
+					"[Detect] [%s] %s [+%d %s] [+%d %s] [+%d %s] [+%d %s] [+%d %s]%s",
 					team.Purple,
 					server.ScoreString(team.Purple),
 					regielekis, plural("Regieleki", regielekis),
@@ -597,14 +602,18 @@ func States() {
 					regirocks, plural("Regirock", regirocks),
 					registeels, plural("Registeel", registeels),
 					regidragos, plural("Regidrago", regidragos),
-					final, plural("Groudon", final),
+					f,
 				)
 
 				// Orange score and objective results.
 				regielekis, regices, regirocks, registeels, regidragos, final = server.Objectives(team.Orange)
+				f = ""
+				if final > 0 {
+					f = fmt.Sprintf(" [+%d %s]", final, plural(server.FinalObjectiveName(), final))
+				}
 				notify.Feed(
 					team.Orange.NRGBA,
-					"[Detect] [%s] %s [+%d %s] [+%d %s] [+%d %s] [+%d %s] [+%d %s] [+%d %s]",
+					"[Detect] [%s] %s [+%d %s] [+%d %s] [+%d %s] [+%d %s] [+%d %s]%s",
 					team.Orange,
 					server.ScoreString(team.Orange),
 					regielekis, plural("Regieleki", regielekis),
@@ -612,7 +621,7 @@ func States() {
 					regirocks, plural("Regirock", regirocks),
 					registeels, plural("Registeel", registeels),
 					regidragos, plural("Regidrago", regidragos),
-					final, plural("Groudon", final),
+					f,
 				)
 
 				// Self score and objective results.

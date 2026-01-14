@@ -99,18 +99,18 @@ func current() activity {
 
 	a.Instance = activityInstanceInMatch
 
-	game := server.Game()
+	orange, purple, _ := server.Scores()
 
 	wl := "Tied"
 	switch {
-	case game.Purple.Value > game.Orange.Value:
+	case purple > orange:
 		wl = "Winning"
-	case game.Purple.Value < game.Orange.Value:
+	case purple < orange:
 		wl = "Losing"
 	}
-	a.State = fmt.Sprintf("%s %d - %d", wl, game.Purple.Value, game.Orange.Value)
+	a.State = fmt.Sprintf("%s %d - %d", wl, purple, orange)
 
-	ten, ms := (time.Minute * 10).Milliseconds(), int64(game.Seconds*1000)
+	ten, ms := (time.Minute * 10).Milliseconds(), server.Seconds()*1000
 	started := ten - ms
 	if ms > 0 {
 		a.Timestamps = timestamps{
@@ -162,14 +162,14 @@ func current() activity {
 			dontReplaceFor(time.Second * 30)
 
 			a.Details = "UniteHUD - Match Ending"
-			a.State = fmt.Sprintf("Won %d - %d (Surrender)", game.Purple.Value, game.Orange.Value)
+			a.State = fmt.Sprintf("Won %d - %d (Surrender)", purple, orange)
 
 			return a
 		case state.SurrenderPurple:
 			dontReplaceFor(time.Second * 30)
 
 			a.Details = "UniteHUD - Match Ending"
-			a.State = fmt.Sprintf("Lost %d - %d (Surrender)", game.Purple.Value, game.Orange.Value)
+			a.State = fmt.Sprintf("Lost %d - %d (Surrender)", purple, orange)
 
 			return a
 		case state.MatchEnding:
@@ -177,14 +177,14 @@ func current() activity {
 
 			wl := "Tied"
 			switch {
-			case game.Purple.Value > game.Orange.Value:
+			case purple > orange:
 				wl = "Won"
-			case game.Purple.Value < game.Orange.Value:
+			case purple < orange:
 				wl = "Lost"
 			}
 
 			a.Details = "UniteHUD - Match Ended"
-			a.State = fmt.Sprintf("%s %d - %d", wl, game.Purple.Value, game.Orange.Value)
+			a.State = fmt.Sprintf("%s %d - %d", wl, purple, orange)
 
 			a.Timestamps = timestamps{}
 
@@ -211,12 +211,12 @@ func current() activity {
 				wl = "secured"
 			}
 
-			a.State = fmt.Sprintf("%d - %d / %s %s", game.Purple.Value, game.Orange.Value, obj, wl)
+			a.State = fmt.Sprintf("%d - %d / %s %s", purple, orange, obj, wl)
 			return a
 		}
 	}
 
-	if game.Seconds == 0 {
+	if server.Seconds() == 0 {
 		a.Details = "UniteHUD - Main Menu"
 		a.State = "Waiting for next match to start"
 		a.Timestamps = timestamps{
@@ -238,6 +238,10 @@ func dontReplaceFor(d time.Duration) {
 	})
 }
 
+func Connected() bool {
+	return rpc.conn != nil
+}
+
 func Close() {
 	rpc.cleanup()
 	notify.Feed(nrgba.Discord, "[Discord] Connection closed")
@@ -245,7 +249,6 @@ func Close() {
 
 func Open() error {
 	go func() {
-
 		for ; ; time.Sleep(time.Second * 5) {
 			reconnect()
 
@@ -265,6 +268,8 @@ func Open() error {
 	return nil
 }
 
+var Asked = false
+
 func reconnect() {
 	err := rpc.error()
 	if err != nil {
@@ -275,12 +280,10 @@ func reconnect() {
 		rpc.cleanup()
 	}
 
-	for wait := time.Second * 3; rpc.conn == nil; time.Sleep(wait) {
-		if config.Current.Advanced.Discord.Disabled || config.Current.Remember.Discord == config.DiscordStandby {
-			wait = time.Second
+	for wait := time.Second * 5; rpc.conn == nil; time.Sleep(wait) {
+		if config.Current.Advanced.Discord.Disabled || !Asked {
 			continue
 		}
-		wait = wait << 1
 
 		notify.Feed(nrgba.Discord, "[Discord] Connecting...")
 
