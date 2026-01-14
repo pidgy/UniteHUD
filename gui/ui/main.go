@@ -125,10 +125,6 @@ type main struct {
 	tag      any
 }
 
-var (
-	doneFirstFrame = false
-)
-
 func (g *GUI) main() {
 	ui := g.mainUI()
 
@@ -187,45 +183,6 @@ func (g *GUI) main() {
 	}
 
 	tray.SetStartStopTitle("Start")
-
-	if !discord.Connected() && !discord.Asked && config.Current.Remember.Discord == config.DiscordRememberStandby {
-		was := config.Current.Advanced.Discord.Disabled
-
-		g.ToastYesNoRemember(
-			exe.Title,
-			"<ini:toast:connect_discord>",
-			"<ini:toast:connect_discord_remember>",
-			toastOnYes(func() {
-				config.Current.Advanced.Discord.Disabled = false
-			}),
-			toastOnNo(func() {
-				config.Current.Advanced.Discord.Disabled = true
-			}),
-			toastOnClose(func() {
-				discord.Asked = true
-
-				if was == config.Current.Advanced.Discord.Disabled {
-					config.Current.Advanced.Discord.Disabled = true
-				}
-
-				err := config.Current.Save()
-				if err != nil {
-					notify.Error("[UI] <ini:failed:save> UniteHUD configuration (%v)", err)
-					return
-				}
-			}),
-			toastOnRemember(func(b bool) {
-				if !b {
-					return
-				}
-
-				config.Current.Remember.Discord = config.DiscordRememberDisabled
-				if config.Current.Advanced.Discord.Disabled {
-					config.Current.Remember.Discord = config.DiscordRememberEnabled
-				}
-			}),
-		)
-	}
 
 	for is.Now == is.MainMenu {
 		if !g.open {
@@ -617,7 +574,9 @@ func (g *GUI) main() {
 
 			g.frame(gtx, event)
 
-			g.onFirstFrame(ui)
+			ui.onFrame(1, ui.onFrame1, g)
+			ui.onFrame(12, ui.onFrame2, g)
+			ui.onFrame(24, ui.onFrame3, g)
 		default:
 			notify.Missed(event, "Main")
 		}
@@ -1250,12 +1209,28 @@ func (g *GUI) mainUI() *main {
 	return ui
 }
 
-func (g *GUI) onFirstFrame(ui *main) {
-	if doneFirstFrame {
+var (
+	framer = map[int]struct {
+		count int
+		done  bool
+	}{}
+)
+
+func (ui *main) onFrame(frame int, fn func(*GUI), g *GUI) {
+	f := framer[frame]
+	if f.done || f.count == 4096 { // Frame limitation.
 		return
 	}
-	defer func() { doneFirstFrame = true }()
 
+	if f.count++; frame == f.count {
+		defer fn(g)
+		f.done = true
+	}
+
+	framer[frame] = f
+}
+
+func (ui *main) onFrame1(g *GUI) {
 	g.window.Option(
 		app.Title(
 			exe.Title,
@@ -1286,7 +1261,9 @@ func (g *GUI) onFirstFrame(ui *main) {
 	}()
 
 	go wapi.SetWindowLongPtrA.Call(g.HWND, wapi.GetWindowLongFlags.Style, wapi.WindowStyleFlags.OverlappedWindow)
+}
 
+func (ui *main) onFrame2(g *GUI) {
 	if config.IsNew() {
 		g.ToastNewsletter(
 			exe.Title,
@@ -1321,6 +1298,47 @@ func (g *GUI) onFirstFrame(ui *main) {
 				},
 			},
 			toastOnClose(nil),
+		)
+	}
+}
+
+func (ui *main) onFrame3(g *GUI) {
+	if !discord.Connected() && !discord.Asked && config.Current.Remember.Discord == config.DiscordRememberStandby {
+		was := config.Current.Advanced.Discord.Disabled
+
+		g.ToastYesNoRemember(
+			exe.Title,
+			"<ini:toast:connect_discord>",
+			"<ini:toast:connect_discord_remember>",
+			toastOnYes(func() {
+				config.Current.Advanced.Discord.Disabled = false
+			}),
+			toastOnNo(func() {
+				config.Current.Advanced.Discord.Disabled = true
+			}),
+			toastOnClose(func() {
+				discord.Asked = true
+
+				if was == config.Current.Advanced.Discord.Disabled {
+					config.Current.Advanced.Discord.Disabled = true
+				}
+
+				err := config.Current.Save()
+				if err != nil {
+					notify.Error("[UI] <ini:failed:save> UniteHUD configuration (%v)", err)
+					return
+				}
+			}),
+			toastOnRemember(func(b bool) {
+				if !b {
+					return
+				}
+
+				config.Current.Remember.Discord = config.DiscordRememberDisabled
+				if config.Current.Advanced.Discord.Disabled {
+					config.Current.Remember.Discord = config.DiscordRememberEnabled
+				}
+			}),
 		)
 	}
 }

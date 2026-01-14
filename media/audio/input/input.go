@@ -9,7 +9,6 @@ import (
 
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/media/audio/device"
-	media "github.com/pidgy/unitehud/media/device"
 )
 
 type Device struct {
@@ -197,19 +196,19 @@ func Devices(ctx *malgo.AllocatedContext) (captures []*Device) {
 		})
 	}
 
-	for i := 0; i < 10; i++ {
-		d, err := media.VideoCaptureDevice(i)
-		if err != nil {
-			notify.Warn("[Audio Input] Invalid device at index %d", i)
-			continue
-		}
+	// for i := 0; i < 10; i++ {
+	// 	d, err := media.VideoCaptureDevice(i)
+	// 	if err != nil {
+	// 		notify.Warn("[Audio Input] Invalid device at index %d", i)
+	// 		continue
+	// 	}
 
-		captures = append(captures, &Device{
-			ID: d.Path.String(),
+	// 	captures = append(captures, &Device{
+	// 		ID: d.Path.String(),
 
-			name: fmt.Sprintf("%s (Video Device)", d.Name),
-		})
-	}
+	// 		name: fmt.Sprintf("%s (Video Device)", d.Name),
+	// 	})
+	// }
 
 	return captures
 }

@@ -99,7 +99,7 @@ func (g *GUI) ToastNewsletter(header string, bulletin bulletin, c toastOnClose) 
 		defer c()
 	}
 
-	t := g.makeToastForce(header, bulletin.Title, float32(600), float32(450))
+	t := g.makeToastForce(header, bulletin.Title, float32(650), float32(450))
 	if t == nil {
 		notify.Error("[UI] Toast: Failed to show Newsletter")
 		return
@@ -178,6 +178,8 @@ func (g *GUI) ToastNewsletter(header string, bulletin bulletin, c toastOnClose) 
 
 	for {
 		switch event := t.window.NextEvent().(type) {
+		case app.ViewEvent, system.StageEvent:
+			t.window.Perform(system.ActionRaise)
 		case system.DestroyEvent:
 			notify.Debug("[UI] Toast: DestroyEvent Newsletter \"%s\"", t.label.Text)
 			return
@@ -418,6 +420,8 @@ func (g *GUI) ToastYesNoRemember(header, msg, decision string, y toastOnYes, n t
 
 	for {
 		switch event := t.window.NextEvent().(type) {
+		case system.StageEvent:
+			t.window.Perform(system.ActionRaise)
 		case system.DestroyEvent:
 			notify.Debug("[UI] Toast: DestroyEvent ToastYesNoRemember \"%s\"", t.label.Text)
 			return
