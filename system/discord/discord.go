@@ -19,18 +19,7 @@ import (
 )
 
 var (
-	rpc client
-
-	// previous struct {
-	// 	score struct {
-	// 		orange,
-	// 		purple,
-	// 		self int
-	// 	}
-	// }
-
-	replace = true
-
+	Asked   = config.Current.Remember.Discord != config.DiscordRememberStandby
 	Current = def
 
 	def = activity{
@@ -66,6 +55,10 @@ var (
 			},
 		},
 	}
+
+	rpc client
+
+	replace = true
 )
 
 func current() activity {
@@ -248,6 +241,7 @@ func Close() {
 }
 
 func Open() error {
+
 	go func() {
 		for ; ; time.Sleep(time.Second * 5) {
 			reconnect()
@@ -267,8 +261,6 @@ func Open() error {
 
 	return nil
 }
-
-var Asked = false
 
 func reconnect() {
 	err := rpc.error()

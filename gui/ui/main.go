@@ -1303,7 +1303,7 @@ func (ui *main) onFrame2(g *GUI) {
 }
 
 func (ui *main) onFrame3(g *GUI) {
-	if !discord.Connected() && !discord.Asked && config.Current.Remember.Discord == config.DiscordRememberStandby {
+	if !discord.Connected() && config.Current.Remember.Discord == config.DiscordRememberStandby {
 		was := config.Current.Advanced.Discord.Disabled
 
 		g.ToastYesNoRemember(
