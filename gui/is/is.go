@@ -23,5 +23,5 @@ func (w What) String() string {
 	case Configuring:
 		return "Projector Menu"
 	}
-	return "Unknown"
+	return "Unknown State"
 }

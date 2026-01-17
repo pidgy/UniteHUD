@@ -30,8 +30,8 @@ var (
 		Assets: assets{
 			LargeImage: "icon1024x1024",
 			LargeText:  "UniteHUD",
-			SmallImage: "asdasd",
-			SmallText:  "unitehud.dev",
+			SmallImage: "-",
+			SmallText:  "UniteHUD.dev",
 		},
 
 		Timestamps: timestamps{},
@@ -67,15 +67,14 @@ func current() activity {
 		return a
 	}
 
-	if is.Now == is.Configuring {
-		a.Details = fmt.Sprintf("UniteHUD - %s", is.Now)
-		a.State = "Configuring capture settings"
-		return a
-	}
-
-	if is.Now == is.Loading {
+	switch is.Now {
+	case is.Loading:
 		a.Details = fmt.Sprintf("UniteHUD - %s", is.Now)
 		a.State = "Loading..."
+		return a
+	case is.Configuring:
+		a.Details = fmt.Sprintf("UniteHUD - %s", is.Now)
+		a.State = "Configuring capture settings"
 		return a
 	}
 

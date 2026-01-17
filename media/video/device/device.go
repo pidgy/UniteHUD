@@ -3,6 +3,7 @@ package device
 import (
 	"fmt"
 	"image"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -188,8 +189,8 @@ func Close() {
 		return
 	}
 
-	notify.Debug("[Device] Closing %s", active.name)
-	defer notify.Debug("[Device] %s closed", active.name)
+	notify.System("[Device] Closing %s...", active.name)
+	defer notify.System("[Device] Closed %s", active.name)
 
 	stop()
 
@@ -313,7 +314,7 @@ func capture() error {
 
 	api := API(config.Current.Video.Capture.Device.API)
 
-	notify.Debug("[Device] Capturing %s with %s API", active.name, config.Current.Video.Capture.Device.API)
+	notify.Debug("[Device] Capturing %s with %s API", active.name, api.name)
 
 	device, err := gocv.OpenVideoCaptureWithAPI(active.index, api.gocv)
 	if err != nil {
@@ -328,44 +329,88 @@ func capture() error {
 
 	config.Current.Video.Capture.Device.API = active.applied.backend.name
 
-	go func() {
-		defer close(active.closedq)
+	go captureLoop(device)
+	// go func() {
+	// 	runtime.LockOSThread()
+	// 	defer runtime.UnlockOSThread()
 
-		ms := fps.Milliseconds(config.Current.Video.Capture.Device.FPS)
-		tick := time.NewTicker(ms)
-		poll := time.NewTicker(time.Second)
+	// 	defer close(active.closedq)
 
-		for frames := float64(0); running(); frames++ {
-			lock.Lock()
-			ok := device.Read(&mat)
-			if !ok {
-				defer active.reset()
-				notify.Error("[Device] <ini:failed:capture> %s", active.name)
-				lock.Unlock()
-				goto close
-			}
-			lock.Unlock()
+	// 	ms := fps.Milliseconds(config.Current.Video.Capture.Device.FPS)
+	// 	tick := time.NewTicker(ms)
+	// 	poll := time.NewTicker(time.Second)
 
-			size = mat.Size()
+	// 	for frames := float64(0); running(); frames++ {
+	// 		lock.Lock()
+	// 		ok := device.Read(&mat)
+	// 		if !ok {
+	// 			defer active.reset()
+	// 			notify.Error("[Device] <ini:failed:capture> %s", active.name)
+	// 			lock.Unlock()
+	// 			goto close
+	// 		}
+	// 		lock.Unlock()
 
-			select {
-			case <-tick.C:
-				tick.Reset(ms)
-			case <-poll.C:
-				poll.Reset(time.Second)
-				active.fps = frames
-				frames = 0
-			}
-		}
+	// 		size = mat.Size()
 
-	close:
-		err := device.Close()
-		if err != nil {
-			notify.Warn("[Device] <ini:failed:close> %s (%v)", active.name, err)
-		}
-	}()
+	// 		select {
+	// 		case <-tick.C:
+	// 			tick.Reset(ms)
+	// 		case <-poll.C:
+	// 			poll.Reset(time.Second)
+	// 			active.fps = frames
+	// 			frames = 0
+	// 		}
+	// 	}
+
+	// close:
+	// 	err := device.Close()
+	// 	if err != nil {
+	// 		notify.Warn("[Device] <ini:failed:close> %s (%v)", active.name, err)
+	// 	}
+	// }()
 
 	return nil
+}
+
+func captureLoop(device *gocv.VideoCapture) {
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
+	defer close(active.closedq)
+
+	ms := fps.Milliseconds(config.Current.Video.Capture.Device.FPS)
+	tick := time.NewTicker(ms)
+	poll := time.NewTicker(time.Second)
+
+	for frames := float64(0); running(); frames++ {
+		lock.Lock()
+		ok := device.Read(&mat)
+		if !ok {
+			defer active.reset()
+			notify.Error("[Device] <ini:failed:capture> %s", active.name)
+			lock.Unlock()
+			goto close
+		}
+		lock.Unlock()
+
+		size = mat.Size()
+
+		select {
+		case <-tick.C:
+			tick.Reset(ms)
+		case <-poll.C:
+			poll.Reset(time.Second)
+			active.fps = frames
+			frames = 0
+		}
+	}
+
+close:
+	err := device.Close()
+	if err != nil {
+		notify.Error("[Device] <ini:failed:close> %s (%v)", active.name, err)
+	}
 }
 
 func (c codec) String() string {
