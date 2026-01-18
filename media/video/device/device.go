@@ -82,8 +82,13 @@ var (
 
 	cached = cache{
 		devices: make([]string, 100),
-		apis:    make([]api, int(gocv.VideoCaptureXINE)+1), // Max API value: gocv.VideoCaptureXINE.
-		codecs:  []codec{CodecAny, CodecXRGB, CodecNV12, CodecYUY2, CodecMJPG},
+		apis: []api{
+			{
+				gocv: gocv.VideoCaptureAny,
+				name: strings.ReplaceAll(gocv.VideoCaptureAny.String(), "video-capture-", ""),
+			},
+		}, // Max API value: gocv.VideoCaptureXINE.
+		codecs: []codec{CodecAny, CodecXRGB, CodecNV12, CodecYUY2, CodecMJPG},
 	}
 
 	captures float32
@@ -110,15 +115,25 @@ func init() {
 	}()
 
 	go func() {
-		for i := gocv.VideoCaptureAny; i < gocv.VideoCaptureXINE; i++ {
-			s := i.String()
-			if s != "" {
-				cached.apis[i] = api{
-					gocv: i,
-					name: strings.ReplaceAll(i.String(), "video-capture-", ""),
-				}
-			}
+		vrt := gocv.VideoRegistryType{}
+		for _, b := range vrt.GetCameraBackends() {
+			cached.apis = append(cached.apis,
+				api{
+					gocv: b,
+					name: strings.ReplaceAll(b.String(), "video-capture-", ""),
+				},
+			)
 		}
+
+		// for i := gocv.VideoCaptureAny; i < gocv.VideoCaptureXINE; i++ {
+		// 	s := i.String()
+		// 	if s != "" {
+		// 		cached.apis[i] = api{
+		// 			gocv: i,
+		// 			name: strings.ReplaceAll(i.String(), "video-capture-", ""),
+		// 		}
+		// 	}
+		// }
 
 		for ; ; time.Sleep(time.Second * 5) {
 			d := []string{}

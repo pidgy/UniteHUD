@@ -23,7 +23,7 @@ require (
 	github.com/rupor-github/win-gpg-agent v1.6.3
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
 	github.com/tc-hib/winres v0.2.1
-	gocv.io/x/gocv v0.35.0
+	gocv.io/x/gocv v0.42.0
 	golang.org/x/sys v0.20.0
 	nhooyr.io/websocket v1.8.10
 )

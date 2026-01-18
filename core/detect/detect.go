@@ -443,7 +443,7 @@ func Scores(by string) {
 
 			matrix, img, err := capture(config.Current.XY.Scores)
 			if err != nil {
-				notify.Error("[Detect] <ini:failed:capture> score area (%v)", err)
+				notify.Error("[Detect] [%s] [%s] <ini:failed:capture> score area (%v)", server.Clock(), t, err)
 				matrix.Close()
 				continue
 			}
@@ -458,7 +458,7 @@ func Scores(by string) {
 			case match.Override:
 				state.Add(state.ScoreOverride, server.Clock(), m.Value)
 				server.SetScore(t, -t.Duplicate.Replaces)
-				notify.Feed(t.NRGBA, "[Detect] [%s] [%s] -%d (override)", server.Clock(), lang.Title(t.Name), t.Duplicate.Replaces)
+				notify.Feed(t.NRGBA, "[Detect] [%s] [%s] -%d (override)", server.Clock(), t, t.Duplicate.Replaces)
 
 				fallthrough
 			case match.Found:
@@ -507,7 +507,7 @@ func Scores(by string) {
 			if config.Current.Record {
 				err = save.Image(img, matrix, t.Crop(m.Point), m.Value, t.Name, strings.ToLower(r.String()), server.Clock())
 				if err != nil {
-					notify.Warn("[Detect] <ini:failed:save> image (%v)", err)
+					notify.Warn("[Detect] [%s] [%s] <ini:failed:save> image (%v)", server.Clock(), t, err)
 				}
 			}
 
