@@ -20,7 +20,7 @@ func TestFormat(t *testing.T) {
 
 	tests := []test{
 		{
-			format: "[UniteHUD] <ini:error:failed_to_load> %s <ini:toast:connect_discord_remember> (%v)",
+			format: "[UniteHUD] <ini:error:failed_to_load> %s <ini:t:connect_discord_remember> (%v)",
 			want:   "[UniteHUD] Failed to load %s Don't ask me again (%v)",
 		},
 		{

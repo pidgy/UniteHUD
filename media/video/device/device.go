@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pkg/errors"
 	"gocv.io/x/gocv"
 
 	"github.com/pidgy/unitehud/core/config"
@@ -50,7 +49,8 @@ type (
 	}
 
 	properties struct {
-		resolution image.Point
+		resolution       image.Point
+		resolutionString string
 
 		fps,
 		bitrate float64
@@ -184,13 +184,13 @@ func CaptureRect(r image.Rectangle) (*image.RGBA, error) {
 	}
 
 	if !r.In(monitor.DefaultResolution) {
-		return nil, errors.Errorf("illegal boundaries: %s", r)
+		return nil, fmt.Errorf("illegal boundaries: %s", r)
 	}
 
 	mrect := image.Rect(0, 0, size[1], size[0])
 
 	if !r.In(mrect) {
-		return splash.AsRGBA(splash.Invalid()), errors.Errorf("illegal boundaries: %s", r)
+		return splash.AsRGBA(splash.Invalid()), fmt.Errorf("illegal boundaries: %s", r)
 	}
 
 	captures++
@@ -246,7 +246,7 @@ func Name(index int) string {
 
 	cached.devices[index], err = device.VideoCaptureDeviceName(index)
 	if err != nil {
-		notify.Error("[Device] <ini:failed:find> device %d name (%v)", index, err)
+		notify.Error("[Device] <ini:f:find> device %d name (%v)", index, err)
 		return fmt.Sprintf("%d", index)
 	}
 
@@ -267,7 +267,7 @@ func Open() error {
 	idx := index(config.Current.Video.Capture.Device.Name)
 	if idx == config.NoVideoCaptureDevice {
 		active.reset()
-		return errors.Errorf("%s was not found", config.Current.Video.Capture.Device.Name)
+		return fmt.Errorf("%s was not found", config.Current.Video.Capture.Device.Name)
 	}
 	if idx != config.Current.Video.Capture.Device.Index {
 		config.Current.Video.Capture.Device.Index = idx
@@ -288,6 +288,10 @@ func Open() error {
 	}
 
 	return nil
+}
+
+func Resolution() string {
+	return active.applied.resolutionString
 }
 
 func Restart() error {
@@ -333,8 +337,10 @@ func capture() error {
 
 	device, err := gocv.OpenVideoCaptureWithAPI(active.index, api.gocv)
 	if err != nil {
-		return errors.Errorf("%s does not support %s capture APIs", config.Current.Video.Capture.Device.Name, api.name)
+		return fmt.Errorf("%s does not support %s capture APIs", config.Current.Video.Capture.Device.Name, api.name)
 	}
+
+	before := poll(device)
 
 	err = set(device)
 	if err != nil {
@@ -342,48 +348,18 @@ func capture() error {
 		return err
 	}
 
+	notify.System("[Device] Configured %s", active.name)
+	notify.System("[Device]   Codec       %s → %s", before.codec, active.applied.codec)
+	notify.System("[Device]   FPS         %.0f FPS → %.0f FPS", before.fps, active.applied.fps)
+	notify.System("[Device]   Resolution  %s → %s", before.resolution, active.applied.resolution)
+	notify.System("[Device]   Backend     %s → %s", before.backend, active.applied.backend)
+	notify.System("[Device]   Bitrate     %.0f kb/s", active.applied.bitrate)
+	notify.System("[Device]   BufferSize  %d", active.applied.buffersize)
+	notify.System("[Device]   RGB         %t → %t", before.rgb, active.applied.rgb)
+
 	config.Current.Video.Capture.Device.API = active.applied.backend.name
 
 	go captureLoop(device)
-	// go func() {
-	// 	runtime.LockOSThread()
-	// 	defer runtime.UnlockOSThread()
-
-	// 	defer close(active.closedq)
-
-	// 	ms := fps.Milliseconds(config.Current.Video.Capture.Device.FPS)
-	// 	tick := time.NewTicker(ms)
-	// 	poll := time.NewTicker(time.Second)
-
-	// 	for frames := float64(0); running(); frames++ {
-	// 		lock.Lock()
-	// 		ok := device.Read(&mat)
-	// 		if !ok {
-	// 			defer active.reset()
-	// 			notify.Error("[Device] <ini:failed:capture> %s", active.name)
-	// 			lock.Unlock()
-	// 			goto close
-	// 		}
-	// 		lock.Unlock()
-
-	// 		size = mat.Size()
-
-	// 		select {
-	// 		case <-tick.C:
-	// 			tick.Reset(ms)
-	// 		case <-poll.C:
-	// 			poll.Reset(time.Second)
-	// 			active.fps = frames
-	// 			frames = 0
-	// 		}
-	// 	}
-
-	// close:
-	// 	err := device.Close()
-	// 	if err != nil {
-	// 		notify.Warn("[Device] <ini:failed:close> %s (%v)", active.name, err)
-	// 	}
-	// }()
 
 	return nil
 }
@@ -396,14 +372,14 @@ func captureLoop(device *gocv.VideoCapture) {
 
 	ms := fps.Milliseconds(config.Current.Video.Capture.Device.FPS)
 	tick := time.NewTicker(ms)
-	poll := time.NewTicker(time.Second)
+	tock := time.NewTicker(time.Second)
 
 	for frames := float64(0); running(); frames++ {
 		lock.Lock()
 		ok := device.Read(&mat)
 		if !ok {
 			defer active.reset()
-			notify.Error("[Device] <ini:failed:capture> %s", active.name)
+			notify.Error("[Device] <ini:f:capture> %s", active.name)
 			lock.Unlock()
 			goto close
 		}
@@ -414,8 +390,8 @@ func captureLoop(device *gocv.VideoCapture) {
 		select {
 		case <-tick.C:
 			tick.Reset(ms)
-		case <-poll.C:
-			poll.Reset(time.Second)
+		case <-tock.C:
+			tock.Reset(time.Second)
 			active.fps = frames
 			frames = 0
 		}
@@ -424,7 +400,7 @@ func captureLoop(device *gocv.VideoCapture) {
 close:
 	err := device.Close()
 	if err != nil {
-		notify.Error("[Device] <ini:failed:close> %s (%v)", active.name, err)
+		notify.Error("[Device] <ini:f:close> %s (%v)", active.name, err)
 	}
 }
 
@@ -472,7 +448,7 @@ func index(name string) int {
 	for i := 0; i < 10; i++ {
 		n, err := device.VideoCaptureDeviceName(i)
 		if err != nil {
-			notify.Error("[Device] <ini:failed:find> %s (%v)", name, err)
+			notify.Error("[Device] <ini:f:find> %s (%v)", name, err)
 			return config.NoVideoCaptureDevice
 		}
 		if n == name {
@@ -484,7 +460,7 @@ func index(name string) int {
 }
 
 func poll(v *gocv.VideoCapture) properties {
-	defaults := properties{
+	p := properties{
 		resolution: image.Pt(
 			int(v.Get(gocv.VideoCaptureFrameWidth)),
 			int(v.Get(gocv.VideoCaptureFrameHeight)),
@@ -496,7 +472,8 @@ func poll(v *gocv.VideoCapture) properties {
 		buffersize: int(v.Get(gocv.VideoCaptureBufferSize)),
 		rgb:        bool(int(v.Get(gocv.VideoCaptureConvertRGB)) == 1),
 	}
-	return defaults
+	p.resolutionString = fmt.Sprintf("%dx%d", p.resolution.X, p.resolution.Y)
+	return p
 }
 
 func running() bool {
@@ -509,8 +486,6 @@ func running() bool {
 }
 
 func set(vc *gocv.VideoCapture) error {
-	p := poll(vc)
-
 	required.fps = float64(config.Current.Video.Capture.Device.FPS)
 
 	// Image detection is only enabled for 1920x1080.
@@ -527,21 +502,12 @@ func set(vc *gocv.VideoCapture) error {
 	active.applied = poll(vc)
 
 	if !active.applied.resolution.Eq(required.resolution) {
-		return errors.Errorf("<ini:failed:set> property: resolution %s", required.resolution)
+		return fmt.Errorf("<ini:f:set> property: resolution %s", required.resolution)
 	}
 
 	if int(active.applied.fps) != int(required.fps) {
-		return errors.Errorf("<ini:failed:set> property: %.0f FPS", required.fps)
+		return fmt.Errorf("<ini:f:set> property: %.0f FPS", required.fps)
 	}
-
-	notify.System("[Device] Configured %s", active.name)
-	notify.System("[Device]   Codec       %s → %s", p.codec, active.applied.codec)
-	notify.System("[Device]   FPS         %.0f FPS → %.0f FPS", p.fps, active.applied.fps)
-	notify.System("[Device]   Resolution  %s → %s", p.resolution, active.applied.resolution)
-	notify.System("[Device]   Backend     %s → %s", p.backend, active.applied.backend)
-	notify.System("[Device]   Bitrate     %.0f kb/s", active.applied.bitrate)
-	notify.System("[Device]   BufferSize  %d", active.applied.buffersize)
-	notify.System("[Device]   RGB         %t → %t", p.rgb, active.applied.rgb)
 
 	return nil
 }
@@ -556,7 +522,7 @@ func stop() {
 			}
 			return
 		case <-t.C:
-			notify.Error("[Device] <ini:failed:stop> %s", active.name)
+			notify.Error("[Device] <ini:f:stop> %s", active.name)
 			return
 		}
 	}

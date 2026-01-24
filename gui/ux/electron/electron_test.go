@@ -119,7 +119,7 @@ func CaptureRect(w wapi.Window, rect image.Rectangle) (*image.RGBA, error) {
 		wapi.BitBltRasterOperations.CaptureBLT|wapi.BitBltRasterOperations.SrcCopy,
 	)
 	if r == 0 {
-		notify.Error("Window: Failed to capture window")
+		notify.Error("Window: <ini:f:capture> window")
 		return nil, fmt.Errorf("bitblt returned: %d", r)
 	}
 

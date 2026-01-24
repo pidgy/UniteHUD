@@ -159,7 +159,7 @@ func (g *GUI) main() {
 
 		err := save.Logs(notify.FeedStrings(), stats.Lines(), stats.Counts())
 		if err != nil {
-			notify.Warn("[UI] <ini:failed:save> logs (%v)", err)
+			notify.Warn("[UI] <ini:f:save> logs (%v)", err)
 		}
 
 		g.ToastYesNo(
@@ -169,7 +169,7 @@ func (g *GUI) main() {
 				func() {
 					err := save.Open()
 					if err != nil {
-						notify.Error("[UI] <ini:failed:open> save directory (%v)", err)
+						notify.Error("[UI] <ini:f:open> save directory (%v)", err)
 						return
 					}
 				},
@@ -281,8 +281,9 @@ func (g *GUI) main() {
 							ui.labels.window.Color = nrgba.Percent(fps / float64(config.Current.Video.Capture.Device.FPS)).Color()
 							ui.labels.window.Text = fmt.Sprintf("📺 %s %.0fFPS", device.Name(config.Current.Video.Capture.Device.Index), fps)
 						case window.IsOpen(), monitor.IsDisplay():
-							ui.labels.window.Text = fmt.Sprintf("📺 %s", config.Current.Video.Capture.Window.Name)
+							ui.labels.window.Text = fmt.Sprintf("📺 %s (%s) -> (%s)", config.Current.Video.Capture.Window.Name, monitor.Resolution(), notify.PreviewResolutionString())
 						}
+
 						if config.Current.Video.Capture.Window.Lost != "" {
 							ui.labels.window.Text = config.Current.Video.Capture.Window.Lost
 							ui.labels.window.Text = fmt.Sprintf("📺 %s", config.Current.Video.Capture.Window.Name)
@@ -499,7 +500,7 @@ func (g *GUI) main() {
 								dims := layout.Inset{
 									Top: unit.Dp(60),
 								}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-									ui.buttons.settingsImage.SetImage(notify.Preview)
+									ui.buttons.settingsImage.SetImage(notify.Preview())
 									return layout.UniformInset(unit.Dp(5)).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 										return ui.buttons.settingsImage.Layout(g.nav.Cascadia().Theme, gtx)
 									})
@@ -566,7 +567,7 @@ func (g *GUI) main() {
 					g.nav.Resize()
 				}
 				if g.Running {
-					ui.buttons.stop.Click(ui.buttons.stop)
+					// ui.buttons.stop.Click(ui.buttons.stop)
 				}
 			case key.NameF11:
 				g.nav.Resize()
@@ -627,7 +628,7 @@ func (g *GUI) mainUI() *main {
 
 			err := save.Logs(notify.FeedStrings(), stats.Lines(), stats.Counts())
 			if err != nil {
-				notify.Warn("[UI] <ini:failed:save> logs (%v)", err)
+				notify.Warn("[UI] <ini:f:save> logs (%v)", err)
 			}
 
 			tray.SetStartStopTitle("Start")
@@ -683,7 +684,7 @@ func (g *GUI) mainUI() *main {
 	ui.textblocks.feed, err = textblock.New(g.nav.Cascadia(), 75)
 	if err != nil {
 		ui.textblocks.feed = &textblock.Widget{}
-		notify.Warn("[UI] <ini:failed:load> font: (%v)", err)
+		notify.Warn("[UI] <ini:f:load> font: (%v)", err)
 	}
 
 	ui.buttons.settingsImage = &button.ImageWidget{
@@ -959,7 +960,7 @@ func (g *GUI) mainUI() *main {
 				toastOnOK(func() {
 					err = open.Run(filepath.Join(exe.Directory(), "www"))
 					if err != nil {
-						notify.Error("[UI] <ini:failed:open> www/ directory: %v", err)
+						notify.Error("[UI] <ini:f:open> www/ directory: %v", err)
 						return
 					}
 				}),
@@ -1019,12 +1020,12 @@ func (g *GUI) mainUI() *main {
 
 			err = save.Logs(notify.FeedStrings(), stats.Lines(), stats.Counts())
 			if err != nil {
-				notify.Warn("[UI] <ini:failed:save> logs (%v)", err)
+				notify.Warn("[UI] <ini:f:save> logs (%v)", err)
 			}
 
 			err := save.Open()
 			if err != nil {
-				notify.Warn("[UI] <ini:failed:open>: %s (%v)", save.Directory, err)
+				notify.Warn("[UI] <ini:f:open>: %s (%v)", save.Directory, err)
 			}
 		},
 	}
@@ -1047,7 +1048,7 @@ func (g *GUI) mainUI() *main {
 
 				err := save.Logs(notify.FeedStrings(), stats.Lines(), stats.Counts())
 				if err != nil {
-					notify.Warn("[UI] <ini:failed:save> logs (%v)", err)
+					notify.Warn("[UI] <ini:f:save> logs (%v)", err)
 				}
 			}
 
@@ -1061,12 +1062,12 @@ func (g *GUI) mainUI() *main {
 
 					err := save.Open()
 					if err != nil {
-						notify.Error("[UI] <ini:failed:open> \"%s\" (%v)", save.Directory, err)
+						notify.Error("[UI] <ini:f:open> \"%s\" (%v)", save.Directory, err)
 					}
 
 					err = save.Logs(notify.FeedStrings(), stats.Lines(), stats.Counts())
 					if err != nil {
-						notify.Warn("[UI] <ini:failed:save> logs (%v)", err)
+						notify.Warn("[UI] <ini:f:save> logs (%v)", err)
 					}
 
 					config.Current.Record = false
@@ -1091,7 +1092,7 @@ func (g *GUI) mainUI() *main {
 			exe := "C:\\Windows\\system32\\notepad.exe"
 			err := exec.Command(exe, config.Current.File()).Run()
 			if err != nil {
-				notify.Error("[UI] <ini:failed:open> \"%s\" (%v)", config.Current.File(), err)
+				notify.Error("[UI] <ini:f:open> \"%s\" (%v)", config.Current.File(), err)
 				return
 			}
 
@@ -1131,6 +1132,8 @@ func (g *GUI) mainUI() *main {
 			}
 		},
 	}
+
+	// config.Current.Advanced.Matching.Disabled.Previews = true
 
 	ui.navButtons.hideRight = &button.Widget{
 		Text:            "⇇",
@@ -1308,8 +1311,8 @@ func (ui *main) onFrame3(g *GUI) {
 
 		g.ToastYesNoRemember(
 			exe.Title,
-			"<ini:toast:connect_discord>",
-			"<ini:toast:connect_discord_remember>",
+			"<ini:t:connect_discord>",
+			"<ini:t:connect_discord_remember>",
 			toastOnYes(func() {
 				config.Current.Advanced.Discord.Disabled = false
 			}),
@@ -1325,7 +1328,7 @@ func (ui *main) onFrame3(g *GUI) {
 
 				err := config.Current.Save()
 				if err != nil {
-					notify.Error("[UI] <ini:failed:save> UniteHUD configuration (%v)", err)
+					notify.Error("[UI] <ini:f:save> UniteHUD configuration (%v)", err)
 					return
 				}
 			}),

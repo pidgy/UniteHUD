@@ -25,12 +25,14 @@ type (
 )
 
 var (
-	Preview     image.Image = image.NewRGBA(image.Rect(0, 0, 0, 0))
 	OrangeScore image.Image = image.NewRGBA(image.Rect(0, 0, 0, 0))
 	PurpleScore image.Image = image.NewRGBA(image.Rect(0, 0, 0, 0))
 	SelfScore   image.Image = image.NewRGBA(image.Rect(0, 0, 0, 0))
 	Energy      image.Image = image.NewRGBA(image.Rect(0, 0, 0, 0))
 	Time        image.Image = image.NewRGBA(image.Rect(0, 0, 0, 0))
+
+	preview           image.Image = image.NewRGBA(image.Rect(0, 0, 0, 0))
+	previewResolution             = "0x0"
 
 	Disabled struct {
 		Errors   bool
@@ -45,6 +47,19 @@ var (
 	colorSystem = nrgba.System
 	colorDebug  = nrgba.PastelBlue.Alpha(50)
 )
+
+func SetPreview(img image.Image) {
+	preview = img
+	previewResolution = fmt.Sprintf("%dx%d", img.Bounds().Dx(), img.Bounds().Dy())
+}
+
+func Preview() image.Image {
+	return preview
+}
+
+func PreviewResolutionString() string {
+	return previewResolution
+}
 
 type notify struct {
 	logs []Post

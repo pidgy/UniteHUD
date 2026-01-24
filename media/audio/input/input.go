@@ -5,7 +5,6 @@ import (
 	"io"
 
 	"github.com/gen2brain/malgo"
-	"github.com/pkg/errors"
 
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/media/audio/device"
@@ -64,7 +63,7 @@ func New(ctx *malgo.AllocatedContext, name string) (*Device, error) {
 		}
 	}
 
-	return disabled, fmt.Errorf("<ini:failed:find> capture device: %s", name)
+	return disabled, fmt.Errorf("<ini:f:find> capture device: %s", name)
 }
 
 func (d *Device) Active() bool {
@@ -103,7 +102,7 @@ func (d *Device) Start(mctx malgo.Context, w io.ReadWriter) error {
 	}
 
 	if d.Active() {
-		return errors.Wrap(fmt.Errorf("already active"), d.String())
+		return fmt.Errorf("%s: already active", d.String())
 	}
 
 	defer notify.Debug("[Audio Input] Started %s", d)
@@ -134,27 +133,27 @@ func (d *Device) Start(mctx malgo.Context, w io.ReadWriter) error {
 						d.reconnects++
 						return
 					}
-					notify.Error("[Audio Input] Capture error (%v)", errors.Wrap(err, d.String()))
+					notify.Error("[Audio Input] Capture error (%s: %v)", d.String(), err)
 				}
 			},
 		}
 
 		device, err := malgo.InitDevice(mctx, d.config, callbacks)
 		if err != nil {
-			errq <- errors.Wrap(err, d.name)
+			errq <- fmt.Errorf("%s: %v", d.name, err)
 			return
 		}
 		defer device.Uninit()
 
 		err = device.Start()
 		if err != nil {
-			errq <- errors.Wrap(err, d.name)
+			errq <- fmt.Errorf("%s: %v", d.name, err)
 			return
 		}
 		defer func() {
 			err := device.Stop()
 			if err != nil {
-				notify.Error("[Audio Input] <ini:failed:stop> device (%v)", err)
+				notify.Error("[Audio Input] <ini:f:stop> device (%v)", err)
 				return
 			}
 		}()
@@ -177,14 +176,14 @@ func (d *Device) Type() device.Type {
 func Devices(ctx *malgo.AllocatedContext) (captures []*Device) {
 	d, err := ctx.Devices(malgo.Capture)
 	if err != nil {
-		notify.Error("[Audio Input] <ini:failed:find> devices (%v)", err)
+		notify.Error("[Audio Input] <ini:f:find> devices (%v)", err)
 		return nil
 	}
 
 	for _, info := range d {
 		full, err := ctx.DeviceInfo(malgo.Capture, info.ID, malgo.Shared)
 		if err != nil {
-			notify.Warn("[Audio Input] <ini:failed:poll> device \"%s\" (%v)", info.ID, err)
+			notify.Warn("[Audio Input] <ini:f:poll> device \"%s\" (%v)", info.ID, err)
 		}
 
 		captures = append(captures, &Device{

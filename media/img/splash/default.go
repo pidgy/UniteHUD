@@ -30,7 +30,7 @@ var defaultPNG = func() *image.RGBA {
 func defaultPNGToMat() gocv.Mat {
 	m, err := gocv.ImageToMatRGBA(defaultPNG)
 	if err != nil {
-		notify.Warn("[Splash] <ini:failed:convert> default image to matrix")
+		notify.Warn("[Splash] <ini:f:convert> default image to matrix")
 		return gocv.Mat{}
 	}
 	return m

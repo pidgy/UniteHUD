@@ -471,6 +471,7 @@ func (g *GUI) settingsUI() *settings {
 
 					desktop.Notification(exe.Title).
 						Says("Testing 1, 2, 3").
+						Logs(notify.Error).
 						When(clicked.VisitWebsite).
 						Send()
 				},

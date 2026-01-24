@@ -3,10 +3,12 @@ package video
 import (
 	"image"
 
+	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/media/img/splash"
 	"github.com/pidgy/unitehud/media/video/device"
 	"github.com/pidgy/unitehud/media/video/monitor"
+	"github.com/pidgy/unitehud/media/video/window"
 )
 
 type Input string
@@ -23,8 +25,8 @@ func Active(i Input, name string) bool {
 		return device.IsActive() && (name == device.ActiveName() || name == "")
 	case Monitor:
 		return !device.IsActive() && (monitor.Active(name) || name == "")
-	// case Window:
-	// 	return !device.IsActive() && window.IsOpen()
+	case Window:
+		return !device.IsActive() && window.IsOpen()
 	default:
 		return false
 	}
@@ -54,13 +56,11 @@ func CaptureRect(rect image.Rectangle) (img *image.RGBA, err error) {
 		return device.CaptureRect(rect)
 	}
 
-	return monitor.CaptureRect(rect)
-
 	// if monitor.IsDisplay() {
 	// 	return monitor.CaptureRect(rect)
 	// }
 
-	// return window.Capture()
+	return monitor.CaptureRect(rect)
 }
 
 func Close() {
@@ -69,6 +69,26 @@ func Close() {
 
 func Devices() []int {
 	return device.Sources()
+}
+
+func FPS() float64 {
+	switch {
+	case device.IsActive():
+		return device.FPS()
+	case window.IsOpen():
+		return -1
+	default:
+		return -1
+	}
+}
+
+func Name() string {
+	switch {
+	case device.IsActive():
+		return device.ActiveName()
+	default:
+		return config.Current.Video.Capture.Window.Name
+	}
 }
 
 func Open() error {
@@ -80,6 +100,17 @@ func Open() error {
 // 	return window.Sources
 // }
 
+func Resolution() string {
+	switch {
+	case device.IsActive():
+		return device.Resolution()
+	case window.IsOpen():
+		return window.Resolution()
+	default:
+		return monitor.Resolution()
+	}
+}
+
 func Screens() []string {
 	return monitor.Sources
 }
@@ -87,7 +118,7 @@ func Screens() []string {
 func StateArea() image.Rectangle {
 	img, err := Capture()
 	if err != nil {
-		notify.Error("[Video] <ini:failed:capture> area for state events (%v)", err)
+		notify.Error("[Video] <ini:f:capture> area for state events (%v)", err)
 		return image.Rect(0, 0, 0, 0)
 	}
 

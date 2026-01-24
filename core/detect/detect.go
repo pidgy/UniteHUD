@@ -43,7 +43,7 @@ func Clock() {
 
 		matrix, _, err := capture(config.Current.XY.Time)
 		if err != nil {
-			notify.Error("[Detect] <ini:failed:capture> clock area (%v)", err)
+			notify.Error("[Detect] <ini:f:capture> clock area (%v)", err)
 			matrix.Close()
 			continue
 		}
@@ -94,7 +94,7 @@ func Defeated() {
 
 		matrix, img, err := capture(area)
 		if err != nil {
-			notify.Error("[Detect] <ini:failed:capture> area (%v)", err)
+			notify.Error("[Detect] <ini:f:capture> area (%v)", err)
 			matrix.Close()
 			continue
 		}
@@ -155,7 +155,7 @@ func Energy() {
 
 		matrix, img, err := capture(config.Current.XY.Energy)
 		if err != nil {
-			notify.Error("[Detect] <ini:failed:capture> energy area (%v)", err)
+			notify.Error("[Detect] <ini:f:capture> energy area (%v)", err)
 			matrix.Close()
 			continue
 		}
@@ -226,7 +226,7 @@ func Objectives() {
 
 		matrix, img, err := capture(config.Current.XY.Objectives)
 		if err != nil {
-			notify.Error("[Detect] <ini:failed:capture> objective area (%v)", err)
+			notify.Error("[Detect] <ini:f:capture> objective area (%v)", err)
 			matrix.Close()
 			continue
 		}
@@ -365,7 +365,7 @@ func Objectives() {
 }
 
 func Preview() {
-	notify.Preview = splash.Projector()
+	notify.SetPreview(splash.Projector())
 
 	tick := time.NewTicker(time.Second * 5)
 	poll := time.NewTicker(time.Second * 1)
@@ -373,10 +373,10 @@ func Preview() {
 	preview := func() {
 		img, err := video.Capture()
 		if err != nil {
-			notify.Error("[Detect] <ini:failed:capture> preview (%v)", err)
+			notify.Error("[Detect] <ini:f:capture> preview (%v)", err)
 			return
 		}
-		notify.Preview = img
+		notify.SetPreview(img)
 	}
 	preview()
 
@@ -385,12 +385,12 @@ func Preview() {
 			continue
 		}
 
-		rgba, ok := notify.Preview.(*image.RGBA)
+		rgba, ok := notify.Preview().(*image.RGBA)
 		if ok && rgba == nil {
 			continue
 		}
 
-		if notify.Preview.Bounds().Max.X != 0 {
+		if notify.Preview().Bounds().Max.X != 0 {
 			select {
 			case <-tick.C:
 				preview()
@@ -414,7 +414,7 @@ func Scores(by string) {
 
 			matrix, img, err := capture(config.Current.XY.SelfScore)
 			if err != nil {
-				notify.Error("[Detect] [%s] [Self] <ini:failed:capture> energy area (%v)", server.Clock(), err)
+				notify.Error("[Detect] [%s] [Self] <ini:f:capture> energy area (%v)", server.Clock(), err)
 				matrix.Close()
 				continue
 			}
@@ -443,7 +443,7 @@ func Scores(by string) {
 
 			matrix, img, err := capture(config.Current.XY.Scores)
 			if err != nil {
-				notify.Error("[Detect] [%s] [%s] <ini:failed:capture> score area (%v)", server.Clock(), t, err)
+				notify.Error("[Detect] [%s] [%s] <ini:f:capture> score area (%v)", server.Clock(), t, err)
 				matrix.Close()
 				continue
 			}
@@ -505,9 +505,9 @@ func Scores(by string) {
 			}
 
 			if config.Current.Record {
-				err = save.Image(img, matrix, t.Crop(m.Point), m.Value, t.Name, strings.ToLower(r.String()), server.Clock())
+				err = save.Image(img, m.Value, t.Name, strings.ToLower(r.String()), server.Clock())
 				if err != nil {
-					notify.Warn("[Detect] [%s] [%s] <ini:failed:save> image (%v)", server.Clock(), t, err)
+					notify.Warn("[Detect] [%s] [%s] <ini:f:save> image (%v)", server.Clock(), t, err)
 				}
 			}
 
@@ -528,7 +528,7 @@ func States() {
 
 		matrix, img, err := capture(config.Current.XY.States)
 		if err != nil {
-			notify.Error("[Detect] <ini:failed:capture> state area (%v)", err)
+			notify.Error("[Detect] <ini:f:capture> state area (%v)", err)
 			matrix.Close()
 			continue
 		}
@@ -564,6 +564,7 @@ func States() {
 			if !config.Current.Advanced.Notifications.Disabled.MatchStarting {
 				desktop.Notification("Match Starting").
 					Says("Capturing from %s", d).
+					Logs(notify.Error).
 					When(clicked.OpenUniteHUD).
 					Send()
 			}
@@ -590,7 +591,7 @@ func States() {
 				// Purple score and objective results.
 				regielekis, regices, regirocks, registeels, regidragos, final := server.Objectives(team.Purple)
 				if final > 0 {
-					f = fmt.Sprintf(" [+%d %s]", final, plural(server.FinalObjectiveName(), final))
+					f = fmt.Sprintf(" [+%d %s]", final, plural(lang.Title(server.FinalObjectiveName()), final))
 				}
 				notify.Feed(
 					team.Purple.NRGBA,
@@ -609,7 +610,7 @@ func States() {
 				regielekis, regices, regirocks, registeels, regidragos, final = server.Objectives(team.Orange)
 				f = ""
 				if final > 0 {
-					f = fmt.Sprintf(" [+%d %s]", final, plural(server.FinalObjectiveName(), final))
+					f = fmt.Sprintf(" [+%d %s]", final, plural(lang.Title(server.FinalObjectiveName()), final))
 				}
 				notify.Feed(
 					team.Orange.NRGBA,
@@ -636,6 +637,7 @@ func States() {
 
 					desktop.Notification("Match Ended").
 						Says("Purple: %d %s\nOrange: %d %s\nYou scored %d points", p, pwin, o, owin, self).
+						Logs(notify.Error).
 						When(clicked.OpenUniteHUD).
 						Send()
 				}
@@ -710,7 +712,7 @@ func confirmEnergyWasScored(before, after int, at time.Time) {
 
 	p := state.SelfScoreIndicator.Occured(time.Second * 5)
 	if p == nil {
-		notify.Warn("[Detect] [%s] [Self] [Missed] +%d <ini:failed:find> self-score indicator", server.Clock(), before)
+		notify.Warn("[Detect] [%s] [Self] [Missed] +%d <ini:f:find> self-score indicator", server.Clock(), before)
 		return
 	}
 
@@ -743,6 +745,10 @@ func plural(s string, size int) string {
 
 func every(d time.Duration, resets ...func()) bool {
 	for {
+		if !server.Match() {
+			d = time.Second * 5
+		}
+
 		time.Sleep(d)
 		if config.Current.Advanced.DecreasedCaptureLevel > 0 {
 			time.Sleep(time.Second * config.Current.Advanced.DecreasedCaptureLevel)
@@ -752,7 +758,6 @@ func every(d time.Duration, resets ...func()) bool {
 			for _, fn := range resets {
 				fn()
 			}
-
 			continue
 		}
 

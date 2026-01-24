@@ -77,6 +77,7 @@ func (g *GUI) ToastError(err error) {
 		return
 	}
 
+	err = fmt.Errorf(ini.Format(err.Error()))
 	g.previous.toast.err = err
 	g.previous.toast.time = time.Now()
 

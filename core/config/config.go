@@ -576,7 +576,7 @@ func (c *Config) pointFiles(t *team.Team) []filter.Filter {
 		return nil
 	})
 	if err != nil {
-		notify.Error("[Config] <ini:failed:read> from point directory \"%s\" (%v)", root, err)
+		notify.Error("[Config] <ini:f:read> from point directory \"%s\" (%v)", root, err)
 		return nil
 	}
 
@@ -630,7 +630,7 @@ func (c *Config) scoreFiles(t *team.Team) []filter.Filter {
 		return nil
 	})
 	if err != nil {
-		notify.Error("[Config] <ini:failed:read> from \"score\" directory \"%s\" (%v)", root, err)
+		notify.Error("[Config] <ini:f:read> from \"score\" directory \"%s\" (%v)", root, err)
 		return nil
 	}
 
@@ -792,7 +792,7 @@ func recovered(r interface{}) {
 	case string:
 		s = e
 	}
-	notify.Warn("[Config] <ini:warn:recovered_from> %s", s)
+	notify.Warn("[Config] <ini:w:recovered_from> %s", s)
 }
 
 func validate() {
@@ -891,7 +891,7 @@ func validate() {
 		for subcategory, templates := range Current.templates[category] {
 			for _, t := range templates {
 				if t.Empty() {
-					notify.Error("[Config] <ini:failed:read> %s template from file \"%s\"", filepath.Join(category, subcategory), t.File)
+					notify.Error("[Config] <ini:f:read> %s template from file \"%s\"", filepath.Join(category, subcategory), t.File)
 					continue
 				}
 			}

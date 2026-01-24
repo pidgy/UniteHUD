@@ -27,7 +27,7 @@ type Capture struct {
 func (c *Capture) Open() error {
 	img, err := video.CaptureRect(c.Base)
 	if err != nil {
-		return fmt.Errorf("<ini:failed:capture> %s (%v)", c.File, err)
+		return fmt.Errorf("<ini:f:capture> %s (%v)", c.File, err)
 	}
 
 	fd, err := os.Create(c.File)
@@ -43,7 +43,7 @@ func (c *Capture) Open() error {
 
 	argv, err := syscall.UTF16PtrFromString(os.Getenv("windir") + "\\system32\\cmd.exe /C " + fmt.Sprintf("\"%s\\%s\"", exe.Directory(), c.File))
 	if err != nil {
-		return fmt.Errorf("<ini:failed:open> %s (%v)", c.File, err)
+		return fmt.Errorf("<ini:f:open> %s (%v)", c.File, err)
 	}
 
 	var sI syscall.StartupInfo
@@ -51,7 +51,7 @@ func (c *Capture) Open() error {
 
 	err = syscall.CreateProcess(nil, argv, nil, nil, true, wapi.CreateProcessFlags.NoWindow, nil, nil, &sI, &pI)
 	if err != nil {
-		return fmt.Errorf("<ini:failed:open> %s (%v)", c.File, err)
+		return fmt.Errorf("<ini:f:open> %s (%v)", c.File, err)
 	}
 
 	return nil

@@ -38,12 +38,12 @@ func (d *Duplicate) Close() {
 
 	err := d.Mat.Close()
 	if err != nil {
-		notify.Warn("[Duplicate] <ini:failed:close> duplicate matrix")
+		notify.Warn("[Duplicate] <ini:f:close> duplicate matrix")
 	}
 
 	err = d.region.Close()
 	if err != nil {
-		notify.Warn("[Duplicate] <ini:failed:close> duplicate region")
+		notify.Warn("[Duplicate] <ini:f:close> duplicate region")
 	}
 }
 

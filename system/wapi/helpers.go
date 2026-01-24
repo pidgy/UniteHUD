@@ -11,13 +11,53 @@ const BitmapInfoHeaderSize = uint32(40)
 
 type (
 	Bitmap uintptr
+	Bytes  uintptr
 	Device uintptr
 	Object uintptr
 	Window uintptr
-	Bytes  uintptr
 
-	// Callback function passed to (EnumerateWindows). Enumeration stops on first error returned.
-	EnumerateWindowsCallback func(w Window) (stop bool)
+	Monitor struct {
+		Handle uintptr
+		Index  int
+		Rect   *Rect
+	}
+
+	Monitors struct {
+		Active []Monitor
+	}
+
+	WindowInfoEx struct {
+		WindowInfo
+		Title string
+	}
+
+	Windows struct {
+		Infos []WindowInfoEx
+	}
+)
+
+var (
+	enumerateDisplayMonitorsCallback = syscall.NewCallback(func(h uintptr, dc uintptr, r *Rect, d uintptr) uintptr {
+		m := (*Monitors)(unsafe.Pointer(d))
+		m.Active = append(m.Active, Monitor{h, len(m.Active), r})
+		return 1
+	})
+
+	enumerateWindowsCallback = syscall.NewCallback(func(h, l uintptr) uintptr {
+		ws := (*Windows)(unsafe.Pointer(l))
+		if ws == nil {
+			return 0 // Stop.
+		}
+
+		w := Window(h)
+
+		t, err := w.Title()
+		if err == nil {
+			ws.Infos = append(ws.Infos, WindowInfoEx{WindowInfo: w.Info(), Title: t})
+		}
+
+		return 1
+	})
 )
 
 func (b Bitmap) Delete() {
@@ -117,18 +157,52 @@ func (d Device) id() uintptr {
 	return uintptr(d)
 }
 
-func EnumerateWindows(callback EnumerateWindowsCallback) error {
-	_, _, err := EnumWindows.Call(syscall.NewCallback(func(h, l uintptr) uintptr {
-		if callback(Window(h)) {
-			return 0 // Stop.
-		}
-		return 1
-	}), 0, 0)
+func GetAllMonitors() (Monitors, error) {
+	m := Monitors{}
+	_, _, err := enumDisplayMonitors.Call(0, 0, enumerateDisplayMonitorsCallback, uintptr(unsafe.Pointer(&m)))
 	if err != syscall.Errno(0) {
-		return err
+		return m, err
+	}
+	return m, nil
+}
+
+func GetAllWindows() (Windows, error) {
+	w := Windows{}
+	enumWindows.Call(enumerateWindowsCallback, uintptr(unsafe.Pointer(&w)))
+	return w, nil
+}
+
+func GetLastError() string {
+	ret, _, _ := getLastError.Call()
+	return syscall.Errno(ret).Error()
+	// return uint32(ret)
+}
+
+func GetMonitorHandleFromIndex(index int) (hwnd uintptr, err error) {
+	ms, err := GetAllMonitors()
+	if err != nil {
+		return 0, err
+	}
+	for i, m := range ms.Active {
+		if i == index {
+			return m.Handle, nil
+		}
 	}
 
-	return nil
+	return 0, fmt.Errorf("invalid monitor index: %d", index)
+}
+
+func GetMonitorIndexFromMonitorInfo(mi MonitorInfo) (int, error) {
+	ms, err := GetAllMonitors()
+	if err != nil {
+		return -1, err
+	}
+	for i, m := range ms.Active {
+		if m.Rect.Eq(mi.Monitor) {
+			return i, nil
+		}
+	}
+	return -1, fmt.Errorf("invalid monitor info")
 }
 
 func GetMonitorInfo() (MonitorInfo, error) {
@@ -136,7 +210,7 @@ func GetMonitorInfo() (MonitorInfo, error) {
 		cbSize: uint32(unsafe.Sizeof(MonitorInfo{})),
 	}
 
-	v, _, err := MonitorFromWindow.Call(uintptr(0), MonitorFromWindowOptions.DefaultToPrimary)
+	v, _, err := monitorFromWindow.Call(0, MonitorFromWindowOptions.DefaultToPrimary)
 	if v == 0 {
 		return mi, err
 	}
@@ -147,6 +221,32 @@ func GetMonitorInfo() (MonitorInfo, error) {
 	}
 
 	return mi, nil
+}
+
+func GetMonitorInfoFromWindow(hwnd uintptr) (MonitorInfo, error) {
+	mi := MonitorInfo{
+		cbSize: uint32(unsafe.Sizeof(MonitorInfo{})),
+	}
+
+	v, _, err := monitorFromWindow.Call(hwnd, MonitorFromWindowOptions.DefaultToPrimary)
+	if v == 0 {
+		return mi, err
+	}
+
+	v, _, err = GetMonitorInfoW.Call(v, uintptr(unsafe.Pointer(&mi)))
+	if v == 0 {
+		return mi, err
+	}
+
+	return mi, nil
+}
+
+func (m Monitor) String() string {
+	return fmt.Sprintf("Monitor=[Handle: %d, Index: %d, Rect: %s", m.Handle, m.Index, m.Rect)
+}
+
+func (mi MonitorInfo) String() string {
+	return fmt.Sprintf("MonitorInfo=[Rect: %s, Work Area: %s, Flags: %d]", mi.Monitor, mi.WorkArea, mi.Flags)
 }
 
 func MoveWindowNoSize(hwnd uintptr, pos image.Point) {
@@ -183,25 +283,38 @@ func (p Point) String() string {
 	return fmt.Sprintf("(%d,%d)", p.X, p.Y)
 }
 
-func (r Rectangle) Eq(r2 Rectangle) bool {
+func (r Rect) Eq(r2 Rect) bool {
 	return r.Bottom == r2.Bottom && r.Left == r2.Left && r.Right == r2.Right && r.Top == r2.Top
 }
 
-func (r Rectangle) String() string {
+func (r Rect) Image() image.Rectangle {
+	return image.Rect(int(r.Left), int(r.Top), int(r.Right), int(r.Bottom))
+}
+
+func (r Rect) String() string {
 	return fmt.Sprintf("[L:%d,T:%d,R:%d,B:%d]", r.Left, r.Top, r.Right, r.Bottom)
 }
 
-// ? ShowWindowMinimizedRestore: ShowWindowFlags.ShowMinimized not working.
-func ShowWindowMinimizedRestore(hwnd uintptr) {
-	ShowWindow.Call(hwnd, ShowWindowFlags.ShowMinimized|ShowWindowFlags.Restore)
+// SetProcessDpiAwareness ensures that Windows API calls will tell us the scale factor for our
+// screen so that our screenshot works on hi-res displays.
+func SetProcessDPIAwareness(ctx SetProcessDpiAwarenessContext) error {
+	_, _, err := setProcessDpiAwareness.Call(uintptr(ctx))
+	if err != syscall.Errno(0) {
+		return err
+	}
+	return nil
 }
 
-func ShowWindowHide(hwnd uintptr) {
-	ShowWindow.Call(hwnd, ShowWindowFlags.Hide)
-}
-
-func ShowWindowRestore(hwnd uintptr) {
-	ShowWindow.Call(hwnd, ShowWindowFlags.Restore)
+func SetThreadExecutionState(states ...ThreadExecutionState) error {
+	t := ThreadExecutionState(0)
+	for _, state := range states {
+		t |= state
+	}
+	_, _, err := setThreadExecutionState.Call(uintptr(t))
+	if err != syscall.Errno(0) {
+		return err
+	}
+	return nil
 }
 
 func SetWindowAlwaysOnTop(hwnd uintptr) {
@@ -232,6 +345,19 @@ func SetWindowPosShow(hwnd uintptr, pt image.Point, size image.Point) {
 	helpSetWindowPos(hwnd, pt, size, SetWindowPosFlags.Show)
 }
 
+// ? ShowWindowMinimizedRestore: ShowWindowFlags.ShowMinimized not working.
+func ShowWindowMinimizedRestore(hwnd uintptr) {
+	ShowWindow.Call(hwnd, ShowWindowFlags.ShowMinimized|ShowWindowFlags.Restore)
+}
+
+func ShowWindowHide(hwnd uintptr) {
+	ShowWindow.Call(hwnd, ShowWindowFlags.Hide)
+}
+
+func ShowWindowRestore(hwnd uintptr) {
+	ShowWindow.Call(hwnd, ShowWindowFlags.Restore)
+}
+
 func (w Window) Device() (Device, error) {
 	r, _, err := GetDC.Call(w.HWND())
 	if r == 0 {
@@ -249,30 +375,24 @@ func (w Window) Dimensions() (image.Rectangle, error) {
 	return image.Rect(0, 0, int(rect.Right), int(rect.Bottom)), nil
 }
 
-func (w Window) Select(b Bitmap) error {
-	r, _, err := SelectObject.Call(w.HWND(), b.id())
-	if r == 0 {
-		return err
-	}
-	return nil
-}
-
 func (w Window) HWND() uintptr {
 	return uintptr(w)
 }
 
-// InfoStatus will return the WindowInfoStatus field from GetWindowInfo, See: WindowInfoStatus.
-func (w Window) InfoStatus() WindowInfoStatus {
-	info := WindowInfo{}
-	r, _, _ := GetWindowInfo.Call(w.HWND(), uintptr(unsafe.Pointer(&info)))
-	if r == 0 {
-		return WindowInfoStatusUnknown
+// Info will return a WindowInfo struct from GetWindowInfo, See:WindowInfo.
+func (w Window) Info() WindowInfo {
+	wi := WindowInfo{
+		Size: uint32(unsafe.Sizeof(WindowInfo{})),
 	}
-	return info.Status
+	r, _, _ := GetWindowInfo.Call(w.HWND(), uintptr(unsafe.Pointer(&wi)))
+	if r == 0 {
+		return WindowInfo{Status: WindowInfoStatusUnknown}
+	}
+	return wi
 }
 
-func (w Window) Rect() (Rectangle, error) {
-	r := Rectangle{}
+func (w Window) Rect() (Rect, error) {
+	r := Rect{}
 	_, _, err := GetClientRect.Call(w.HWND(), uintptr(unsafe.Pointer(&r)))
 	if err != nil {
 		if err != syscall.Errno(0) {
@@ -280,6 +400,14 @@ func (w Window) Rect() (Rectangle, error) {
 		}
 	}
 	return r, nil
+}
+
+func (w Window) Select(b Bitmap) error {
+	r, _, err := SelectObject.Call(w.HWND(), b.id())
+	if r == 0 {
+		return err
+	}
+	return nil
 }
 
 func (w Window) Title() (string, error) {
@@ -302,13 +430,17 @@ func (w Window) Visible() bool {
 	return f == 1
 }
 
+func (i WindowInfo) HasVisibleStyle() bool {
+	return i.Style&WindowStyles.Visible == WindowStyles.Visible
+}
+
 func (w *WindowPlacement) String() string {
 	return fmt.Sprintf("len: %d, flags: %d, cmd: %d, min: %s, max: %s, normal: %s, device: %s", w.Len, w.Flags, w.ShowCommand, w.Min, w.Max, w.Normal, w.Device)
 }
 
 // https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-systemparametersinfoa?redirectedfrom=MSDN
-func WorkArea() (Rectangle, error) {
-	var r Rectangle
+func WorkArea() (Rect, error) {
+	var r Rect
 
 	v, _, err := SystemParametersInfoA.Call(SystemParametersInfoOptions.GetWorkArea, 0, uintptr(unsafe.Pointer(&r)), 0)
 	if v == 0 {
@@ -317,6 +449,7 @@ func WorkArea() (Rectangle, error) {
 
 	return r, nil
 }
+
 func helpSetWindowPos(hwnd uintptr, pt image.Point, size image.Point, flags uintptr) {
 	go SetWindowPos.Call(
 		hwnd,

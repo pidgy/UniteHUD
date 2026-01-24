@@ -8,16 +8,16 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/pkg/errors"
-
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/system/wapi"
 )
 
 var (
-	Sources = []string{}
-	lock    = &sync.Mutex{}
+	Sources              = []string{}
+	lock                 = &sync.Mutex{}
+	lastResolution       image.Rectangle
+	lastResolutionString = "0x0"
 )
 
 // Capture captures the desired area from a Window and returns an image.
@@ -29,7 +29,12 @@ func Capture() (*image.RGBA, error) {
 
 	rect, err := w.Dimensions()
 	if err != nil {
-		return nil, errors.Wrap(err, "dimensions")
+		return nil, fmt.Errorf("dimensions: %v", err)
+	}
+
+	if !rect.Eq(lastResolution) {
+		lastResolution = rect
+		lastResolutionString = fmt.Sprintf("%dx%d", lastResolution.Dx(), lastResolution.Dy())
 	}
 
 	return CaptureRect(w, rect)
@@ -114,7 +119,7 @@ func CaptureRect(w wapi.Window, rect image.Rectangle) (*image.RGBA, error) {
 		)
 	}
 	if ret == 0 {
-		notify.Error("Window: Failed to capture \"%s\" window", config.Current.Video.Capture.Window.Name)
+		notify.Error("[Window] <ini:f:capture> \"%s\" window", config.Current.Video.Capture.Window.Name)
 		return nil, fmt.Errorf("bitblt returned: %d", ret)
 	}
 
@@ -147,7 +152,12 @@ func CaptureRect(w wapi.Window, rect image.Rectangle) (*image.RGBA, error) {
 }
 
 func IsOpen() bool {
-	return !Lost()
+	for _, s := range Sources {
+		if config.Current.Video.Capture.Window.Name == s {
+			return true
+		}
+	}
+	return false
 }
 
 func Lost() bool {
@@ -157,36 +167,35 @@ func Lost() bool {
 func Open() error {
 	go sync.OnceFunc(func() {
 		for ; ; time.Sleep(time.Second * 5) {
-			windows, err := list()
+			err := list()
 			if err != nil {
-				notify.Warn("[Window] Failed to list windows (%v)", err)
-				continue
+				notify.Error("<ini:f:find> active windows (%v)", err)
 			}
-
-			Sources = windows
 		}
 	})
 
-	windows, err := list()
+	err := list()
 	if err != nil {
 		return err
 	}
 
-	Sources = windows
-
-	for _, win := range windows {
+	for _, win := range Sources {
 		if win == config.Current.Video.Capture.Window.Name {
 			config.Current.Video.Capture.Window.Lost = ""
 			return nil
 		}
 	}
 
-	notify.Error("[Window] <ini:failed:find> \"%s\"", config.Current.Video.Capture.Window.Name)
+	notify.Error("[Window] <ini:f:find> \"%s\"", config.Current.Video.Capture.Window.Name)
 
 	config.Current.Video.Capture.Window.Lost = config.Current.Video.Capture.Window.Name
 	config.Current.Video.Capture.Window.Name = config.MainDisplay
 
 	return nil
+}
+
+func Resolution() string {
+	return lastResolutionString
 }
 
 // var reattachAttempts = 0
@@ -224,36 +233,21 @@ func Open() error {
 // 	return nil
 // }
 
-func list() ([]string, error) {
+func list() error {
 	lock.Lock()
 	defer lock.Unlock()
 
-	Sources = []string{}
-
-	err := wapi.EnumerateWindows(func(w wapi.Window) (stop bool) {
-		// Ignore windows that are visible to a user.
-		if w.InfoStatus() == wapi.WindowInfoStatusVisible {
-			return false // Don't stop.
-		}
-
-		// Ignore windows without valid titles or handles.
-		name, err := w.Title()
-		if err != nil {
-			return false // Don't stop.
-		}
-
-		// Ignore the projector window to prevent recursive painting.
-		if name == config.ProjectorWindow {
-			return false // Don't stop.
-		}
-
-		Sources = append(Sources, name)
-
-		return false // Don't stop.
-	})
+	windows, err := wapi.GetAllWindows()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return Sources, nil
+	Sources = []string{}
+	for _, w := range windows.Infos {
+		if w.WindowInfo.HasVisibleStyle() {
+			Sources = append(Sources, w.Title)
+		}
+	}
+
+	return nil
 }

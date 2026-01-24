@@ -28,26 +28,32 @@ type toggle struct {
 	event func()
 }
 
-var menu = struct {
-	visible bool
+var (
+	WarnLog  = func(s string, a ...any) {}
+	ErrorLog = func(s string, a ...any) {}
+	InfoLog  = func(s string, a ...any) {}
 
-	header    toggle
-	logs      toggle
-	website   toggle
-	startstop toggle
-	hideshow  toggle
-	exit      toggle
+	menu = struct {
+		visible bool
 
-	hwnd uintptr
+		header    toggle
+		logs      toggle
+		website   toggle
+		startstop toggle
+		hideshow  toggle
+		exit      toggle
 
-	eventq     chan func()
-	startstopq chan bool
+		hwnd uintptr
 
-	hidden bool
-}{
-	eventq:     make(chan func(), 1024),
-	startstopq: make(chan bool, 1024),
-}
+		eventq     chan func()
+		startstopq chan bool
+
+		hidden bool
+	}{
+		eventq:     make(chan func(), 1024),
+		startstopq: make(chan bool, 1024),
+	}
+)
 
 func Close() {
 	if !menu.visible {
@@ -229,7 +235,7 @@ func configuration() {
 
 			err = exec.Command("C:\\Windows\\system32\\notepad.exe", path).Run()
 			if err != nil {
-				notify.Error("[UI] <ini:failed:open> \"%s\" (%v)", path, err)
+				notify.Error("[UI] <ini:f:open> \"%s\" (%v)", path, err)
 				continue
 			}
 
@@ -322,12 +328,12 @@ func logs() toggle {
 			case <-open.ClickedCh:
 				err := save.Open()
 				if err != nil {
-					notify.Error("[Tray] <ini:failed:open> log directory (%v)", err)
+					notify.Error("[Tray] <ini:f:open> log directory (%v)", err)
 				}
 			case <-view.ClickedCh:
 				err := save.OpenCurrentLog()
 				if err != nil {
-					notify.Error("[Tray] <ini:failed:open> log directory (%v)", err)
+					notify.Error("[Tray] <ini:f:open> log directory (%v)", err)
 				}
 			}
 		}
@@ -386,7 +392,7 @@ func website() toggle {
 		event: func() {
 			err := open.Run("https://unitehud.dev")
 			if err != nil {
-				notify.Error("[Tray] <ini:failed:open> unitehud.dev (%v)", err)
+				notify.Error("[Tray] <ini:f:open> unitehud.dev (%v)", err)
 			}
 		},
 	}

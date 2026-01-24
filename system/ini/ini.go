@@ -6,7 +6,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/pkg/errors"
 	"gopkg.in/ini.v1"
 
 	"github.com/pidgy/unitehud/exe"
@@ -27,7 +26,7 @@ var (
 )
 
 func Default() error {
-	return errors.Wrap(Open(EnUS), "ini default")
+	return Open(EnUS)
 }
 
 func Find(s, k string) string { return find(s, k) }
@@ -48,12 +47,12 @@ func Open(locale Locale) error {
 	case "":
 		f = fmt.Sprintf("%s.ini", f)
 	default:
-		return errors.Errorf("locale: invalid exension: %s", ext)
+		return fmt.Errorf("locale: invalid exension: %s", ext)
 	}
 
 	i, err := ini.Load(f)
 	if err != nil {
-		return errors.Wrapf(err, "locale: %s", locale)
+		return fmt.Errorf("locale: %s: %v", locale, err)
 	}
 	file = i
 

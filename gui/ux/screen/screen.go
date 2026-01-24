@@ -29,7 +29,7 @@ func (s *Widget) Layout(gtx layout.Context) layout.Dimensions {
 	defer func() {
 		r := recover()
 		if r != nil {
-			notify.Warn("<ini:warn:recovered_from> fatal error (%v)", r)
+			notify.Warn("<ini:w:recovered_from> fatal error (%v)", r)
 		}
 	}()
 

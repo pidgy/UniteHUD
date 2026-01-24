@@ -5,68 +5,91 @@ import (
 )
 
 // http://msdn.microsoft.com/en-us/library/windows/desktop/dd183375.aspx
-type BitmapInfo struct {
-	BmiHeader BitmapInfoHeader
-	BmiColors *RGBQuad
-}
+type (
+	BitmapInfo struct {
+		BmiHeader BitmapInfoHeader
+		BmiColors *RGBQuad
+	}
 
-// http://msdn.microsoft.com/en-us/library/windows/desktop/dd183376.aspx
-type BitmapInfoHeader struct {
-	BiSize          uint32
-	BiWidth         int32
-	BiHeight        int32
-	BiPlanes        uint16
-	BiBitCount      uint16
-	BiCompression   uint32
-	BiSizeImage     uint32
-	BiXPelsPerMeter int32
-	BiYPelsPerMeter int32
-	BiClrUsed       uint32
-	BiClrImportant  uint32
-}
+	// http://msdn.microsoft.com/en-us/library/windows/desktop/dd183376.aspx
+	BitmapInfoHeader struct {
+		BiSize          uint32
+		BiWidth         int32
+		BiHeight        int32
+		BiPlanes        uint16
+		BiBitCount      uint16
+		BiCompression   uint32
+		BiSizeImage     uint32
+		BiXPelsPerMeter int32
+		BiYPelsPerMeter int32
+		BiClrUsed       uint32
+		BiClrImportant  uint32
+	}
 
-// https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-monitorinfo
-type MonitorInfo struct {
-	cbSize   uint32
-	Monitor  Rectangle
-	WorkArea Rectangle
-	Flags    uint32
-}
+	// https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-monitorinfo
+	MonitorInfo struct {
+		cbSize   uint32
+		Monitor  Rect
+		WorkArea Rect
+		Flags    uint32
+	}
 
-// https://learn.microsoft.com/en-us/previous-versions/dd162805(v=vs.85)
-type Point struct {
-	X, Y int32
-}
+	// https://learn.microsoft.com/en-us/previous-versions/dd162805(v=vs.85)
+	Point struct {
+		X, Y int32
+	}
 
-// Windows RECT structure.
-type Rectangle struct {
-	Left, Top, Right, Bottom int32
-}
+	// Windows RECT structure.
+	Rect struct {
+		Left, Top, Right, Bottom int32
+	}
 
-// http://msdn.microsoft.com/en-us/library/windows/desktop/dd162938.aspx
-type RGBQuad struct {
-	RgbBlue     byte
-	RgbGreen    byte
-	RgbRed      byte
-	RgbReserved byte
-}
+	// http://msdn.microsoft.com/en-us/library/windows/desktop/dd162938.aspx
+	RGBQuad struct {
+		RgbBlue     byte
+		RgbGreen    byte
+		RgbRed      byte
+		RgbReserved byte
+	}
 
-// https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-windowinfo
-type WindowInfo struct {
-	Size           uint32           // DWORD.
-	Window         Rectangle        // RECT.
-	Client         Rectangle        // RECT.
-	Style          uint32           // DWORD.
-	ExStyle        uint32           // DWORD.
-	Status         WindowInfoStatus // DWORD.
-	BordersX       uint             // UINT.
-	BordersY       uint             // UINT.
-	Type           uint16           // ATOM.
-	CreatorVersion uint16           // WORD.
-}
+	// https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-windowinfo
+	WindowInfo struct {
+		Size           uint32           // DWORD.
+		Window         Rect             // RECT.
+		Client         Rect             // RECT.
+		Style          uint32           // DWORD.
+		ExStyle        uint32           // DWORD.
+		Status         WindowInfoStatus // DWORD.
+		BordersX       uint             // UINT.
+		BordersY       uint             // UINT.
+		Type           uint16           // ATOM.
+		CreatorVersion uint16           // WORD.
+	}
 
-// https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-windowinfo
-type WindowInfoStatus uint32
+	// https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-windowinfo
+	WindowInfoStatus uint32
+
+	// https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-windowplacement
+	WindowPlacement struct {
+		Len         uint
+		Flags       uint
+		ShowCommand uint
+		Min         Point
+		Max         Point
+		Normal      Rect
+		Device      Rect
+	}
+
+	WindowPos struct {
+		HWND            syscall.Handle
+		HWNDInsertAfter syscall.Handle
+		x               int32
+		y               int32
+		cx              int32
+		cy              int32
+		flags           uint32
+	}
+)
 
 const (
 	WindowInfoStatusNotVisible WindowInfoStatus = iota
@@ -74,32 +97,7 @@ const (
 	WindowInfoStatusUnknown
 )
 
-// https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-windowplacement
-type WindowPlacement struct {
-	Len         uint
-	Flags       uint
-	ShowCommand uint
-	Min         Point
-	Max         Point
-	Normal      Rectangle
-	Device      Rectangle
-}
-
-type WindowPos struct {
-	HWND            syscall.Handle
-	HWNDInsertAfter syscall.Handle
-	x               int32
-	y               int32
-	cx              int32
-	cy              int32
-	flags           uint32
-}
-
 var (
-	MonitorFromWindowOptions = struct {
-		DefaultToPrimary uintptr
-	}{1}
-
 	BitBltRasterOperations = struct {
 		SrcCopy,
 		CaptureBLT,
@@ -190,6 +188,12 @@ var (
 		NoTopMost: -2,
 		Top:       0,
 		TopMost:   -1,
+	}
+
+	MonitorFromWindowOptions = struct {
+		DefaultToPrimary uintptr
+	}{
+		DefaultToPrimary: 1,
 	}
 
 	SetWindowPosFlags = struct {
@@ -292,20 +296,17 @@ var (
 	}{
 		GetWorkArea: 0x0030,
 	}
-)
 
-var (
-	psapi32                 = syscall.MustLoadDLL("psapi.dll")
 	EnumDeviceDrivers       = psapi32.MustFindProc("EnumDeviceDrivers")
 	GetDeviceDriverBaseName = psapi32.MustFindProc("GetDeviceDriverBaseNameW")
 
-	user32                       = syscall.MustLoadDLL("user32.dll")
-	BringWindowToTop             = user32.MustFindProc("BringWindowToTop")
-	EnumWindows                  = user32.MustFindProc("EnumWindows") // https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-enumwindows
+	BringWindowToTop = user32.MustFindProc("BringWindowToTop")
+
 	FindWindow                   = user32.MustFindProc("FindWindowW")
 	GetClientRect                = user32.MustFindProc("GetClientRect")
 	GetDC                        = user32.MustFindProc("GetDC")
 	GetDesktopWindow             = user32.MustFindProc("GetDesktopWindow")
+	GetMonitorInfoW              = user32.MustFindProc("GetMonitorInfoW")
 	GetSystemMetrics             = user32.MustFindProc("GetSystemMetrics")
 	GetTopWindow                 = user32.MustFindProc("GetTopWindow")
 	GetWindow                    = user32.MustFindProc("GetWindow")
@@ -325,35 +326,38 @@ var (
 	SetWindowPlacement           = user32.MustFindProc("SetWindowPlacement")
 	SetWindowPos                 = user32.MustFindProc("SetWindowPos")
 	ShowWindow                   = user32.MustFindProc("ShowWindow")
+	SystemParametersInfoA        = user32.MustFindProc("SystemParametersInfoA")
 	UpdateWindow                 = user32.MustFindProc("UpdateWindow")
-	MonitorFromWindow            = user32.MustFindProc("MonitorFromWindow")
-	GetMonitorInfoW              = user32.MustFindProc("GetMonitorInfoW")
+	enumWindows                  = user32.MustFindProc("EnumWindows") // https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-enumwindows
+	enumDisplayMonitors          = user32.MustFindProc("EnumDisplayMonitors")
+	monitorFromWindow            = user32.MustFindProc("MonitorFromWindow")
 
-	SystemParametersInfoA = user32.MustFindProc("SystemParametersInfoA")
-
-	gdi32                  = syscall.MustLoadDLL("gdi32.dll")
 	BitBlt                 = gdi32.MustFindProc("BitBlt")
-	StretchBlt             = gdi32.MustFindProc("StretchBlt")
 	CreateCompatibleBitmap = gdi32.MustFindProc("CreateCompatibleBitmap")
 	CreateCompatibleDC     = gdi32.MustFindProc("CreateCompatibleDC")
 	CreateDIBSection       = gdi32.MustFindProc("CreateDIBSection")
 	DeleteDC               = gdi32.MustFindProc("DeleteDC")
 	DeleteObject           = gdi32.MustFindProc("DeleteObject")
-	GetDeviceCaps          = gdi32.MustFindProc("GetDeviceCaps")
-	GetDIBits              = gdi32.MustFindProc("GetDIBits")
-	SelectObject           = gdi32.MustFindProc("SelectObject")
 	GetClipBox             = gdi32.MustFindProc("GetClipBox")
+	GetDIBits              = gdi32.MustFindProc("GetDIBits")
+	GetDeviceCaps          = gdi32.MustFindProc("GetDeviceCaps")
+	SelectObject           = gdi32.MustFindProc("SelectObject")
+	StretchBlt             = gdi32.MustFindProc("StretchBlt")
 
-	dwmapi                = syscall.MustLoadDLL("dwmapi.dll")
 	DwmGetWindowAttribute = dwmapi.MustFindProc("DwmGetWindowAttribute")
 	DwmSetWindowAttribute = dwmapi.MustFindProc("DwmSetWindowAttribute")
 
-	modShcore              = syscall.NewLazyDLL("shcore.dll")
-	setProcessDpiAwareness = modShcore.NewProc("SetProcessDpiAwareness")
-
-	modKernel32             = syscall.NewLazyDLL("kernel32.dll")
-	GetLastError            = modKernel32.NewProc("GetLastError")
+	getLastError            = modKernel32.NewProc("GetLastError")
 	setThreadExecutionState = modKernel32.NewProc("SetThreadExecutionState")
+
+	dwmapi      = syscall.MustLoadDLL("dwmapi.dll")
+	gdi32       = syscall.MustLoadDLL("gdi32.dll")
+	modShcore   = syscall.NewLazyDLL("shcore.dll")
+	modKernel32 = syscall.NewLazyDLL("kernel32.dll")
+	psapi32     = syscall.MustLoadDLL("psapi.dll")
+	user32      = syscall.MustLoadDLL("user32.dll")
+
+	setProcessDpiAwareness = modShcore.NewProc("SetProcessDpiAwareness")
 )
 
 func init() {
@@ -375,16 +379,6 @@ const (
 	UnawareGDIScaled
 )
 
-// SetProcessDpiAwareness ensures that Windows API calls will tell us the scale factor for our
-// screen so that our screenshot works on hi-res displays.
-func SetProcessDPIAwareness(ctx SetProcessDpiAwarenessContext) error {
-	_, _, err := setProcessDpiAwareness.Call(uintptr(ctx))
-	if err != syscall.Errno(0) {
-		return err
-	}
-	return nil
-}
-
 type ThreadExecutionState int
 
 const (
@@ -394,15 +388,3 @@ const (
 	ThreadExecutionStateSystemRequired   ThreadExecutionState = 0x00000001
 	ThreadExecutionStateUserPresent      ThreadExecutionState = 0x00000004
 )
-
-func SetThreadExecutionState(states ...ThreadExecutionState) error {
-	t := ThreadExecutionState(0)
-	for _, state := range states {
-		t |= state
-	}
-	_, _, err := setThreadExecutionState.Call(uintptr(t))
-	if err != syscall.Errno(0) {
-		return err
-	}
-	return nil
-}

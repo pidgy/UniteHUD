@@ -77,11 +77,11 @@ var UI *GUI
 func New() *GUI {
 	err := wapi.SetProcessDPIAwareness(wapi.PerMonitorAware)
 	if err != nil {
-		notify.Warn("[UI] <ini:failed:set> DPI awareness, %v", err)
+		notify.Warn("[UI] <ini:f:set> DPI awareness, %v", err)
 	}
 
 	min := image.Pt(1100, 700)
-	max := monitor.Resolution().Max.Sub(image.Pt(0, monitor.TaskbarHeight()))
+	max := min
 
 	is.Now = is.Loading
 
@@ -139,7 +139,7 @@ func New() *GUI {
 		// func() {UI.window.Perform(system.ActionClose)},
 	)
 
-	notify.System("[UI] Using %dx%d resolution", max.X, max.Y)
+	notify.Debug("[UI] Minimum window size set to %dx%d", min.X, min.Y)
 
 	go UI.loading()
 
@@ -302,7 +302,7 @@ func (g *GUI) next(i is.What) {
 }
 
 func (g *GUI) position() image.Point {
-	r := &wapi.Rectangle{}
+	r := &wapi.Rect{}
 	wapi.GetWindowRect.Call(g.HWND, uintptr(unsafe.Pointer(r)))
 	return image.Pt(int(r.Left), int(r.Top))
 }

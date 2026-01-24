@@ -16,7 +16,7 @@ const (
 	Title           = "UniteHUD"
 	TitleAndVersion = Title + " " + Version
 	Version         = "v" + VersionSemVer
-	VersionSemVer   = "4.4.0"
+	VersionSemVer   = "4.5.0"
 )
 
 var (
@@ -42,7 +42,7 @@ func Directory() string {
 	if dir == "" {
 		e, err := os.Executable()
 		if err != nil {
-			dir = "<ini:failed:locate> executable directory"
+			dir = "<ini:f:locate> executable directory"
 		}
 		dir = filepath.Dir(e)
 	}

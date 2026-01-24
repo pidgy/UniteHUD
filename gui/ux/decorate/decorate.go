@@ -73,12 +73,14 @@ func Label(l *material.LabelStyle, format string, a ...interface{}) *material.La
 	return l
 }
 
-func LabelAlpha(l *material.LabelStyle, a uint8) {
+func LabelAlpha(l *material.LabelStyle, a uint8) *material.LabelStyle {
 	l.Color.A = a
+	return l
 }
 
-func LabelColor(l *material.LabelStyle, c color.NRGBA) {
+func LabelColor(l *material.LabelStyle, c color.NRGBA) *material.LabelStyle {
 	l.Color = c
+	return l
 }
 
 func Line(gtx layout.Context, rect clip.Rect, n nrgba.NRGBA) layout.Dimensions {

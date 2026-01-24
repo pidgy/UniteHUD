@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gen2brain/malgo"
+
 	"github.com/pidgy/unitehud/media/device"
 )
 

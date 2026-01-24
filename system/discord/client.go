@@ -124,7 +124,6 @@ func (c *client) send(o oper) {
 	}
 
 	if logStateCount--; logStateCount < 1 {
-		// notify.Debug("[Discord] %s", string(p))
 		logStateCount = 100
 	}
 

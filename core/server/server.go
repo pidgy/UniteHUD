@@ -41,7 +41,7 @@ type Objective struct {
 	Team        string `json:"team"`
 	Time        int64  `json:"time"`
 	Surrendered bool   `json:"surrendered"`
-	isFinal     bool
+	IsFinal     bool   `json:"is_final"`
 }
 
 type State struct {
@@ -126,7 +126,7 @@ func Clock() string {
 func FinalObjectiveName() string {
 	if current.State.FinalObjectiveTeam != "" {
 		for _, o := range current.Objectives {
-			if o.isFinal {
+			if o.IsFinal {
 				return o.Name
 			}
 		}
@@ -482,9 +482,9 @@ func SetFinalObjective(t *team.Team, e state.EventType) {
 
 	current.Objectives = append(current.Objectives, Objective{
 		Team:    t.Name,
-		Name:    lang.Cases.String(e.ObjectiveString()),
+		Name:    e.ObjectiveString(),
 		Time:    time.Now().Unix(),
-		isFinal: true,
+		IsFinal: true,
 	})
 }
 

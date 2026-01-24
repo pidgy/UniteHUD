@@ -157,7 +157,8 @@ func (g *GUI) configure() {
 
 			decorate.Background(gtx)
 
-			decorate.Label(&ui.footer.api, "API: %s", device.API(config.Current.Video.Capture.Device.API).String())
+			// decorate.Label(&ui.footer.api, "API: %s", device.API(config.Current.Video.Capture.Device.API).String())
+			decorate.Label(&ui.footer.api, "Resolution: %dx%d", ui.img.Bounds().Dx(), ui.img.Bounds().Dy())
 			decorate.Label(&ui.footer.cpu, process.Usage.CPU.String())
 			decorate.Label(&ui.footer.ram, process.Usage.RAM.String())
 			decorate.Label(&ui.footer.hz, "%s Hz", g.hz)
@@ -402,7 +403,7 @@ func (g *GUI) configure() {
 
 				ui.img, err = video.Capture()
 				if err != nil {
-					g.ToastErrorf("<ini:failed:capture> video (%v)", err)
+					g.ToastErrorf("<ini:f:capture> video (%v)", err)
 					g.next(is.MainMenu)
 					break
 				}
@@ -497,7 +498,7 @@ func (g *GUI) configureUI() *configure {
 
 					err := config.Current.Save()
 					if err != nil {
-						notify.Warn("[UI] <ini:failed:save> UniteHUD configuration (%v)", err)
+						notify.Warn("[UI] <ini:f:save> UniteHUD configuration (%v)", err)
 					}
 
 					g.next(is.MainMenu)
@@ -602,7 +603,7 @@ func (g *GUI) configureUI() *configure {
 
 					err := config.Current.Save()
 					if err != nil {
-						notify.Error("[UI] <ini:failed:save> UniteHUD configuration (%v)", err)
+						notify.Error("[UI] <ini:f:save> UniteHUD configuration (%v)", err)
 						return
 					}
 
@@ -666,7 +667,7 @@ func (g *GUI) configureUI() *configure {
 
 			err := exec.Command("C:\\Windows\\system32\\notepad.exe", config.Current.File()).Run()
 			if err != nil {
-				notify.Error("[UI] <ini:failed:open> \"%s\" (%v)", config.Current.File(), err)
+				notify.Error("[UI] <ini:f:open> \"%s\" (%v)", config.Current.File(), err)
 				return
 			}
 
@@ -679,7 +680,7 @@ func (g *GUI) configureUI() *configure {
 
 			err = config.Current.Save()
 			if err != nil {
-				notify.Error("[UI] <ini:failed:save> \"%s\" (%v)", config.Current.File(), err)
+				notify.Error("[UI] <ini:f:save> \"%s\" (%v)", config.Current.File(), err)
 				return
 			}
 

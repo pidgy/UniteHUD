@@ -19,7 +19,6 @@ require (
 	github.com/kbinani/screenshot v0.0.0-20230812210009-b87d31814237
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646 // indirect
 	github.com/olekukonko/tablewriter v0.0.5
-	github.com/pkg/errors v0.9.1
 	github.com/rupor-github/win-gpg-agent v1.6.3
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
 	github.com/tc-hib/winres v0.2.1
@@ -29,8 +28,6 @@ require (
 )
 
 require (
-	github.com/hajimehoshi/go-mp3 v0.3.4
-	github.com/hajimehoshi/oto/v2 v2.4.2
 	github.com/hashicorp/go-version v1.6.0
 	golang.org/x/image v0.18.0
 	golang.org/x/text v0.16.0
@@ -40,7 +37,6 @@ require (
 require (
 	gioui.org/cpu v0.0.0-20220412190645-f1e9e8c3b1f7 // indirect
 	gioui.org/shader v1.0.8 // indirect
-	github.com/ebitengine/purego v0.5.1 // indirect
 	github.com/gen2brain/shm v0.1.0 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-text/typesetting v0.0.0-20231202102523-0024ac628562 // indirect

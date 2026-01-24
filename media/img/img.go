@@ -54,14 +54,14 @@ func Icon(name string) image.Image {
 
 	f, err := os.Open(config.Current.AssetIcon(name))
 	if err != nil {
-		notify.Error("[Image] <ini:failed:open> image %s (%v)", name, err)
+		notify.Error("[Image] <ini:f:open> image %s (%v)", name, err)
 		return Empty
 	}
 	defer f.Close()
 
 	img, _, err := image.Decode(f)
 	if err != nil {
-		notify.Error("[Image] <ini:failed:decode> %s (%v)", name, err)
+		notify.Error("[Image] <ini:f:decode> %s (%v)", name, err)
 		return Empty
 	}
 
@@ -83,14 +83,14 @@ func IconBytes(name string) []byte {
 
 	f, err := os.Open(config.Current.AssetIcon(name))
 	if err != nil {
-		notify.Error("[Image] <ini:failed:open> image %s (%v)", name, err)
+		notify.Error("[Image] <ini:f:open> image %s (%v)", name, err)
 		return nil
 	}
 	defer f.Close()
 
 	ico, err := winres.LoadICO(f)
 	if err != nil {
-		notify.Error("[Image] <ini:failed:decode> %s (%v)", name, err)
+		notify.Error("[Image] <ini:f:decode> %s (%v)", name, err)
 		return nil
 	}
 
@@ -98,7 +98,7 @@ func IconBytes(name string) []byte {
 
 	err = ico.SaveICO(b)
 	if err != nil {
-		notify.Error("[Image] <ini:failed:encode> %s (%v)", name, err)
+		notify.Error("[Image] <ini:f:encode> %s (%v)", name, err)
 		return nil
 	}
 
@@ -143,6 +143,6 @@ func RGBA(mat gocv.Mat) (*image.RGBA, error) {
 	case *image.RGBA:
 		return img, nil
 	default:
-		return nil, fmt.Errorf("<ini:failed:convert> %T to an RGBA image", i)
+		return nil, fmt.Errorf("<ini:f:convert> %T to an RGBA image", i)
 	}
 }

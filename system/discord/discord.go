@@ -9,8 +9,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/pidgy/unitehud/core/config"
-	"github.com/pidgy/unitehud/core/notify"
-	"github.com/pidgy/unitehud/core/rgba/nrgba"
 	"github.com/pidgy/unitehud/core/server"
 	"github.com/pidgy/unitehud/core/state"
 	"github.com/pidgy/unitehud/core/team"
@@ -21,6 +19,10 @@ import (
 var (
 	Asked   = config.Current.Remember.Discord != config.DiscordRememberStandby
 	Current = def
+
+	WarnLog  = func(s string, a ...any) {}
+	ErrorLog = func(s string, a ...any) {}
+	InfoLog  = func(s string, a ...any) {}
 
 	def = activity{
 		State: "Waiting for match to start",
@@ -236,11 +238,11 @@ func Connected() bool {
 
 func Close() {
 	rpc.cleanup()
-	notify.Feed(nrgba.Discord, "[Discord] Connection closed")
+	InfoLog("[Discord] Connection closed")
+	// notify.Feed(nrgba.Discord, "[Discord] Connection closed")
 }
 
 func Open() error {
-
 	go func() {
 		for ; ; time.Sleep(time.Second * 5) {
 			reconnect()
@@ -264,7 +266,8 @@ func Open() error {
 func reconnect() {
 	err := rpc.error()
 	if err != nil {
-		notify.Warn("[Discord] Disconnected (%v)", err)
+		// notify.Warn("[Discord] Disconnected (%v)", err)
+		WarnLog("[Discord] Disconnected (%v)", err)
 	}
 
 	if config.Current.Advanced.Discord.Disabled && rpc.conn != nil {
@@ -276,11 +279,13 @@ func reconnect() {
 			continue
 		}
 
-		notify.Feed(nrgba.Discord, "[Discord] Connecting...")
+		// notify.Feed(nrgba.Discord, "[Discord] Connecting...")
+		InfoLog("[Discord] Connecting...")
 
 		rpc, err = connect()
 		if err != nil {
-			notify.Warn("[Discord] Failed to connect (%v)", err)
+			WarnLog("[Discord] Failed to connect (%v)", err)
+			// notify.Warn("[Discord] Failed to connect (%v)", err)
 			continue
 		}
 
@@ -288,10 +293,12 @@ func reconnect() {
 
 		err = rpc.error()
 		if err != nil {
-			notify.Warn("[Discord] Handshake error (%v)", err)
+			WarnLog("[Discord] Handshake error (%v)", err)
+			// notify.Warn("[Discord] Handshake error (%v)", err)
 			continue
 		}
 
-		notify.Feed(nrgba.Discord, "[Discord] Connected")
+		InfoLog("[Discord] Connected")
+		// notify.Feed(nrgba.Discord, "[Discord] Connected")
 	}
 }

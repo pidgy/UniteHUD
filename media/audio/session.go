@@ -114,12 +114,12 @@ func Open() error {
 
 	in, err := input.New(ctx, config.Current.Audio.Capture.Device.Name)
 	if err != nil {
-		notify.Warn("[Audio] <ini:failed:create> input (%v)", err)
+		notify.Warn("[Audio] <ini:f:create> input (%v)", err)
 	}
 
 	out, err := output.New(ctx, config.Current.Audio.Playback.Device.Name)
 	if err != nil {
-		notify.Warn("[Audio] <ini:failed:create> output (%v)", err)
+		notify.Warn("[Audio] <ini:f:create> output (%v)", err)
 	}
 
 	Current = &Session{
@@ -170,12 +170,12 @@ func Restart() {
 
 	in, err := input.New(Current.context, config.Current.Audio.Capture.Device.Name)
 	if err != nil {
-		notify.Warn("[Audio] <ini:failed:create> input (%v)", err)
+		notify.Warn("[Audio] <ini:f:create> input (%v)", err)
 	}
 
 	out, err := output.New(Current.context, config.Current.Audio.Playback.Device.Name)
 	if err != nil {
-		notify.Warn("[Audio] <ini:failed:create> output (%v)", err)
+		notify.Warn("[Audio] <ini:f:create> output (%v)", err)
 	}
 
 	Current.Input = in

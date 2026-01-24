@@ -8,9 +8,8 @@ package device
 */
 import "C"
 import (
+	"fmt"
 	"unsafe"
-
-	"github.com/pkg/errors"
 )
 
 // Device represents a Windows-compatible device.
@@ -62,7 +61,7 @@ func VideoCaptureDevicePath(index int) (string, error) {
 func deviceName(index int, t C.DeviceType) (string, error) {
 	name := C.DeviceName(C.int(index), t)
 	if name == nil {
-		return "", errors.Errorf("empty value")
+		return "", fmt.Errorf("failed to find name for device at index %d", index)
 	}
 	defer C.free(unsafe.Pointer(name))
 
@@ -73,7 +72,7 @@ func newDevice(index int, t C.DeviceType) (*Device, error) {
 	d := C.Device{}
 	r := C.DeviceInit(&d, C.int(index), t)
 	if r != 0 {
-		return nil, errors.Errorf("error code: %d", r)
+		return nil, fmt.Errorf("error code: %d", r)
 	}
 	defer C.DeviceFree(&d)
 
@@ -91,7 +90,7 @@ func newDevice(index int, t C.DeviceType) (*Device, error) {
 func path(index int, t C.DeviceType) (string, error) {
 	path := C.DevicePath(C.int(index), t)
 	if path == nil {
-		return "", errors.Errorf("empty value")
+		return "", fmt.Errorf("failed to find path for device at index %d", index)
 	}
 	defer C.free(unsafe.Pointer(path))
 

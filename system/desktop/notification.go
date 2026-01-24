@@ -6,12 +6,12 @@ import (
 	"git.sr.ht/~jackmordaunt/go-toast"
 
 	"github.com/pidgy/unitehud/core/config"
-	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/system/desktop/clicked"
 )
 
 type Factory struct {
-	toast toast.Notification
+	toast  toast.Notification
+	errors func(string, ...any)
 }
 
 func Notification(format string, args ...interface{}) *Factory {
@@ -31,27 +31,34 @@ func Notification(format string, args ...interface{}) *Factory {
 	}
 }
 
-func (n *Factory) Says(format string, args ...interface{}) *Factory {
-	n.toast.Body = fmt.Sprintf(format, args...)
-	return n
+func (f *Factory) Logs(fn func(string, ...any)) *Factory {
+	f.errors = fn
+	return f
 }
 
-func (n *Factory) Send() {
+func (f *Factory) Says(format string, args ...interface{}) *Factory {
+	f.toast.Body = fmt.Sprintf(format, args...)
+	return f
+}
+
+func (f *Factory) Send() {
 	if config.Current.Advanced.Notifications.Disabled.All {
 		return
 	}
 
-	err := n.toast.Push()
+	err := f.toast.Push()
 	if err != nil {
-		notify.Warn("[System] Failed to send desktop notification (%v)", err)
+		if f.errors != nil {
+			f.errors("[Desktop] Failed to send notification :%v", err)
+		}
 	}
 }
 
-func (n *Factory) When(clicked ...clicked.Action) *Factory {
+func (f *Factory) When(clicked ...clicked.Action) *Factory {
 	for _, clicked := range clicked {
-		n.toast.Actions = append(n.toast.Actions,
+		f.toast.Actions = append(f.toast.Actions,
 			clicked.Then(),
 		)
 	}
-	return n
+	return f
 }

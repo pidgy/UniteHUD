@@ -1,27 +1,57 @@
 package wapi
 
 import (
-	"fmt"
 	"testing"
-	"time"
 )
 
 func TestEnumerateWindows(t *testing.T) {
-	time.Sleep(time.Second * 5)
-
-	err := EnumerateWindows(func(w Window) bool {
-		title, err := w.Title()
-		if err != nil {
-			return false
-		}
-
-		if w.Visible() {
-			fmt.Printf("%s is visible: %t\n", title, w.Visible())
-		}
-
-		return false
-	})
+	windows, err := GetAllWindows()
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Logf("Windows: %d", len(windows.Infos))
+
+	for _, i := range windows.Infos {
+		if i.Style&WindowStyles.Visible == WindowStyles.Visible {
+			t.Logf("%s: style=%d", i.Title, i.Style)
+		}
+	}
+}
+
+func TestEnumerateDisplayMonitors(t *testing.T) {
+	m, err := GetAllMonitors()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("Monitors: %d", len(m.Active))
+}
+
+func TestGetMonitorInfo(t *testing.T) {
+	mi, err := GetMonitorInfo()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("%s", mi)
+}
+
+func TestGetMonitorHandleFromIndex(t *testing.T) {
+	hwnd, err := GetMonitorHandleFromIndex(0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("HWND: %d", hwnd)
+}
+
+func TestGetMonitorIndexFromMonitorInfo(t *testing.T) {
+	mi, err := GetMonitorInfo()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("MonitorInfo: %s", mi)
+
+	i, err := GetMonitorIndexFromMonitorInfo(mi)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("Index: %d", i)
 }

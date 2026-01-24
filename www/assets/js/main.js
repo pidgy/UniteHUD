@@ -229,14 +229,7 @@ async function render(data) {
 
         data.objectives.forEach(function(o, i) {
             switch (true) {
-                case o.name.startsWith("final_"):
-                    var args = o.name.split("_");
-                    if (args.length < 2) {
-                        error(`invalid final objective name: ${o.name}`);
-                        break;
-                    }
-
-                    var name = args[1];
+                case o.is_final:
                     $(`.objectives-1.central`).filter("img").css({
                         'opacity': 1,
                         'animation': 'secured 1s cubic-bezier(.36,.07,.19,.97) both'
@@ -247,7 +240,7 @@ async function render(data) {
                     $(`.objectives-1.central .objectives-circle.none`).css('opacity', 0);
                     $(`.objectives-1.central .objectives-circle.${o.team}`).css('opacity', 1);
 
-                    $(`.objectives-1.central`).filter("img").attr('src', `${cached.assets.sprites}/${name}.png`);
+                    $(`.objectives-1.central`).filter("img").attr('src', `${cached.assets.sprites}/${o.name}.png`);
 
                     break;
                 default:
@@ -275,6 +268,16 @@ async function render(data) {
             $(`${order[i]} .objectives-circle.none`).css('opacity', 1);
             $(order[i]).filter("img").attr('src', `assets/img/objective.png`);
             $(order[i]).filter("img").css({
+                'opacity': .75,
+                'animation': 'none'
+            });
+        }
+
+        if (data.final_objective == "") {
+            $(`.objectives-1.central .objectives-circle.purple`).css('opacity', 0);
+            $(`.objectives-1.central .objectives-circle.orange`).css('opacity', 0);
+            $(`.objectives-1.central .objectives-circle.none`).css('opacity', 1);
+            $(`.objectives-1.central`).filter("img").css({
                 'opacity': .75,
                 'animation': 'none'
             });

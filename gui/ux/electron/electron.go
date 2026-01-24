@@ -12,7 +12,6 @@ import (
 
 	"github.com/asticode/go-astikit"
 	"github.com/asticode/go-astilectron"
-	"github.com/pkg/errors"
 
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/exe"
@@ -56,7 +55,7 @@ func Active() bool {
 
 func Close() {
 	if !active {
-		notify.Warn("[Electron] <ini:failed:close> (inactive)")
+		notify.Warn("[Electron] <ini:f:close> (inactive)")
 		return
 	}
 	active = false
@@ -64,19 +63,19 @@ func Close() {
 
 	err := closeWindow()
 	if err != nil {
-		notify.Error("[Electron] <ini:failed:close> (%v)", err)
+		notify.Error("[Electron] <ini:f:close> (%v)", err)
 		return
 	}
 
 	err = closeApp()
 	if err != nil {
-		notify.Error("[Electron] <ini:failed:close> (%v)", err)
+		notify.Error("[Electron] <ini:f:close> (%v)", err)
 		return
 	}
 }
 
 var prev struct {
-	rect   wapi.Rectangle
+	rect   wapi.Rect
 	hidden bool
 }
 
@@ -94,18 +93,18 @@ func Follow(hwnd uintptr, size image.Point, force bool) {
 	// }
 	// defer lock.Unlock()
 
-	switch wapi.Window(hwnd).InfoStatus() {
+	switch wapi.Window(hwnd).Info().Status {
 	case wapi.WindowInfoStatusNotVisible:
 		if !force {
 			Hide()
 		}
 	case wapi.WindowInfoStatusVisible:
-		err := Show()
+		err := show()
 		if err != nil {
-			notify.Error("[Electron] <ini:failed:to> show HUD (%v)", err)
+			notify.Error("[Electron] <ini:f:to> show HUD (%v)", err)
 		}
 
-		next := wapi.Rectangle{}
+		next := wapi.Rect{}
 		_, _, err = wapi.GetWindowRect.Call(hwnd, uintptr(unsafe.Pointer(&next)))
 		if err != syscall.Errno(0) {
 			notify.Error("[Electron] Failed to find projector dimensions (%v)", err)
@@ -126,7 +125,7 @@ func Follow(hwnd uintptr, size image.Point, force bool) {
 
 		// err = window.ExecuteJavaScript(`document.getElementById('hud').style.opacity = 0;`)
 		// if err != nil {
-		// 	notify.Warn("[Electron] <ini:failed:set> HUD opacity (%v)", err)
+		// 	notify.Warn("[Electron] <ini:f:set> HUD opacity (%v)", err)
 		// }
 
 		w := int(next.Right - next.Left)
@@ -139,24 +138,24 @@ func Follow(hwnd uintptr, size image.Point, force bool) {
 			float64(h)/1080,
 		))
 		if err != nil {
-			notify.Warn("[Electron] <ini:failed:set> HUD scale (%v)", err)
+			notify.Warn("[Electron] <ini:f:set> HUD scale (%v)", err)
 			break
 		}
 
 		err = trySetBounds(next, w, h, force)
 		if err != nil {
-			notify.Error("[Electron] <ini:failed:set> HUD bounds (%v)", err)
+			notify.Error("[Electron] <ini:f:set> HUD bounds (%v)", err)
 			break
 		}
 
 		// err = window.ExecuteJavaScript(`document.getElementById('hud').style.opacity = 1;`)
 		// if err != nil {
-		// 	notify.Warn("[Electron] <ini:failed:unset> HUD opacity (%v)", err)
+		// 	notify.Warn("[Electron] <ini:f:unset> HUD opacity (%v)", err)
 		// }no
 
 		err = window.MoveTop()
 		if err != nil {
-			notify.Error("[Electron] <ini:failed:to> move HUD to top (%v)", err)
+			notify.Error("[Electron] <ini:f:to> move HUD to top (%v)", err)
 		}
 	case wapi.WindowInfoStatusUnknown:
 		notify.Error("[Electron] Unknown Window Info Status")
@@ -180,7 +179,7 @@ func Hide() {
 	// }
 	err := window.ExecuteJavaScript(`document.getElementById('hud').style.opacity = 0;`)
 	if err != nil {
-		notify.Warn("[Electron] <ini:failed:set> HUD opacity (%v)", err)
+		notify.Warn("[Electron] <ini:f:set> HUD opacity (%v)", err)
 	}
 }
 
@@ -191,36 +190,19 @@ func Open(size image.Point) error {
 
 	err := openApp()
 	if err != nil {
-		notify.Error("[Electron] <ini:failed:open> (%v)", err)
+		notify.Error("[Electron] <ini:f:open> (%v)", err)
 		return err
 	}
 
 	err = openWindow(size)
 	if err != nil {
-		notify.Error("[Electron] <ini:failed:open> (%v)", err)
+		notify.Error("[Electron] <ini:f:open> (%v)", err)
 		return err
 	}
 
 	active = true
 
 	return nil
-}
-
-func Show() error {
-	if !hidden {
-		return nil
-	}
-	hidden = false
-
-	notify.Debug("[Electron] Showing overlay...")
-
-	// err :=
-	return window.ExecuteJavaScript(`document.getElementById('hud').style.opacity = 1;`)
-	// if err != nil {
-	// notify.Warn("[Electron] <ini:failed:set> HUD opacity (%v)", err)
-	// }
-
-	// return window.Show()
 }
 
 func closeApp() error {
@@ -355,7 +337,7 @@ func openWindow(size image.Point) error {
 		},
 	)
 	if err != nil {
-		notify.Error("[Electron] <ini:failed:open> (%v)", err)
+		notify.Error("[Electron] <ini:f:open> (%v)", err)
 		return err
 	}
 
@@ -364,10 +346,10 @@ func openWindow(size image.Point) error {
 	go func() {
 		err := window.Create()
 		if err != nil {
-			errq <- errors.Wrap(err, "overlay window")
+			errq <- err
 			return
 		}
-		errq <- errors.Wrap(Show(), "show hud")
+		errq <- show()
 	}()
 
 	err = <-errq
@@ -383,7 +365,24 @@ func openWindow(size image.Point) error {
 	return nil
 }
 
-func trySetBounds(next wapi.Rectangle, w, h int, force bool) error {
+func show() error {
+	if !hidden {
+		return nil
+	}
+	hidden = false
+
+	notify.Debug("[Electron] Showing overlay...")
+
+	// err :=
+	return window.ExecuteJavaScript(`document.getElementById('hud').style.opacity = 1;`)
+	// if err != nil {
+	// notify.Warn("[Electron] <ini:f:set> HUD opacity (%v)", err)
+	// }
+
+	// return window.Show()
+}
+
+func trySetBounds(next wapi.Rect, w, h int, force bool) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 

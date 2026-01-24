@@ -59,11 +59,11 @@ func Open() error {
 	return nil
 }
 
-func (p *part) String() string {
+func (p part) String() string {
 	return p.string
 }
 
-func (p *part) Float64() float64 {
+func (p part) Float64() float64 {
 	return p.float64
 }
 

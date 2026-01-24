@@ -802,7 +802,7 @@ func (g *GUI) videos(text float32) *videos {
 			for _, api := range device.APIs() {
 				v.apis.list.Items = append(v.apis.list.Items,
 					&checklist.Item{
-						Text:  lang.Cases.String(api),
+						Text:  lang.Titled.String(api),
 						Value: device.API(api).Value(),
 						Checked: widget.Bool{
 							Value: strings.EqualFold(api, config.Current.Video.Capture.Device.API),
@@ -906,7 +906,7 @@ func (g *GUI) videos(text float32) *videos {
 			for _, c := range device.Codecs() {
 				v.codecs.list.Items = append(v.codecs.list.Items,
 					&checklist.Item{
-						Text: lang.Cases.String(c.String()),
+						Text: lang.Titled.String(c.String()),
 						Checked: widget.Bool{
 							Value: strings.EqualFold(c.String(), config.Current.Video.Capture.Device.Codec),
 						},
@@ -945,20 +945,20 @@ func (g *GUI) videos(text float32) *videos {
 
 					err := config.Current.Save()
 					if err != nil {
-						notify.Error("[UI] <ini:failed:load> %s configuration", config.Current.Gaming.Device)
+						notify.Error("[UI] <ini:f:load> %s configuration", config.Current.Gaming.Device)
 						return false
 					}
 
 					err = config.Open()
 					if err != nil {
-						notify.Error("[UI] <ini:failed:load> %s configuration", config.Current.Gaming.Device)
+						notify.Error("[UI] <ini:f:load> %s configuration", config.Current.Gaming.Device)
 						return false
 					}
 
 					time.AfterFunc(time.Second, func() {
 						err := config.Current.Save()
 						if err != nil {
-							notify.Error("[UI] <ini:failed:save> %s configuration", config.Current.Gaming.Device)
+							notify.Error("[UI] <ini:f:save> %s configuration", config.Current.Gaming.Device)
 						}
 					})
 				}

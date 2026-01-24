@@ -5,7 +5,6 @@ import (
 	"io"
 
 	"github.com/gen2brain/malgo"
-	"github.com/pkg/errors"
 
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/media/audio/device"
@@ -50,7 +49,7 @@ func New(ctx *malgo.AllocatedContext, name string) (*Device, error) {
 		return d, nil
 	}
 
-	return nil, fmt.Errorf("<ini:failed:find> playback device: %s", name)
+	return nil, fmt.Errorf("<ini:f:find> playback device: %s", name)
 }
 
 func (d *Device) Active() bool {
@@ -95,7 +94,7 @@ func (d *Device) Start(mctx malgo.Context, r io.ReadWriter) error {
 	}
 
 	if d.Active() {
-		return errors.Wrap(fmt.Errorf("already active"), d.name)
+		return fmt.Errorf("%s: already active", d.name)
 	}
 
 	defer notify.Debug("[Audio Output] Started %s", d.Name())
@@ -128,27 +127,27 @@ func (d *Device) Start(mctx malgo.Context, r io.ReadWriter) error {
 						d.reconnects++
 						return
 					}
-					notify.Warn("[Audio Output] Playback error (%v)", errors.Wrap(err, d.name))
+					notify.Warn("[Audio Output] Playback error (%s: %v)", d.name, err)
 				}
 			},
 		}
 
 		device, err := malgo.InitDevice(mctx, d.config, callbacks)
 		if err != nil {
-			errq <- errors.Wrap(err, d.name)
+			errq <- fmt.Errorf("%s: %v", d.name, err)
 			return
 		}
 		defer device.Uninit()
 
 		err = device.Start()
 		if err != nil {
-			errq <- errors.Wrap(err, d.name)
+			errq <- fmt.Errorf("%s: %v", d.name, err)
 			return
 		}
 		defer func() {
 			err := device.Stop()
 			if err != nil {
-				notify.Error("[Audio Output] <ini:failed:stop> device (%v)", err)
+				notify.Error("[Audio Output] <ini:f:stop> device (%v)", err)
 				return
 			}
 		}()
@@ -171,14 +170,14 @@ func (d *Device) Type() device.Type {
 func Devices(ctx *malgo.AllocatedContext) (playbacks []*Device) {
 	d, err := ctx.Devices(malgo.Playback)
 	if err != nil {
-		notify.Error("[Audio Output] <ini:failed:find> devices (%v)", err)
+		notify.Error("[Audio Output] <ini:f:find> devices (%v)", err)
 		return nil
 	}
 
 	for _, info := range d {
 		full, err := ctx.DeviceInfo(malgo.Playback, info.ID, malgo.Shared)
 		if err != nil {
-			notify.Warn("[Audio Output] <ini:failed:find> device information for %s (%v)", info.ID, err)
+			notify.Warn("[Audio Output] <ini:f:find> device information for %s (%v)", info.ID, err)
 		}
 
 		playbacks = append(playbacks, &Device{

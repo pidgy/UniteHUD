@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/skratchdot/open-golang/open"
-	"gocv.io/x/gocv"
 
 	"github.com/pidgy/unitehud/exe"
 )
@@ -37,8 +36,8 @@ var (
 	now        = time.Now()
 )
 
-func Image(img image.Image, mat gocv.Mat, crop image.Rectangle, value int, team, result, clock string) error {
-	if mat.Empty() {
+func Image(img image.Image, value int, team, result, clock string) error {
+	if img.Bounds().Empty() {
 		return nil
 	}
 
@@ -104,19 +103,19 @@ func Logs(feeds, lines []string, templates map[string]int) error {
 
 	f, err := os.OpenFile(dir, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
-		return fmt.Errorf("save: <ini:failed:open> log file: %s: %v", Directory, err)
+		return fmt.Errorf("save: <ini:f:open> log file: %s: %v", Directory, err)
 	}
 	defer f.Close()
 
 	for _, p := range feeds {
-		_, err := f.WriteString(fmt.Sprintf("%s\n", p))
+		_, err := fmt.Fprintf(f, "%s\n", p)
 		if err != nil {
 			return fmt.Errorf("save: failed to write event log: %s: %v", Directory, err)
 		}
 	}
 
 	for _, line := range lines {
-		_, err := f.WriteString(fmt.Sprintf("%s\n", line))
+		_, err := fmt.Fprintf(f, "%s\n", line)
 		if err != nil {
 			return fmt.Errorf("save: failed to append statistic log: %s: %v", Directory, err)
 		}
@@ -224,7 +223,7 @@ func saveTemplateStatistics(t map[string]int) error {
 	raw, err := os.ReadFile(today)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			return fmt.Errorf("save: <ini:failed:open> %s: %v", templates, err)
+			return fmt.Errorf("save: <ini:f:open> %s: %v", templates, err)
 		}
 	}
 	if len(raw) == 0 {
@@ -249,7 +248,7 @@ func saveTemplateStatistics(t map[string]int) error {
 
 	err = os.WriteFile(today, sortedJSON(raw), os.ModePerm)
 	if err != nil {
-		return fmt.Errorf("save: <ini:failed:save> %s: %v", today, err)
+		return fmt.Errorf("save: <ini:f:save> %s: %v", today, err)
 	}
 
 	// Append and save statistics from all time.
@@ -258,7 +257,7 @@ func saveTemplateStatistics(t map[string]int) error {
 	raw, err = os.ReadFile(all)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			return fmt.Errorf("save: <ini:failed:open> %s: %v", templates, err)
+			return fmt.Errorf("save: <ini:f:open> %s: %v", templates, err)
 		}
 	}
 	if len(raw) == 0 {
@@ -283,7 +282,7 @@ func saveTemplateStatistics(t map[string]int) error {
 
 	err = os.WriteFile(all, sortedJSON(raw), os.ModePerm)
 	if err != nil {
-		return fmt.Errorf("save: <ini:failed:save> %s: %v", all, err)
+		return fmt.Errorf("save: <ini:f:save> %s: %v", all, err)
 	}
 
 	return nil

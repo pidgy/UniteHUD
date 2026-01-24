@@ -29,8 +29,9 @@ import (
 	"github.com/pidgy/unitehud/gui/ux/title"
 	"github.com/pidgy/unitehud/media/img/splash"
 	"github.com/pidgy/unitehud/media/video"
-	"github.com/pidgy/unitehud/media/video/device"
 	"github.com/pidgy/unitehud/media/video/fps"
+	"github.com/pidgy/unitehud/media/video/monitor"
+	"github.com/pidgy/unitehud/system/process"
 	"github.com/pidgy/unitehud/system/wapi"
 )
 
@@ -44,7 +45,7 @@ type projector struct {
 		*title.Widget
 
 		overlay,
-		fps,
+		stats,
 		alwaysOnTop *button.Widget
 	}
 
@@ -66,7 +67,7 @@ type projector struct {
 	keybinds keys.Bind
 	tag      any
 
-	rect wapi.Rectangle
+	rect wapi.Rect
 
 	imgDims layout.Dimensions
 
@@ -84,7 +85,7 @@ func (g *GUI) projector(onclose func()) {
 
 	ui := g.projectorUI()
 	defer ui.nav.Remove(ui.nav.overlay)
-	defer ui.nav.Remove(ui.nav.fps)
+	defer ui.nav.Remove(ui.nav.stats)
 	defer ui.nav.Remove(ui.nav.alwaysOnTop)
 
 	notify.System("[UI] Opening Projector...")
@@ -126,9 +127,9 @@ func (g *GUI) projector(onclose func()) {
 	ui.window.Perform(system.ActionCenter)
 	ui.window.Perform(system.ActionRaise)
 
-	fpsLabel := material.Label(ui.nav.Calibri().Theme, 16, "FPS: 60")
-	fpsLabel.Color = nrgba.Red.Color()
-	fpsLabel.Font.Weight = font.SemiBold
+	statsLabel := material.Label(ui.nav.Calibri().Theme, 16, "FPS: 60")
+	statsLabel.Font.Weight = font.Light
+	decorate.LabelColor(&statsLabel, nrgba.Highlight.Alpha(200).Color())
 
 	type FrameTiming struct {
 		Start, End      time.Time
@@ -140,6 +141,7 @@ func (g *GUI) projector(onclose func()) {
 	timings := []FrameTiming{}
 	frameTotal, frameCounter := 0, 0
 	timingStart := time.Time{}
+	capResolution := "0x0"
 
 	for {
 		if is.Now != is.MainMenu {
@@ -200,22 +202,41 @@ func (g *GUI) projector(onclose func()) {
 												Position: layout.Center,
 											}.Layout(gtx)
 
+											capResolution = fmt.Sprintf("%dx%d", img.Bounds().Dx(), img.Bounds().Dy())
 											return ui.imgDims
 										})
 									}),
 								)
 							}),
 							layout.Stacked(func(gtx layout.Context) layout.Dimensions {
-								if ui.nav.fps.Radio {
-									fpsLabel.Text = "Window: 0FPS\nDevice: 0FPS"
-									if device.IsActive() {
-										fpsLabel.Text = fmt.Sprintf("Window: %dFPS\nDevice: %.0fFPS", frameTotal, device.FPS())
+								if ui.nav.stats.Radio {
+									statsLabel.Text = ""
+									mi, err := wapi.GetMonitorInfoFromWindow(ui.hwnd)
+									if err != nil {
+										statsLabel.Text += fmt.Sprintf("Error: %v\n", err)
 									}
+									index, err := wapi.GetMonitorIndexFromMonitorInfo(mi)
+									if err != nil {
+										statsLabel.Text += fmt.Sprintf("Error: %v\n", err)
+									}
+									statsLabel.Text += fmt.Sprintf("Monitor: %s\n", monitor.NameFromIndex(index))
+
+									statsLabel.Text += fmt.Sprintf("ㅤRefresh: %sHz\n", g.hz)
+									statsLabel.Text += fmt.Sprintf("ㅤProjector: %dFPS\n", frameTotal)
+									statsLabel.Text += fmt.Sprintf("ㅤCanvas: %dx%d\n", ui.imgDims.Size.X, ui.imgDims.Size.Y)
+									statsLabel.Text += fmt.Sprintf("Device: %s\n", video.Name())
+									statsLabel.Text += fmt.Sprintf("ㅤFPS: %.0fFPS\n", video.FPS())
+									statsLabel.Text += fmt.Sprintf("ㅤResolution: %s\n", video.Resolution())
+									statsLabel.Text += fmt.Sprintf("ㅤScaled: %s\n", capResolution)
+									statsLabel.Text += fmt.Sprintf("System\n")
+									statsLabel.Text += fmt.Sprintf("ㅤ%s\n", process.Usage.CPU)
+									statsLabel.Text += fmt.Sprintf("ㅤ%s\n", process.Usage.RAM)
+									statsLabel.Text += fmt.Sprintf("ㅤ%s\n", process.Usage.Threads)
 
 									return layout.Inset{
 										Top:  unit.Dp(2),
 										Left: unit.Dp(2),
-									}.Layout(gtx, decorate.Label(&fpsLabel, fpsLabel.Text).Layout)
+									}.Layout(gtx, statsLabel.Layout)
 								}
 
 								return layout.Dimensions{}
@@ -300,7 +321,7 @@ func (ui *projector) fullscreen() {
 
 	err := wapi.SetThreadExecutionState(t, wapi.ThreadExecutionStateContinuous)
 	if err != nil {
-		notify.Warn("[UI] Projector <ini:failed:set> thread execution state (%v)", err)
+		notify.Warn("[UI] Projector <ini:f:set> thread execution state (%v)", err)
 	}
 }
 
@@ -308,7 +329,7 @@ func (g *GUI) projectorUI() *projector {
 	ui := &projector{
 		keybinds: keys.New().Bind(keys.NoMod, key.NameEscape, key.NameF11).Bind(key.ModCtrl, "W"),
 		tag:      new(bool),
-		rect:     wapi.Rectangle{},
+		rect:     wapi.Rect{},
 	}
 
 	ui.nav.Widget = title.New(
@@ -348,12 +369,12 @@ func (g *GUI) projectorUI() *projector {
 	}
 	ui.nav.Add(ui.nav.overlay)
 
-	ui.nav.fps = &button.Widget{
+	ui.nav.stats = &button.Widget{
 		Text:            "fps",
 		Font:            ui.nav.NishikiTeki(),
 		OnHoverHint:     func() { ui.nav.Tip("Show FPS values on UniteHUD Overlay HUD") },
 		Released:        nrgba.Transparent80,
-		Pressed:         nrgba.PastelGreen,
+		Pressed:         nrgba.DreamyBlue,
 		TextSize:        unit.Sp(12),
 		TextInsetBottom: -1,
 
@@ -363,17 +384,17 @@ func (g *GUI) projectorUI() *projector {
 			if this.Radio {
 				this.OnHoverHint = func() { ui.nav.Tip("Show FPS values on UniteHUD Overlay HUD") }
 				this.Radio = false
-				this.Pressed = nrgba.PastelGreen
+				this.Pressed = nrgba.DreamyBlue
 				this.Released = nrgba.Transparent80
 			} else {
 				this.OnHoverHint = func() { ui.nav.Tip("Hide FPS values on UniteHUD Overlay HUD") }
 				this.Radio = true
 				this.Pressed = nrgba.Transparent80
-				this.Released = nrgba.PastelGreen.Alpha(80)
+				this.Released = nrgba.DreamyBlue.Alpha(80)
 			}
 		},
 	}
-	ui.nav.Add(ui.nav.fps)
+	ui.nav.Add(ui.nav.stats)
 
 	ui.nav.alwaysOnTop = &button.Widget{
 		Text:            "📌",
@@ -416,7 +437,7 @@ func (g *GUI) projectorUI() *projector {
 
 func (ui *projector) setWindowPos(shift image.Point) {
 	if ui.dimensions.fullscreened || ui.hwnd == 0 || ui.dimensions.moving {
-		notify.Warn("[UI] <ini:failed:set> overlay position (hwnd:%d, fullscreen:%t, moving:%t)", ui.hwnd, ui.dimensions.fullscreened, ui.dimensions.moving)
+		notify.Warn("[UI] <ini:f:set> overlay position (hwnd:%d, fullscreen:%t, moving:%t)", ui.hwnd, ui.dimensions.fullscreened, ui.dimensions.moving)
 		return
 	}
 
