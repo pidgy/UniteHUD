@@ -27,6 +27,7 @@ type (
 	}
 
 	WindowInfoEx struct {
+		Window
 		WindowInfo
 		Title string
 	}
@@ -53,7 +54,7 @@ var (
 
 		t, err := w.Title()
 		if err == nil {
-			ws.Infos = append(ws.Infos, WindowInfoEx{WindowInfo: w.Info(), Title: t})
+			ws.Infos = append(ws.Infos, WindowInfoEx{Window: w, WindowInfo: w.Info(), Title: t})
 		}
 
 		return 1
@@ -223,12 +224,12 @@ func GetMonitorInfo() (MonitorInfo, error) {
 	return mi, nil
 }
 
-func GetMonitorInfoFromWindow(hwnd uintptr) (MonitorInfo, error) {
+func GetMonitorInfoFromWindow(w Window) (MonitorInfo, error) {
 	mi := MonitorInfo{
 		cbSize: uint32(unsafe.Sizeof(MonitorInfo{})),
 	}
 
-	v, _, err := monitorFromWindow.Call(hwnd, MonitorFromWindowOptions.DefaultToPrimary)
+	v, _, err := monitorFromWindow.Call(w.HWND(), MonitorFromWindowOptions.DefaultToPrimary)
 	if v == 0 {
 		return mi, err
 	}
@@ -259,7 +260,7 @@ func NewWindow(title string) (Window, error) {
 		return 0, err
 	}
 
-	r, _, _ := FindWindow.Call(0, uintptr(unsafe.Pointer(argv)))
+	r, _, _ := findWindow.Call(0, uintptr(unsafe.Pointer(argv)))
 	if r == 0 {
 		return 0, fmt.Errorf("failed to find window with title: %s", title)
 	}
@@ -347,15 +348,15 @@ func SetWindowPosShow(hwnd uintptr, pt image.Point, size image.Point) {
 
 // ? ShowWindowMinimizedRestore: ShowWindowFlags.ShowMinimized not working.
 func ShowWindowMinimizedRestore(hwnd uintptr) {
-	ShowWindow.Call(hwnd, ShowWindowFlags.ShowMinimized|ShowWindowFlags.Restore)
+	showWindow.Call(hwnd, ShowWindowFlags.ShowMinimized|ShowWindowFlags.Restore)
 }
 
 func ShowWindowHide(hwnd uintptr) {
-	ShowWindow.Call(hwnd, ShowWindowFlags.Hide)
+	showWindow.Call(hwnd, ShowWindowFlags.Hide)
 }
 
 func ShowWindowRestore(hwnd uintptr) {
-	ShowWindow.Call(hwnd, ShowWindowFlags.Restore)
+	showWindow.Call(hwnd, ShowWindowFlags.Restore)
 }
 
 func (w Window) Device() (Device, error) {
@@ -384,16 +385,16 @@ func (w Window) Info() WindowInfo {
 	wi := WindowInfo{
 		Size: uint32(unsafe.Sizeof(WindowInfo{})),
 	}
-	r, _, _ := GetWindowInfo.Call(w.HWND(), uintptr(unsafe.Pointer(&wi)))
+	r, _, _ := getWindowInfo.Call(w.HWND(), uintptr(unsafe.Pointer(&wi)))
 	if r == 0 {
-		return WindowInfo{Status: WindowInfoStatusUnknown}
+		return WindowInfo{Status: WindowStatusUnknown}
 	}
 	return wi
 }
 
 func (w Window) Rect() (Rect, error) {
 	r := Rect{}
-	_, _, err := GetClientRect.Call(w.HWND(), uintptr(unsafe.Pointer(&r)))
+	_, _, err := getClientRect.Call(w.HWND(), uintptr(unsafe.Pointer(&r)))
 	if err != nil {
 		if err != syscall.Errno(0) {
 			return r, err
@@ -434,15 +435,31 @@ func (i WindowInfo) HasVisibleStyle() bool {
 	return i.Style&WindowStyles.Visible == WindowStyles.Visible
 }
 
+func (s WindowStatus) Visible() bool {
+	return s == WindowStatusVisible
+}
+
 func (w *WindowPlacement) String() string {
 	return fmt.Sprintf("len: %d, flags: %d, cmd: %d, min: %s, max: %s, normal: %s, device: %s", w.Len, w.Flags, w.ShowCommand, w.Min, w.Max, w.Normal, w.Device)
+}
+
+func (s WindowStyle) Maximized() bool {
+	return s&WindowStyles.Maximize == WindowStyles.Maximize
+}
+
+func (s WindowStyle) OverlappedWindow() bool {
+	return s&WindowStyles.OverlappedWindow == WindowStyles.OverlappedWindow
+}
+
+func (s WindowStyle) Visible() bool {
+	return s&WindowStyles.Visible == WindowStyles.Visible
 }
 
 // https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-systemparametersinfoa?redirectedfrom=MSDN
 func WorkArea() (Rect, error) {
 	var r Rect
 
-	v, _, err := SystemParametersInfoA.Call(SystemParametersInfoOptions.GetWorkArea, 0, uintptr(unsafe.Pointer(&r)), 0)
+	v, _, err := systemParametersInfoA.Call(SystemParametersInfoOptions.GetWorkArea, 0, uintptr(unsafe.Pointer(&r)), 0)
 	if v == 0 {
 		return r, err
 	}

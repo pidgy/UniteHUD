@@ -211,7 +211,7 @@ func (g *GUI) projector(onclose func()) {
 							layout.Stacked(func(gtx layout.Context) layout.Dimensions {
 								if ui.nav.stats.Radio {
 									statsLabel.Text = ""
-									mi, err := wapi.GetMonitorInfoFromWindow(ui.hwnd)
+									mi, err := wapi.GetMonitorInfoFromWindow(wapi.Window(ui.hwnd))
 									if err != nil {
 										statsLabel.Text += fmt.Sprintf("Error: %v\n", err)
 									}
@@ -220,15 +220,16 @@ func (g *GUI) projector(onclose func()) {
 										statsLabel.Text += fmt.Sprintf("Error: %v\n", err)
 									}
 									statsLabel.Text += fmt.Sprintf("Monitor: %s\n", monitor.NameFromIndex(index))
-
 									statsLabel.Text += fmt.Sprintf("ㅤRefresh: %sHz\n", g.hz)
 									statsLabel.Text += fmt.Sprintf("ㅤProjector: %dFPS\n", frameTotal)
 									statsLabel.Text += fmt.Sprintf("ㅤCanvas: %dx%d\n", ui.imgDims.Size.X, ui.imgDims.Size.Y)
+
 									statsLabel.Text += fmt.Sprintf("Device: %s\n", video.Name())
 									statsLabel.Text += fmt.Sprintf("ㅤFPS: %.0fFPS\n", video.FPS())
 									statsLabel.Text += fmt.Sprintf("ㅤResolution: %s\n", video.Resolution())
 									statsLabel.Text += fmt.Sprintf("ㅤScaled: %s\n", capResolution)
-									statsLabel.Text += fmt.Sprintf("System\n")
+
+									statsLabel.Text += "System\n"
 									statsLabel.Text += fmt.Sprintf("ㅤ%s\n", process.Usage.CPU)
 									statsLabel.Text += fmt.Sprintf("ㅤ%s\n", process.Usage.RAM)
 									statsLabel.Text += fmt.Sprintf("ㅤ%s\n", process.Usage.Threads)

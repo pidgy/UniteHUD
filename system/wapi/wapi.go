@@ -52,22 +52,24 @@ type (
 		RgbReserved byte
 	}
 
+	WindowStyle uint32
+
 	// https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-windowinfo
 	WindowInfo struct {
-		Size           uint32           // DWORD.
-		Window         Rect             // RECT.
-		Client         Rect             // RECT.
-		Style          uint32           // DWORD.
-		ExStyle        uint32           // DWORD.
-		Status         WindowInfoStatus // DWORD.
-		BordersX       uint             // UINT.
-		BordersY       uint             // UINT.
-		Type           uint16           // ATOM.
-		CreatorVersion uint16           // WORD.
+		Size           uint32       // DWORD.
+		Window         Rect         // RECT.
+		Client         Rect         // RECT.
+		Style          WindowStyle  // DWORD.
+		ExStyle        uint32       // DWORD.
+		Status         WindowStatus // DWORD.
+		BordersX       uint         // UINT.
+		BordersY       uint         // UINT.
+		Type           uint16       // ATOM.
+		CreatorVersion uint16       // WORD.
 	}
 
 	// https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-windowinfo
-	WindowInfoStatus uint32
+	WindowStatus uint32
 
 	// https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-windowplacement
 	WindowPlacement struct {
@@ -92,9 +94,9 @@ type (
 )
 
 const (
-	WindowInfoStatusNotVisible WindowInfoStatus = iota
-	WindowInfoStatusVisible
-	WindowInfoStatusUnknown
+	WindowStatusNotVisible WindowStatus = iota
+	WindowStatusVisible
+	WindowStatusUnknown
 )
 
 var (
@@ -244,27 +246,27 @@ var (
 		ForceMinimize:   11,
 	}
 
-	WindowStyleFlags = struct {
-		Caption,
-		MinimizeBox,
-		MaximizeBox,
-		Overlapped,
-		SysMenu,
-		ThickFrame,
-		Tiled,
-		Visible uintptr
+	// WindowStyles = struct {
+	// 	Caption,
+	// 	MinimizeBox,
+	// 	MaximizeBox,
+	// 	Overlapped,
+	// 	SysMenu,
+	// 	ThickFrame,
+	// 	Tiled,
+	// 	Visible uintptr
 
-		OverlappedWindow uintptr
-	}{
-		Caption:     0x00C00000,
-		MinimizeBox: 0x00020000,
-		MaximizeBox: 0x00010000,
-		Overlapped:  0x00000000,
-		SysMenu:     0x00080000,
-		ThickFrame:  0x00040000,
-		Tiled:       0x00000000,
-		Visible:     0x10000000,
-	}
+	// 	OverlappedWindow uintptr
+	// }{
+	// 	Caption:     0x00C00000,
+	// 	MinimizeBox: 0x00020000,
+	// 	MaximizeBox: 0x00010000,
+	// 	Overlapped:  0x00000000,
+	// 	SysMenu:     0x00080000,
+	// 	ThickFrame:  0x00040000,
+	// 	Tiled:       0x00000000,
+	// 	Visible:     0x10000000,
+	// }
 
 	WindowStyles = struct {
 		Border,
@@ -277,7 +279,9 @@ var (
 		SysMenu,
 		ThickFrame,
 		Tiled,
-		Visible uint32
+		Visible,
+		Maximize,
+		OverlappedWindow WindowStyle
 	}{
 		Border:      0x00800000,
 		Caption:     0x00C00000,
@@ -289,6 +293,7 @@ var (
 		ThickFrame:  0x00040000,
 		Tiled:       0x00000000,
 		Visible:     0x10000000,
+		Maximize:    0x01000000,
 	}
 
 	SystemParametersInfoOptions = struct {
@@ -302,8 +307,6 @@ var (
 
 	BringWindowToTop = user32.MustFindProc("BringWindowToTop")
 
-	FindWindow                   = user32.MustFindProc("FindWindowW")
-	GetClientRect                = user32.MustFindProc("GetClientRect")
 	GetDC                        = user32.MustFindProc("GetDC")
 	GetDesktopWindow             = user32.MustFindProc("GetDesktopWindow")
 	GetMonitorInfoW              = user32.MustFindProc("GetMonitorInfoW")
@@ -311,7 +314,6 @@ var (
 	GetTopWindow                 = user32.MustFindProc("GetTopWindow")
 	GetWindow                    = user32.MustFindProc("GetWindow")
 	GetWindowDC                  = user32.MustFindProc("GetWindowDC")
-	GetWindowInfo                = user32.MustFindProc("GetWindowInfo")
 	GetWindowLong                = user32.MustFindProc("GetWindowLongW")
 	GetWindowPlacement           = user32.MustFindProc("GetWindowPlacement")
 	GetWindowRect                = user32.MustFindProc("GetWindowRect")
@@ -325,12 +327,15 @@ var (
 	SetWindowLongPtrW            = user32.MustFindProc("SetWindowLongPtrW")
 	SetWindowPlacement           = user32.MustFindProc("SetWindowPlacement")
 	SetWindowPos                 = user32.MustFindProc("SetWindowPos")
-	ShowWindow                   = user32.MustFindProc("ShowWindow")
-	SystemParametersInfoA        = user32.MustFindProc("SystemParametersInfoA")
-	UpdateWindow                 = user32.MustFindProc("UpdateWindow")
-	enumWindows                  = user32.MustFindProc("EnumWindows") // https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-enumwindows
-	enumDisplayMonitors          = user32.MustFindProc("EnumDisplayMonitors")
-	monitorFromWindow            = user32.MustFindProc("MonitorFromWindow")
+
+	enumWindows           = user32.MustFindProc("EnumWindows") // https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-enumwindows
+	enumDisplayMonitors   = user32.MustFindProc("EnumDisplayMonitors")
+	findWindow            = user32.MustFindProc("FindWindowW")
+	getClientRect         = user32.MustFindProc("GetClientRect")
+	getWindowInfo         = user32.MustFindProc("GetWindowInfo")
+	monitorFromWindow     = user32.MustFindProc("MonitorFromWindow")
+	showWindow            = user32.MustFindProc("ShowWindow")
+	systemParametersInfoA = user32.MustFindProc("SystemParametersInfoA")
 
 	BitBlt                 = gdi32.MustFindProc("BitBlt")
 	CreateCompatibleBitmap = gdi32.MustFindProc("CreateCompatibleBitmap")
@@ -364,8 +369,8 @@ func init() {
 	/*
 		(WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX)
 	*/
-	WindowStyleFlags.OverlappedWindow = WindowStyleFlags.Overlapped |
-		WindowStyleFlags.Caption | WindowStyleFlags.SysMenu | WindowStyleFlags.ThickFrame | WindowStyleFlags.MinimizeBox | WindowStyleFlags.MaximizeBox
+	WindowStyles.OverlappedWindow = WindowStyles.Overlapped |
+		WindowStyles.Caption | WindowStyles.SysMenu | WindowStyles.ThickFrame | WindowStyles.MinimizeBox | WindowStyles.MaximizeBox
 }
 
 // https://learn.microsoft.com/en-us/windows/win32/hidpi/dpi-awareness-context

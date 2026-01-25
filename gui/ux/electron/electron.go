@@ -94,11 +94,11 @@ func Follow(hwnd uintptr, size image.Point, force bool) {
 	// defer lock.Unlock()
 
 	switch wapi.Window(hwnd).Info().Status {
-	case wapi.WindowInfoStatusNotVisible:
+	case wapi.WindowStatusNotVisible:
 		if !force {
 			Hide()
 		}
-	case wapi.WindowInfoStatusVisible:
+	case wapi.WindowStatusVisible:
 		err := show()
 		if err != nil {
 			notify.Error("[Electron] <ini:f:to> show HUD (%v)", err)
@@ -157,7 +157,7 @@ func Follow(hwnd uintptr, size image.Point, force bool) {
 		if err != nil {
 			notify.Error("[Electron] <ini:f:to> move HUD to top (%v)", err)
 		}
-	case wapi.WindowInfoStatusUnknown:
+	case wapi.WindowStatusUnknown:
 		notify.Error("[Electron] Unknown Window Info Status")
 		return
 	}

@@ -1263,7 +1263,7 @@ func (ui *main) onFrame1(g *GUI) {
 		}
 	}()
 
-	go wapi.SetWindowLongPtrA.Call(g.HWND, wapi.GetWindowLongFlags.Style, wapi.WindowStyleFlags.OverlappedWindow)
+	go wapi.SetWindowLongPtrA.Call(g.HWND, wapi.GetWindowLongFlags.Style, uintptr(wapi.WindowStyles.Overlapped))
 }
 
 func (ui *main) onFrame2(g *GUI) {

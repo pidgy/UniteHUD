@@ -13,7 +13,8 @@ func TestEnumerateWindows(t *testing.T) {
 
 	for _, i := range windows.Infos {
 		if i.Style&WindowStyles.Visible == WindowStyles.Visible {
-			t.Logf("%s: style=%d", i.Title, i.Style)
+			t.Logf("%s: style: %d, status: visible=%t max=%t overlapped=%t visible=(%d)%t",
+				i.Title, i.Style, i.Style.Visible(), i.Style.Maximized(), i.Style.OverlappedWindow(), i.Status, i.Status.Visible())
 		}
 	}
 }
