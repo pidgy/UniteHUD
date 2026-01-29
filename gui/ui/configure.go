@@ -295,7 +295,7 @@ func (g *GUI) configure() {
 										ui.spacer(0, 1),
 
 										layout.Flexed(.9, func(gtx layout.Context) layout.Dimensions {
-											return ui.groups.videos.monitor.list.Layout(gtx)
+											return ui.groups.videos.monitors.list.Layout(gtx)
 										}),
 									)
 								}),
@@ -315,7 +315,27 @@ func (g *GUI) configure() {
 										ui.spacer(0, 1),
 
 										layout.Flexed(.9, func(gtx layout.Context) layout.Dimensions {
-											return ui.groups.videos.device.list.Layout(gtx)
+											return ui.groups.videos.devices.list.Layout(gtx)
+										}),
+									)
+								}),
+
+								ui.spacer(2, 0),
+
+								layout.Flexed(15, func(gtx layout.Context) layout.Dimensions {
+									return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
+										layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+											return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+												return layout.Inset{Top: unit.Dp(5)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+													return ui.labels.video.window.Layout(gtx)
+												})
+											})
+										}),
+
+										ui.spacer(0, 1),
+
+										layout.Flexed(.9, func(gtx layout.Context) layout.Dimensions {
+											return ui.groups.videos.windows.list.Layout(gtx)
 										}),
 									)
 								}),
@@ -399,14 +419,25 @@ func (g *GUI) configure() {
 			case ui.hidePreview:
 				ui.img = splash.DeviceClickable()
 			case device.IsActive(), monitor.IsDisplay(), window.IsOpen():
-				var err error
-
-				ui.img, err = video.Capture()
+				img, err := video.Capture()
 				if err != nil {
 					g.ToastErrorf("<ini:f:capture> video (%v)", err)
-					g.next(is.MainMenu)
+
+					if monitor.IsDisplay() {
+						defer g.next(is.MainMenu)
+					}
+
+					if window.IsOpen() {
+						config.Current.Video.Capture.Window.Lost = config.Current.Video.Capture.Window.Name
+					}
+					config.Current.Video.Capture.Window.Name = config.MainDisplay
+
+					video.Close()
+
 					break
 				}
+
+				ui.img = img
 
 				rgba, ok := ui.img.(*image.RGBA)
 				if !ok || rgba == nil {
@@ -709,7 +740,7 @@ func (g *GUI) configureUI() *configure {
 					defer this.Deactivate()
 					defer server.Clear()
 
-					ui.groups.videos.device.list.Callback(ui.groups.videos.device.list.Items[0], ui.groups.videos.device.list)
+					ui.groups.videos.devices.list.Callback(ui.groups.videos.devices.list.Items[0], ui.groups.videos.devices.list)
 
 					err := config.Current.Reset()
 					if err != nil {

@@ -3,6 +3,7 @@ package wapi
 import (
 	"fmt"
 	"image"
+	"reflect"
 	"syscall"
 	"unsafe"
 )
@@ -10,11 +11,12 @@ import (
 const BitmapInfoHeaderSize = uint32(40)
 
 type (
-	Bitmap uintptr
-	Bytes  uintptr
-	Device uintptr
-	Object uintptr
-	Window uintptr
+	Bitmap    uintptr
+	BitValues uintptr
+	Bytes     uintptr
+	Device    uintptr
+	Object    uintptr
+	Window    uintptr
 
 	Monitor struct {
 		Handle uintptr
@@ -61,26 +63,33 @@ var (
 	})
 )
 
+func (b BitValues) Image(size image.Point) *image.RGBA {
+	var slice []byte
+	sliceHdr := (*reflect.SliceHeader)(unsafe.Pointer(&slice))
+	sliceHdr.Data = uintptr(b)
+	sliceHdr.Len = size.X * size.Y * 4
+	sliceHdr.Cap = sliceHdr.Len
+
+	// Using the raw data, grab the RGBA data and transform it into an image.RGBA
+	imageBytes := make([]byte, len(slice))
+	for i := 0; i < len(imageBytes); i += 4 {
+		imageBytes[i], imageBytes[i+2], imageBytes[i+1], imageBytes[i+3] =
+			slice[i+2], slice[i], slice[i+1], slice[i+3]
+	}
+
+	return &image.RGBA{
+		Pix:    imageBytes,
+		Stride: 4 * size.X,
+		Rect:   image.Rectangle{Max: size},
+	}
+}
+
 func (b Bitmap) Delete() {
 	DeleteObject.Call(b.id())
 }
 
 func (b Bitmap) id() uintptr {
 	return uintptr(b)
-}
-
-func (b *BitmapInfo) CreateSection(d Device) (bitmap Bitmap, data uintptr, err error) {
-	r, _, err := CreateDIBSection.Call(
-		uintptr(d),
-		uintptr(unsafe.Pointer(b)),
-		0,
-		uintptr(unsafe.Pointer(&data)),
-		0, 0,
-	)
-	if r == 0 {
-		return 0, 0, err
-	}
-	return Bitmap(r), data, nil
 }
 
 func (b *BitmapInfo) CreateRGBSection(d *Device) (bitmap Bitmap, data Bytes, err error) {
@@ -108,12 +117,22 @@ func (b Bytes) Slice(size image.Point) []byte {
 	return slice
 }
 
-func (d Device) Compatible() (Device, error) {
-	dst, _, err := CreateCompatibleDC.Call(d.id())
-	if dst == 0 {
-		return 0, err
+func (d Device) BitBlt(src Device, size, origin image.Point) error {
+	r, _, err := bitBlt.Call(
+		d.id(),
+		0,
+		0,
+		uintptr(size.X),
+		uintptr(size.Y),
+		src.id(),
+		uintptr(origin.X),
+		uintptr(origin.Y),
+		BitBltRasterOperations.CaptureBLT|BitBltRasterOperations.SrcCopy,
+	)
+	if r == 0 {
+		return err
 	}
-	return Device(dst), nil
+	return nil
 }
 
 func (d Device) Copy(src Device, size image.Point, rect image.Rectangle, scale float64) error {
@@ -121,7 +140,7 @@ func (d Device) Copy(src Device, size image.Point, rect image.Rectangle, scale f
 		size = image.Pt(int(float64(size.X)*scale), int(float64(size.Y)*scale))
 	}
 
-	r, _, err := BitBlt.Call(
+	r, _, err := bitBlt.Call(
 		d.id(),
 		0,
 		0,
@@ -138,12 +157,58 @@ func (d Device) Copy(src Device, size image.Point, rect image.Rectangle, scale f
 	return nil
 }
 
+func (d Device) CreateCompatible() (Device, error) {
+	dst, _, _ := CreateCompatibleDC.Call(d.id())
+	if dst == 0 {
+		return 0, fmt.Errorf("window is not visible")
+	}
+	return Device(dst), nil
+}
+
+func (d Device) CreateDIBSection(size image.Point) (bitmap Bitmap, bitvals BitValues, err error) {
+	b := BitmapInfo{}
+	b.BmiHeader = BitmapInfoHeader{
+		BiSize:        uint32(reflect.TypeOf(b.BmiHeader).Size()),
+		BiWidth:       int32(size.X),
+		BiHeight:      -int32(size.Y), // Negative value will flip image vertically.
+		BiPlanes:      1,
+		BiBitCount:    32,
+		BiCompression: BitmapInfoHeaderCompression.RGB,
+	}
+
+	r, _, _ := CreateDIBSection.Call(uintptr(d), uintptr(unsafe.Pointer(&b)), 0, uintptr(unsafe.Pointer(&bitvals)))
+	if r == 0 {
+		return 0, 0, fmt.Errorf("failed to create DIB section")
+	}
+	return Bitmap(r), bitvals, nil
+}
+
 func (d Device) Select(b Bitmap) (Object, error) {
 	r, _, err := SelectObject.Call(d.id(), b.id())
 	if r == 0 {
 		return 0, err
 	}
 	return Object(r), nil
+}
+
+func (d Device) StretchBlt(src Device, size, origin image.Point, scale float64) error {
+	r, _, err := stretchBlt.Call(
+		d.id(),
+		0,
+		0,
+		uintptr(int(float64(size.X)*scale)),
+		uintptr(int(float64(size.Y)*scale)),
+		src.id(),
+		uintptr(origin.X),
+		uintptr(origin.Y),
+		uintptr(size.X),
+		uintptr(size.Y),
+		BitBltRasterOperations.CaptureBLT|BitBltRasterOperations.SrcCopy,
+	)
+	if r == 0 {
+		return err
+	}
+	return nil
 }
 
 func (d Device) Release() {
@@ -173,9 +238,9 @@ func GetAllWindows() (Windows, error) {
 	return w, nil
 }
 
-func GetLastError() string {
+func GetLastError() error {
 	ret, _, _ := getLastError.Call()
-	return syscall.Errno(ret).Error()
+	return fmt.Errorf(syscall.Errno(ret).Error())
 	// return uint32(ret)
 }
 
@@ -216,7 +281,7 @@ func GetMonitorInfo() (MonitorInfo, error) {
 		return mi, err
 	}
 
-	v, _, err = GetMonitorInfoW.Call(v, uintptr(unsafe.Pointer(&mi)))
+	v, _, err = getMonitorInfoW.Call(v, uintptr(unsafe.Pointer(&mi)))
 	if v == 0 {
 		return mi, err
 	}
@@ -234,7 +299,7 @@ func GetMonitorInfoFromWindow(w Window) (MonitorInfo, error) {
 		return mi, err
 	}
 
-	v, _, err = GetMonitorInfoW.Call(v, uintptr(unsafe.Pointer(&mi)))
+	v, _, err = getMonitorInfoW.Call(v, uintptr(unsafe.Pointer(&mi)))
 	if v == 0 {
 		return mi, err
 	}
@@ -274,10 +339,6 @@ func (o Object) Delete() {
 
 func (o Object) id() uintptr {
 	return uintptr(o)
-}
-
-func ObjectSelect(hwnd1, hwnd2 uintptr) {
-	SelectObject.Call(hwnd1, hwnd2)
 }
 
 func (p Point) String() string {
@@ -360,7 +421,7 @@ func ShowWindowRestore(hwnd uintptr) {
 }
 
 func (w Window) Device() (Device, error) {
-	r, _, err := GetDC.Call(w.HWND())
+	r, _, err := getDC.Call(w.HWND())
 	if r == 0 {
 		return 0, err
 	}
@@ -409,6 +470,14 @@ func (w Window) Select(b Bitmap) error {
 		return err
 	}
 	return nil
+}
+
+func (w Window) String() string {
+	t, err := w.Title()
+	if err != nil {
+		t = "Window"
+	}
+	return fmt.Sprintf("%s (%d)", t, w.HWND())
 }
 
 func (w Window) Title() (string, error) {

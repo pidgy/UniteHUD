@@ -3,10 +3,8 @@ package window
 import (
 	"fmt"
 	"image"
-	"reflect"
 	"sync"
 	"time"
-	"unsafe"
 
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/notify"
@@ -41,114 +39,39 @@ func Capture() (*image.RGBA, error) {
 }
 
 func CaptureRect(w wapi.Window, rect image.Rectangle) (*image.RGBA, error) {
-	handle := w.HWND()
-
-	// Get the device context for screenshotting.
-	src, _, err := wapi.GetDC.Call(uintptr(handle))
-	if src == 0 {
-		return nil, fmt.Errorf("failed to prepare screen capture: %s", err)
+	src, err := w.Device()
+	if err != nil {
+		return nil, fmt.Errorf("invalid window handle: %v", err)
 	}
-	defer wapi.ReleaseDC.Call(0, src)
+	defer src.Release()
 
-	// Grab a compatible DC for drawing.
-	dst, _, err := wapi.CreateCompatibleDC.Call(src)
-	if dst == 0 {
-		return nil, fmt.Errorf("failed to create DC for drawing: %s", err)
+	dst, err := src.CreateCompatible()
+	if err != nil {
+		return nil, fmt.Errorf("%s: create compatible device: %v", w, err)
 	}
-	defer wapi.DeleteDC.Call(dst)
+	defer dst.Delete()
 
-	// Determine the width/height of our capture.
-	width := rect.Dx()
-	height := rect.Dy()
+	bitmap, bitvals, err := dst.CreateDIBSection(rect.Size())
+	if err != nil {
+		return nil, fmt.Errorf("%s: create bitmap section: %v", w, err)
+	}
+	defer bitmap.Delete()
 
-	// Get the bitmap we're going to draw onto.
-	var bitmapInfo wapi.BitmapInfo
-	bitmapInfo.BmiHeader = wapi.BitmapInfoHeader{
-		BiSize:        uint32(reflect.TypeOf(bitmapInfo.BmiHeader).Size()),
-		BiWidth:       int32(width),
-		BiHeight:      -int32(height), // Negative value will flip image vertically.
-		BiPlanes:      1,
-		BiBitCount:    32,
-		BiCompression: wapi.BitmapInfoHeaderCompression.RGB,
+	_, err = dst.Select(bitmap)
+	if err != nil {
+		return nil, fmt.Errorf("%s: bitmap select: %v", w, err)
 	}
 
-	bitmapData := unsafe.Pointer(uintptr(0))
-	bitmap, _, err := wapi.CreateDIBSection.Call(
-		dst,
-		uintptr(unsafe.Pointer(&bitmapInfo)),
-		0,
-		uintptr(unsafe.Pointer(&bitmapData)),
-		0, 0,
-	)
-	if bitmap == 0 {
-		return nil, fmt.Errorf("Failed to create bitmap for \"%s\" window", config.Current.Video.Capture.Window.Name)
+	if config.Current.Scale == 1 {
+		err = dst.BitBlt(src, rect.Size(), rect.Min)
+	} else {
+		err = dst.StretchBlt(src, rect.Size(), rect.Min, config.Current.Scale)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("bit-block transfer (scale=%.2fx): %v", config.Current.Scale, err)
 	}
 
-	defer wapi.DeleteObject.Call(bitmap)
-
-	// Select the object and paint it.
-	wapi.SelectObject.Call(dst, bitmap)
-
-	var ret uintptr
-	switch config.Current.Scale {
-	case 1:
-		ret, _, _ = wapi.BitBlt.Call(
-			dst,
-			0,
-			0,
-			uintptr(width),
-			uintptr(height),
-			src,
-			uintptr(rect.Min.X),
-			uintptr(rect.Min.Y),
-			wapi.BitBltRasterOperations.CaptureBLT|wapi.BitBltRasterOperations.SrcCopy,
-		)
-	default: // Scaled.
-		ret, _, _ = wapi.StretchBlt.Call(
-			dst,
-			0,
-			0,
-			uintptr(int(float64(width)*config.Current.Scale)),
-			uintptr(int(float64(height)*config.Current.Scale)),
-			src,
-			uintptr(rect.Min.X),
-			uintptr(rect.Min.Y),
-			uintptr(width),
-			uintptr(height),
-			wapi.BitBltRasterOperations.CaptureBLT|wapi.BitBltRasterOperations.SrcCopy,
-		)
-	}
-	if ret == 0 {
-		notify.Error("[Window] <ini:f:capture> \"%s\" window", config.Current.Video.Capture.Window.Name)
-		return nil, fmt.Errorf("bitblt returned: %d", ret)
-	}
-
-	// Convert the bitmap to an image.Image. We first start by directly
-	// creating a slice. This is unsafe but we know the underlying structure
-	// directly.
-	var slice []byte
-	sliceHdr := (*reflect.SliceHeader)(unsafe.Pointer(&slice))
-	sliceHdr.Data = uintptr(bitmapData)
-	sliceHdr.Len = width * height * 4
-	sliceHdr.Cap = sliceHdr.Len
-
-	// Using the raw data, grab the RGBA data and transform it into an image.RGBA
-	imageBytes := make([]byte, len(slice))
-	for i := 0; i < len(imageBytes); i += 4 {
-		imageBytes[i], imageBytes[i+2], imageBytes[i+1], imageBytes[i+3] =
-			slice[i+2], slice[i], slice[i+1], slice[i+3]
-	}
-
-	return &image.RGBA{
-		Pix:    imageBytes,
-		Stride: 4 * width,
-		Rect: image.Rect(
-			0,
-			0,
-			width,
-			height,
-		),
-	}, nil
+	return bitvals.Image(rect.Size()), nil
 }
 
 func IsOpen() bool {
@@ -177,6 +100,10 @@ func Open() error {
 	err := list()
 	if err != nil {
 		return err
+	}
+
+	if config.Current.Video.Capture.Window.Name == config.MainDisplay {
+		return nil
 	}
 
 	for _, win := range Sources {

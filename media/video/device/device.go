@@ -31,9 +31,9 @@ type (
 	}
 
 	cache struct {
-		devices []string
-		apis    []api
-		codecs  []codec
+		videos []string
+		apis   []api
+		codecs []codec
 	}
 
 	codec struct {
@@ -64,13 +64,13 @@ type (
 )
 
 var (
-	CodecAny  = codec{"any"}
-	CodecXRGB = codec{"XRGB"}
-	CodecNV12 = codec{"NV12"}
-	CodecYUY2 = codec{"YUY2"}
-	CodecMJPG = codec{"MJPG"}
-
 	active = &dev{}
+
+	codecAny  = codec{"any"}
+	codecXRGB = codec{"XRGB"}
+	codecNV12 = codec{"NV12"}
+	codecYUY2 = codec{"YUY2"}
+	codecMJPG = codec{"MJPG"}
 
 	required = properties{
 		resolution: image.Pt(1920, 1080),
@@ -81,14 +81,14 @@ var (
 	lock = &sync.RWMutex{}
 
 	cached = cache{
-		devices: make([]string, 100),
-		apis: []api{
-			{
-				gocv: gocv.VideoCaptureAny,
-				name: strings.ReplaceAll(gocv.VideoCaptureAny.String(), "video-capture-", ""),
-			},
-		}, // Max API value: gocv.VideoCaptureXINE.
-		codecs: []codec{CodecAny, CodecXRGB, CodecNV12, CodecYUY2, CodecMJPG},
+		videos: make([]string, 100),
+		apis:   []api{},
+		// 	{
+		// 		gocv: gocv.VideoCaptureAny,
+		// 		name: strings.ReplaceAll(gocv.VideoCaptureAny.String(), "video-capture-", ""),
+		// 	},
+		// },
+		codecs: []codec{codecAny, codecXRGB, codecNV12, codecYUY2, codecMJPG},
 	}
 
 	captures float32
@@ -115,36 +115,37 @@ func init() {
 	}()
 
 	go func() {
-		vrt := gocv.VideoRegistryType{}
-		for _, b := range vrt.GetCameraBackends() {
-			cached.apis = append(cached.apis,
-				api{
-					gocv: b,
-					name: strings.ReplaceAll(b.String(), "video-capture-", ""),
-				},
-			)
-		}
-
-		// for i := gocv.VideoCaptureAny; i < gocv.VideoCaptureXINE; i++ {
-		// 	s := i.String()
-		// 	if s != "" {
-		// 		cached.apis[i] = api{
-		// 			gocv: i,
-		// 			name: strings.ReplaceAll(i.String(), "video-capture-", ""),
-		// 		}
-		// 	}
+		// vrt := gocv.VideoRegistryType{}
+		// for _, b := range vrt.GetCameraBackends() {
+		// 	cached.apis = append(cached.apis,
+		// 		api{
+		// 			gocv: b,
+		// 			name: strings.ReplaceAll(b.String(), "video-capture-", ""),
+		// 		},
+		// 	)
 		// }
 
+		// Max API value: gocv.VideoCaptureXINE.
+		for i := gocv.VideoCaptureAny; i < gocv.VideoCaptureXINE; i++ {
+			s := i.String()
+			if s != "" {
+				cached.apis = append(cached.apis, api{
+					gocv: i,
+					name: strings.ReplaceAll(i.String(), "video-capture-", ""),
+				})
+			}
+		}
+
 		for ; ; time.Sleep(time.Second * 5) {
-			d := []string{}
+			names := []string{}
 			for i := 0; ; i++ {
 				n, err := device.VideoCaptureDeviceName(i)
 				if err != nil {
 					break
 				}
-				d = append(d, n)
+				names = append(names, n)
 			}
-			cached.devices = d
+			cached.videos = names
 		}
 	}()
 }
@@ -238,19 +239,19 @@ func Name(index int) string {
 		return Disabled
 	}
 
-	if cached.devices[index] != "" {
-		return cached.devices[index]
+	if cached.videos[index] != "" {
+		return cached.videos[index]
 	}
 
 	var err error
 
-	cached.devices[index], err = device.VideoCaptureDeviceName(index)
+	cached.videos[index], err = device.VideoCaptureDeviceName(index)
 	if err != nil {
 		notify.Error("[Device] <ini:f:find> device %d name (%v)", index, err)
 		return fmt.Sprintf("%d", index)
 	}
 
-	return cached.devices[index]
+	return cached.videos[index]
 }
 
 func Open() error {
@@ -260,7 +261,7 @@ func Open() error {
 	}
 
 	if active.index != config.NoVideoCaptureDevice {
-		notify.Debug("[Device] Open ignored, %s is already active", active.name)
+		notify.Debug("[Device] %s is already active", active.name)
 		return nil
 	}
 
@@ -281,7 +282,7 @@ func Open() error {
 
 	notify.System("[Device] Opening %s", active.name)
 
-	err := capture()
+	err := start()
 	if err != nil {
 		active.reset()
 		return err
@@ -295,6 +296,7 @@ func Resolution() string {
 }
 
 func Restart() error {
+	notify.Debug("[Device] Restarting with API: %s", config.Current.Video.Capture.Device.API)
 	prev := config.Current.Video.Capture.Device
 	Close()
 	config.Current.Video.Capture.Device = prev
@@ -302,7 +304,7 @@ func Restart() error {
 }
 
 func Sources() (indexes []int) {
-	for i, name := range cached.devices {
+	for i, name := range cached.videos {
 		if name != "" {
 			indexes = append(indexes, i)
 		}
@@ -326,91 +328,13 @@ func (c *cache) api(f float64) api {
 	return cached.apis[0]
 }
 
-func capture() error {
-	if config.Current.Video.Capture.Device.API == "" {
-		config.Current.Video.Capture.Device.API = config.DefaultVideoCaptureAPI
-	}
-
-	api := API(config.Current.Video.Capture.Device.API)
-
-	notify.Debug("[Device] Capturing %s with %s API", active.name, api.name)
-
-	device, err := gocv.OpenVideoCaptureWithAPI(active.index, api.gocv)
-	if err != nil {
-		return fmt.Errorf("%s does not support %s capture APIs", config.Current.Video.Capture.Device.Name, api.name)
-	}
-
-	before := poll(device)
-
-	err = set(device)
-	if err != nil {
-		active.reset()
-		return err
-	}
-
-	notify.System("[Device] Configured %s", active.name)
-	notify.System("[Device]   Codec       %s → %s", before.codec, active.applied.codec)
-	notify.System("[Device]   FPS         %.0f FPS → %.0f FPS", before.fps, active.applied.fps)
-	notify.System("[Device]   Resolution  %s → %s", before.resolution, active.applied.resolution)
-	notify.System("[Device]   Backend     %s → %s", before.backend, active.applied.backend)
-	notify.System("[Device]   Bitrate     %.0f kb/s", active.applied.bitrate)
-	notify.System("[Device]   BufferSize  %d", active.applied.buffersize)
-	notify.System("[Device]   RGB         %t → %t", before.rgb, active.applied.rgb)
-
-	config.Current.Video.Capture.Device.API = active.applied.backend.name
-
-	go captureLoop(device)
-
-	return nil
-}
-
-func captureLoop(device *gocv.VideoCapture) {
-	runtime.LockOSThread()
-	defer runtime.UnlockOSThread()
-
-	defer close(active.closedq)
-
-	ms := fps.Milliseconds(config.Current.Video.Capture.Device.FPS)
-	tick := time.NewTicker(ms)
-	tock := time.NewTicker(time.Second)
-
-	for frames := float64(0); running(); frames++ {
-		lock.Lock()
-		ok := device.Read(&mat)
-		if !ok {
-			defer active.reset()
-			notify.Error("[Device] <ini:f:capture> %s", active.name)
-			lock.Unlock()
-			goto close
-		}
-		lock.Unlock()
-
-		size = mat.Size()
-
-		select {
-		case <-tick.C:
-			tick.Reset(ms)
-		case <-tock.C:
-			tock.Reset(time.Second)
-			active.fps = frames
-			frames = 0
-		}
-	}
-
-close:
-	err := device.Close()
-	if err != nil {
-		notify.Error("[Device] <ini:f:close> %s (%v)", active.name, err)
-	}
-}
-
 func (c codec) String() string {
 	return c.name
 }
 
 func (c codec) cc4(vc *gocv.VideoCapture) float64 {
 	for _, codec := range cached.codecs {
-		if c == codec && c != CodecAny {
+		if c == codec && c != codecAny {
 			return vc.ToCodec(c.String())
 		}
 	}
@@ -428,8 +352,8 @@ func (d *dev) reset() {
 
 	config.Current.Video.Capture.Window.Name = config.MainDisplay
 	config.Current.Video.Capture.Device.Index = config.NoVideoCaptureDevice
-	config.Current.Video.Capture.Device.API = config.DefaultVideoCaptureAPI
-	config.Current.Video.Capture.Device.Codec = config.DefaultVideoCaptureCodec
+	// config.Current.Video.Capture.Device.API = config.DefaultVideoCaptureAPI
+	// config.Current.Video.Capture.Device.Codec = config.DefaultVideoCaptureCodec
 
 	notify.System("[Device] Capturing %s", config.Current.Video.Capture.Window.Name)
 
@@ -476,15 +400,6 @@ func poll(v *gocv.VideoCapture) properties {
 	return p
 }
 
-func running() bool {
-	select {
-	case <-active.closeq:
-		return false
-	default:
-		return true
-	}
-}
-
 func set(vc *gocv.VideoCapture) error {
 	required.fps = float64(config.Current.Video.Capture.Device.FPS)
 
@@ -492,10 +407,11 @@ func set(vc *gocv.VideoCapture) error {
 	vc.Set(gocv.VideoCaptureFrameWidth, float64(required.resolution.X))
 	vc.Set(gocv.VideoCaptureFrameHeight, float64(required.resolution.Y))
 	vc.Set(gocv.VideoCaptureFPS, float64(config.Current.Video.Capture.Device.FPS))
+	vc.Set(gocv.VideoCaptureBackend, float64(API(config.Current.Video.Capture.Device.API).gocv))
 	vc.Set(gocv.VideoCaptureConvertRGB, 1)
 
 	c := Codec(config.Current.Video.Capture.Device.Codec)
-	if c != CodecAny {
+	if c != codecAny {
 		vc.Set(gocv.VideoCaptureFOURCC, c.cc4(vc))
 	}
 
@@ -508,6 +424,91 @@ func set(vc *gocv.VideoCapture) error {
 	if int(active.applied.fps) != int(required.fps) {
 		return fmt.Errorf("<ini:f:set> property: %.0f FPS", required.fps)
 	}
+
+	return nil
+}
+
+func start() error {
+	if config.Current.Video.Capture.Device.API == "" {
+		config.Current.Video.Capture.Device.API = config.DefaultVideoCaptureAPI
+	}
+
+	api := API(config.Current.Video.Capture.Device.API)
+
+	notify.Debug("[Device] Capturing %s with %s API", active.name, api.name)
+
+	video, err := gocv.OpenVideoCaptureWithAPI(active.index, api.gocv)
+	if err != nil {
+		return fmt.Errorf("%s does not support %s capture APIs", config.Current.Video.Capture.Device.Name, api.name)
+	}
+
+	before := poll(video)
+
+	err = set(video)
+	if err != nil {
+		active.reset()
+		return err
+	}
+
+	notify.System("[Device] Configured %s", active.name)
+	notify.System("[Device]   Codec       %s → %s", before.codec, active.applied.codec)
+	notify.System("[Device]   FPS         %.0f FPS → %.0f FPS", before.fps, active.applied.fps)
+	notify.System("[Device]   Resolution  %s → %s", before.resolution, active.applied.resolution)
+	notify.System("[Device]   Backend     %s → %s", before.backend, active.applied.backend)
+	notify.System("[Device]   Bitrate     %.0f kb/s", active.applied.bitrate)
+	notify.System("[Device]   BufferSize  %d", active.applied.buffersize)
+	notify.System("[Device]   RGB         %t → %t", before.rgb, active.applied.rgb)
+
+	config.Current.Video.Capture.Device.API = active.applied.backend.name
+
+	go func(video *gocv.VideoCapture) {
+		runtime.LockOSThread()
+		defer runtime.UnlockOSThread()
+
+		defer close(active.closedq)
+
+		ms := fps.Milliseconds(config.Current.Video.Capture.Device.FPS)
+		tick := time.NewTicker(ms)
+		tock := time.NewTicker(time.Second)
+
+		running := func() bool {
+			select {
+			case <-active.closeq:
+				return false
+			default:
+				return true
+			}
+		}
+
+		for frames := float64(0); running(); frames++ {
+			lock.Lock()
+			ok := video.Read(&mat)
+			if !ok {
+				defer active.reset()
+				notify.Error("[Device] <ini:f:capture> %s", active.name)
+				lock.Unlock()
+				goto close
+			}
+			lock.Unlock()
+
+			size = mat.Size()
+
+			select {
+			case <-tick.C:
+				tick.Reset(ms)
+			case <-tock.C:
+				tock.Reset(time.Second)
+				active.fps = frames
+				frames = 0
+			}
+		}
+
+	close:
+		err := video.Close()
+		if err != nil {
+			notify.Error("[Device] <ini:f:close> %s (%v)", active.name, err)
+		}
+	}(video)
 
 	return nil
 }

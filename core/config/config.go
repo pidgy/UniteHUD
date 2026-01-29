@@ -488,9 +488,11 @@ func (c *Config) loadDeviceAssets() {
 				// filter.New(team.Game, c.deviceAsset(team.Game.Name, "regidrago_enemy_alt.png"), state.RegidragoSecureOrange.Int(), false),
 
 				filter.New(team.Game, c.deviceAsset(team.Game.Name, "post_secure_ally.png"), state.KOPurple.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "post_secure_ally_alt.png"), state.KOPurple.Int(), false),
 				filter.New(team.Game, c.deviceAsset(team.Game.Name, "post_secure_enemy.png"), state.KOOrange.Int(), false),
 				filter.New(team.Game, c.deviceAsset(team.Game.Name, "post_secure_enemy_alt.png"), state.KOOrange.Int(), false),
 				filter.New(team.Game, c.deviceAsset(team.Game.Name, "post_secure_enemy_alt_alt.png"), state.KOOrange.Int(), false),
+				filter.New(team.Game, c.deviceAsset(team.Game.Name, "post_secure_enemy_alt_alt_alt.png"), state.KOOrange.Int(), false),
 			},
 		},
 		"ko": {
@@ -725,6 +727,7 @@ func Open() error {
 	Current.Advanced.Report.System = true
 	Current.Advanced.Report.Debug = true
 	Current.Advanced.Locale = ini.EnUS // Locale.
+	Current.Advanced.Accessibility.ReducedFontGraphics = true
 
 	// Default persistent settings.
 	Current.Remember.Discord = DiscordRememberStandby

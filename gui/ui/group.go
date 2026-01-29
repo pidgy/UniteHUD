@@ -50,9 +50,9 @@ type capture struct {
 }
 
 type videos struct {
-	device   capture
-	window   capture
-	monitor  capture
+	devices  capture
+	windows  capture
+	monitors capture
 	platform capture
 	apis     capture
 	codecs   capture
@@ -518,7 +518,7 @@ func (g *GUI) areas(collection *fonts.Collection) *areas {
 func (g *GUI) videos(text float32) *videos {
 	v := &videos{}
 
-	v.monitor = capture{
+	v.monitors = capture{
 		prev: device.ActiveName(),
 
 		list: &checklist.Widget{
@@ -539,12 +539,12 @@ func (g *GUI) videos(text float32) *videos {
 			},
 		},
 		populate: func() {
-			if v.monitor.prev == device.ActiveName() && len(video.Screens()) == v.monitor.len {
+			if v.monitors.prev == device.ActiveName() && len(video.Screens()) == v.monitors.len {
 				return
 			}
 
-			v.monitor.prev = device.ActiveName()
-			v.monitor.len = len(video.Screens())
+			v.monitors.prev = device.ActiveName()
+			v.monitors.len = len(video.Screens())
 
 			items := []*checklist.Item{}
 
@@ -561,81 +561,79 @@ func (g *GUI) videos(text float32) *videos {
 				)
 			}
 
-			v.monitor.list.Items = items
+			v.monitors.list.Items = items
 		},
 	}
 
-	/*
-		// v.window = capture{
-		// 	list: &checklist.Widget{
-		// 		Theme:    g.nav.NotoSans().Theme,
-		// 		TextSize: text,
-		// 		Items:    []*checklist.Item{},
-		// 		Callback: func(i *checklist.Item, _ *checklist.Widget) (check bool) {
-		// 			video.Close()
+	v.windows = capture{
+		list: &checklist.Widget{
+			Theme:    g.nav.NotoSans().Theme,
+			TextSize: text,
+			Items:    []*checklist.Item{},
+			Callback: func(i *checklist.Item, _ *checklist.Widget) (check bool) {
+				video.Close()
 
-		// 			defer v.window.populate()
-		// 			defer v.monitor.populate()
-		// 			defer v.device.populate()
-		// 			defer v.apis.populate()
-		// 			defer v.codecs.populate()
+				defer v.windows.populate()
+				defer v.monitors.populate()
+				defer v.devices.populate()
+				defer v.apis.populate()
+				defer v.codecs.populate()
 
-		// 			config.Current.Video.Capture.Window.Name = i.Text
-		// 			if config.Current.Video.Capture.Window.Name == "" {
-		// 				config.Current.Video.Capture.Window.Name = config.MainDisplay
-		// 			}
-		// 			return true
-		// 		},
-		// 	},
-		// 	populate: func() {
-		// 		if config.Current.Video.Capture.Window.Name == "" {
-		// 			config.Current.Video.Capture.Window.Name = config.MainDisplay
-		// 		}
+				config.Current.Video.Capture.Window.Name = i.Text
+				if config.Current.Video.Capture.Window.Name == "" {
+					config.Current.Video.Capture.Window.Name = config.MainDisplay
+				}
+				return true
+			},
+		},
+		populate: func() {
+			if config.Current.Video.Capture.Window.Name == "" {
+				config.Current.Video.Capture.Window.Name = config.MainDisplay
+			}
 
-		// 		for _, item := range v.window.list.Items {
-		// 			item.Checked.Value = config.Current.Video.Capture.Window.Name == item.Text
-		// 		}
+			for _, item := range v.windows.list.Items {
+				item.Checked.Value = config.Current.Video.Capture.Window.Name == item.Text
+			}
 
-		// 		items := []*checklist.Item{}
+			items := []*checklist.Item{}
 
-		// 		windows := video.Windows()
-		// 		if len(windows) == len(v.window.list.Items) {
-		// 			if len(v.window.list.Items) == 0 {
-		// 				return
-		// 			}
+			windows := video.Windows()
+			if len(windows) == len(v.windows.list.Items) {
+				if len(v.windows.list.Items) == 0 {
+					return
+				}
 
-		// 			if v.window.list.Default().Checked.Value {
-		// 				return
-		// 			}
+				if v.windows.list.Default().Checked.Value {
+					return
+				}
 
-		// 			for _, item := range v.window.list.Items {
-		// 				if item.Checked.Value {
-		// 					items = append([]*checklist.Item{item}, items...)
-		// 				} else {
-		// 					items = append(items, item)
-		// 				}
-		// 			}
-		// 		} else {
-		// 			for _, win := range windows {
-		// 				item := &checklist.Item{
-		// 					Text:    win,
-		// 					Checked: widget.Bool{Value: win == config.Current.Video.Capture.Window.Name},
-		// 				}
-		// 				if item.Checked.Value {
-		// 					items = append([]*checklist.Item{item}, items...)
-		// 				} else {
-		// 					items = append(items, item)
-		// 				}
-		// 			}
-		// 		}
+				for _, item := range v.windows.list.Items {
+					if item.Checked.Value {
+						items = append([]*checklist.Item{item}, items...)
+					} else {
+						items = append(items, item)
+					}
+				}
+			} else {
+				for _, win := range windows {
+					item := &checklist.Item{
+						Text:    win,
+						Checked: widget.Bool{Value: win == config.Current.Video.Capture.Window.Name},
+					}
+					if item.Checked.Value {
+						items = append([]*checklist.Item{item}, items...)
+					} else {
+						items = append(items, item)
+					}
+				}
+			}
 
-		// 		v.window.list.Items = items
+			v.windows.list.Items = items
 
-		// 	},
-		// }
-	*/
+		},
+	}
 
-	v.device = capture{
+	v.devices = capture{
 		list: &checklist.Widget{
 			Theme:    g.nav.NotoSans().Theme,
 			TextSize: text,
@@ -660,6 +658,7 @@ func (g *GUI) videos(text float32) *videos {
 					config.Current.Video.Capture.Device.Name = i.Text
 					config.Current.Video.Capture.Device.API = config.DefaultVideoCaptureAPI
 					config.Current.Video.Capture.Device.Codec = config.DefaultVideoCaptureCodec
+					config.Current.Video.Capture.Window.Lost = ""
 
 					err := video.Open()
 					if err != nil {
@@ -677,10 +676,10 @@ func (g *GUI) videos(text float32) *videos {
 			devices := video.Devices()
 
 			// Set the "Disabled" checkbox when device is not active.
-			if len(devices)+1 == len(v.device.list.Items) {
-				v.device.list.Default().Checked.Value = !device.IsActive()
+			if len(devices)+1 == len(v.devices.list.Items) {
+				v.devices.list.Default().Checked.Value = !device.IsActive()
 
-				for _, item := range v.device.list.Items {
+				for _, item := range v.devices.list.Items {
 					item.Checked.Value = false
 					if config.Current.Video.Capture.Device.Index == item.Value {
 						item.Checked.Value = true
@@ -690,7 +689,7 @@ func (g *GUI) videos(text float32) *videos {
 				return
 			}
 
-			v.device.list.Items = []*checklist.Item{
+			v.devices.list.Items = []*checklist.Item{
 				{
 					Text:  "Disabled",
 					Value: config.NoVideoCaptureDevice,
@@ -700,14 +699,14 @@ func (g *GUI) videos(text float32) *videos {
 				},
 			}
 			for _, d := range devices {
-				v.device.list.Items = append(v.device.list.Items, &checklist.Item{
+				v.devices.list.Items = append(v.devices.list.Items, &checklist.Item{
 					Text:  device.Name(d),
 					Value: d,
 				},
 				)
 			}
 
-			for _, i := range v.device.list.Items {
+			for _, i := range v.devices.list.Items {
 				i.Checked.Value = false
 				if i.Value == config.Current.Video.Capture.Device.Index {
 					i.Checked.Value = true
@@ -827,9 +826,9 @@ func (g *GUI) videos(text float32) *videos {
 					return true
 				}
 
-				defer v.device.populate()
-				defer v.window.populate()
-				defer v.monitor.populate()
+				defer v.devices.populate()
+				defer v.windows.populate()
+				defer v.monitors.populate()
 				defer v.apis.populate()
 				defer v.codecs.populate()
 
@@ -860,9 +859,9 @@ func (g *GUI) videos(text float32) *videos {
 									config.Current.Video.Capture.Device.Name,
 									err.Error(),
 									toastOnOK(func() {
-										defer v.device.populate()
-										defer v.window.populate()
-										defer v.monitor.populate()
+										defer v.devices.populate()
+										defer v.windows.populate()
+										defer v.monitors.populate()
 										defer v.apis.populate()
 										defer v.codecs.populate()
 
@@ -971,9 +970,9 @@ func (g *GUI) videos(text float32) *videos {
 }
 
 func (v *videos) populate() {
-	v.device.populate()
-	// v.window.populate()
-	v.monitor.populate()
+	v.devices.populate()
+	v.windows.populate()
+	v.monitors.populate()
 	v.apis.populate()
 	v.codecs.populate()
 }

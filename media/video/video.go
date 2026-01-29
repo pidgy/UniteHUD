@@ -1,6 +1,7 @@
 package video
 
 import (
+	"fmt"
 	"image"
 
 	"github.com/pidgy/unitehud/core/config"
@@ -11,16 +12,21 @@ import (
 	"github.com/pidgy/unitehud/media/video/window"
 )
 
-type Input string
+type Source string
 
 const (
-	Monitor Input = "monitor"
-	Device  Input = "video-capture-device"
-	Window  Input = "window"
+	Monitor Source = "Monitor"
+	Device  Source = "Video Capture Device"
+	Window  Source = "Window"
+	Unknown Source = "Unknown"
 )
 
-func Active(i Input, name string) bool {
-	switch i {
+func (s Source) String() string {
+	return string(s)
+}
+
+func Active(s Source, name string) bool {
+	switch s {
 	case Device:
 		return device.IsActive() && (name == device.ActiveName() || name == "")
 	case Monitor:
@@ -32,23 +38,34 @@ func Active(i Input, name string) bool {
 	}
 }
 
+func Current() Source {
+	switch {
+	case Active(Device, ""):
+		return Device
+	case Active(Monitor, ""):
+		return Monitor
+	case Active(Window, ""):
+		return Window
+	default:
+		return Unknown
+	}
+}
+
 func Capture() (img *image.RGBA, err error) {
 	if device.IsActive() {
 		return device.Capture()
 	}
 
-	return monitor.Capture()
+	if monitor.IsDisplay() {
+		return monitor.Capture()
+	}
 
-	// if monitor.IsDisplay() {
-	// 	return monitor.Capture()
-	// }
+	img, err = window.Capture()
+	if err != nil {
+		return monitor.Capture()
+	}
 
-	// img, err = window.Capture()
-	// if err != nil {
-	// 	return monitor.Capture()
-	// }
-
-	// return
+	return nil, fmt.Errorf("failed to capture video: exhausted attempts")
 }
 
 func CaptureRect(rect image.Rectangle) (img *image.RGBA, err error) {
@@ -56,11 +73,11 @@ func CaptureRect(rect image.Rectangle) (img *image.RGBA, err error) {
 		return device.CaptureRect(rect)
 	}
 
-	// if monitor.IsDisplay() {
-	// 	return monitor.CaptureRect(rect)
-	// }
+	if monitor.IsDisplay() {
+		return monitor.Capture()
+	}
 
-	return monitor.CaptureRect(rect)
+	return window.Capture()
 }
 
 func Close() {
@@ -93,12 +110,19 @@ func Name() string {
 
 func Open() error {
 	monitor.Open()
-	return device.Open()
-}
 
-// func Windows() []string {
-// 	return window.Sources
-// }
+	err := device.Open()
+	if err != nil {
+		notify.Error("[Video] <ini:f:open> video capture device library")
+	}
+
+	err = window.Open()
+	if err != nil {
+		notify.Error("[Video] <ini:f:open> window capture library")
+	}
+
+	return err
+}
 
 func Resolution() string {
 	switch {
@@ -131,4 +155,8 @@ func StateArea() image.Rectangle {
 	r := image.Rect(b.Max.X/3, 0, b.Max.X-b.Max.X/3, b.Max.Y/2)
 
 	return r
+}
+
+func Windows() []string {
+	return window.Sources
 }

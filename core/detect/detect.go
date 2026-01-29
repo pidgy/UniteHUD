@@ -258,11 +258,11 @@ func Objectives() {
 			if r != match.Found {
 				notify.Warn("[Detect] Missed Regidrago secure...")
 				if exe.Debug {
-					name := fmt.Sprintf("debug/regidrago_miss_%d_%d_%d_%s.png", time.Now().Hour(), time.Now().Minute(), time.Now().Second(), time.Now().Format("05.000"))
-					notify.Debug("[Detect] Saving %s...", name)
-					err := save.PNG(img, name)
-					if err != nil {
-						notify.Error("Failed to save regidrago miss (%v)", err)
+					if exe.Debug {
+						err := save.PNG(img, "%s/regidrago_miss_%s.png", save.Directory, time.Now().Format("15-04-05"))
+						if err != nil {
+							notify.Error("[Detect] Failed to save kyogre miss (%v)", err)
+						}
 					}
 				}
 				matrix.Close()
@@ -323,11 +323,9 @@ func Objectives() {
 				if r != match.Found {
 					notify.Warn("[Detect] Missed Kyogre secure...")
 					if exe.Debug {
-						name := fmt.Sprintf("debug/regidrago_miss_%d_%d_%d_%s.png", time.Now().Hour(), time.Now().Minute(), time.Now().Second(), time.Now().Format("05.000"))
-						notify.Debug("[Detect] Saving %s...", name)
-						err := save.PNG(img, name)
+						err := save.PNG(img, "%s/kyogre_miss_%s.png", save.Directory, time.Now().Format("15-04-05"))
 						if err != nil {
-							notify.Error("[Detect] Failed to save kyogre miss (%v)", err)
+							notify.Error("[Detect] Failed to save Kyogre miss (%v)", err)
 						}
 					}
 					matrix.Close()

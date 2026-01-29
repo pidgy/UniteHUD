@@ -305,17 +305,8 @@ var (
 	EnumDeviceDrivers       = psapi32.MustFindProc("EnumDeviceDrivers")
 	GetDeviceDriverBaseName = psapi32.MustFindProc("GetDeviceDriverBaseNameW")
 
-	BringWindowToTop = user32.MustFindProc("BringWindowToTop")
-
-	GetDC                        = user32.MustFindProc("GetDC")
-	GetDesktopWindow             = user32.MustFindProc("GetDesktopWindow")
-	GetMonitorInfoW              = user32.MustFindProc("GetMonitorInfoW")
-	GetSystemMetrics             = user32.MustFindProc("GetSystemMetrics")
-	GetTopWindow                 = user32.MustFindProc("GetTopWindow")
-	GetWindow                    = user32.MustFindProc("GetWindow")
-	GetWindowDC                  = user32.MustFindProc("GetWindowDC")
-	GetWindowLong                = user32.MustFindProc("GetWindowLongW")
-	GetWindowPlacement           = user32.MustFindProc("GetWindowPlacement")
+	getDC                        = user32.MustFindProc("GetDC")
+	getMonitorInfoW              = user32.MustFindProc("GetMonitorInfoW")
 	GetWindowRect                = user32.MustFindProc("GetWindowRect")
 	GetWindowTextW               = user32.MustFindProc("GetWindowTextW")
 	IsWindowVisible              = user32.MustFindProc("IsWindowVisible")
@@ -327,7 +318,7 @@ var (
 	SetWindowLongPtrW            = user32.MustFindProc("SetWindowLongPtrW")
 	SetWindowPlacement           = user32.MustFindProc("SetWindowPlacement")
 	SetWindowPos                 = user32.MustFindProc("SetWindowPos")
-
+	// Unexported.
 	enumWindows           = user32.MustFindProc("EnumWindows") // https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-enumwindows
 	enumDisplayMonitors   = user32.MustFindProc("EnumDisplayMonitors")
 	findWindow            = user32.MustFindProc("FindWindowW")
@@ -337,7 +328,6 @@ var (
 	showWindow            = user32.MustFindProc("ShowWindow")
 	systemParametersInfoA = user32.MustFindProc("SystemParametersInfoA")
 
-	BitBlt                 = gdi32.MustFindProc("BitBlt")
 	CreateCompatibleBitmap = gdi32.MustFindProc("CreateCompatibleBitmap")
 	CreateCompatibleDC     = gdi32.MustFindProc("CreateCompatibleDC")
 	CreateDIBSection       = gdi32.MustFindProc("CreateDIBSection")
@@ -347,7 +337,9 @@ var (
 	GetDIBits              = gdi32.MustFindProc("GetDIBits")
 	GetDeviceCaps          = gdi32.MustFindProc("GetDeviceCaps")
 	SelectObject           = gdi32.MustFindProc("SelectObject")
-	StretchBlt             = gdi32.MustFindProc("StretchBlt")
+	// Unexported.
+	bitBlt     = gdi32.MustFindProc("BitBlt")
+	stretchBlt = gdi32.MustFindProc("StretchBlt")
 
 	DwmGetWindowAttribute = dwmapi.MustFindProc("DwmGetWindowAttribute")
 	DwmSetWindowAttribute = dwmapi.MustFindProc("DwmSetWindowAttribute")

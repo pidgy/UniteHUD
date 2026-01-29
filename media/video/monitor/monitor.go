@@ -337,9 +337,9 @@ func captureMonitor(rect image.Rectangle) (*image.RGBA, error) {
 	}
 	defer src.Release()
 
-	dst, err := src.Compatible()
+	dst, err := src.CreateCompatible()
 	if err != nil {
-		return nil, fmt.Errorf("%s: incompatible (%s)", m, wapi.GetLastError())
+		return nil, fmt.Errorf("%s: incompatible: %v", m, wapi.GetLastError())
 	}
 	defer dst.Delete()
 

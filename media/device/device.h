@@ -155,7 +155,7 @@ public:
     VariantInit(&v);
 
     if (SUCCEEDED(propertyBag->Read(name, &v, NULL))) {
-      UINT l = SysStringByteLen(v.bstrVal);
+      UINT l = SysStringByteLen(v.bstrVal)+1; // len + NULL.
       s = (LPSTR)calloc(l, sizeof(char));
       snprintf(s, l, "%S", v.bstrVal);
     }
