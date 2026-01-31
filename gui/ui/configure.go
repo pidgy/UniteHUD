@@ -131,6 +131,8 @@ func (g *GUI) configure() {
 
 	lastPos := image.Pt(0, 0)
 
+	keybinds := keys.New().Bind(keys.NoMod, keys.Escape())
+
 	for is.Now == is.Configuring {
 		if ui.groups.ticks++; ui.groups.ticks > ui.groups.threshold {
 			ui.groups.videos.populate()
@@ -166,7 +168,7 @@ func (g *GUI) configure() {
 			decorate.LabelColor(&ui.footer.fps, nrgba.Percent(device.FPS()/float64(config.Current.Video.Capture.Device.FPS)).Color())
 
 			g.nav.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-				if keys.Esc.Up(gtx, ui.tag) != keys.None {
+				if keybinds.Escape(gtx, ui.tag) {
 					ui.buttons.menu.home.Click(ui.buttons.menu.home)
 				}
 
@@ -450,23 +452,6 @@ func (g *GUI) configure() {
 			default:
 				ui.img = splash.Default()
 			}
-
-			// for _, event := range gtx.Events(g) {
-			// 	switch e := event.(type) {
-			// 	case key.Event:
-			// 		switch e.Name {
-			// 		case key.NameEscape:
-			// 			ui.buttons.menu.home.Click(ui.buttons.menu.home)
-			// 		}
-			// 	}
-			// }
-
-			// area := clip.Rect(gtx.Constraints).Push(gtx.Ops)
-			// key.InputOp{
-			// 	Tag:  g,
-			// 	Keys: key.Set(key.NameEscape),
-			// }.Add(gtx.Ops)
-			// area.Pop()
 
 			g.frame(gtx, event)
 		default:

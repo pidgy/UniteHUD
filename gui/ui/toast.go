@@ -60,6 +60,8 @@ type (
 
 		forced bool
 		open   bool
+
+		keybinds keys.Bind
 	}
 
 	waiter interface {
@@ -248,9 +250,8 @@ func (g *GUI) ToastNewsletter(header string, bulletin bulletin, c toastOnClose) 
 				first = false
 			}
 
-			if keys.Esc.Up(gtx, t) != keys.None {
+			if t.keybinds.Escape(gtx, t) {
 				t.window.Perform(system.ActionClose)
-				break
 			}
 
 			t.window.Invalidate()
@@ -472,9 +473,8 @@ func (g *GUI) ToastYesNoRemember(header, msg, decision string, y toastOnYes, n t
 				first = false
 			}
 
-			if keys.Esc.Up(gtx, t) != keys.None {
+			if t.keybinds.Escape(gtx, t) {
 				t.window.Perform(system.ActionClose)
-				break
 			}
 
 			t.window.Invalidate()
@@ -514,6 +514,8 @@ func (g *GUI) makeToastForce(header, msg string, width, height float32) *toast {
 
 		forced: true,
 		open:   true,
+
+		keybinds: keys.New().Bind(keys.NoMod, keys.Escape()),
 	}
 	t.nav = title.New(header, nil, nil, func() {
 		t.window.Perform(system.ActionClose)
@@ -599,9 +601,8 @@ func (g *GUI) toastOK(t *toast, ok toastOnOK) {
 				first = false
 			}
 
-			if keys.Esc.Up(gtx, t) != keys.None {
+			if t.keybinds.Escape(gtx, t) {
 				t.window.Perform(system.ActionClose)
-				break
 			}
 
 			event.Frame(gtx.Ops)

@@ -1,7 +1,6 @@
 package colorpicker
 
 import (
-	"gioui.org/io/key"
 	"gioui.org/layout"
 	"gioui.org/text"
 	"gioui.org/widget"
@@ -11,6 +10,7 @@ import (
 	"github.com/pidgy/unitehud/core/fonts"
 	"github.com/pidgy/unitehud/core/rgba/nrgba"
 	"github.com/pidgy/unitehud/gui/ux/decorate"
+	"github.com/pidgy/unitehud/gui/ux/keys"
 )
 
 type (
@@ -42,7 +42,7 @@ func New(style *fonts.Style, options ...Option) *Widget {
 					Filter:          "abcdefABCDEF0123456789",
 					SingleLine:      true,
 					Submit:          true,
-					InputHint:       key.HintText,
+					InputHint:       keys.HintText,
 					LineHeight:      5,
 					LineHeightScale: 2,
 				},

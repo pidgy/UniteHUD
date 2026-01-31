@@ -31,6 +31,8 @@ type loading struct {
 }
 
 func (g *GUI) loading() {
+	g.next(is.Loading)
+
 	ui := &loading{
 		message: "Loading...",
 		tick:    time.NewTicker(time.Millisecond * 250).C,

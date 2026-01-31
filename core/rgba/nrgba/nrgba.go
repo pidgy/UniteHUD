@@ -3,6 +3,7 @@ package nrgba
 import (
 	"fmt"
 	"image/color"
+	"math"
 
 	"github.com/pidgy/unitehud/core/rgba"
 )
@@ -92,6 +93,10 @@ func (n NRGBA) Color() color.NRGBA {
 	return color.NRGBA(n)
 }
 
+func (n NRGBA) Div(f float64) NRGBA {
+	return NRGBA{R: uint8(float64(float64(n.R) / f)), G: uint8(float64(float64(n.G) / f)), B: uint8(float64(float64(n.B) / f)), A: n.A}
+}
+
 func (n NRGBA) Eq(n2 NRGBA) bool {
 	if n == Any {
 		return true
@@ -111,6 +116,99 @@ func (n NRGBA) Ref() *color.NRGBA {
 
 func (n NRGBA) String() string {
 	return fmt.Sprintf("(%d,%d,%d,%d)", n.R, n.G, n.B, n.A)
+}
+
+func (n NRGBA) Mul(f float64) NRGBA {
+	return NRGBA{R: uint8(float64(float64(n.R) * f)), G: uint8(float64(float64(n.G) * f)), B: uint8(float64(float64(n.B) * f)), A: n.A}
+}
+
+func colorDistance(n1, n2 NRGBA) float64 {
+	dr := float64(n1.R - n2.R)
+	dg := float64(n1.G - n2.G)
+	db := float64(n1.B - n2.B)
+	return dr + dg + db
+}
+
+// var cmdColors = map[string]NRGBA{
+// 	// "90m": {R: 128, G: 128, B: 128, A: 255}, // Bright black (gray)
+// 	"91m": {R: 255, G: 0, B: 0, A: 255},     // Bright red
+// 	"92m": {R: 0, G: 255, B: 0, A: 255},     // Bright green
+// 	"93m": {R: 255, G: 255, B: 0, A: 255},   // Bright yellow
+// 	"94m": {R: 0, G: 0, B: 255, A: 255},     // Bright blue
+// 	"95m": {R: 255, G: 0, B: 255, A: 255},   // Bright magenta
+// 	"96m": {R: 0, G: 255, B: 255, A: 255},   // Bright cyan
+// 	"97m": {R: 255, G: 255, B: 255, A: 255}, // Bright white
+// }
+
+var (
+	cache = [256][256][256]string{}
+)
+
+func (n NRGBA) Windows(s string) string {
+	f := func(c string) string {
+		cache[n.R][n.G][n.B] = c
+		return fmt.Sprintf("\033[0;%s%s\033[0m\n\033[0m", c, s)
+	}
+
+	w := cache[n.R][n.G][n.B]
+	if w != "" {
+		return f(w)
+	}
+
+	r := float64(n.R)
+	g := float64(n.G)
+	b := float64(n.B)
+
+	max := math.Max(r, math.Max(g, b))
+	min := math.Min(r, math.Min(g, b))
+	delta := max - min
+
+	// Handle grayscale.
+	if delta < 0.05 {
+		switch {
+		case max < 0.1:
+			return f("90m")
+		case max > 0.9:
+			return f("97m")
+		default:
+			return f("90m")
+		}
+	}
+
+	// Compute hue.
+	var hue float64
+	switch max {
+	case r:
+		hue = math.Mod((g-b)/delta, 6)
+	case g:
+		hue = (b-r)/delta + 2
+	case b:
+		hue = (r-g)/delta + 4
+	}
+	hue *= 60
+	if hue < 0 {
+		hue += 360
+	}
+
+	// Bucket hue into color names.
+	switch {
+	case hue < 15 || hue >= 345:
+		return f("97m")
+	case hue < 45:
+		return f("31m")
+	case hue < 75:
+		return f("93m")
+	case hue < 150:
+		return f("92m")
+	case hue < 210:
+		return f("36m")
+	case hue < 270:
+		return f("94m")
+	case hue < 345:
+		return f("91m")
+	default:
+		return f("97m")
+	}
 }
 
 func Objective(name string) NRGBA {

@@ -19,12 +19,11 @@ type (
 )
 
 const (
-	None  = ""
-	NoMod = key.Modifiers(0)
-)
+	None    = ""
+	NoMod   = key.Modifiers(0)
+	CtrlMod = key.ModCtrl
 
-var (
-	Esc = New().Bind(NoMod, key.NameEscape)
+	HintText = key.HintText
 )
 
 func New() Bind {
@@ -35,7 +34,11 @@ func (b Bind) Bind(m key.Modifiers, s ...string) Bind {
 	return append(b, bind{set: key.Set(strings.Join(s, "|")), mods: m})
 }
 
-func (b Bind) Up(gtx layout.Context, tag any) (name string) {
+func (b Bind) Escape(gtx layout.Context, tag any) bool {
+	return b.Event(gtx, tag) == Escape()
+}
+
+func (b Bind) Event(gtx layout.Context, tag any) (name string) {
 	if len(b) == 0 {
 		return ""
 	}
@@ -77,4 +80,12 @@ push:
 
 func Ctrl(s string) string {
 	return "Ctrl-" + s
+}
+
+func Escape() string {
+	return key.NameEscape
+}
+
+func F11() string {
+	return key.NameF11
 }

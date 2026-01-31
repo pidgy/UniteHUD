@@ -12,7 +12,6 @@ import (
 
 	"gioui.org/app"
 	"gioui.org/font"
-	"gioui.org/io/key"
 	"gioui.org/io/system"
 	"gioui.org/layout"
 	"gioui.org/op"
@@ -546,7 +545,9 @@ func (g *GUI) main() {
 				)
 			})
 
-			switch ui.keybinds.Up(gtx, ui.tag) {
+			switch ui.keybinds.Event(gtx, ui.tag) {
+			case keys.Ctrl("M"):
+				g.minimize()
 			case keys.Ctrl("C"):
 				g.next(is.Configuring)
 			case keys.Ctrl("F"):
@@ -562,14 +563,14 @@ func (g *GUI) main() {
 				btn.Click(btn)
 			case keys.Ctrl("W"):
 				g.next(is.Closing)
-			case key.NameEscape:
+			case keys.Escape():
 				if g.dimensions.fullscreen {
 					g.nav.Resize()
 				}
 				if g.Running {
 					// ui.buttons.stop.Click(ui.buttons.stop)
 				}
-			case key.NameF11:
+			case keys.F11():
 				g.nav.Resize()
 			}
 
@@ -587,7 +588,7 @@ func (g *GUI) main() {
 func (g *GUI) mainUI() *main {
 	ui := &main{
 		stage:    system.StageRunning,
-		keybinds: keys.New().Bind(keys.NoMod, key.NameEscape, key.NameF11).Bind(key.ModCtrl, "C", "F", "P", "S", "W"),
+		keybinds: keys.New().Bind(keys.NoMod, keys.Escape(), keys.F11()).Bind(keys.CtrlMod, "C", "F", "P", "S", "W", "M"),
 		tag:      new(bool),
 	}
 

@@ -8,7 +8,6 @@ import (
 
 	"gioui.org/app"
 	"gioui.org/font"
-	"gioui.org/io/key"
 	"gioui.org/io/pointer"
 	"gioui.org/io/system"
 	"gioui.org/layout"
@@ -256,12 +255,12 @@ func (g *GUI) projector(onclose func()) {
 				},
 			)
 
-			switch ui.keybinds.Up(gtx, ui.tag) {
+			switch ui.keybinds.Event(gtx, ui.tag) {
 			case keys.Ctrl("W"):
 				ui.window.Perform(system.ActionClose)
-			case keys.Ctrl("F"), key.NameF11:
+			case keys.Ctrl("F"), keys.F11():
 				ui.fullscreen()
-			case key.NameEscape:
+			case keys.Escape():
 				if ui.dimensions.fullscreened {
 					ui.fullscreen()
 				}
@@ -328,7 +327,7 @@ func (ui *projector) fullscreen() {
 
 func (g *GUI) projectorUI() *projector {
 	ui := &projector{
-		keybinds: keys.New().Bind(keys.NoMod, key.NameEscape, key.NameF11).Bind(key.ModCtrl, "W"),
+		keybinds: keys.New().Bind(keys.NoMod, keys.Escape(), keys.F11()).Bind(keys.CtrlMod, "W"),
 		tag:      new(bool),
 		rect:     wapi.Rect{},
 	}

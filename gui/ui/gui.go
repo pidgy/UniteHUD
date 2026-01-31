@@ -83,8 +83,6 @@ func New() *GUI {
 	min := image.Pt(1100, 700)
 	max := min
 
-	is.Now = is.Loading
-
 	notify.System("[UI] Generating")
 
 	notify.Debug("[UI] Taskbar Height: %d", monitor.TaskbarHeight())
@@ -141,6 +139,7 @@ func New() *GUI {
 
 	notify.Debug("[UI] Minimum window size set to %dx%d", min.X, min.Y)
 
+	UI.next(is.Loading)
 	go UI.loading()
 
 	return UI

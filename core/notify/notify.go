@@ -3,6 +3,7 @@ package notify
 import (
 	"fmt"
 	"image"
+	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -35,11 +36,12 @@ var (
 	previewResolution             = "0x0"
 
 	Disabled struct {
-		Errors   bool
-		Warnings bool
-		Info     bool
-		System   bool
-		Debug    bool
+		Errors      bool
+		Warnings    bool
+		Info        bool
+		System      bool
+		Debug       bool
+		DebugColors bool
 	}
 
 	colorError  = nrgba.Pinkity
@@ -246,7 +248,13 @@ func (n *notify) log(r nrgba.NRGBA, clock, unique bool, format string, a ...any)
 	}
 
 	if exe.Debug {
-		fmt.Println(msg)
+		msg := msg
+		if !Disabled.DebugColors {
+			msg = p.NRGBA.Windows(msg)
+		} else {
+			msg = msg + "\n"
+		}
+		fmt.Fprint(os.Stdout, msg)
 	}
 
 	if clock {
