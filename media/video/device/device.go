@@ -113,6 +113,7 @@ func init() {
 	}
 
 	go func() {
+		println("----------------------------\n", gocv.OpenCVVersion(), "\n-----------------------\n")
 		// vrt := gocv.VideoRegistryType{}
 		// for _, b := range vrt.GetCameraBackends() {
 		// 	cached.apis = append(cached.apis,
