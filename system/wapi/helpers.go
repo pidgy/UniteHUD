@@ -185,7 +185,7 @@ func (d Device) CreateDIBSection(size image.Point) (bitmap Bitmap, bitvals BitVa
 
 func (d Device) Select(b Bitmap) (Object, error) {
 	r, _, err := SelectObject.Call(d.id(), b.id())
-	if r == 0 {
+	if r == 0 && !syscall.Errno(0).Is(err) {
 		return 0, err
 	}
 	return Object(r), nil
@@ -546,4 +546,61 @@ func helpSetWindowPos(hwnd uintptr, pt image.Point, size image.Point, flags uint
 		uintptr(size.Y),
 		flags,
 	)
+}
+
+func (w Window) Capture(rect image.Rectangle, scale float64) (*image.RGBA, error) {
+	src, err := w.Device()
+	if err != nil {
+		return nil, fmt.Errorf("%s: invalid device: %v", w)
+	}
+
+	dst, err := src.CreateCompatible()
+	if err != nil {
+		return nil, fmt.Errorf("%s: incompatible: %v", w, GetLastError())
+	}
+	defer dst.Delete()
+
+	size := rect.Size()
+
+	info := BitmapInfo{
+		BmiHeader: BitmapInfoHeader{
+			BiSize:        BitmapInfoHeaderSize,
+			BiWidth:       int32(size.X),
+			BiHeight:      -int32(size.Y),
+			BiPlanes:      1,
+			BiBitCount:    32,
+			BiCompression: BitmapInfoHeaderCompression.RGB,
+		},
+	}
+
+	bitmap, raw, err := info.CreateRGBSection(&dst)
+	if err != nil {
+		return nil, fmt.Errorf("%s: RGB section %v", w, err)
+	}
+	defer bitmap.Delete()
+
+	obj, err := dst.Select(bitmap)
+	if err != nil {
+		return nil, fmt.Errorf("%s: bitmap Select %v", w, err)
+	}
+	defer obj.Delete()
+
+	err = dst.Copy(src, size, rect, scale)
+	if err != nil {
+		return nil, fmt.Errorf("%s: bitmap copy %v", w, err)
+	}
+
+	data := raw.Slice(size)
+
+	pix := make([]byte, len(data))
+
+	for i := 0; i < len(pix); i += 4 {
+		pix[i], pix[i+2], pix[i+1], pix[i+3] = byte(data[i+2]), byte(data[i]), byte(data[i+1]), byte(data[i+3])
+	}
+
+	return &image.RGBA{
+		Pix:    pix,
+		Stride: 4 * size.X,
+		Rect:   image.Rect(0, 0, size.X, size.Y),
+	}, nil
 }

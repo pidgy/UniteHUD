@@ -19,12 +19,15 @@ import (
 
 type ImageWidget struct {
 	*screen.Widget
-	Click     func(i *ImageWidget)
-	Hint      string
-	HintEvent func()
-	Hide      bool
+	Click func(*ImageWidget)
 
-	hover bool
+	Hint        string
+	OnHoverHint func(string)
+
+	Hide bool
+
+	hover    bool
+	wasHover bool
 }
 
 func (i *ImageWidget) Layout(th *material.Theme, gtx layout.Context) layout.Dimensions {
@@ -64,6 +67,7 @@ func (i *ImageWidget) Layout(th *material.Theme, gtx layout.Context) layout.Dime
 			case pointer.Move:
 				cursor.Is(pointer.CursorPointer)
 			case pointer.Leave:
+				i.wasHover = i.hover
 				i.hover = false
 				i.Widget.BorderColor = nrgba.Gray
 
@@ -97,8 +101,11 @@ func (i *ImageWidget) Layout(th *material.Theme, gtx layout.Context) layout.Dime
 }
 
 func (i *ImageWidget) HoverHint() {
-	if i.hover && i.HintEvent != nil {
-		i.HintEvent()
+	if i.hover && i.OnHoverHint != nil {
+		i.OnHoverHint(i.Hint)
+	} else if i.wasHover && i.OnHoverHint != nil {
+		i.wasHover = false
+		i.OnHoverHint("")
 	}
 }
 

@@ -69,13 +69,13 @@ func current() activity {
 		return a
 	}
 
-	switch is.Now {
-	case is.Loading:
-		a.Details = fmt.Sprintf("UniteHUD - %s", is.Now)
+	switch {
+	case is.Currently(is.Loading):
+		a.Details = fmt.Sprintf("UniteHUD - %s", is.Loading)
 		a.State = "Loading..."
 		return a
-	case is.Configuring:
-		a.Details = fmt.Sprintf("UniteHUD - %s", is.Now)
+	case is.Currently(is.Configuring):
+		a.Details = fmt.Sprintf("UniteHUD - %s", is.Configuring)
 		a.State = "Configuring capture settings"
 		return a
 	}

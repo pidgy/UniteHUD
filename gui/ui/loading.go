@@ -31,7 +31,7 @@ type loading struct {
 }
 
 func (g *GUI) loading() {
-	g.next(is.Loading)
+	is.Set(is.Loading)
 
 	ui := &loading{
 		message: "Loading...",
@@ -64,7 +64,7 @@ func (g *GUI) loading() {
 	g.window.Perform(system.ActionCenter)
 	g.window.Perform(system.ActionRaise)
 
-	for is.Now == is.Loading {
+	for is.Currently(is.Loading) {
 		switch event := g.window.NextEvent().(type) {
 		case app.ViewEvent:
 			if event.HWND != 0 {
@@ -72,7 +72,7 @@ func (g *GUI) loading() {
 				tray.SetHWND(g.HWND)
 			}
 		case system.DestroyEvent:
-			g.next(is.Closing)
+			is.Set(is.Closing)
 			return
 		case system.FrameEvent:
 			gtx := layout.NewContext(&ui.ops, event)
@@ -117,7 +117,7 @@ func (g *GUI) loading() {
 func (l *loading) while() {
 	i := 0
 
-	for ; is.Now == is.Loading; <-l.tick {
+	for ; is.Currently(is.Loading); <-l.tick {
 		l.message, i = notify.Iter(i)
 	}
 }

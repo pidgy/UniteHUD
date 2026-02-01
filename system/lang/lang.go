@@ -7,6 +7,7 @@ import (
 
 var (
 	Titled = cases.Title(language.AmericanEnglish)
+	upper  = cases.Upper(language.AmericanEnglish)
 )
 
 func Title(s string) string {
@@ -15,4 +16,8 @@ func Title(s string) string {
 
 func Translate(s string) string {
 	return s
+}
+
+func Upper(s string) string {
+	return upper.String((s))
 }

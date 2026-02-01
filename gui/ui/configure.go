@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	"os/exec"
+	"strings"
 	"time"
 
 	"gioui.org/app"
@@ -22,6 +23,7 @@ import (
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/rgba/nrgba"
 	"github.com/pidgy/unitehud/core/server"
+	"github.com/pidgy/unitehud/exe"
 	"github.com/pidgy/unitehud/gui/cursor"
 	"github.com/pidgy/unitehud/gui/is"
 	"github.com/pidgy/unitehud/gui/ux/area"
@@ -36,6 +38,7 @@ import (
 	"github.com/pidgy/unitehud/media/video/monitor"
 	"github.com/pidgy/unitehud/media/video/window"
 	"github.com/pidgy/unitehud/system/process"
+	"github.com/pidgy/unitehud/system/save"
 )
 
 type configure struct {
@@ -133,7 +136,7 @@ func (g *GUI) configure() {
 
 	keybinds := keys.New().Bind(keys.NoMod, keys.Escape())
 
-	for is.Now == is.Configuring {
+	for is.Currently(is.Configuring) {
 		if ui.groups.ticks++; ui.groups.ticks > ui.groups.threshold {
 			ui.groups.videos.populate()
 			ui.groups.ticks = 0
@@ -142,7 +145,7 @@ func (g *GUI) configure() {
 		switch event := g.window.NextEvent().(type) {
 		case system.DestroyEvent:
 			ui.buttons.menu.home.Click(ui.buttons.menu.home)
-			g.next(is.Closing)
+			is.Set(is.Closing)
 		case app.ViewEvent:
 			g.HWND = event.HWND
 		case system.FrameEvent:
@@ -420,16 +423,17 @@ func (g *GUI) configure() {
 			switch {
 			case ui.hidePreview:
 				ui.img = splash.DeviceClickable()
-			case device.IsActive(), monitor.IsDisplay(), window.IsOpen():
+			case video.Current() != video.Unknown:
 				img, err := video.Capture()
 				if err != nil {
-					g.ToastErrorf("<ini:f:capture> video (%v)", err)
+					g.ToastErrorf("<ini:f:capture> (%v)", err)
 
-					if monitor.IsDisplay() {
-						defer g.next(is.MainMenu)
+					// No video to default to, let's bail.
+					if monitor.IsActive() {
+						is.Set(is.MainMenu)
 					}
 
-					if window.IsOpen() {
+					if window.IsActive() {
 						config.Current.Video.Capture.Window.Lost = config.Current.Video.Capture.Window.Name
 					}
 					config.Current.Video.Capture.Window.Name = config.MainDisplay
@@ -461,6 +465,7 @@ func (g *GUI) configure() {
 
 	ui.windows.preview.close()
 	ui.windows.settings.close()
+	ui = nil
 }
 
 func (g *GUI) configureUI() *configure {
@@ -480,6 +485,19 @@ func (g *GUI) configureUI() *configure {
 	ui.groups.videos = g.videos(ui.listTextSize)
 	ui.groups.videos.onevent = func(b bool) {
 		ui.hidePreview = b
+		if exe.Debug {
+			src := video.Current()
+			img, err := video.Capture()
+			if err != nil {
+				notify.Error("[Debug] Failed to capture video (%v)", err)
+				return
+			}
+			err = save.PNG(img, "%s/img/%s_%s.png", save.Directory, save.KitchenTime(), strings.ReplaceAll(src.String(), " ", "_"))
+			if err != nil {
+				notify.Error("[Debug] Failed to save image (%v)", err)
+				return
+			}
+		}
 	}
 	ui.groups.threshold = 120
 	ui.groups.ticks = ui.groups.threshold
@@ -491,7 +509,8 @@ func (g *GUI) configureUI() *configure {
 		TextSize:        unit.Sp(16),
 		TextInsetBottom: -1,
 		Disabled:        false,
-		OnHoverHint:     func() { g.nav.Tip("Return to the Main Menu") },
+		Hint:            "Return to the Main Menu",
+		OnHoverHint:     g.nav.Tip,
 		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
@@ -502,7 +521,7 @@ func (g *GUI) configureUI() *configure {
 			// config.Current.XY.KOs = ui.groups.areas.ko.Rectangle()
 
 			if config.Cached().Eq(config.Current) {
-				g.next(is.MainMenu)
+				is.Set(is.MainMenu)
 				return
 			}
 
@@ -517,7 +536,7 @@ func (g *GUI) configureUI() *configure {
 						notify.Warn("[UI] <ini:f:save> UniteHUD configuration (%v)", err)
 					}
 
-					g.next(is.MainMenu)
+					is.Set(is.MainMenu)
 				}),
 				toastOnNo(func() {
 					defer this.Deactivate()
@@ -533,7 +552,7 @@ func (g *GUI) configureUI() *configure {
 						g.ToastError(err)
 					}
 
-					g.next(is.MainMenu)
+					is.Set(is.MainMenu)
 				}),
 			)
 		},
@@ -544,7 +563,8 @@ func (g *GUI) configureUI() *configure {
 		TextSize:        unit.Sp(18),
 		TextInsetBottom: -2,
 		Font:            g.nav.NishikiTeki(),
-		OnHoverHint:     func() { g.nav.Tip("Open advanced settings") },
+		Hint:            "Open advanced settings",
+		OnHoverHint:     g.nav.Tip,
 		Pressed:         nrgba.Lilac,
 		BorderWidth:     unit.Sp(.1),
 		Click: func(this *button.Widget) {
@@ -559,11 +579,11 @@ func (g *GUI) configureUI() *configure {
 				ui.windows.settings = nil
 
 				this.Text = "⚙"
-				this.OnHoverHint = func() { g.nav.Tip("Open advanced settings") }
+				this.Hint = "Open advanced settings"
 			})
 
 			this.Text = "⚙×"
-			this.OnHoverHint = func() { g.nav.Tip("Close advanced settings") }
+			this.Hint = "Close advanced settings"
 		},
 	}
 
@@ -573,7 +593,8 @@ func (g *GUI) configureUI() *configure {
 		TextSize:        unit.Sp(17),
 		TextInsetBottom: -1,
 		Pressed:         nrgba.BloodOrange,
-		OnHoverHint:     func() { g.nav.Tip("Preview capture areas") },
+		Hint:            "Preview capture areas",
+		OnHoverHint:     g.nav.Tip,
 		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
@@ -588,11 +609,11 @@ func (g *GUI) configureUI() *configure {
 				ui.windows.preview = nil
 
 				this.Text = "🗗"
-				this.OnHoverHint = func() { g.nav.Tip("Preview capture areas") }
+				this.Hint = "Preview capture areas"
 			})
 
 			this.Text = "🗗×"
-			this.OnHoverHint = func() { g.nav.Tip("Close capture area preview") }
+			this.Hint = "Close capture area preview"
 		},
 	}
 
@@ -603,7 +624,8 @@ func (g *GUI) configureUI() *configure {
 		TextSize:        unit.Sp(16),
 		TextInsetBottom: -1,
 		Disabled:        false,
-		OnHoverHint:     func() { g.nav.Tip("Save configuration") },
+		Hint:            "Save configuration",
+		OnHoverHint:     g.nav.Tip,
 		Click: func(this *button.Widget) {
 			g.ToastYesNo("Save", "Save configuration changes?",
 				toastOnYes(func() {
@@ -636,17 +658,18 @@ func (g *GUI) configureUI() *configure {
 		TextSize:        unit.Sp(16),
 		TextInsetBottom: -1,
 		Pressed:         nrgba.Gray,
-		OnHoverHint:     func() { g.nav.Tip("Hide sources") },
+		Hint:            "Hide sources",
+		OnHoverHint:     g.nav.Tip,
 		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
 			ui.hideOptions = !ui.hideOptions
 			if ui.hideOptions {
 				this.Text = "⇈"
-				this.OnHoverHint = func() { g.nav.Tip("Show sources") }
+				this.Hint = "Show sources"
 			} else {
 				this.Text = "⇊"
-				this.OnHoverHint = func() { g.nav.Tip("Hide sources") }
+				this.Hint = "Hide sources"
 			}
 		},
 	}
@@ -657,7 +680,8 @@ func (g *GUI) configureUI() *configure {
 		TextSize:        unit.Sp(16),
 		TextInsetBottom: -1,
 		Pressed:         nrgba.DarkSeafoam,
-		OnHoverHint:     func() { g.nav.Tip("Test capture areas") },
+		Hint:            "Test capture areas",
+		OnHoverHint:     g.nav.Tip,
 		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 			ui.showCaptureAreas = !ui.showCaptureAreas
@@ -677,7 +701,8 @@ func (g *GUI) configureUI() *configure {
 		TextSize:        unit.Sp(16),
 		TextInsetBottom: -1,
 		Disabled:        false,
-		OnHoverHint:     func() { g.nav.Tip("Open configuration file") },
+		Hint:            "Open configuration file",
+		OnHoverHint:     g.nav.Tip,
 		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
@@ -718,7 +743,8 @@ func (g *GUI) configureUI() *configure {
 		TextSize:        unit.Sp(17),
 		TextInsetBottom: -1,
 		Disabled:        false,
-		OnHoverHint:     func() { g.nav.Tip("Reset configuration") },
+		Hint:            "Reset configuration",
+		OnHoverHint:     g.nav.Tip,
 		Click: func(this *button.Widget) {
 			g.ToastYesNo("Reset", fmt.Sprintf("Reset %s configuration?", config.Current.Gaming.Device),
 				toastOnYes(func() {
@@ -744,7 +770,7 @@ func (g *GUI) configureUI() *configure {
 					// ui.groups.videos.window.populate()
 					ui.groups.videos.populate()
 
-					g.next(is.MainMenu)
+					is.Set(is.MainMenu)
 
 					notify.Announce("[UI] Reset UniteHUD %s configuration", config.Current.Gaming.Device)
 				}),
@@ -760,7 +786,8 @@ func (g *GUI) configureUI() *configure {
 		TextSize:        unit.Sp(17),
 		TextInsetBottom: -1,
 		Disabled:        false,
-		OnHoverHint:     func() { g.nav.Tip("Lock capture areas to prevent mouse dragging") },
+		Hint:            "Lock capture areas to prevent mouse dragging",
+		OnHoverHint:     g.nav.Tip,
 		Click: func(this *button.Widget) {
 			ui.groups.areas.time.Draggable = !ui.groups.areas.time.Draggable
 			ui.groups.areas.energy.Draggable = !ui.groups.areas.energy.Draggable
@@ -827,7 +854,7 @@ func (g *GUI) configureUI() *configure {
 
 	ui.groups.videos.populate()
 
-	ui.buttons.menu.settings.Click(ui.buttons.menu.settings)
+	// ui.buttons.menu.settings.Click(ui.buttons.menu.settings)
 
 	return ui
 }

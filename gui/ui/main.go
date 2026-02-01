@@ -183,7 +183,7 @@ func (g *GUI) main() {
 
 	tray.SetStartStopTitle("Start")
 
-	for is.Now == is.MainMenu {
+	for is.Currently(is.MainMenu) {
 		if !g.open {
 			time.Sleep(time.Millisecond * 10)
 			continue
@@ -201,7 +201,7 @@ func (g *GUI) main() {
 			ui.stage = event.Stage
 			notify.Debug("[UI] Main stage: %s", ui.stage)
 		case system.DestroyEvent:
-			g.next(is.Closing)
+			is.Set(is.Closing)
 			return
 		case system.FrameEvent:
 			gtx := layout.NewContext(&ui.ops, event)
@@ -279,7 +279,7 @@ func (g *GUI) main() {
 							fps := device.FPS()
 							ui.labels.window.Color = nrgba.Percent(fps / float64(config.Current.Video.Capture.Device.FPS)).Color()
 							ui.labels.window.Text = fmt.Sprintf("📺 %s %.0fFPS", device.Name(config.Current.Video.Capture.Device.Index), fps)
-						case window.IsOpen(), monitor.IsDisplay():
+						case window.IsActive(), monitor.IsActive():
 							ui.labels.window.Text = fmt.Sprintf("📺 %s (%s) -> (%s)", config.Current.Video.Capture.Window.Name, monitor.Resolution(), notify.PreviewResolutionString())
 						}
 
@@ -549,7 +549,7 @@ func (g *GUI) main() {
 			case keys.Ctrl("M"):
 				g.minimize()
 			case keys.Ctrl("C"):
-				g.next(is.Configuring)
+				is.Set(is.Configuring)
 			case keys.Ctrl("F"):
 				g.nav.Resize()
 			case keys.Ctrl("P"):
@@ -562,7 +562,7 @@ func (g *GUI) main() {
 
 				btn.Click(btn)
 			case keys.Ctrl("W"):
-				g.next(is.Closing)
+				is.Set(is.Closing)
 			case keys.Escape():
 				if g.dimensions.fullscreen {
 					g.nav.Resize()
@@ -599,7 +599,8 @@ func (g *GUI) mainUI() *main {
 	ui.buttons.stop = &button.Widget{
 		Text:            "Stop",
 		Font:            g.nav.Calibri(),
-		OnHoverHint:     func() { g.nav.Tip("Stop capturing events (Ctrl+s)") },
+		Hint:            "Stop capturing events (Ctrl+S)",
+		OnHoverHint:     g.nav.Tip,
 		Disabled:        true,
 		Released:        nrgba.Disabled,
 		BorderWidth:     unit.Sp(1.5),
@@ -618,7 +619,7 @@ func (g *GUI) mainUI() *main {
 			g.Preview = true
 
 			ui.navButtons.startstop.Text = "▶"
-			ui.navButtons.startstop.OnHoverHint = ui.buttons.start.OnHoverHint
+			ui.navButtons.startstop.Hint = ui.buttons.start.Hint
 			ui.navButtons.startstop.Pressed = nrgba.PastelGreen
 			ui.navButtons.startstop.Released = nrgba.Nothing
 
@@ -641,7 +642,8 @@ func (g *GUI) mainUI() *main {
 	ui.buttons.start = &button.Widget{
 		Text:            "Start",
 		Font:            g.nav.Calibri(),
-		OnHoverHint:     func() { g.nav.Tip("Start capturing events (Ctrl+s)") },
+		Hint:            "Start capturing events (Ctrl+S)",
+		OnHoverHint:     g.nav.Tip,
 		Released:        nrgba.PastelGreen.Alpha(150),
 		Pressed:         nrgba.Transparent80,
 		BorderWidth:     unit.Sp(1.5),
@@ -661,7 +663,7 @@ func (g *GUI) mainUI() *main {
 			this.Released = nrgba.Disabled
 
 			ui.navButtons.startstop.Text = "⏸"
-			ui.navButtons.startstop.OnHoverHint = ui.buttons.stop.OnHoverHint
+			ui.navButtons.startstop.Hint = ui.buttons.stop.Hint
 			ui.navButtons.startstop.Pressed = nrgba.Nothing
 			ui.navButtons.startstop.Released = nrgba.PastelRed
 
@@ -689,7 +691,8 @@ func (g *GUI) mainUI() *main {
 	}
 
 	ui.buttons.settingsImage = &button.ImageWidget{
-		HintEvent: func() { g.nav.Tip("Open a projector window") },
+		Hint:        "Open a projector window",
+		OnHoverHint: g.nav.Tip,
 
 		Widget: &screen.Widget{
 			Border:      true,
@@ -704,7 +707,7 @@ func (g *GUI) mainUI() *main {
 				ui.navButtons.alwaysOnTop.Click(ui.navButtons.alwaysOnTop)
 			}
 
-			g.next(is.Configuring)
+			is.Set(is.Configuring)
 		},
 	}
 
@@ -884,8 +887,9 @@ func (g *GUI) mainUI() *main {
 		TextSize:        unit.Sp(18),
 		TextInsetBottom: -2,
 		Font:            g.nav.NishikiTeki(),
-		OnHoverHint:     func() { g.nav.Tip("Modify capture settings") },
-
+		// Hint: "Modify capture settings",
+		Hint:        "Modify capture settings",
+		OnHoverHint: g.nav.Tip,
 		Released:    nrgba.Transparent80,
 		Pressed:     nrgba.SilverPurple,
 		BorderWidth: unit.Sp(.1),
@@ -900,7 +904,8 @@ func (g *GUI) mainUI() *main {
 	ui.navButtons.client = &button.Widget{
 		Text:        "📺",
 		Font:        g.nav.NishikiTeki(),
-		OnHoverHint: ui.buttons.settingsImage.HintEvent,
+		Hint:        ui.buttons.settingsImage.Hint,
+		OnHoverHint: ui.buttons.settingsImage.OnHoverHint,
 		Pressed:     nrgba.Discord.Alpha(100),
 		TextSize:    unit.Sp(16),
 
@@ -915,7 +920,8 @@ func (g *GUI) mainUI() *main {
 	ui.navButtons.stats = &button.Widget{
 		Text:        "¼",
 		Font:        g.nav.NishikiTeki(),
-		OnHoverHint: func() { g.nav.Tip("View capture statistics") },
+		Hint:        "View capture statistics",
+		OnHoverHint: g.nav.Tip,
 		Pressed:     nrgba.Pinkity,
 		TextSize:    unit.Sp(15),
 
@@ -937,7 +943,8 @@ func (g *GUI) mainUI() *main {
 		Text:        "+/-",
 		TextSize:    unit.Sp(12),
 		Font:        g.nav.Cascadia(),
-		OnHoverHint: func() { g.nav.Tip("View win/loss history") },
+		Hint:        "View win/loss history",
+		OnHoverHint: g.nav.Tip,
 		Pressed:     nrgba.Seafoam,
 
 		Click: func(this *button.Widget) {
@@ -950,7 +957,8 @@ func (g *GUI) mainUI() *main {
 	ui.navButtons.obs = &button.Widget{
 		Text:        "obs",
 		Font:        g.nav.NishikiTeki(),
-		OnHoverHint: func() { g.nav.Tip("Open OBS client folder") },
+		Hint:        "Open OBS client folder",
+		OnHoverHint: g.nav.Tip,
 		Pressed:     nrgba.Purple,
 		TextSize:    unit.Sp(12),
 
@@ -973,7 +981,8 @@ func (g *GUI) mainUI() *main {
 	ui.navButtons.clear = &button.Widget{
 		Text:            "🧹",
 		Font:            g.nav.NishikiTeki(),
-		OnHoverHint:     func() { g.nav.Tip("Clear event history") },
+		Hint:            "Clear event history",
+		OnHoverHint:     g.nav.Tip,
 		TextInsetBottom: -2,
 		Pressed:         nrgba.Orange,
 		TextSize:        unit.Sp(14),
@@ -989,7 +998,9 @@ func (g *GUI) mainUI() *main {
 	// ui.nav.eco = &button.Widget{
 	// 	Text:        "🌳",
 	// 	Font:        g.nav.NishikiTeki(),
-	// 	OnHoverHint: func() { g.nav.Tip("Toggle resource saver") },
+	// 	Hint: "Toggle resource saver",
+	// OnHoverHintStr:
+	// 	g.nav.Tip,
 	// 	Pressed:     nrgba.DarkSeafoam,
 	// 	TextSize:    unit.Sp(16),
 
@@ -1012,7 +1023,8 @@ func (g *GUI) mainUI() *main {
 	ui.navButtons.logs = &button.Widget{
 		Text:        "🗁",
 		Font:        g.nav.NishikiTeki(),
-		OnHoverHint: func() { g.nav.Tip("Open log directory") },
+		Hint:        "Open log directory",
+		OnHoverHint: g.nav.Tip,
 		Pressed:     nrgba.PastelBabyBlue,
 		TextSize:    unit.Sp(16),
 
@@ -1034,7 +1046,8 @@ func (g *GUI) mainUI() *main {
 	ui.navButtons.record = &button.Widget{
 		Text:        "🎬",
 		Font:        g.nav.NishikiTeki(),
-		OnHoverHint: func() { g.nav.Tip("Record matched events") },
+		Hint:        "Record matched events",
+		OnHoverHint: g.nav.Tip,
 		Pressed:     nrgba.Pinkity.Alpha(100),
 		TextSize:    14,
 
@@ -1086,7 +1099,8 @@ func (g *GUI) mainUI() *main {
 		TextSize:        unit.Sp(16),
 		TextInsetBottom: -1,
 		Disabled:        false,
-		OnHoverHint:     func() { g.nav.Tip("Open configuration file") },
+		Hint:            "Open configuration file",
+		OnHoverHint:     g.nav.Tip,
 		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
@@ -1113,20 +1127,21 @@ func (g *GUI) mainUI() *main {
 		TextSize:        unit.Sp(16),
 		TextInsetBottom: -1,
 		Disabled:        false,
-		OnHoverHint:     ui.buttons.start.OnHoverHint,
+		OnHoverHint:     g.nav.Tip,
+		Hint:            ui.buttons.start.Hint,
 		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
 			if this.Text == "▶" {
 				ui.buttons.start.Click(ui.buttons.start)
 				this.Text = "⏸"
-				this.OnHoverHint = ui.buttons.stop.OnHoverHint
+				this.Hint = ui.buttons.stop.Hint
 				this.Released = nrgba.PastelRed
 				tray.SetStartStopTitle("Stop")
 			} else {
 				ui.buttons.stop.Click(ui.buttons.stop)
 				this.Text = "▶"
-				this.OnHoverHint = ui.buttons.start.OnHoverHint
+				this.Hint = ui.buttons.start.Hint
 				this.Pressed = nrgba.PastelGreen
 				this.Released = nrgba.Nothing
 				tray.SetStartStopTitle("Start")
@@ -1142,7 +1157,8 @@ func (g *GUI) mainUI() *main {
 		Pressed:         nrgba.Gray,
 		TextSize:        unit.Sp(16),
 		TextInsetBottom: -1,
-		OnHoverHint:     func() { g.nav.Tip("Show Main Menu preview area") },
+		Hint:            "Show Main Menu preview area",
+		OnHoverHint:     g.nav.Tip,
 		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
@@ -1151,12 +1167,12 @@ func (g *GUI) mainUI() *main {
 			if !hidden {
 				this.Text = "⇇"
 				ui.split.vertical.Ratio = 1
-				this.OnHoverHint = func() { g.nav.Tip("Show Main Menu preview area") }
+				this.Hint = "Show Main Menu preview area"
 				config.Current.Advanced.Matching.Disabled.Previews = true
 			} else {
 				this.Text = "⇉"
 				ui.split.vertical.Ratio = .7
-				this.OnHoverHint = func() { g.nav.Tip("Hide Main Menu preview area") }
+				this.Hint = "Hide Main Menu preview area"
 				config.Current.Advanced.Matching.Disabled.Previews = false
 			}
 
@@ -1170,16 +1186,17 @@ func (g *GUI) mainUI() *main {
 		Pressed:         nrgba.Gray,
 		TextSize:        unit.Sp(16),
 		TextInsetBottom: -1,
-		OnHoverHint:     func() { g.nav.Tip("Show Main Menu configuration area") },
+		Hint:            "Show Main Menu configuration area",
+		OnHoverHint:     g.nav.Tip,
 		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
 			if this.Text == "⇈" {
 				this.Text = "⇊"
-				this.OnHoverHint = func() { g.nav.Tip("Show Main Menu configuration area") }
+				this.Hint = "Show Main Menu configuration area"
 			} else {
 				this.Text = "⇈"
-				this.OnHoverHint = func() { g.nav.Tip("Hide Main Menu configuration area") }
+				this.Hint = "Hide Main Menu configuration area"
 			}
 		},
 	}
@@ -1187,7 +1204,8 @@ func (g *GUI) mainUI() *main {
 	ui.navButtons.alwaysOnTop = &button.Widget{
 		Text:            "📌",
 		Font:            g.nav.NishikiTeki(),
-		OnHoverHint:     func() { g.nav.Tip("Show UniteHUD Overlay HUD above all windows") },
+		Hint:            "Show UniteHUD Overlay HUD above all windows",
+		OnHoverHint:     g.nav.Tip,
 		Released:        nrgba.Transparent80,
 		Pressed:         nrgba.Lilac,
 		TextSize:        unit.Sp(16),
@@ -1197,12 +1215,12 @@ func (g *GUI) mainUI() *main {
 			defer this.Deactivate()
 
 			if this.Radio {
-				this.OnHoverHint = func() { g.nav.Tip("Show UniteHUD Overlay HUD above all windows") }
+				this.Hint = "Show UniteHUD Overlay HUD above all windows"
 				this.Text = "📌"
 				this.Radio = false
 				wapi.SetWindowNotAlwaysOnTop(g.HWND)
 			} else {
-				this.OnHoverHint = func() { g.nav.Tip("Hide UniteHUD Overlay HUD under active windows") }
+				this.Hint = "Hide UniteHUD Overlay HUD under active windows"
 				this.Text = "📌×"
 				this.Radio = true
 				wapi.SetWindowAlwaysOnTop(g.HWND)

@@ -21,18 +21,14 @@ const (
 	Unknown Source = "Unknown"
 )
 
-func (s Source) String() string {
-	return string(s)
-}
-
 func Active(s Source, name string) bool {
 	switch s {
 	case Device:
-		return device.IsActive() && (name == device.ActiveName() || name == "")
+		return device.IsActive()
 	case Monitor:
-		return !device.IsActive() && (monitor.Active(name) || name == "")
+		return monitor.IsActive()
 	case Window:
-		return !device.IsActive() && window.IsOpen()
+		return window.IsActive()
 	default:
 		return false
 	}
@@ -40,44 +36,47 @@ func Active(s Source, name string) bool {
 
 func Current() Source {
 	switch {
-	case Active(Device, ""):
+	case device.IsActive():
 		return Device
-	case Active(Monitor, ""):
+	case monitor.IsActive():
 		return Monitor
-	case Active(Window, ""):
+	case window.IsActive():
 		return Window
 	default:
 		return Unknown
 	}
 }
 
-func Capture() (img *image.RGBA, err error) {
+func Capture() (*image.RGBA, error) {
 	if device.IsActive() {
 		return device.Capture()
 	}
 
-	if monitor.IsDisplay() {
+	if monitor.IsActive() {
 		return monitor.Capture()
 	}
 
-	img, err = window.Capture()
-	if err != nil {
-		return monitor.Capture()
+	if window.IsActive() {
+		return window.Capture()
 	}
 
-	return nil, fmt.Errorf("failed to capture video: exhausted attempts")
+	return nil, fmt.Errorf("failed to capture video: exhausted sources")
 }
 
-func CaptureRect(rect image.Rectangle) (img *image.RGBA, err error) {
+func CaptureRect(r image.Rectangle) (*image.RGBA, error) {
 	if device.IsActive() {
-		return device.CaptureRect(rect)
+		return device.CaptureRect(r)
 	}
 
-	if monitor.IsDisplay() {
-		return monitor.Capture()
+	if monitor.IsActive() {
+		return monitor.CaptureRect(r)
 	}
 
-	return window.Capture()
+	if window.IsActive() {
+		return window.CaptureRect(r)
+	}
+
+	return nil, fmt.Errorf("failed to capture video area: exhausted sources")
 }
 
 func Close() {
@@ -92,7 +91,7 @@ func FPS() float64 {
 	switch {
 	case device.IsActive():
 		return device.FPS()
-	case window.IsOpen():
+	case window.IsActive():
 		return -1
 	default:
 		return -1
@@ -128,7 +127,7 @@ func Resolution() string {
 	switch {
 	case device.IsActive():
 		return device.Resolution()
-	case window.IsOpen():
+	case window.IsActive():
 		return window.Resolution()
 	default:
 		return monitor.Resolution()
@@ -137,6 +136,10 @@ func Resolution() string {
 
 func Screens() []string {
 	return monitor.Sources
+}
+
+func (s Source) String() string {
+	return string(s)
 }
 
 func StateArea() image.Rectangle {
@@ -158,5 +161,9 @@ func StateArea() image.Rectangle {
 }
 
 func Windows() []string {
-	return window.Sources
+	s := []string{}
+	for _, w := range window.Sources {
+		s = append(s, w.Title)
+	}
+	return s
 }

@@ -2,6 +2,7 @@ package ui
 
 import (
 	"image"
+	"runtime"
 	"time"
 	"unsafe"
 
@@ -139,7 +140,6 @@ func New() *GUI {
 
 	notify.Debug("[UI] Minimum window size set to %dx%d", min.X, min.Y)
 
-	UI.next(is.Loading)
 	go UI.loading()
 
 	return UI
@@ -152,7 +152,7 @@ func Close() {
 }
 
 func (g *GUI) Close() {
-	g.next(is.Closing)
+	is.Set(is.Closing)
 }
 
 func (g *GUI) OnClose(fn func()) *GUI {
@@ -161,20 +161,24 @@ func (g *GUI) OnClose(fn func()) *GUI {
 }
 
 func (g *GUI) Open() {
-	g.next(is.MainMenu)
+	is.Set(is.MainMenu)
 
 	go func() {
-		g.open = true
+		runtime.LockOSThread()
+		defer runtime.UnlockOSThread()
 
+		g.open = true
 		defer g.onClose()
 
-		for is.Now != is.Closing {
-			switch is.Now {
-			case is.Loading:
+		for {
+			switch {
+			case is.Currently(is.Closing):
+				return
+			case is.Currently(is.Loading):
 				notify.Debug("[UI] Loading...")
-			case is.MainMenu:
+			case is.Currently(is.MainMenu):
 				g.main()
-			case is.Configuring:
+			case is.Currently(is.Configuring):
 				g.configure()
 			default:
 				g.ToastErrorf("Unexpected configuration, shutting down")
@@ -185,11 +189,9 @@ func (g *GUI) Open() {
 
 	go g.proc()
 
-	if is.Now == is.Closing {
-		return
+	if !is.Currently(is.Closing) {
+		app.Main()
 	}
-
-	app.Main()
 }
 
 func (g *GUI) attachWindowLeft(hwnd uintptr, width int) {
@@ -295,11 +297,6 @@ func (g *GUI) moveWindow(shift image.Point) {
 	}()
 }
 
-func (g *GUI) next(i is.What) {
-	notify.Debug("[UI] Next state set to \"%s\"", i)
-	is.Now = i
-}
-
 func (g *GUI) position() image.Point {
 	r := &wapi.Rect{}
 	wapi.GetWindowRect.Call(g.HWND, uintptr(unsafe.Pointer(r)))
@@ -309,7 +306,7 @@ func (g *GUI) position() image.Point {
 func (g *GUI) proc() {
 	peak := struct{ cpu, ram float64 }{}
 
-	for ; is.Now != is.Closing; time.Sleep(time.Second) {
+	for ; !is.Currently(is.Closing); time.Sleep(time.Second) {
 		g.performance.uptime = process.Uptime()
 
 		if process.Usage.RAM.Float64() > peak.ram+100 {

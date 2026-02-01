@@ -193,7 +193,7 @@ func (n NRGBA) Windows(s string) string {
 	// Bucket hue into color names.
 	switch {
 	case hue < 15 || hue >= 345:
-		return f("97m")
+		return f("91m")
 	case hue < 45:
 		return f("31m")
 	case hue < 75:

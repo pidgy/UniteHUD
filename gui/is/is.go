@@ -1,18 +1,25 @@
 package is
 
-type What int
+type what int
 
 const (
-	Closing What = iota
+	Closing what = iota
 	Loading
 	MainMenu
 	Configuring
-	Display
 )
 
-var Now What = Loading
+var now what = Loading
 
-func (w What) String() string {
+func Currently(w what) bool {
+	return now == w
+}
+
+func Set(w what) {
+	now = w
+}
+
+func (w what) String() string {
 	switch w {
 	case Closing:
 		return "Closing"
@@ -21,7 +28,7 @@ func (w What) String() string {
 	case MainMenu:
 		return "Main Menu"
 	case Configuring:
-		return "Projector Menu"
+		return "Configuring"
 	}
 	return "Unknown State"
 }

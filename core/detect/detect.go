@@ -259,7 +259,7 @@ func Objectives() {
 				notify.Warn("[Detect] Missed Regidrago secure...")
 				if exe.Debug {
 					if exe.Debug {
-						err := save.PNG(img, "%s/regidrago_miss_%s.png", save.Directory, time.Now().Format("15-04-05"))
+						err := save.PNG(img, "%s/img/regidrago_miss_%s.png", save.Directory, save.KitchenTime())
 						if err != nil {
 							notify.Error("[Detect] Failed to save kyogre miss (%v)", err)
 						}
@@ -323,7 +323,7 @@ func Objectives() {
 				if r != match.Found {
 					notify.Warn("[Detect] Missed Kyogre secure...")
 					if exe.Debug {
-						err := save.PNG(img, "%s/kyogre_miss_%s.png", save.Directory, time.Now().Format("15-04-05"))
+						err := save.PNG(img, "%s/img/kyogre_miss_%s.png", save.Directory, save.KitchenTime())
 						if err != nil {
 							notify.Error("[Detect] Failed to save Kyogre miss (%v)", err)
 						}

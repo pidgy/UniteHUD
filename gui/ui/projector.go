@@ -143,7 +143,7 @@ func (g *GUI) projector(onclose func()) {
 	capResolution := "0x0"
 
 	for {
-		if is.Now != is.MainMenu {
+		if !is.Currently(is.MainMenu) {
 			ui.window.Perform(system.ActionClose)
 		}
 
@@ -192,7 +192,7 @@ func (g *GUI) projector(onclose func()) {
 											img, err := video.Capture()
 											if err != nil {
 												g.ToastError(err)
-												g.next(is.MainMenu)
+												is.Set(is.MainMenu)
 											}
 
 											ui.imgDims = widget.Image{
@@ -346,7 +346,8 @@ func (g *GUI) projectorUI() *projector {
 	ui.nav.overlay = &button.Widget{
 		Text:            "⛶×",
 		Font:            ui.nav.NishikiTeki(),
-		OnHoverHint:     func() { ui.nav.Tip("Hide UniteHUD Overlay HUD") },
+		OnHoverHint:     ui.nav.Tip,
+		Hint:            "Hide UniteHUD Overlay HUD",
 		Released:        nrgba.Transparent80,
 		Pressed:         nrgba.SilverPurple,
 		TextSize:        unit.Sp(16),
@@ -357,11 +358,11 @@ func (g *GUI) projectorUI() *projector {
 			defer this.Deactivate()
 
 			if this.Radio {
-				this.OnHoverHint = func() { ui.nav.Tip("Show UniteHUD Overlay HUD") }
+				this.Hint = "Show UniteHUD Overlay HUD"
 				this.Text = "⛶"
 				this.Radio = false
 			} else {
-				this.OnHoverHint = func() { ui.nav.Tip("Hide UniteHUD Overlay HUD") }
+				this.Hint = "Hide UniteHUD Overlay HUD"
 				this.Text = "⛶×"
 				this.Radio = true
 			}
@@ -372,7 +373,8 @@ func (g *GUI) projectorUI() *projector {
 	ui.nav.stats = &button.Widget{
 		Text:            "fps",
 		Font:            ui.nav.NishikiTeki(),
-		OnHoverHint:     func() { ui.nav.Tip("Show FPS values on UniteHUD Overlay HUD") },
+		OnHoverHint:     ui.nav.Tip,
+		Hint:            "Show FPS values on UniteHUD Overlay HUD",
 		Released:        nrgba.Transparent80,
 		Pressed:         nrgba.DreamyBlue,
 		TextSize:        unit.Sp(12),
@@ -382,12 +384,12 @@ func (g *GUI) projectorUI() *projector {
 			defer this.Deactivate()
 
 			if this.Radio {
-				this.OnHoverHint = func() { ui.nav.Tip("Show FPS values on UniteHUD Overlay HUD") }
+				this.Hint = "Show FPS values on UniteHUD Overlay HUD"
 				this.Radio = false
 				this.Pressed = nrgba.DreamyBlue
 				this.Released = nrgba.Transparent80
 			} else {
-				this.OnHoverHint = func() { ui.nav.Tip("Hide FPS values on UniteHUD Overlay HUD") }
+				this.Hint = "Hide FPS values on UniteHUD Overlay HUD"
 				this.Radio = true
 				this.Pressed = nrgba.Transparent80
 				this.Released = nrgba.DreamyBlue.Alpha(80)
@@ -399,7 +401,8 @@ func (g *GUI) projectorUI() *projector {
 	ui.nav.alwaysOnTop = &button.Widget{
 		Text:            "📌",
 		Font:            ui.nav.NishikiTeki(),
-		OnHoverHint:     func() { ui.nav.Tip("Show UniteHUD Overlay HUD above all windows") },
+		OnHoverHint:     ui.nav.Tip,
+		Hint:            "Show UniteHUD Overlay HUD above all windows",
 		Released:        nrgba.Transparent80,
 		Pressed:         nrgba.Lilac,
 		TextSize:        unit.Sp(16),
@@ -409,12 +412,12 @@ func (g *GUI) projectorUI() *projector {
 			defer this.Deactivate()
 
 			if this.Radio {
-				this.OnHoverHint = func() { ui.nav.Tip("Show UniteHUD Overlay HUD above all windows") }
+				this.Hint = "Show UniteHUD Overlay HUD above all windows"
 				this.Text = "📌"
 				this.Radio = false
 				wapi.SetWindowNotAlwaysOnTop(ui.hwnd)
 			} else {
-				this.OnHoverHint = func() { ui.nav.Tip("Hide UniteHUD Overlay HUD under active windows") }
+				this.Hint = "Hide UniteHUD Overlay HUD under active windows"
 				this.Text = "📌×"
 				this.Radio = true
 				wapi.SetWindowAlwaysOnTop(ui.hwnd)

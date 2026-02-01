@@ -83,12 +83,20 @@ func (g *GUI) ToastError(err error) {
 	g.previous.toast.err = err
 	g.previous.toast.time = time.Now()
 
-	t := g.makeToastForce("Error", err.Error(), float32(400), float32(125))
+	t := g.makeToastForce("Error", err.Error(), 400, 125)
 	if t == nil {
 		notify.Error("[UI] Toast: Failed to show error: %v", err)
 		return
 	}
 	defer t.close()
+
+	if len(err.Error()) > 100 {
+		t.window.Option(
+			app.Size(unit.Dp(600), unit.Dp(125)),
+			app.MinSize(unit.Dp(600), unit.Dp(125)),
+			app.MaxSize(unit.Dp(600), unit.Dp(125)),
+		)
+	}
 
 	g.toastOK(t, nil)
 }

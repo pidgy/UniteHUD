@@ -29,8 +29,9 @@ type Widget struct {
 	label material.LabelStyle
 
 	Hint        string
-	OnHoverHint func()
-	Font        *fonts.Style
+	OnHoverHint func(string)
+
+	Font *fonts.Style
 
 	BorderWidth  unit.Sp
 	NoBorder     bool
@@ -47,8 +48,8 @@ type Widget struct {
 	Click       func(this *Widget)
 	SingleClick bool // Toggle the Active field on Click events.
 
-	hover bool
-	alpha uint8
+	hover, wasHover bool
+	alpha           uint8
 
 	inset layout.Inset
 	set   bool
@@ -104,6 +105,7 @@ func (b *Widget) Layout(gtx layout.Context) layout.Dimensions {
 			case pointer.Cancel:
 				cursor.Is(pointer.CursorDefault)
 
+				b.wasHover = b.hover
 				b.hover = false
 				b.Deactivate()
 			case pointer.Enter:
@@ -134,6 +136,7 @@ func (b *Widget) Layout(gtx layout.Context) layout.Dimensions {
 					b.Deactivate()
 				}
 			case pointer.Leave:
+				b.wasHover = b.hover
 				b.hover = false
 
 				cursor.Is(pointer.CursorDefault)
@@ -178,8 +181,14 @@ func (b *Widget) Layout(gtx layout.Context) layout.Dimensions {
 }
 
 func (b *Widget) HoverHint() {
-	if b.hover && b.OnHoverHint != nil {
-		b.OnHoverHint()
+	switch {
+	case b.OnHoverHint == nil:
+		return
+	case b.hover:
+		b.OnHoverHint(b.Hint)
+	case b.wasHover:
+		b.wasHover = false
+		b.OnHoverHint("")
 	}
 }
 

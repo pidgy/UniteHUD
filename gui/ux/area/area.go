@@ -345,7 +345,7 @@ func (a *Widget) match() error {
 		a.readyq <- true
 	}
 
-	if !device.IsActive() && !monitor.IsDisplay() && !window.IsOpen() {
+	if !device.IsActive() && !monitor.IsActive() && !window.IsActive() {
 		return nil
 	}
 

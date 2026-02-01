@@ -150,6 +150,10 @@ func PNG(img image.Image, format string, a ...any) error {
 	return png.Encode(f, img)
 }
 
+func KitchenTime() string {
+	return time.Now().Format("15_04_05")
+}
+
 func createAllIfNotExist() (string, error) {
 	d, err := createTmpIfNotExist()
 	if err != nil {

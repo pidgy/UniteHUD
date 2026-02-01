@@ -1,6 +1,6 @@
 module github.com/pidgy/unitehud
 
-go 1.21
+go 1.25
 
 // Stable
 // gioui          v0.0.0-20220113184748-9209fd91431f
@@ -16,7 +16,6 @@ require (
 	github.com/google/go-cmp v0.6.0
 	github.com/google/uuid v1.4.0
 	github.com/guptarohit/asciigraph v0.5.6
-	github.com/kbinani/screenshot v0.0.0-20230812210009-b87d31814237
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646 // indirect
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/rupor-github/win-gpg-agent v1.6.3
@@ -37,11 +36,8 @@ require (
 require (
 	gioui.org/cpu v0.0.0-20220412190645-f1e9e8c3b1f7 // indirect
 	gioui.org/shader v1.0.8 // indirect
-	github.com/gen2brain/shm v0.1.0 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-text/typesetting v0.0.0-20231202102523-0024ac628562 // indirect
-	github.com/jezek/xgb v1.1.1 // indirect
-	github.com/lxn/win v0.0.0-20210218163916-a377121e959e // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/stretchr/testify v1.8.4 // indirect

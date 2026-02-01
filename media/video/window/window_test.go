@@ -1,6 +1,7 @@
 package window
 
 import (
+	"fmt"
 	"image/png"
 	"os"
 	"testing"
@@ -20,22 +21,25 @@ func TestList(t *testing.T) {
 		t.Fatal("failed to find windows")
 	}
 
-	config.Current.Video.Capture.Window.Name = Sources[1]
-	img, err := Capture()
-	if err != nil {
-		t.Fatal(err)
-	}
+	config.Current.Video.Capture.Window.Name = Sources[1].Title
 
-	t.Logf("%s: %s", config.Current.Video.Capture.Window.Name, img.Bounds())
+	for i := 0; i < 5; i++ {
+		img, err := Capture()
+		if err != nil {
+			t.Fatal(err)
+		}
 
-	f, err := os.Create("window.png")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer f.Close()
+		t.Logf("%s: %s", config.Current.Video.Capture.Window.Name, img.Bounds())
 
-	err = png.Encode(f, img)
-	if err != nil {
-		t.Fatal(err)
+		f, err := os.Create(fmt.Sprintf("window_%d.png", i))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer f.Close()
+
+		err = png.Encode(f, img)
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 }

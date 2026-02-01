@@ -540,24 +540,6 @@ func SetRegieleki(t *team.Team) {
 	current.State.Regilekis[2] = team.None.Name
 }
 
-// SetRegielekiAt assumes n to be an index starting at 0.
-func SetRegielekiAt(t *team.Team, n int) {
-	op := fmt.Sprintf("[%s] Regieleki #%d", lang.Title(t.Name), n+1)
-
-	switch {
-	case n != 0 && current.State.Regilekis[n-1] == team.None.Name:
-		notify.Warn("[Server] %s illegal operation (missing previous)", op)
-	case current.State.Regilekis[n] != t.Name:
-		notify.Unique(t.NRGBA, "[Server] %s secure replaced", op)
-		current.State.Regilekis[n] = t.Name
-	case n+1 == len(current.State.Regilekis) || current.State.Regilekis[n+1] == team.None.Name:
-		notify.Unique(t.NRGBA, "[Server] %s reset", op)
-		current.State.Regilekis[n] = team.None.Name
-	default:
-		notify.Warn("[Server] %s illegal operation", op)
-	}
-}
-
 func SetRegirock(t *team.Team) {
 	current.Objectives = append(current.Objectives, Objective{
 		Team: t.Name,

@@ -535,6 +535,8 @@ func (g *GUI) videos(text float32) *videos {
 
 				v.populate()
 
+				v.onevent(false)
+
 				return true
 			},
 		},
@@ -583,6 +585,9 @@ func (g *GUI) videos(text float32) *videos {
 				if config.Current.Video.Capture.Window.Name == "" {
 					config.Current.Video.Capture.Window.Name = config.MainDisplay
 				}
+
+				v.onevent(false)
+
 				return true
 			},
 		},
@@ -642,7 +647,7 @@ func (g *GUI) videos(text float32) *videos {
 					Text:  "Disabled",
 					Value: config.NoVideoCaptureDevice,
 					Checked: widget.Bool{
-						Value: device.IsActive(),
+						Value: !device.IsActive(),
 					},
 				},
 			},
@@ -659,6 +664,7 @@ func (g *GUI) videos(text float32) *videos {
 					config.Current.Video.Capture.Device.API = config.DefaultVideoCaptureAPI
 					config.Current.Video.Capture.Device.Codec = config.DefaultVideoCaptureCodec
 					config.Current.Video.Capture.Window.Lost = ""
+					config.Current.Video.Capture.Window.Name = config.MainDisplay
 
 					err := video.Open()
 					if err != nil {
@@ -905,7 +911,7 @@ func (g *GUI) videos(text float32) *videos {
 			for _, c := range device.Codecs() {
 				v.codecs.list.Items = append(v.codecs.list.Items,
 					&checklist.Item{
-						Text: lang.Titled.String(c.String()),
+						Text: c.String(),
 						Checked: widget.Bool{
 							Value: strings.EqualFold(c.String(), config.Current.Video.Capture.Device.Codec),
 						},

@@ -17,6 +17,7 @@ import (
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/fonts"
 	"github.com/pidgy/unitehud/core/rgba/nrgba"
+	"github.com/pidgy/unitehud/exe"
 	"github.com/pidgy/unitehud/gui/cursor"
 	"github.com/pidgy/unitehud/gui/ux"
 	"github.com/pidgy/unitehud/gui/ux/button"
@@ -53,7 +54,6 @@ type decorations struct {
 
 	tip struct {
 		material.LabelStyle
-		set   bool
 		inset layout.Inset
 	}
 
@@ -102,10 +102,9 @@ func New(title string, minimize, resize, close func()) *Widget {
 			},
 			tip: struct {
 				material.LabelStyle
-				set   bool
 				inset layout.Inset
 			}{
-				LabelStyle: material.Label(collection.Calibri().Theme, tipTextSize, ""),
+				LabelStyle: material.Label(collection.Calibri().Theme, tipTextSize, exe.Version),
 			},
 			icon: struct {
 				widget.Image
@@ -182,9 +181,14 @@ func New(title string, minimize, resize, close func()) *Widget {
 		},
 	}
 
-	b.decorations.buttons.minimize.OnHoverHint = func() { b.Tip("Minimize") }
-	b.decorations.buttons.resize.OnHoverHint = func() { b.Tip("Resize") }
-	b.decorations.buttons.close.OnHoverHint = func() { b.Tip("Close") }
+	b.decorations.buttons.minimize.OnHoverHint = b.Tip
+	b.decorations.buttons.minimize.Hint = "Minimize"
+
+	b.decorations.buttons.resize.OnHoverHint = b.Tip
+	b.decorations.buttons.resize.Hint = "Resize"
+
+	b.decorations.buttons.close.OnHoverHint = b.Tip
+	b.decorations.buttons.close.Hint = "Close"
 
 	b.decorations.buttons.custom = append(b.decorations.buttons.custom,
 		&button.Widget{
@@ -196,7 +200,8 @@ func New(title string, minimize, resize, close func()) *Widget {
 			Pressed:         nrgba.NRGBA(config.Current.Theme.BackgroundAlt).Alpha(255),
 			NoBorder:        true,
 			SharpCorners:    true,
-			OnHoverHint:     func() { b.Tip("Additional options") },
+			OnHoverHint:     b.Tip,
+			Hint:            "Additional options",
 			TextInsetBottom: 1,
 			Click: func(this *button.Widget) {
 				defer this.Deactivate()
@@ -355,9 +360,18 @@ func (b *Widget) Layout(gtx layout.Context, content layout.Widget) layout.Dimens
 					}
 
 					dims := b.decorations.title.inset.Layout(gtx, b.decorations.title.Layout)
+
 					if !b.NoTip && b.decorations.tip.Text != "" {
-						b.decorations.tip.Text = "🗧" + b.decorations.tip.Text
-						dims = layout.Dimensions{Size: dims.Size.Add(b.decorations.tip.inset.Layout(gtx, b.decorations.tip.Layout).Size)}
+						inset := b.decorations.tip.inset
+						b.decorations.tip.TextSize = tipTextSize
+
+						if b.decorations.tip.Text == exe.Version {
+							b.decorations.tip.TextSize = tipTextSize * .95
+							inset.Left -= 2
+							inset.Top = 8
+						}
+
+						dims = layout.Dimensions{Size: dims.Size.Add(inset.Layout(gtx, b.decorations.tip.Layout).Size)}
 					}
 
 					return layout.Dimensions{Size: layout.Exact(image.Pt(dims.Size.X+iconDims.Size.X+10, bar.Max.Y)).Max}
@@ -416,7 +430,7 @@ func (b *Widget) Layout(gtx layout.Context, content layout.Widget) layout.Dimens
 		}),
 
 		layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-			b.decorations.tip.Text = ""
+			// b.decorations.tip.Text = ""
 			return content(gtx)
 		}),
 	)
@@ -477,7 +491,8 @@ func (b *Widget) Resize() {
 
 func (b *Widget) Tip(t string) {
 	if t == "" {
+		b.decorations.tip.Text = exe.Version
 		return
 	}
-	b.decorations.tip.Text = t
+	b.decorations.tip.Text = "🗧" + t
 }

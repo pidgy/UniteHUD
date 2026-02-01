@@ -66,7 +66,7 @@ type (
 var (
 	active = &dev{}
 
-	codecAny  = codec{"any"}
+	codecAny  = codec{"Any"}
 	codecXRGB = codec{"XRGB"}
 	codecNV12 = codec{"NV12"}
 	codecYUY2 = codec{"YUY2"}
@@ -97,22 +97,20 @@ var (
 func init() {
 	active.reset()
 
-	go func() {
-		if !exe.Debug {
-			return
-		}
+	if exe.Debug {
+		go func() {
+			last := captures
+			for range time.NewTicker(time.Minute).C {
+				if int(last) == int(captures) {
+					continue
+				}
 
-		last := captures
-		for range time.NewTicker(time.Minute).C {
-			if int(last) == int(captures) {
-				continue
+				notify.Debug("[Device] Captures per second: %.1f", captures/60)
+				last = captures
+				captures = 0
 			}
-
-			notify.Debug("[Device] Captures per second: %.1f", captures/60)
-			last = captures
-			captures = 0
-		}
-	}()
+		}()
+	}
 
 	go func() {
 		// vrt := gocv.VideoRegistryType{}

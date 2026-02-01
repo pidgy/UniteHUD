@@ -205,16 +205,9 @@ func configuration() {
 		for ; ; time.Sleep(time.Second) {
 			gdev.SetTitle(fmt.Sprintf("Device\t%s", lang.Title(config.Current.Gaming.Device)))
 
-			switch {
-			case video.Active(video.Device, ""):
-				vdev.SetTitle(fmt.Sprintf("Device\t%s", config.Current.Video.Capture.Device.Name))
-			case video.Active(video.Monitor, ""):
-				vdev.SetTitle(fmt.Sprintf("Monitor\t%s", config.Current.Video.Capture.Window.Name))
-			case video.Active(video.Window, ""):
-				vdev.SetTitle(fmt.Sprintf("Window\t%s", config.Current.Video.Capture.Window.Name))
-			}
+			vdev.SetTitle(fmt.Sprintf("%s\t%s", video.Current(), video.Name()))
 
-			api.SetTitle(fmt.Sprintf("API\t%s", config.Current.Video.Capture.Device.API))
+			api.SetTitle(fmt.Sprintf("API\t%s", lang.Title(config.Current.Video.Capture.Device.API)))
 			codec.SetTitle(fmt.Sprintf("Codec\t%s", config.Current.Video.Capture.Device.Codec))
 			fps.SetTitle(fmt.Sprintf("FPS\t%.1f/%d", device.FPS(), config.Current.Video.Capture.Device.FPS))
 
