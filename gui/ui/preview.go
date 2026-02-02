@@ -215,7 +215,7 @@ func (g *GUI) preview(a *areas, onclose func()) *preview {
 																if cap.MatchedColor != nrgba.Nothing.Color() {
 																	ui.labels.capture.Color = cap.MatchedColor
 																} else {
-																	decorate.Label(&ui.labels.capture, ui.labels.capture.Text)
+																	decorate.Label(&ui.labels.capture, "%s", ui.labels.capture.Text)
 																}
 
 																return ui.labels.capture.Layout(gtx)

@@ -112,12 +112,12 @@ func Open() error {
 
 	err := device.Open()
 	if err != nil {
-		notify.Error("[Video] <ini:f:open> video capture device library")
+		notify.Error("[Video] <ini:f:open> video capture device (%v)", err)
 	}
 
 	err = window.Open()
 	if err != nil {
-		notify.Error("[Video] <ini:f:open> window capture library")
+		notify.Error("[Video] <ini:f:open> window capture library (%v)", err)
 	}
 
 	return err

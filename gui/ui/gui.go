@@ -89,7 +89,12 @@ func New() *GUI {
 	notify.Debug("[UI] Taskbar Height: %d", monitor.TaskbarHeight())
 
 	UI = &GUI{
-		window: app.NewWindow(app.Title(exe.Title), app.Decorated(false)),
+		window: app.NewWindow(
+			app.Title(exe.Title),
+			app.Decorated(false),
+			app.Size(unit.Dp(min.X), unit.Dp(min.Y)),
+			app.WindowMode.Option(app.Windowed),
+		),
 
 		HWND: 0,
 
@@ -152,7 +157,7 @@ func Close() {
 }
 
 func (g *GUI) Close() {
-	is.Set(is.Closing)
+	is.Next(is.Closing)
 }
 
 func (g *GUI) OnClose(fn func()) *GUI {
@@ -161,7 +166,7 @@ func (g *GUI) OnClose(fn func()) *GUI {
 }
 
 func (g *GUI) Open() {
-	is.Set(is.MainMenu)
+	is.Next(is.MainMenu)
 
 	go func() {
 		runtime.LockOSThread()

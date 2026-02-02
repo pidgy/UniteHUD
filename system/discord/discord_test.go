@@ -11,7 +11,7 @@ import (
 )
 
 func TestStatus(t *testing.T) {
-	is.Set(is.MainMenu)
+	is.Next(is.MainMenu)
 	server.SetReady()
 	server.SetMatchStarted()
 

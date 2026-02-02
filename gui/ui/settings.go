@@ -255,35 +255,51 @@ func (g *GUI) settingsUI() *settings {
 		},
 	}
 
+	accessibilityItems := []*checklist.Item{
+		{
+			Text:    "Reduced Font Colors",
+			Checked: widget.Bool{Value: config.Current.Advanced.Accessibility.ReducedFontColors},
+			Callback: func(this *checklist.Item) {
+				config.Current.Advanced.Accessibility.ReducedFontColors = !config.Current.Advanced.Accessibility.ReducedFontColors
+			},
+		},
+		{
+			Text:    "Reduced Font Graphics",
+			Checked: widget.Bool{Value: config.Current.Advanced.Accessibility.ReducedFontGraphics},
+			Callback: func(this *checklist.Item) {
+				config.Current.Advanced.Accessibility.ReducedFontGraphics = !config.Current.Advanced.Accessibility.ReducedFontGraphics
+			},
+		},
+		{
+			Text:    "Show Complete Event History",
+			Checked: widget.Bool{Value: config.Current.Advanced.Accessibility.ShowCompleteEventHistory},
+			Callback: func(this *checklist.Item) {
+				config.Current.Advanced.Accessibility.ShowCompleteEventHistory = !config.Current.Advanced.Accessibility.ShowCompleteEventHistory
+			},
+		},
+	}
+
+	if exe.Debug {
+		accessibilityItems = append(accessibilityItems,
+			&checklist.Item{
+				Text:    "Colorized Terminal Logs",
+				Hint:    "Supported terminals only, like Windows Terminal",
+				Checked: widget.Bool{Value: config.Current.Advanced.Accessibility.ColorizedTerminalLogs},
+				Callback: func(this *checklist.Item) {
+					config.Current.Advanced.Accessibility.ColorizedTerminalLogs = !config.Current.Advanced.Accessibility.ColorizedTerminalLogs
+					notify.Disabled.DebugColors = !config.Current.Advanced.Accessibility.ColorizedTerminalLogs
+				},
+			},
+		)
+	}
+
 	ui.sections.accessibility = &section{
 		title:       material.Label(ui.bar.Collection.Calibri().Theme, 14, "🦾 Accessibility"),
 		description: material.Caption(ui.bar.Collection.Calibri().Theme, "Adjust options for accessibility"),
 		widget: &checklist.Widget{
 			Theme:    ui.bar.Collection.NotoSans().Theme,
 			TextSize: 12,
-			Items: []*checklist.Item{
-				{
-					Text:    "Reduced Font Colors",
-					Checked: widget.Bool{Value: config.Current.Advanced.Accessibility.ReducedFontColors},
-					Callback: func(this *checklist.Item) {
-						config.Current.Advanced.Accessibility.ReducedFontColors = !config.Current.Advanced.Accessibility.ReducedFontColors
-					},
-				},
-				{
-					Text:    "Reduced Font Graphics",
-					Checked: widget.Bool{Value: config.Current.Advanced.Accessibility.ReducedFontGraphics},
-					Callback: func(this *checklist.Item) {
-						config.Current.Advanced.Accessibility.ReducedFontGraphics = !config.Current.Advanced.Accessibility.ReducedFontGraphics
-					},
-				},
-				{
-					Text:    "Show Complete Event History",
-					Checked: widget.Bool{Value: config.Current.Advanced.Accessibility.ShowCompleteEventHistory},
-					Callback: func(this *checklist.Item) {
-						config.Current.Advanced.Accessibility.ShowCompleteEventHistory = !config.Current.Advanced.Accessibility.ShowCompleteEventHistory
-					},
-				},
-			},
+			Items:    accessibilityItems,
 		},
 	}
 
@@ -725,10 +741,10 @@ func (s *section) section(gtx layout.Context) layout.Dimensions {
 
 	s.title.Font.Weight = font.Black
 
-	decorate.Label(&s.title, s.title.Text)
+	decorate.Label(&s.title, "%s", s.title.Text)
 	decorate.LabelAlpha(&s.title, 150)
 
-	decorate.Label(&s.description, s.description.Text)
+	decorate.Label(&s.description, "%s", s.description.Text)
 
 	children := []layout.FlexChild{
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
@@ -825,11 +841,11 @@ func (s *settings) close() {
 	}
 }
 
-func (s *settings) fill() layout.FlexChild {
-	return layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-		return layout.Dimensions{Size: gtx.Constraints.Max}
-	})
-}
+// func (s *settings) fill() layout.FlexChild {
+// 	return layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+// 		return layout.Dimensions{Size: gtx.Constraints.Max}
+// 	})
+// }
 
 func (s *settings) isOpen() bool {
 	return s != nil

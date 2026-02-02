@@ -16,7 +16,6 @@ import (
 
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/rgba/nrgba"
-	"github.com/pidgy/unitehud/exe"
 	"github.com/pidgy/unitehud/gui/cursor"
 	"github.com/pidgy/unitehud/gui/is"
 	"github.com/pidgy/unitehud/gui/ux/decorate"
@@ -31,7 +30,7 @@ type loading struct {
 }
 
 func (g *GUI) loading() {
-	is.Set(is.Loading)
+	is.Next(is.Loading)
 
 	ui := &loading{
 		message: "Loading...",
@@ -44,12 +43,10 @@ func (g *GUI) loading() {
 	height := 440
 
 	g.window.Option(
-		app.Title(exe.Title),
 		app.Size(unit.Dp(width), unit.Dp(height)),
-		// app.MaxSize(unit.Dp(width), unit.Dp(height)),
 		app.MinSize(unit.Dp(width), unit.Dp(height)),
-		app.WindowMode.Option(app.Windowed),
-		app.Decorated(false),
+		// app.MaxSize(unit.Dp(width), unit.Dp(height)),
+		// app.MinSize(unit.Dp(width), unit.Dp(height)),
 	)
 
 	cursor.Is(pointer.CursorProgress)
@@ -64,6 +61,11 @@ func (g *GUI) loading() {
 	g.window.Perform(system.ActionCenter)
 	g.window.Perform(system.ActionRaise)
 
+	img := widget.Image{
+		Src:   paint.NewImageOp(splash.Loading()),
+		Scale: .9,
+	}
+
 	for is.Currently(is.Loading) {
 		switch event := g.window.NextEvent().(type) {
 		case app.ViewEvent:
@@ -72,23 +74,16 @@ func (g *GUI) loading() {
 				tray.SetHWND(g.HWND)
 			}
 		case system.DestroyEvent:
-			is.Set(is.Closing)
+			is.Next(is.Closing)
 			return
 		case system.FrameEvent:
 			gtx := layout.NewContext(&ui.ops, event)
-			op.InvalidateOp{}.Add(gtx.Ops)
+
+			decorate.BackgroundColor(gtx, nrgba.Splash)
 
 			cursor.Draw(gtx)
 
-			layout.Stack{}.Layout(gtx,
-				layout.Expanded(func(gtx layout.Context) layout.Dimensions {
-					return widget.Image{
-						Src:   paint.NewImageOp(splash.Loading()),
-						Scale: float32(splash.Loading().Bounds().Dx()) / float32(gtx.Constraints.Max.X),
-						Fit:   widget.Cover,
-					}.Layout(gtx)
-				}),
-			)
+			layout.Center.Layout(gtx, img.Layout)
 
 			if dims.Size.X == 0 {
 				dims = messageLabel.Layout(gtx)
@@ -108,6 +103,9 @@ func (g *GUI) loading() {
 			})
 
 			g.frame(gtx, event)
+
+			g.window.Perform(system.ActionCenter)
+			g.window.Perform(system.ActionRaise)
 		default:
 			notify.Missed(event, "Loading")
 		}

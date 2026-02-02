@@ -79,7 +79,7 @@ func (g *GUI) ToastError(err error) {
 		return
 	}
 
-	err = fmt.Errorf(ini.Format(err.Error()))
+	err = fmt.Errorf("%s", ini.Format(err.Error()))
 	g.previous.toast.err = err
 	g.previous.toast.time = time.Now()
 
@@ -141,7 +141,7 @@ func (g *GUI) ToastNewsletter(header string, bulletin bulletin, c toastOnClose) 
 	topic := func(i int) (topics []layout.FlexChild) {
 		topics = append(topics, layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 			subtitle := material.Label(t.nav.Calibri().Theme, toastTextSize, bulletin.Topics[i].Subtitle)
-			decorate.Label(&subtitle, subtitle.Text)
+			decorate.Label(&subtitle, "%s", subtitle.Text)
 			subtitle.TextSize = toastTextSize * 1.25
 			subtitle.Font.Weight = font.Bold
 			return subtitle.Layout(gtx)
@@ -149,12 +149,12 @@ func (g *GUI) ToastNewsletter(header string, bulletin bulletin, c toastOnClose) 
 
 		point := func(p string) layout.FlexChild {
 			return layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-				p := material.Label(t.nav.Calibri().Theme, toastTextSize, fmt.Sprintf("⬥ %s", p))
-				decorate.Label(&p, p.Text)
-				p.Font.Style = font.Italic
-				p.Alignment = text.Start
-				p.Font.Weight = font.Thin
-				return p.Layout(gtx)
+				l := material.Label(t.nav.Calibri().Theme, toastTextSize, "")
+				decorate.Label(&l, "⬥ %s", p)
+				l.Font.Style = font.Italic
+				l.Alignment = text.Start
+				l.Font.Weight = font.Thin
+				return l.Layout(gtx)
 			})
 		}
 
@@ -213,7 +213,7 @@ func (g *GUI) ToastNewsletter(header string, bulletin bulletin, c toastOnClose) 
 
 								layout.Flexed(.2, func(gtx layout.Context) layout.Dimensions {
 									return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-										return decorate.Underline(gtx, decorate.Label(&t.label, t.label.Text).Layout)
+										return decorate.Underline(gtx, decorate.Label(&t.label, "%s", t.label.Text).Layout)
 									})
 								}),
 
@@ -447,7 +447,7 @@ func (g *GUI) ToastYesNoRemember(header, msg, decision string, y toastOnYes, n t
 						layout.Rigid(layout.Spacer{Height: 10}.Layout),
 
 						layout.Flexed(.5, func(gtx layout.Context) layout.Dimensions {
-							return layout.Center.Layout(gtx, decorate.Label(&t.label, t.label.Text).Layout)
+							return layout.Center.Layout(gtx, decorate.Label(&t.label, "%s", t.label.Text).Layout)
 						}),
 
 						remember(),
@@ -541,6 +541,14 @@ func (g *GUI) toastOK(t *toast, ok toastOnOK) {
 	notify.Debug("[UI] Toast: Opening OK \"%s\"", t.label.Text)
 	defer notify.Debug("[UI] Toast: Closing OK: \"%s\"", t.label.Text)
 
+	if len(t.label.Text) > 50 {
+		t.window.Option(
+			app.Size(unit.Dp(600), unit.Dp(125)),
+			app.MinSize(unit.Dp(600), unit.Dp(125)),
+			app.MaxSize(unit.Dp(600), unit.Dp(125)),
+		)
+	}
+
 	okButton := &button.Widget{
 		Text:            "OK",
 		TextSize:        unit.Sp(16),
@@ -580,7 +588,7 @@ func (g *GUI) toastOK(t *toast, ok toastOnOK) {
 						layout.Rigid(layout.Spacer{Height: 10}.Layout),
 
 						layout.Flexed(.5, func(gtx layout.Context) layout.Dimensions {
-							decorate.Label(&t.label, t.label.Text)
+							decorate.Label(&t.label, "%s", t.label.Text)
 							return layout.Center.Layout(gtx, t.label.Layout)
 						}),
 

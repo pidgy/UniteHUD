@@ -2,6 +2,7 @@ package title
 
 import (
 	"image"
+	"strings"
 	"time"
 
 	"gioui.org/f32"
@@ -224,6 +225,10 @@ func New(title string, minimize, resize, close func()) *Widget {
 	b.decorations.tip.Font.Weight = font.ExtraLight
 	b.decorations.tip.Font.Style = font.Italic
 
+	if exe.Debug {
+		b.decorations.tip.Text += " Debug"
+	}
+
 	return b
 }
 
@@ -365,7 +370,7 @@ func (b *Widget) Layout(gtx layout.Context, content layout.Widget) layout.Dimens
 						inset := b.decorations.tip.inset
 						b.decorations.tip.TextSize = tipTextSize
 
-						if b.decorations.tip.Text == exe.Version {
+						if strings.Contains(b.decorations.tip.Text, exe.Version) {
 							b.decorations.tip.TextSize = tipTextSize * .95
 							inset.Left -= 2
 							inset.Top = 8
@@ -492,6 +497,9 @@ func (b *Widget) Resize() {
 func (b *Widget) Tip(t string) {
 	if t == "" {
 		b.decorations.tip.Text = exe.Version
+		if exe.Debug {
+			b.decorations.tip.Text += " Debug"
+		}
 		return
 	}
 	b.decorations.tip.Text = "🗧" + t

@@ -15,7 +15,7 @@ func Currently(w what) bool {
 	return now == w
 }
 
-func Set(w what) {
+func Next(w what) {
 	now = w
 }
 

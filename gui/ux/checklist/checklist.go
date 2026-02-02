@@ -29,6 +29,8 @@ type Item struct {
 	check material.CheckBoxStyle
 
 	hovered bool
+
+	hintLabel material.LabelStyle
 }
 
 type Widget struct {
@@ -42,19 +44,23 @@ type Widget struct {
 	liststyle material.ListStyle
 }
 
-func (item *Item) hint(gtx layout.Context, theme *material.Theme) (layout.Dimensions, bool) {
+func (item *Item) hint(gtx layout.Context, theme *material.Theme) layout.Dimensions {
 	if item.Hint == "" {
-		return layout.Dimensions{}, false
+		return layout.Dimensions{}
 	}
 
-	label := material.Label(
-		theme,
-		item.check.TextSize*unit.Sp(.9),
-		item.Hint,
-	)
-	label.Color = nrgba.Transparent80.Color()
+	if item.hintLabel.Text == "" {
+		item.hintLabel = material.Label(
+			theme,
+			item.check.TextSize*.9,
+			item.Hint,
+		)
+		item.hintLabel.Color = theme.ContrastFg
+		item.hintLabel.Font.Style = font.Italic
+		item.hintLabel.Font.Weight = font.Light
+	}
 
-	return label.Layout(gtx), true
+	return layout.Inset{Top: 20, Left: item.check.Size * 1.5, Bottom: -20}.Layout(gtx, item.hintLabel.Layout)
 }
 
 func (l *Widget) Default() *Item {
@@ -73,21 +79,16 @@ func (list *Widget) Layout(gtx layout.Context) layout.Dimensions {
 			item := list.Items[index]
 			list.defaultCheckBox(item)
 
-			if !item.Checked.Update(gtx) {
-				return list.draw(gtx, item)
-			}
-
-			if item.Disabled {
+			switch {
+			case !item.Checked.Update(gtx):
+			case item.Disabled:
 				item.Checked.Value = false
 				item.Callback(item)
-
-				return list.draw(gtx, item)
+			default:
+				item.Callback(item)
+				list.Callback(item, list)
+				list.radio(item)
 			}
-
-			item.Callback(item)
-			list.Callback(item, list)
-
-			list.radio(item)
 
 			return list.draw(gtx, item)
 		},
@@ -183,17 +184,16 @@ func (list *Widget) draw(gtx layout.Context, item *Item) layout.Dimensions {
 		list.unhovered(item)
 	}
 
-	d, ok := item.hint(gtx, list.Theme)
-	if ok {
-		return d
-	}
-
-	return layout.E.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-		dim := item.check.Layout(gtx)
-		dim.Size.X = gtx.Constraints.Max.X / list.WidthModifier
+	checkDims := layout.Dimensions{}
+	lineDims := layout.E.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+		checkDims = item.check.Layout(gtx)
+		checkDims.Size.X = gtx.Constraints.Max.X / list.WidthModifier
 		// dim.Size.Y -= 10
-		return dim
+		return checkDims
 	})
+	hintDims := item.hint(gtx, list.Theme)
+
+	return layout.Dimensions{Size: lineDims.Size.Add(hintDims.Size)}
 }
 
 func (list *Widget) hovered(gtx layout.Context, i *Item) {

@@ -192,7 +192,7 @@ func (g *GUI) projector(onclose func()) {
 											img, err := video.Capture()
 											if err != nil {
 												g.ToastError(err)
-												is.Set(is.MainMenu)
+												is.Next(is.MainMenu)
 											}
 
 											ui.imgDims = widget.Image{

@@ -24,6 +24,10 @@ func BackgroundAlt(gtx layout.Context, w layout.Widget) layout.Dimensions {
 	return layout.NW.Layout(gtx, w)
 }
 
+func BackgroundColor(gtx layout.Context, n nrgba.NRGBA) {
+	ColorBox(gtx, gtx.Constraints.Max, n)
+}
+
 func BackgroundTitleBar(gtx layout.Context, size image.Point) {
 	ColorBox(gtx, size, nrgba.NRGBA(config.Current.Theme.TitleBarBackground))
 }
@@ -64,7 +68,7 @@ func ForegroundAlt(n *color.NRGBA) {
 	*n = config.Current.Theme.ForegroundAlt
 }
 
-func Label(l *material.LabelStyle, format string, a ...interface{}) *material.LabelStyle {
+func Label(l *material.LabelStyle, format string, a ...any) *material.LabelStyle {
 	l.Text = format
 	if len(a) > 0 {
 		l.Text = fmt.Sprintf(format, a...)

@@ -145,7 +145,7 @@ func (g *GUI) configure() {
 		switch event := g.window.NextEvent().(type) {
 		case system.DestroyEvent:
 			ui.buttons.menu.home.Click(ui.buttons.menu.home)
-			is.Set(is.Closing)
+			is.Next(is.Closing)
 		case app.ViewEvent:
 			g.HWND = event.HWND
 		case system.FrameEvent:
@@ -164,8 +164,8 @@ func (g *GUI) configure() {
 
 			// decorate.Label(&ui.footer.api, "API: %s", device.API(config.Current.Video.Capture.Device.API).String())
 			decorate.Label(&ui.footer.api, "Resolution: %dx%d", ui.img.Bounds().Dx(), ui.img.Bounds().Dy())
-			decorate.Label(&ui.footer.cpu, process.Usage.CPU.String())
-			decorate.Label(&ui.footer.ram, process.Usage.RAM.String())
+			decorate.Label(&ui.footer.cpu, "%s", process.Usage.CPU)
+			decorate.Label(&ui.footer.ram, "%s", process.Usage.RAM)
 			decorate.Label(&ui.footer.hz, "%s Hz", g.hz)
 			decorate.Label(&ui.footer.fps, "%.0f FPS", device.FPS())
 			decorate.LabelColor(&ui.footer.fps, nrgba.Percent(device.FPS()/float64(config.Current.Video.Capture.Device.FPS)).Color())
@@ -430,7 +430,7 @@ func (g *GUI) configure() {
 
 					// No video to default to, let's bail.
 					if monitor.IsActive() {
-						is.Set(is.MainMenu)
+						is.Next(is.MainMenu)
 					}
 
 					if window.IsActive() {
@@ -521,7 +521,7 @@ func (g *GUI) configureUI() *configure {
 			// config.Current.XY.KOs = ui.groups.areas.ko.Rectangle()
 
 			if config.Cached().Eq(config.Current) {
-				is.Set(is.MainMenu)
+				is.Next(is.MainMenu)
 				return
 			}
 
@@ -536,7 +536,7 @@ func (g *GUI) configureUI() *configure {
 						notify.Warn("[UI] <ini:f:save> UniteHUD configuration (%v)", err)
 					}
 
-					is.Set(is.MainMenu)
+					is.Next(is.MainMenu)
 				}),
 				toastOnNo(func() {
 					defer this.Deactivate()
@@ -552,7 +552,7 @@ func (g *GUI) configureUI() *configure {
 						g.ToastError(err)
 					}
 
-					is.Set(is.MainMenu)
+					is.Next(is.MainMenu)
 				}),
 			)
 		},
@@ -645,7 +645,7 @@ func (g *GUI) configureUI() *configure {
 						return
 					}
 
-					notify.System("[UI] Configuration saved to " + config.Current.File())
+					notify.System("[UI] Configuration saved to %s", config.Current.File())
 				}),
 				toastOnNo(this.Deactivate),
 			)
@@ -746,17 +746,25 @@ func (g *GUI) configureUI() *configure {
 		Hint:            "Reset configuration",
 		OnHoverHint:     g.nav.Tip,
 		Click: func(this *button.Widget) {
-			g.ToastYesNo("Reset", fmt.Sprintf("Reset %s configuration?", config.Current.Gaming.Device),
+			g.ToastYesNo("Reset", fmt.Sprintf("<ini:i:reset> %s configuration?", config.Current.Gaming.Device),
 				toastOnYes(func() {
-					defer this.Deactivate()
-					defer server.Clear()
+					server.Clear()
 
-					ui.groups.videos.devices.list.Callback(ui.groups.videos.devices.list.Items[0], ui.groups.videos.devices.list)
-
+					prev := config.Current
 					err := config.Current.Reset()
 					if err != nil {
-						notify.Warn("[UI] Failed to reset %s configuration (%v)", config.Current.Gaming.Device, err)
+						config.Current = prev
+						notify.Warn("[UI] <ini:f:reset> %s configuration (%v)", config.Current.Gaming.Device, err)
+						g.ToastError(err)
+						return
 					}
+
+					// Hit the disable.
+					ui.groups.videos.devices.list.Callback(ui.groups.videos.devices.list.Items[0], ui.groups.videos.devices.list)
+
+					this.Deactivate()
+
+					video.Close()
 
 					config.Current.Reload()
 
@@ -770,9 +778,9 @@ func (g *GUI) configureUI() *configure {
 					// ui.groups.videos.window.populate()
 					ui.groups.videos.populate()
 
-					is.Set(is.MainMenu)
+					is.Next(is.MainMenu)
 
-					notify.Announce("[UI] Reset UniteHUD %s configuration", config.Current.Gaming.Device)
+					notify.Announce("[UI] <ini:i:reset> UniteHUD %s configuration", config.Current.Gaming.Device)
 				}),
 				toastOnNo(this.Deactivate),
 			)
@@ -782,7 +790,7 @@ func (g *GUI) configureUI() *configure {
 	ui.buttons.menu.lock = &button.Widget{
 		Text:            "🔓",
 		Font:            g.nav.NishikiTeki(),
-		Pressed:         nrgba.PastelYellow,
+		Pressed:         nrgba.Gold.Alpha(150),
 		TextSize:        unit.Sp(17),
 		TextInsetBottom: -1,
 		Disabled:        false,

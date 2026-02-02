@@ -201,7 +201,7 @@ func (g *GUI) main() {
 			ui.stage = event.Stage
 			notify.Debug("[UI] Main stage: %s", ui.stage)
 		case system.DestroyEvent:
-			is.Set(is.Closing)
+			is.Next(is.Closing)
 			return
 		case system.FrameEvent:
 			gtx := layout.NewContext(&ui.ops, event)
@@ -209,13 +209,13 @@ func (g *GUI) main() {
 			g.dimensions.size = event.Size
 
 			decorate.Background(gtx)
-			decorate.Label(&ui.labels.cpu, process.Usage.CPU.String())
-			decorate.Label(&ui.labels.cpuGraph, stats.CPUGraph())
-			decorate.Label(&ui.labels.ram, process.Usage.RAM.String())
-			decorate.Label(&ui.labels.ramGraph, stats.RAMGraph())
-			decorate.Label(&ui.labels.threads, process.Usage.Threads.String())
-			decorate.Label(&ui.labels.threadsGraph, stats.ThreadsGraph())
-			decorate.Label(&ui.labels.holding, ui.labels.holding.Text)
+			decorate.Label(&ui.labels.cpu, "%s", process.Usage.CPU)
+			decorate.Label(&ui.labels.cpuGraph, "%s", stats.CPUGraph())
+			decorate.Label(&ui.labels.ram, "%s", process.Usage.RAM)
+			decorate.Label(&ui.labels.ramGraph, "%s", stats.RAMGraph())
+			decorate.Label(&ui.labels.threads, "%s", process.Usage.Threads)
+			decorate.Label(&ui.labels.threadsGraph, "%s", stats.ThreadsGraph())
+			decorate.Label(&ui.labels.holding, "%s", ui.labels.holding.Text)
 			decorate.ForegroundAlt(&ui.labels.cpuGraph.Color)
 			decorate.ForegroundAlt(&ui.labels.ramGraph.Color)
 			decorate.ForegroundAlt(&ui.labels.threadsGraph.Color)
@@ -398,7 +398,7 @@ func (g *GUI) main() {
 							Left: unit.Dp(float32(gtx.Constraints.Max.X - 35)),
 						}.Layout(gtx, ui.labels.selfScore.Layout)
 
-						decorate.Label(&ui.labels.clock, server.Clock())
+						decorate.Label(&ui.labels.clock, "%s", server.Clock())
 						layout.Inset{
 							Top:  unit.Dp(2),
 							Left: unit.Dp(float32(gtx.Constraints.Max.X - 90)),
@@ -549,7 +549,7 @@ func (g *GUI) main() {
 			case keys.Ctrl("M"):
 				g.minimize()
 			case keys.Ctrl("C"):
-				is.Set(is.Configuring)
+				is.Next(is.Configuring)
 			case keys.Ctrl("F"):
 				g.nav.Resize()
 			case keys.Ctrl("P"):
@@ -562,7 +562,7 @@ func (g *GUI) main() {
 
 				btn.Click(btn)
 			case keys.Ctrl("W"):
-				is.Set(is.Closing)
+				is.Next(is.Closing)
 			case keys.Escape():
 				if g.dimensions.fullscreen {
 					g.nav.Resize()
@@ -707,7 +707,7 @@ func (g *GUI) mainUI() *main {
 				ui.navButtons.alwaysOnTop.Click(ui.navButtons.alwaysOnTop)
 			}
 
-			is.Set(is.Configuring)
+			is.Next(is.Configuring)
 		},
 	}
 
@@ -932,9 +932,9 @@ func (g *GUI) mainUI() *main {
 
 			s, ok := state.Dump()
 			if !ok {
-				notify.Warn(s)
+				notify.Warn("%s", s)
 			} else {
-				notify.System(s)
+				notify.System("%s", s)
 			}
 		},
 	}
@@ -1254,9 +1254,6 @@ func (ui *main) onFrame(frame int, fn func(*GUI), g *GUI) {
 
 func (ui *main) onFrame1(g *GUI) {
 	g.window.Option(
-		app.Title(
-			exe.Title,
-		),
 		app.Size(
 			unit.Dp(g.dimensions.min.X),
 			unit.Dp(g.dimensions.min.Y),
@@ -1265,14 +1262,14 @@ func (ui *main) onFrame1(g *GUI) {
 			unit.Dp(g.dimensions.min.X),
 			unit.Dp(g.dimensions.min.Y),
 		),
-		// app.MaxSize(
-		// 	unit.Dp(g.dimensions.max.X),
-		// 	unit.Dp(g.dimensions.max.Y),
-		// ),
+	// 	// app.MaxSize(
+	// 	// 	unit.Dp(g.dimensions.max.X),
+	// 	// 	unit.Dp(g.dimensions.max.Y),
+	// 	// ),
 	)
 
-	g.window.Perform(system.ActionCenter)
-	g.window.Perform(system.ActionUnmaximize)
+	// g.window.Perform(system.ActionCenter)
+	// g.window.Perform(system.ActionUnmaximize)
 
 	go func() {
 		for ; ; time.Sleep(time.Second / 3) {
@@ -1282,7 +1279,7 @@ func (ui *main) onFrame1(g *GUI) {
 		}
 	}()
 
-	go wapi.SetWindowLongPtrA.Call(g.HWND, wapi.GetWindowLongFlags.Style, uintptr(wapi.WindowStyles.Overlapped))
+	// go wapi.SetWindowLongPtrA.Call(g.HWND, wapi.GetWindowLongFlags.Style, uintptr(wapi.WindowStyles.Overlapped))
 }
 
 func (ui *main) onFrame2(g *GUI) {

@@ -57,7 +57,7 @@ type Config struct {
 			ReducedFontColors        bool
 			ReducedFontGraphics      bool
 			ShowCompleteEventHistory bool
-			ColorizedDebugLogs       bool
+			ColorizedTerminalLogs    bool
 		}
 
 		Stats struct {
@@ -729,7 +729,7 @@ func Open() error {
 	Current.Advanced.Report.Debug = true
 	Current.Advanced.Locale = ini.EnUS // Locale.
 	Current.Advanced.Accessibility.ReducedFontGraphics = true
-	Current.Advanced.Accessibility.ColorizedDebugLogs = true
+	Current.Advanced.Accessibility.ColorizedTerminalLogs = true
 
 	// Default persistent settings.
 	Current.Remember.Discord = DiscordRememberStandby
@@ -763,7 +763,7 @@ func Open() error {
 		Current.Video.Capture.Device.FPS = 60
 	}
 
-	notify.Disabled.DebugColors = !Current.Advanced.Accessibility.ColorizedDebugLogs
+	notify.Disabled.DebugColors = !Current.Advanced.Accessibility.ColorizedTerminalLogs
 
 	return Current.Save()
 }

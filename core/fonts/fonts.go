@@ -11,6 +11,7 @@ import (
 	"gioui.org/widget/material"
 	"github.com/google/uuid"
 
+	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/exe"
 )
@@ -72,32 +73,6 @@ func (c *Collection) Roboto() *Style {
 	return c.load("Roboto-Regular.ttf", "Roboto")
 }
 
-func (s *Style) copy() *Style {
-	// if c.copied[string(s.Typeface)] {
-	// 	return s
-	// }
-
-	s2 := &Style{
-		Theme:    material.NewTheme(),
-		FontFace: s.FontFace,
-		Face:     s.Face,
-		Typeface: s.Typeface,
-	}
-	s2.Theme.Shaper = text.NewShaper(text.WithCollection(s2.FontFace))
-
-	// c.styles[string(s.Typeface)] = s2
-
-	return s2
-}
-
-func cached(name string) *Style {
-	if cache.styles[name] != nil {
-		return cache.styles[name]
-	}
-
-	return nil
-}
-
 func (c *Collection) load(path, typeface string) *Style {
 	if c.styles[path] != nil {
 		return c.styles[path]
@@ -135,19 +110,53 @@ loaded:
 		return noStyle()
 	}
 
-	cache.styles[path] = &Style{
+	cache.styles[path] = (&Style{
 		Theme:    material.NewTheme(),
 		FontFace: fontFace,
 		Face:     face,
 		Typeface: font.Typeface(typeface),
-	}
+	}).WithTheme()
 	cache.styles[path].Theme.Shaper = text.NewShaper(text.WithCollection(fontFace))
 
 	goto loaded
 }
 
+func (s *Style) WithTheme() *Style {
+	s.Theme.Bg = config.Current.Theme.Background
+	s.Theme.ContrastBg = config.Current.Theme.BackgroundAlt
+	s.Theme.Fg = config.Current.Theme.Foreground
+	s.Theme.ContrastFg = config.Current.Theme.ForegroundAlt
+	return s
+}
+
+func (s *Style) copy() *Style {
+	// if c.copied[string(s.Typeface)] {
+	// 	return s
+	// }
+
+	s2 := &Style{
+		Theme:    material.NewTheme(),
+		FontFace: s.FontFace,
+		Face:     s.Face,
+		Typeface: s.Typeface,
+	}
+	s2.Theme.Shaper = text.NewShaper(text.WithCollection(s2.FontFace))
+
+	// c.styles[string(s.Typeface)] = s2
+
+	return s2
+}
+
+func cached(name string) *Style {
+	if cache.styles[name] != nil {
+		return cache.styles[name]
+	}
+
+	return nil
+}
+
 func noStyle() *Style {
-	style := &Style{Theme: material.NewTheme(), FontFace: gofont.Collection()}
-	style.Theme.Shaper = text.NewShaper(text.WithCollection(gofont.Collection()))
-	return style
+	s := &Style{Theme: material.NewTheme(), FontFace: gofont.Collection()}
+	s.Theme.Shaper = text.NewShaper(text.WithCollection(gofont.Collection()))
+	return s.WithTheme()
 }
