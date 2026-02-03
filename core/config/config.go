@@ -28,182 +28,202 @@ import (
 )
 
 const (
-	// Video primitives.
-	MainDisplay              = "Main Display"
-	ProjectorWindow          = "UniteHUD Projector"
-	NoVideoCaptureDevice     = -1
-	DefaultVideoCaptureAPI   = "Any"
+	// MainDisplay is the default capture target name.
+	MainDisplay = "Main Display"
+	// ProjectorWindow is the default projector window title.
+	ProjectorWindow = "UniteHUD Projector"
+	// NoVideoCaptureDevice represents a disabled video capture device.
+	NoVideoCaptureDevice = -1
+	// DefaultVideoCaptureAPI is the default capture API selection.
+	DefaultVideoCaptureAPI = "Any"
+	// DefaultVideoCaptureCodec is the default capture codec selection.
 	DefaultVideoCaptureCodec = "Any"
 
-	// Device primitives.
+	// DeviceBluestacks identifies the BlueStacks device type.
 	DeviceBluestacks = "bluestacks"
-	DeviceMobile     = "mobile"
-	DeviceSwitch     = "switch"
+	// DeviceMobile identifies a mobile device type.
+	DeviceMobile = "mobile"
+	// DeviceSwitch identifies a Nintendo Switch device type.
+	DeviceSwitch = "switch"
 
-	// Discord primitives.
-	DiscordRememberStandby  = -1
+	// DiscordRememberStandby indicates no saved Discord preference.
+	DiscordRememberStandby = -1
+	// DiscordRememberDisabled records Discord integration as disabled.
 	DiscordRememberDisabled = 0
-	DiscordRememberEnabled  = 1
+	// DiscordRememberEnabled records Discord integration as enabled.
+	DiscordRememberEnabled = 1
 
-	DefaultAcceptance  = .85
+	// DefaultAcceptance is the default template match threshold.
+	DefaultAcceptance = .85
+	// DefaultMatchMethod is the default OpenCV template match method.
 	DefaultMatchMethod = gocv.TmCcoeffNormed
 )
 
-type Config struct {
-	Acceptance float32
+// Config maintains the overall behavior and state for configurable options.
+type (
+	Config struct {
+		Acceptance float32
 
-	Advanced struct {
-		Accessibility struct {
-			ReducedFontColors        bool
-			ReducedFontGraphics      bool
-			ShowCompleteEventHistory bool
-			ColorizedTerminalLogs    bool
-		}
+		Advanced struct {
+			Accessibility struct {
+				ReducedFontColors        bool
+				ReducedFontGraphics      bool
+				ShowCompleteEventHistory bool
+				ColorizedTerminalLogs    bool
+			}
 
-		Stats struct {
-			Disabled bool
-		}
+			Stats struct {
+				Disabled bool
+			}
 
-		DecreasedCaptureLevel time.Duration
+			DecreasedCaptureLevel time.Duration
 
-		Locale ini.Locale
+			Locale ini.Locale
 
-		Matching struct {
-			Disabled struct {
-				Scoring,
-				Time,
-				Objectives,
-				Energy,
-				Defeated,
-				KOs bool
+			Matching struct {
+				Disabled struct {
+					Scoring,
+					Time,
+					Objectives,
+					Energy,
+					Defeated,
+					KOs bool
 
-				Previews bool `json:"-"`
+					Previews bool `json:"-"`
+				}
+			}
+
+			Notifications struct {
+				Muted    bool
+				Disabled struct {
+					All,
+					Updates,
+					MatchStarting,
+					MatchStopped bool
+				}
+			}
+
+			Discord struct {
+				Disabled bool
+			}
+
+			Report struct {
+				Errors,
+				Warnings,
+				Info,
+				System,
+				Debug bool
 			}
 		}
 
-		Notifications struct {
-			Muted    bool
-			Disabled struct {
-				All,
-				Updates,
-				MatchStarting,
-				MatchStopped bool
+		Audio struct {
+			Capture struct {
+				Device struct {
+					Name string
+				}
+			}
+			Playback struct {
+				Device struct {
+					Name string
+				}
 			}
 		}
 
-		Discord struct {
-			Disabled bool
+		Crashed string
+
+		Gaming struct {
+			Device string
 		}
 
-		Report struct {
-			Errors,
-			Warnings,
-			Info,
-			System,
-			Debug bool
+		Remember struct {
+			Discord int16
 		}
-	}
 
-	Audio struct {
-		Capture struct {
-			Device struct {
-				Name string
+		Scale float64
+		Shift Shift
+
+		Theme  Theme
+		Themes map[string]Theme
+
+		Video struct {
+			Capture struct {
+				Device struct {
+					Index int
+					API   string
+					FPS   int
+					Name  string
+					Codec string
+				}
+				Window struct {
+					Name string
+					Lost string `json:"-"`
+				}
 			}
 		}
-		Playback struct {
-			Device struct {
-				Name string
-			}
+
+		XY struct {
+			Energy     image.Rectangle
+			Scores     image.Rectangle
+			Time       image.Rectangle
+			Objectives image.Rectangle
+			KOs        image.Rectangle
+			SelfScore  image.Rectangle
+			States     image.Rectangle
 		}
+
+		// Unsaved configurations.
+
+		Record bool `json:"-"` // Record all matched images and logs.
+
+		filenames map[string]map[string][]filter.Filter      `json:"-"`
+		templates map[string]map[string][]*template.Template `json:"-"`
 	}
 
-	Crashed string
-
-	Gaming struct {
-		Device string
+	// Shift defines directionality behavior and state.
+	Shift struct {
+		N, E, S, W int
 	}
 
-	Remember struct {
-		Discord int16
+	// Theme defines the configured UI theme.
+	Theme struct {
+		Background,
+		BackgroundAlt,
+		Foreground,
+		ForegroundAlt,
+		Splash,
+		TitleBarBackground,
+		TitleBarForeground,
+		BordersIdle,
+		BordersActive,
+		ScrollbarBackground,
+		ScrollbarForeground color.NRGBA
 	}
-
-	Scale float64
-	Shift Shift
-
-	Theme  Theme
-	Themes map[string]Theme
-
-	Video struct {
-		Capture struct {
-			Device struct {
-				Index int
-				API   string
-				FPS   int
-				Name  string
-				Codec string
-			}
-			Window struct {
-				Name string
-				Lost string `json:"-"`
-			}
-		}
-	}
-
-	XY struct {
-		Energy     image.Rectangle
-		Scores     image.Rectangle
-		Time       image.Rectangle
-		Objectives image.Rectangle
-		KOs        image.Rectangle
-		SelfScore  image.Rectangle
-		States     image.Rectangle
-	}
-
-	// Unsaved configurations.
-
-	Record bool `json:"-"` // Record all matched images and logs.
-
-	filenames map[string]map[string][]filter.Filter      `json:"-"`
-	templates map[string]map[string][]*template.Template `json:"-"`
-}
-
-type Shift struct {
-	N, E, S, W int
-}
-
-type Theme struct {
-	Background,
-	BackgroundAlt,
-	Foreground,
-	ForegroundAlt,
-	Splash,
-	TitleBarBackground,
-	TitleBarForeground,
-	BordersIdle,
-	BordersActive,
-	ScrollbarBackground,
-	ScrollbarForeground color.NRGBA
-}
+)
 
 var (
+	// Current holds the active configuration.
 	Current Config
 	cached  Config
 
 	first = false
 )
 
+// Cached returns the last saved configuration snapshot.
 func Cached() Config {
 	return cached
 }
 
+// AssetIcon returns the absolute path to an icon asset.
 func (c *Config) AssetIcon(file string) string {
 	return fmt.Sprintf("%s/icon/%s", c.Assets(), file)
 }
 
+// Assets returns the base assets directory for the current executable.
 func (c *Config) Assets() string {
 	return filepath.Join(exe.Directory(), exe.AssetDirectory)
 }
 
+// Eq reports whether two configs are equivalent for persisted settings.
 func (c Config) Eq(c2 Config) bool {
 	return cmp.Equal(c, c2,
 		cmpopts.IgnoreTypes(
@@ -215,6 +235,7 @@ func (c Config) Eq(c2 Config) bool {
 	)
 }
 
+// File returns the config file path for the current profile.
 func (c *Config) File() string {
 	if len(os.Args) > 1 && strings.HasSuffix(os.Args[1], ".unitehud") {
 		return os.Args[1]
@@ -222,18 +243,22 @@ func (c *Config) File() string {
 	return fmt.Sprintf("config-%s.unitehud", exe.VersionDash())
 }
 
+// Reload re-validates in-memory configuration state.
 func (c *Config) Reload() {
 	validate()
 }
 
+// Remove deletes the current configuration file.
 func (c *Config) Remove() error {
 	return os.Remove(c.File())
 }
 
+// Report records crash information to be persisted.
 func (c *Config) Report(crash string) {
 	c.Crashed = crash
 }
 
+// Reset removes the config file and reloads defaults.
 func (c *Config) Reset() error {
 	defer validate()
 
@@ -245,6 +270,7 @@ func (c *Config) Reset() error {
 	return openNotNew(c.Gaming.Device)
 }
 
+// Save writes the current configuration to disk.
 func (c *Config) Save() error {
 	notify.System("[Config] Saving %s profile (%s)", c.Gaming.Device, c.File())
 
@@ -268,6 +294,7 @@ func (c *Config) Save() error {
 	return nil
 }
 
+// SaveTemp writes the configuration to a temporary file.
 func (c *Config) SaveTemp() (string, error) {
 	path := filepath.Join(os.TempDir(), c.File())
 
@@ -292,6 +319,7 @@ func (c *Config) SaveTemp() (string, error) {
 	return path, nil
 }
 
+// SetDefaultTheme applies the default theme values.
 func (c *Config) SetDefaultTheme() {
 	c.Theme.Background = nrgba.Background.Color()
 	c.Theme.BackgroundAlt = nrgba.BackgroundAlt.Color()
@@ -306,6 +334,7 @@ func (c *Config) SetDefaultTheme() {
 	c.Theme.ScrollbarForeground = nrgba.Discord.Alpha(100).Color()
 }
 
+// TemplateMatchMap returns a map of template names to match counts.
 func (c *Config) TemplateMatchMap() map[string]int {
 	m := make(map[string]int)
 
@@ -320,14 +349,17 @@ func (c *Config) TemplateMatchMap() map[string]int {
 	return m
 }
 
+// Templates returns all templates for a category.
 func (c *Config) Templates(category string) map[string][]*template.Template {
 	return c.templates[category]
 }
 
+// TemplatesByName returns templates for a category and name.
 func (c *Config) TemplatesByName(category, name string) []*template.Template {
 	return c.templates[category][name]
 }
 
+// TemplateCategories returns the sorted list of template categories.
 func (c *Config) TemplateCategories() (categories []string) {
 	for k := range c.templates {
 		categories = append(categories, k)
@@ -336,58 +368,72 @@ func (c *Config) TemplateCategories() (categories []string) {
 	return
 }
 
+// TemplatesStarting returns match-starting templates for the current game.
 func (c *Config) TemplatesStarting() []*template.Template {
 	return c.templates["starting"][team.Game.Name]
 }
 
+// TemplatesEnding returns match-ending templates for the current game.
 func (c *Config) TemplatesEnding() []*template.Template {
 	return c.templates["ending"][team.Game.Name]
 }
 
+// TemplatesSurrender returns surrender templates for the current game.
 func (c *Config) TemplatesSurrender() []*template.Template {
 	return c.templates["surrender"][team.Game.Name]
 }
 
+// TemplatesGoals returns goal templates for the given team name.
 func (c *Config) TemplatesGoals(n string) []*template.Template {
 	return c.templates["goals"][n]
 }
 
+// TemplatesKilled returns killed templates for the given team name.
 func (c *Config) TemplatesKilled(n string) []*template.Template {
 	return c.templates["killed"][n]
 }
 
+// TemplatesKO returns KO templates for the given team name.
 func (c *Config) TemplatesKO(n string) []*template.Template {
 	return c.templates["ko"][n]
 }
 
+// TemplatesPoints returns point templates for the given team name.
 func (c *Config) TemplatesPoints(n string) []*template.Template {
 	return c.templates["points"][n]
 }
 
+// TemplatesSecure returns objective-secure templates for the given team name.
 func (c *Config) TemplatesSecure(n string) []*template.Template {
 	return c.templates["secure"][n]
 }
 
+// TemplatesPostSecure returns post-secure templates for the given team name.
 func (c *Config) TemplatesPostSecure(n string) []*template.Template {
 	return c.templates["post-secure"][n]
 }
 
+// TemplatesScored returns scored templates for the given team name.
 func (c *Config) TemplatesScored(n string) []*template.Template {
 	return c.templates["scored"][n]
 }
 
+// TemplatesScoredAll returns all scored templates grouped by team.
 func (c *Config) TemplatesScoredAll() map[string][]*template.Template {
 	return c.templates["scored"]
 }
 
+// TemplatesScoring returns scoring templates for the given team name.
 func (c *Config) TemplatesScoring(n string) []*template.Template {
 	return c.templates["scoring"][n]
 }
 
+// TemplatesTime returns time templates for the given team name.
 func (c *Config) TemplatesTime(n string) []*template.Template {
 	return c.templates["time"][n]
 }
 
+// UnsetHiddenThemes replaces hidden theme colors with defaults.
 func (c *Config) UnsetHiddenThemes() {
 	current := reflect.ValueOf(c.Theme)
 
@@ -435,6 +481,7 @@ func (c *Config) deviceAssets() string {
 	return filepath.Join(exe.Directory(), exe.AssetDirectory, "device", c.Gaming.Device)
 }
 
+// loadDeviceAssets loads the requested data.
 func (c *Config) loadDeviceAssets() {
 	c.filenames = map[string]map[string][]filter.Filter{
 		"goals": {
@@ -559,6 +606,7 @@ func (c *Config) loadDeviceAssets() {
 	}
 }
 
+// pointFiles loads point templates for a team.
 func (c *Config) pointFiles(t *team.Team) []filter.Filter {
 	var files []string
 
@@ -612,6 +660,7 @@ func (c *Config) pointFiles(t *team.Team) []filter.Filter {
 	return filters
 }
 
+// scoreFiles loads score templates for a team.
 func (c *Config) scoreFiles(t *team.Team) []filter.Filter {
 	var files []string
 
@@ -654,12 +703,14 @@ func (c *Config) scoreFiles(t *team.Team) []filter.Filter {
 	return filters
 }
 
+// IsNew reports whether the config has just been created.
 func IsNew() bool {
 	is := first
 	first = false
 	return is
 }
 
+// Open loads the config file, initializes defaults, and validates runtime state.
 func Open() error {
 	device := Current.Gaming.Device
 
@@ -768,6 +819,7 @@ func Open() error {
 	return Current.Save()
 }
 
+// TemplatesFirstRound filters templates to those with nonzero values.
 func TemplatesFirstRound(t1 []*template.Template) []*template.Template {
 	t2 := []*template.Template{}
 	for _, t := range t1 {
@@ -779,6 +831,7 @@ func TemplatesFirstRound(t1 []*template.Template) []*template.Template {
 	return t2
 }
 
+// openNotNew opens the target.
 func openNotNew(device string) error {
 	Current.Gaming.Device = device
 

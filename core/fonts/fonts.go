@@ -1,5 +1,7 @@
 package fonts
 
+// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+
 import (
 	"os"
 	"path/filepath"
@@ -16,12 +18,14 @@ import (
 	"github.com/pidgy/unitehud/exe"
 )
 
+// Collection manages a set of loaded font styles.
 type Collection struct {
 	id     string
 	styles map[string]*Style
 	copied map[string]bool
 }
 
+// Style holds a themed font face and related metadata.
 type Style struct {
 	Theme    *material.Theme
 	Face     font.Face
@@ -30,9 +34,11 @@ type Style struct {
 }
 
 var (
+	// cache is the shared font collection used for reuse.
 	cache = NewCollection()
 )
 
+// NewCollection returns a new font collection.
 func NewCollection() *Collection {
 	return &Collection{
 		id:     uuid.New().String(),
@@ -41,38 +47,47 @@ func NewCollection() *Collection {
 	}
 }
 
+// Cascadia returns the Cascadia Code font style.
 func (c *Collection) Cascadia() *Style {
 	return c.load("CascadiaCode-Regular.otf", "Cascadia")
 }
 
+// Calibri returns the Calibri font style.
 func (c *Collection) Calibri() *Style {
 	return c.load("CalibriRegular.ttf", "Calibri")
 }
 
+// NishikiTeki returns the NishikiTeki font style.
 func (c *Collection) NishikiTeki() *Style {
 	return c.load("NishikiTeki-MVxaJ.ttf", "NishikiTeki")
 }
 
+// CascadiaSemiBold returns the Cascadia Code SemiBold font style.
 func (c *Collection) CascadiaSemiBold() *Style {
 	return c.load("CascadiaCodePL-SemiBold.otf", "Cascadia")
 }
 
+// Combo returns the Combo font style.
 func (c *Collection) Combo() *Style {
 	return c.load("Combo-Regular.ttf", "Combo")
 }
 
+// Hack returns the Hack font style.
 func (c *Collection) Hack() *Style {
 	return c.load("Hack-Regular.ttf", "Hack")
 }
 
+// NotoSans returns the Noto Sans font style.
 func (c *Collection) NotoSans() *Style {
 	return c.load("NotoSansJP-Regular.otf", "NotoSansJP")
 }
 
+// Roboto returns the Roboto font style.
 func (c *Collection) Roboto() *Style {
 	return c.load("Roboto-Regular.ttf", "Roboto")
 }
 
+// load loads the requested data.
 func (c *Collection) load(path, typeface string) *Style {
 	if c.styles[path] != nil {
 		return c.styles[path]
@@ -121,6 +136,7 @@ loaded:
 	goto loaded
 }
 
+// WithTheme applies the current config theme to the style.
 func (s *Style) WithTheme() *Style {
 	s.Theme.Bg = config.Current.Theme.Background
 	s.Theme.ContrastBg = config.Current.Theme.BackgroundAlt
@@ -147,6 +163,7 @@ func (s *Style) copy() *Style {
 	return s2
 }
 
+// cached returns a cached style by name if it exists.
 func cached(name string) *Style {
 	if cache.styles[name] != nil {
 		return cache.styles[name]
@@ -155,6 +172,7 @@ func cached(name string) *Style {
 	return nil
 }
 
+// noStyle returns a fallback style based on Go's default fonts.
 func noStyle() *Style {
 	s := &Style{Theme: material.NewTheme(), FontFace: gofont.Collection()}
 	s.Theme.Shaper = text.NewShaper(text.WithCollection(gofont.Collection()))

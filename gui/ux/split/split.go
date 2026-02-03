@@ -1,5 +1,7 @@
 package split
 
+// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+
 import (
 	"image"
 
@@ -14,6 +16,7 @@ import (
 	"github.com/pidgy/unitehud/gui/cursor"
 )
 
+// Widget defines Widget behavior and state.
 type Widget interface {
 	Layout(gtx layout.Context, left, right layout.Widget) layout.Dimensions
 }
@@ -21,6 +24,7 @@ type Widget interface {
 type Horizontal split
 type Vertical split
 
+// split defines split behavior and state.
 type split struct {
 	// ratio keeps the current layout.
 	// 0 is center, -1 completely to the left, 1 completely to the right.
@@ -43,14 +47,17 @@ var (
 	defaultBarSize           = unit.Dp(0)
 )
 
+// NewHorizontal returns a new Horizontal.
 func NewHorizontal(ratio float32) *Horizontal {
 	return &Horizontal{Ratio: ratio}
 }
 
+// NewVertical returns a new Vertical.
 func NewVertical(ratio float32) *Vertical {
 	return &Vertical{Ratio: ratio}
 }
 
+// Layout lays out and renders the widget.
 func (h *Horizontal) Layout(gtx layout.Context, top, bottom layout.Widget) layout.Dimensions {
 	size := gtx.Dp(h.bar)
 	if size <= 1 {
@@ -149,6 +156,7 @@ func (h *Horizontal) Layout(gtx layout.Context, top, bottom layout.Widget) layou
 	return layout.Dimensions{Size: gtx.Constraints.Max}
 }
 
+// Layout lays out and renders the widget.
 func (v *Vertical) Layout(gtx layout.Context, left, right layout.Widget) layout.Dimensions {
 	barSize := gtx.Dp(v.bar)
 	if barSize <= 1 {

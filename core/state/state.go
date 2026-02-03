@@ -1,5 +1,7 @@
 package state
 
+// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+
 import (
 	"fmt"
 	"time"
@@ -62,6 +64,7 @@ const (
 	RegidragoSecureOrange
 )
 
+// Event defines Event behavior and state.
 type Event struct {
 	EventType
 	time.Time
@@ -426,6 +429,7 @@ func Since(e EventType) time.Duration {
 	return 0
 }
 
+// Start starts the operation.
 func Start() *Event {
 	if len(Events) == 0 {
 		return &Event{}

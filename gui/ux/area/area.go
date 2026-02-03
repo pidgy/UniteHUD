@@ -1,5 +1,7 @@
 package area
 
+// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+
 import (
 	"fmt"
 	"image"
@@ -30,6 +32,7 @@ var (
 	Miss   = nrgba.Red
 )
 
+// Widget defines Widget behavior and state.
 type Widget struct {
 	Text          string
 	TextSize      unit.Sp
@@ -69,6 +72,7 @@ type Widget struct {
 	frameFrequency int
 }
 
+// Layout lays out and renders the widget.
 func (a *Widget) Layout(gtx layout.Context, collection *fonts.Collection, capture image.Rectangle, img image.Image, blank image.Point) (err error) {
 	if img == nil || capture.Max.X == 0 || a.Base.Max.X == 0 {
 		return nil

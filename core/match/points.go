@@ -1,5 +1,7 @@
 package match
 
+// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+
 import (
 	"image"
 	"math"
@@ -16,6 +18,7 @@ import (
 	"github.com/pidgy/unitehud/exe"
 )
 
+// first detects the first-scoring team's points from a score region using template matching.
 func (m *Match) first(matrix gocv.Mat) Result {
 	r := NotFound
 
@@ -129,6 +132,7 @@ func (m *Match) first(matrix gocv.Mat) Result {
 	// return m.validate(matrix, p)
 }
 
+// points dispatches to the appropriate scoring detector for the active team.
 func (m *Match) points(matrix gocv.Mat) Result {
 	switch m.Team.Name {
 	case team.Purple.Name, team.Orange.Name:
@@ -144,6 +148,7 @@ func (m *Match) points(matrix gocv.Mat) Result {
 	return Invalid
 }
 
+// regular detects points for purple/orange teams using multi-digit template matching.
 func (m *Match) regular(matrix gocv.Mat) Result {
 	r := NotFound
 
@@ -259,6 +264,7 @@ func (m *Match) regular(matrix gocv.Mat) Result {
 	return m.validate(matrix)
 }
 
+// validate applies range checks and duplicate detection to the current match value.
 func (m *Match) validate(matrix gocv.Mat) Result {
 	if m.Value < 0 || m.Value > 120 {
 		return Invalid
@@ -292,6 +298,7 @@ func (m *Match) validate(matrix gocv.Mat) Result {
 	}
 }
 
+// delta returns the absolute difference between two integers.
 func delta(a, b int) int {
 	if a > b {
 		return a - b
@@ -299,6 +306,7 @@ func delta(a, b int) int {
 	return b - a
 }
 
+// sliceToValue converts matched digit values into a score and its detection result.
 func sliceToValue(points []int) (Result, int) {
 	// Enforce a length 3 array to validate checks below.
 	if len(points) == 2 {

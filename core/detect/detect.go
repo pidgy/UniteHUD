@@ -1,5 +1,7 @@
 package detect
 
+// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+
 import (
 	"fmt"
 	"image"
@@ -28,13 +30,16 @@ import (
 )
 
 var (
+	// Pause stops detection loops until Resume is called.
 	Pause, Resume = func() { paused = true }, func() { paused = false }
-	Images        = func(b bool) { images = b }
+	// Images toggles whether detection generates preview images.
+	Images = func(b bool) { images = b }
 
 	paused = true
 	images = false
 )
 
+// Clock detects and updates the match clock state.
 func Clock() {
 	for every(team.Time.Delay) {
 		if config.Current.Advanced.Matching.Disabled.Time {
@@ -70,6 +75,7 @@ func Clock() {
 	}
 }
 
+// Defeated detects defeated events and updates state accordingly.
 func Defeated() {
 	area := image.Rectangle{}
 	modified := config.Current.TemplatesKilled(team.Game.Name)
@@ -138,6 +144,7 @@ func Defeated() {
 	}
 }
 
+// Energy detects the player's held energy and updates state.
 func Energy() {
 	assured := make(map[int]int)
 	confirmScore := -1
@@ -210,6 +217,7 @@ func Energy() {
 	}
 }
 
+// Objectives detects objective secure events and updates server state.
 func Objectives() {
 	top, bottom, central, regidragoKO := time.Time{}, time.Time{}, time.Time{}, time.Time{}
 	cooldown := time.Second * 15
@@ -362,6 +370,7 @@ func Objectives() {
 	}
 }
 
+// Preview periodically captures a preview image when enabled.
 func Preview() {
 	notify.SetPreview(splash.Projector())
 
@@ -398,6 +407,7 @@ func Preview() {
 	}
 }
 
+// Scores detects scoring events for the specified team identifier.
 func Scores(by string) {
 	for every(team.Delay(by)) {
 		if config.Current.Advanced.Matching.Disabled.Scoring {
@@ -514,6 +524,7 @@ func Scores(by string) {
 	}
 }
 
+// States detects match start/end state changes.
 func States() {
 	starting := config.Current.TemplatesStarting()
 	ending := template.Collection(config.Current.TemplatesEnding(), config.Current.TemplatesSurrender())

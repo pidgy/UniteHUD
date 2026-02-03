@@ -1,5 +1,7 @@
 package match
 
+// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+
 import (
 	"fmt"
 	"image"
@@ -14,41 +16,49 @@ import (
 	"github.com/pidgy/unitehud/core/team"
 )
 
+// Tier defines Tier behavior and state.
 type Tier struct {
 	Destroyed bool
 	image.Point
 	Match float32
 }
 
+// Tier1 defines Tier1 behavior and state.
 type Tier1 struct {
 	Top    Tier
 	Bottom Tier
 }
 
+// Tier2 defines Tier2 behavior and state.
 type Tier2 struct {
 	Top    Tier
 	Bottom Tier
 }
 
+// Tier3 defines Tier3 behavior and state.
 type Tier3 struct {
 	Middle Tier
 }
 
+// Tiers defines Tiers behavior and state.
 type Tiers struct {
 	Tier1
 	Tier2
 	Tier3
 }
 
+// Goals defines Goals behavior and state.
 type Goals struct {
 	Purple Tiers
 	Orange Tiers
 }
 
+// Objectives defines Objectives behavior and state.
 type Objectives struct {
 	Top    bool
 	Bottom bool
 }
+
 
 func goals(matrix gocv.Mat, img *image.RGBA) (Goals, bool) {
 	templates := config.Current.TemplatesGoals(team.Game.Name)
@@ -108,6 +118,7 @@ func goals(matrix gocv.Mat, img *image.RGBA) (Goals, bool) {
 
 	return Goals{}, true
 }
+
 
 func objectives(matrix gocv.Mat, img *image.RGBA) (Objectives, bool) {
 	return Objectives{}, true

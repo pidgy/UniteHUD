@@ -1,5 +1,7 @@
 package template
 
+// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+
 import (
 	"image"
 	"math"
@@ -26,6 +28,7 @@ type (
 	}
 )
 
+// NewSortable returns a new Sortable.
 func NewSortable() Sortable {
 	return Sortable{
 		cache: map[string]cached{},

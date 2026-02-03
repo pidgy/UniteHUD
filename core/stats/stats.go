@@ -1,5 +1,7 @@
 package stats
 
+// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+
 import (
 	"bytes"
 	"fmt"
@@ -34,6 +36,7 @@ var (
 	statsq = make(chan func(), 1024)
 )
 
+// init initializes the component.
 func init() {
 	go func() {
 		for fn := range statsq {

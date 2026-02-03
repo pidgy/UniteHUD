@@ -1,5 +1,7 @@
 package electron
 
+// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+
 import (
 	"context"
 	"fmt"
@@ -36,6 +38,7 @@ const (
 	name = "UniteHUD Overlay"
 )
 
+// debugger defines debugger behavior and state.
 type debugger struct {
 	fmt,
 	ftl func(format string, v ...interface{})
@@ -53,6 +56,7 @@ func Active() bool {
 	return active
 }
 
+// Close closes the target.
 func Close() {
 	if !active {
 		notify.Warn("[Electron] <ini:f:close> (inactive)")
@@ -183,6 +187,7 @@ func Hide() {
 	}
 }
 
+// Open opens the target.
 func Open(size image.Point) error {
 	if active {
 		return fmt.Errorf("window is active")
@@ -205,6 +210,7 @@ func Open(size image.Point) error {
 	return nil
 }
 
+// closeApp closes the target.
 func closeApp() error {
 	notify.Debug("[Electron] Closing app...")
 	defer notify.Debug("[Electron] Closed app")
@@ -220,6 +226,7 @@ func closeApp() error {
 	return nil
 }
 
+// closeWindow closes the target.
 func closeWindow() error {
 	notify.Debug("[Electron] Closing window...")
 	defer notify.Debug("[Electron] Closed window")
@@ -237,17 +244,23 @@ func closeWindow() error {
 	return nil
 }
 
+// newDebugger returns a new Debugger.
 func newDebugger(prefix string) *debugger {
 	return &debugger{
 		fmt: func(format string, v ...interface{}) { notify.Debug(prefix+" "+format, v...) },
 		ftl: func(format string, v ...interface{}) { notify.Debug(prefix+" [Fatal] "+format, v...) },
 	}
 }
-func (d *debugger) Fatal(v ...interface{})                 { d.ftl("%s", fmt.Sprint(v...)) }
+
+func (d *debugger) Fatal(v ...interface{}) { d.ftl("%s", fmt.Sprint(v...)) }
+
 func (d *debugger) Fatalf(format string, v ...interface{}) { d.ftl(format, v...) }
-func (d *debugger) Print(v ...interface{})                 { d.fmt("%s", fmt.Sprint(v...)) }
+
+func (d *debugger) Print(v ...interface{}) { d.fmt("%s", fmt.Sprint(v...)) }
+
 func (d *debugger) Printf(format string, v ...interface{}) { d.fmt(format, v...) }
 
+// openApp opens the target.
 func openApp() error {
 	notify.Debug("[Electron] Opening app...")
 	defer notify.Debug("[Electron] Opened app")
@@ -292,6 +305,7 @@ func openApp() error {
 	return nil
 }
 
+// openWindow opens the target.
 func openWindow(size image.Point) error {
 	notify.Debug("[Electron] Opening window...")
 	defer notify.Debug("[Electron] Opened window")

@@ -1,5 +1,7 @@
 package ui
 
+// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+
 import (
 	"time"
 
@@ -23,12 +25,14 @@ import (
 	"github.com/pidgy/unitehud/system/tray"
 )
 
+// loading defines loading behavior and state.
 type loading struct {
 	message string
 	tick    <-chan time.Time
 	ops     op.Ops
 }
 
+// loading shows the splash loading window and processes its UI events.
 func (g *GUI) loading() {
 	is.Next(is.Loading)
 
@@ -112,6 +116,7 @@ func (g *GUI) loading() {
 	}
 }
 
+// while updates the loading message on each tick while loading is active.
 func (l *loading) while() {
 	i := 0
 

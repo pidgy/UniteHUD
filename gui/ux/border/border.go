@@ -1,5 +1,7 @@
 package border
 
+// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+
 import (
 	"image"
 
@@ -25,6 +27,7 @@ type Top struct {
 	Width        unit.Sp
 }
 
+// Layout lays out and renders the widget.
 func (b *Bottom) Layout(gtx layout.Context, w layout.Widget) layout.Dimensions {
 	dims := w(gtx)
 	sz := layout.FPt(dims.Size)
@@ -48,6 +51,7 @@ func (b *Bottom) Layout(gtx layout.Context, w layout.Widget) layout.Dimensions {
 	return dims
 }
 
+// Layout lays out and renders the widget.
 func (t *Top) Layout(gtx layout.Context, w layout.Widget) layout.Dimensions {
 	dims := w(gtx)
 	sz := layout.FPt(dims.Size)

@@ -2,6 +2,9 @@ package spinner
 
 import "time"
 
+// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+
+// Widget defines Widget behavior and state.
 type Widget struct {
 	pos    int
 	bytes  []string
@@ -17,10 +20,12 @@ func Recording() *Widget {
 	return withDelayAndBytes(time.Millisecond*500, []string{"•", " "})
 }
 
+// Stopped stops the operation.
 func Stopped() *Widget {
 	return defaultWithBytes([]string{"×", "+"})
 }
 
+// Stop stops the operation.
 func (s *Widget) Stop() {
 	s.ticker.Stop()
 }

@@ -21,6 +21,7 @@ import (
 	"github.com/pidgy/unitehud/system/update"
 )
 
+// init wires up localization, logging, and Discord hooks during startup.
 func init() {
 	notify.Announce("[UniteHUD] Initializing...")
 
@@ -34,6 +35,7 @@ func init() {
 	discord.ErrorLog = notify.Error
 }
 
+// close waits for shutdown signals, closes subsystems, persists logs, and exits.
 func close() {
 	exe.WaitForSignal()
 
@@ -52,6 +54,7 @@ func close() {
 	exe.Exit()
 }
 
+// main opens required subsystems, starts detection loops, and holds the UI open.
 func main() {
 	defer ui.New().OnClose(exe.Close).Open()
 

@@ -5,6 +5,7 @@ import (
 	"testing"
 )
 
+// TestWindows runs the routine.
 func TestWindows(t *testing.T) {
 	m := map[string]NRGBA{
 		"Red":          {R: 255},

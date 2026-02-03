@@ -1,5 +1,7 @@
 package server
 
+// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+
 import (
 	"context"
 	"encoding/json"
@@ -36,6 +38,7 @@ const (
 	ObjectiveRegisteel = "registeel"
 )
 
+// Objective defines Objective behavior and state.
 type Objective struct {
 	Name        string `json:"name"`
 	Team        string `json:"team"`
@@ -44,6 +47,7 @@ type Objective struct {
 	IsFinal     bool   `json:"is_final"`
 }
 
+// State defines State behavior and state.
 type State struct {
 	Objectives         []Objective `json:"objectives"`
 	Config             bool        `json:"config"`
@@ -67,6 +71,7 @@ type State struct {
 	lastSecondsUpdate time.Time
 }
 
+// info defines info behavior and state.
 type info struct {
 	*State
 
@@ -79,6 +84,7 @@ type info struct {
 	mutex *sync.Mutex
 }
 
+// score defines score behavior and state.
 type score struct {
 	Team        string `json:"team"`
 	Value       int    `json:"value"`
@@ -138,6 +144,7 @@ func Holding() int {
 	return current.State.Energy
 }
 
+// IsFinalStretch reports whether the condition holds.
 func IsFinalStretch() bool {
 	if current.State.Seconds == 0 || current.State.Seconds >= 130 {
 		return false
@@ -162,6 +169,7 @@ func KOs(t *team.Team) int {
 	}
 }
 
+// Open opens the target.
 func Open() error {
 	http.Handle("/stream", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		current.client(r)
@@ -424,6 +432,7 @@ func Scores() (orange, purple, self int) {
 	return current.State.Orange.Value, current.State.Purple.Value, current.State.Self.Value
 }
 
+// SetBottomObjective sets the related state.
 func SetBottomObjective(t *team.Team, name string, n int) {
 	o := Objective{
 		Team: t.Name,
@@ -465,18 +474,22 @@ func SetBottomObjective(t *team.Team, name string, n int) {
 	}
 }
 
+// SetConfig sets the related state.
 func SetConfig(c bool) {
 	current.State.Config = c
 }
 
+// SetDefeated sets the related state.
 func SetDefeated() {
 	current.State.Defeated = append(current.State.Defeated, current.State.Seconds)
 }
 
+// SetEnergy sets the related state.
 func SetEnergy(b int) {
 	current.State.Energy = b
 }
 
+// SetFinalObjective sets the related state.
 func SetFinalObjective(t *team.Team, e state.EventType) {
 	current.State.FinalObjectiveTeam = t.Name
 
@@ -488,6 +501,7 @@ func SetFinalObjective(t *team.Team, e state.EventType) {
 	})
 }
 
+// SetKO sets the related state.
 func SetKO(t *team.Team) {
 	switch t.Name {
 	case team.Purple.Name:
@@ -497,14 +511,17 @@ func SetKO(t *team.Team) {
 	}
 }
 
+// SetMatchStarted sets the related state.
 func SetMatchStarted() {
 	current.State.InMatch = true
 }
 
+// SetMatchStopped sets the related state.
 func SetMatchStopped() {
 	current.State.InMatch = false
 }
 
+// SetRegice sets the related state.
 func SetRegice(t *team.Team) {
 	current.Objectives = append(current.Objectives, Objective{
 		Team: t.Name,
@@ -513,6 +530,7 @@ func SetRegice(t *team.Team) {
 	})
 }
 
+// SetRegidrago sets the related state.
 func SetRegidrago(t *team.Team) {
 	current.Objectives = append(current.Objectives, Objective{
 		Team: t.Name,
@@ -521,6 +539,7 @@ func SetRegidrago(t *team.Team) {
 	})
 }
 
+// SetRegieleki sets the related state.
 func SetRegieleki(t *team.Team) {
 	current.Objectives = append(current.Objectives, Objective{
 		Team: t.Name,
@@ -540,6 +559,7 @@ func SetRegieleki(t *team.Team) {
 	current.State.Regilekis[2] = team.None.Name
 }
 
+// SetRegirock sets the related state.
 func SetRegirock(t *team.Team) {
 	current.Objectives = append(current.Objectives, Objective{
 		Team: t.Name,
@@ -548,6 +568,7 @@ func SetRegirock(t *team.Team) {
 	})
 }
 
+// SetRegisteel sets the related state.
 func SetRegisteel(t *team.Team) {
 	current.Objectives = append(current.Objectives, Objective{
 		Team: t.Name,
@@ -556,16 +577,19 @@ func SetRegisteel(t *team.Team) {
 	})
 }
 
+// SetNotReady sets the related state.
 func SetNotReady() {
 	current.State.Ready = false
 	state.Add(state.ServerStopped, Clock(), -1)
 }
 
+// SetReady sets the related state.
 func SetReady() {
 	current.State.Ready = true
 	state.Add(state.ServerStarted, Clock(), -1)
 }
 
+// SetScore sets the related state.
 func SetScore(t *team.Team, v int) {
 	s := score{
 		Team:  t.Name,
@@ -593,6 +617,7 @@ func SetScore(t *team.Team, v int) {
 	}
 }
 
+// SetScoreSurrendered sets the related state.
 func SetScoreSurrendered(t *team.Team) {
 	switch t {
 	case team.Purple:
@@ -602,6 +627,7 @@ func SetScoreSurrendered(t *team.Team) {
 	}
 }
 
+// SetTime sets the related state.
 func SetTime(minutes, seconds int64) {
 	current.State.lastSecondsUpdate = time.Now()
 

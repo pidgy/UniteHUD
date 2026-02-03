@@ -1,5 +1,7 @@
 package filter
 
+// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+
 import (
 	"fmt"
 	"strings"
@@ -7,6 +9,7 @@ import (
 	"github.com/pidgy/unitehud/core/team"
 )
 
+// Filter defines Filter behavior and state.
 type Filter struct {
 	*team.Team
 	File  string
@@ -14,6 +17,7 @@ type Filter struct {
 	Alias bool
 }
 
+// New returns a new instance.
 func New(t *team.Team, file string, value int, alias bool) Filter {
 	return Filter{t, file, value, alias}
 }

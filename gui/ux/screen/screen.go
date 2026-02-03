@@ -1,5 +1,7 @@
 package screen
 
+// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+
 import (
 	"image"
 
@@ -13,6 +15,7 @@ import (
 	"github.com/pidgy/unitehud/core/rgba/nrgba"
 )
 
+// Widget defines Widget behavior and state.
 type Widget struct {
 	image.Image
 	Border      bool
@@ -25,6 +28,7 @@ type Widget struct {
 	Dims layout.Dimensions
 }
 
+// Layout lays out and renders the widget.
 func (s *Widget) Layout(gtx layout.Context) layout.Dimensions {
 	defer func() {
 		r := recover()
@@ -52,6 +56,7 @@ func (s *Widget) Scale(gtx layout.Context) float32 {
 	return float32(gtx.Constraints.Max.X) / float32(s.Image.Bounds().Dx())
 }
 
+// layout lays out and renders the widget.
 func (s *Widget) layout(gtx layout.Context) layout.Dimensions {
 	if s.Splash {
 		defer clip.Rect{Max: gtx.Constraints.Max}.Push(gtx.Ops).Pop()

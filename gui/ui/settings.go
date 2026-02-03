@@ -1,5 +1,7 @@
 package ui
 
+// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+
 import (
 	"fmt"
 	"image"
@@ -32,6 +34,7 @@ import (
 	"github.com/pidgy/unitehud/system/ini"
 )
 
+// section defines section behavior and state.
 type section struct {
 	h1                 bool
 	title, description material.LabelStyle
@@ -40,6 +43,7 @@ type section struct {
 	extras []ux.Widgeter
 }
 
+// settings defines settings behavior and state.
 type settings struct {
 	hwnd uintptr
 
@@ -78,6 +82,7 @@ type settings struct {
 	}
 }
 
+// settings sets the related state.
 func (g *GUI) settings(onclose func()) *settings {
 	ui := g.settingsUI()
 
@@ -155,6 +160,7 @@ func (g *GUI) settings(onclose func()) *settings {
 	return ui
 }
 
+// settingsUI sets the related state.
 func (g *GUI) settingsUI() *settings {
 	ui := &settings{}
 
@@ -729,6 +735,7 @@ func (g *GUI) settingsUI() *settings {
 	return ui
 }
 
+
 func (s *section) section(gtx layout.Context) layout.Dimensions {
 	inset := layout.Inset{
 		Top:    5,
@@ -821,6 +828,7 @@ func (s *section) section(gtx layout.Context) layout.Dimensions {
 	})
 }
 
+
 func (s *section) footer(inset layout.Inset) []layout.FlexChild {
 	c := []layout.FlexChild{}
 
@@ -835,6 +843,7 @@ func (s *section) footer(inset layout.Inset) []layout.FlexChild {
 	return c
 }
 
+// close closes the target.
 func (s *settings) close() {
 	if s != nil {
 		go s.windows.this.Perform(system.ActionClose)
@@ -850,6 +859,7 @@ func (s *settings) close() {
 func (s *settings) isOpen() bool {
 	return s != nil
 }
+
 
 func (s *settings) resize() {
 	if s != nil {

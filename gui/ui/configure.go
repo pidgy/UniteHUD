@@ -1,5 +1,7 @@
 package ui
 
+// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+
 import (
 	"fmt"
 	"image"
@@ -41,6 +43,7 @@ import (
 	"github.com/pidgy/unitehud/system/save"
 )
 
+// configure defines configure behavior and state.
 type configure struct {
 	ops op.Ops
 
@@ -105,6 +108,7 @@ type configure struct {
 	tag any
 }
 
+// footer defines footer behavior and state.
 type footer struct {
 	api material.LabelStyle
 	log material.LabelStyle
@@ -114,6 +118,7 @@ type footer struct {
 	hz  material.LabelStyle
 }
 
+// configure open's the Configuration Menu window.
 func (g *GUI) configure() {
 	ui := g.configureUI()
 
@@ -467,6 +472,7 @@ func (g *GUI) configure() {
 	ui.windows.settings.close()
 	ui = nil
 }
+
 
 func (g *GUI) configureUI() *configure {
 	ui := &configure{
@@ -867,6 +873,7 @@ func (g *GUI) configureUI() *configure {
 	return ui
 }
 
+// Layout lays out and renders the widget.
 func (ui *configure) Layout(gtx layout.Context, fullscreen bool) layout.Dimensions {
 	rect := clip.Rect{
 		Min: gtx.Constraints.Min.Add(image.Pt(0, title.Height)),
@@ -934,9 +941,11 @@ func (ui *configure) Layout(gtx layout.Context, fullscreen bool) layout.Dimensio
 	return dims
 }
 
+
 func (ui *configure) empty(x, y float32) layout.FlexChild {
 	return layout.Rigid(layout.Spacer{Width: unit.Dp(x), Height: unit.Dp(y)}.Layout)
 }
+
 
 func (ui *configure) foot(f *footer) layout.FlexChild {
 	return layout.Rigid(func(gtx layout.Context) layout.Dimensions {
@@ -1001,6 +1010,7 @@ func (ui *configure) foot(f *footer) layout.FlexChild {
 		})
 	})
 }
+
 
 func (ui *configure) spacer(x, y float32) layout.FlexChild {
 	return layout.Rigid(func(gtx layout.Context) layout.Dimensions {

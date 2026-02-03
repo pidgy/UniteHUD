@@ -2,6 +2,8 @@ package stats
 
 import "sort"
 
+// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+
 type sortable []struct {
 	Name      string
 	Matches   int

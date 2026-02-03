@@ -7,6 +7,8 @@ package device
 #include "device.h"
 */
 import "C"
+// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+
 import (
 	"fmt"
 	"unsafe"

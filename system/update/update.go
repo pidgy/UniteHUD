@@ -1,5 +1,7 @@
 package update
 
+// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+
 import (
 	"bytes"
 	"encoding/json"

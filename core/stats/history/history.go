@@ -1,5 +1,7 @@
 package history
 
+// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+
 import (
 	"time"
 
@@ -7,6 +9,7 @@ import (
 	"github.com/pidgy/unitehud/core/rgba/nrgba"
 )
 
+// match defines match behavior and state.
 type match struct {
 	purple, orange, self int
 	time.Time

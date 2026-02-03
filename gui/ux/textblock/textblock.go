@@ -1,5 +1,7 @@
 package textblock
 
+// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+
 import (
 	"image"
 
@@ -18,6 +20,7 @@ import (
 	"github.com/pidgy/unitehud/gui/ux/decorate"
 )
 
+// Widget defines Widget behavior and state.
 type Widget struct {
 	Text string
 	font *fonts.Style
@@ -30,6 +33,7 @@ type Widget struct {
 	dragged bool
 }
 
+// New returns a new instance.
 func New(s *fonts.Style, max int) (*Widget, error) {
 	t := &Widget{
 		max:  max,
@@ -55,6 +59,7 @@ func New(s *fonts.Style, max int) (*Widget, error) {
 	return t, nil
 }
 
+// Layout lays out and renders the widget.
 func (t *Widget) Layout(gtx layout.Context, posts []notify.Post) layout.Dimensions {
 	defer t.cursor()
 

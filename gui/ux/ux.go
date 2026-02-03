@@ -2,6 +2,8 @@ package ux
 
 import "gioui.org/layout"
 
+// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+
 type (
 	Then struct {
 		Do func()

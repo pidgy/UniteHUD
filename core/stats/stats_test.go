@@ -2,6 +2,7 @@ package stats
 
 import "testing"
 
+// TestAppend runs the routine.
 func TestAppend(t *testing.T) {
 	s := sortable{}
 

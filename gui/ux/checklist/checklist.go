@@ -1,5 +1,7 @@
 package checklist
 
+// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+
 import (
 	"image"
 
@@ -15,6 +17,7 @@ import (
 	"github.com/pidgy/unitehud/gui/ux/decorate"
 )
 
+// Item defines Item behavior and state.
 type Item struct {
 	Text     string
 	Hint     string
@@ -33,6 +36,7 @@ type Item struct {
 	hintLabel material.LabelStyle
 }
 
+// Widget defines Widget behavior and state.
 type Widget struct {
 	Items         []*Item
 	Callback      func(item *Item, this *Widget) (check bool)
@@ -157,6 +161,7 @@ func (list *Widget) defaultList() {
 	}
 }
 
+// draw draws the widget.
 func (list *Widget) draw(gtx layout.Context, item *Item) layout.Dimensions {
 	// list.liststyle.Scrollbar.AddTrack(gtx.Ops)
 

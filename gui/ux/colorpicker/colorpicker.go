@@ -1,5 +1,7 @@
 package colorpicker
 
+// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+
 import (
 	"gioui.org/layout"
 	"gioui.org/text"
@@ -28,6 +30,7 @@ type (
 	}
 )
 
+// New returns a new instance.
 func New(style *fonts.Style, options ...Option) *Widget {
 	collection := fonts.NewCollection()
 
@@ -66,6 +69,7 @@ func New(style *fonts.Style, options ...Option) *Widget {
 	return c
 }
 
+// Layout lays out and renders the widget.
 func (c *Widget) Layout(gtx layout.Context) layout.Dimensions {
 	//gtx.Constraints.Max.Y = 250
 	gtx.Constraints.Min.X = 1 // Sets the radio button size.

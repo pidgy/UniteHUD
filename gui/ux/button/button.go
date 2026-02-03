@@ -1,5 +1,7 @@
 package button
 
+// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+
 import (
 	"image"
 	"time"
@@ -18,6 +20,7 @@ import (
 	"github.com/pidgy/unitehud/gui/cursor"
 )
 
+// Widget defines Widget behavior and state.
 type Widget struct {
 	Text            string
 	TextSize        unit.Sp
@@ -80,6 +83,7 @@ func (b *Widget) Error() {
 	})
 }
 
+// Layout lays out and renders the widget.
 func (b *Widget) Layout(gtx layout.Context) layout.Dimensions {
 	defer b.HoverHint()
 
@@ -222,6 +226,7 @@ func (b *Widget) uniform(gtx layout.Context) layout.Dimensions {
 	return layout.Dimensions{Size: b.Size}
 }
 
+// draw draws the widget.
 func (b *Widget) draw(gtx layout.Context) layout.Dimensions {
 	if b.TextSize == 0 {
 		b.TextSize = unit.Sp(16)

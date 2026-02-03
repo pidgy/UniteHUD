@@ -1,5 +1,7 @@
 package keys
 
+// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+
 import (
 	"fmt"
 	"strings"
@@ -26,6 +28,7 @@ const (
 	HintText = key.HintText
 )
 
+// New returns a new instance.
 func New() Bind {
 	return []bind{}
 }

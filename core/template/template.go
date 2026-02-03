@@ -1,11 +1,14 @@
 package template
 
+// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+
 import (
 	"gocv.io/x/gocv"
 
 	"github.com/pidgy/unitehud/core/template/filter"
 )
 
+// Template defines Template behavior and state.
 type Template struct {
 	filter.Filter
 	gocv.Mat
@@ -13,6 +16,7 @@ type Template struct {
 	Mask     gocv.Mat
 }
 
+// New returns a new instance.
 func New(f filter.Filter, m gocv.Mat, category, subcategory string) *Template {
 	return &Template{
 		Filter:   f,

@@ -1,5 +1,7 @@
 package ui
 
+// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+
 import (
 	"image"
 	"runtime"
@@ -22,6 +24,7 @@ import (
 	"github.com/pidgy/unitehud/system/wapi"
 )
 
+// GUI manages the main application window, state, and UI lifecycle.
 type GUI struct {
 	HWND uintptr
 
@@ -73,8 +76,10 @@ type GUI struct {
 	hz *fps.Hz
 }
 
+// UI holds the global GUI instance.
 var UI *GUI
 
+// New initializes and returns a new GUI instance.
 func New() *GUI {
 	err := wapi.SetProcessDPIAwareness(wapi.PerMonitorAware)
 	if err != nil {
@@ -150,21 +155,25 @@ func New() *GUI {
 	return UI
 }
 
+// Close closes the global GUI instance if it exists.
 func Close() {
 	if UI != nil {
 		UI.Close()
 	}
 }
 
+// Close transitions the GUI to the closing state.
 func (g *GUI) Close() {
 	is.Next(is.Closing)
 }
 
+// OnClose sets a callback to run when the GUI closes.
 func (g *GUI) OnClose(fn func()) *GUI {
 	g.onClose = fn
 	return g
 }
 
+// Open starts the GUI event loop and background processing.
 func (g *GUI) Open() {
 	is.Next(is.MainMenu)
 
@@ -199,6 +208,7 @@ func (g *GUI) Open() {
 	}
 }
 
+// attachWindowLeft positions a window to the left of the main window.
 func (g *GUI) attachWindowLeft(hwnd uintptr, width int) {
 	if hwnd == 0 {
 		return
@@ -218,6 +228,7 @@ func (g *GUI) attachWindowLeft(hwnd uintptr, width int) {
 	wapi.SetWindowPosNone(hwnd, image.Pt(x, y), image.Pt(width, g.dimensions.size.Y))
 }
 
+// attachWindowRight positions a window to the right of the main window.
 func (g *GUI) attachWindowRight(hwnd uintptr, width int) bool {
 	if hwnd == 0 {
 		return false
@@ -235,6 +246,7 @@ func (g *GUI) attachWindowRight(hwnd uintptr, width int) bool {
 	return true
 }
 
+// frame renders a single GUI frame and handles dragging.
 func (g *GUI) frame(gtx layout.Context, e system.FrameEvent) {
 	g.window.Invalidate()
 
@@ -249,6 +261,7 @@ func (g *GUI) frame(gtx layout.Context, e system.FrameEvent) {
 	g.hz.Tick(gtx.Now)
 }
 
+// maximize makes the window fullscreen and disables dragging.
 func (g *GUI) maximize() {
 	g.window.Perform(system.ActionMaximize)
 	g.dimensions.fullscreen = true
@@ -269,10 +282,12 @@ func (g *GUI) maximize() {
 	// )
 }
 
+// minimize minimizes the window.
 func (g *GUI) minimize() {
 	g.window.Perform(system.ActionMinimize)
 }
 
+// moveWindow applies a drag shift to reposition the window.
 func (g *GUI) moveWindow(shift image.Point) {
 	if g.dimensions.fullscreen || g.HWND == 0 || g.dimensions.resizing {
 		return
@@ -302,12 +317,14 @@ func (g *GUI) moveWindow(shift image.Point) {
 	}()
 }
 
+// position returns the current window position.
 func (g *GUI) position() image.Point {
 	r := &wapi.Rect{}
 	wapi.GetWindowRect.Call(g.HWND, uintptr(unsafe.Pointer(r)))
 	return image.Pt(int(r.Left), int(r.Top))
 }
 
+// proc tracks and reports process performance over time.
 func (g *GUI) proc() {
 	peak := struct{ cpu, ram float64 }{}
 
@@ -328,6 +345,7 @@ func (g *GUI) proc() {
 	}
 }
 
+// resize toggles between maximized and normal states.
 func (g *GUI) resize() {
 	if g.dimensions.fullscreen {
 		g.unmaximize()
@@ -336,6 +354,7 @@ func (g *GUI) resize() {
 	}
 }
 
+// setInsetLeft increases the left inset and adjusts the window.
 func (g *GUI) setInsetLeft(left int) {
 	g.inset.left += left
 
@@ -356,6 +375,7 @@ func (g *GUI) setInsetLeft(left int) {
 	}
 }
 
+// setInsetRight increases the right inset and adjusts the window.
 func (g *GUI) setInsetRight(right int) {
 	g.inset.right += right
 
@@ -377,6 +397,7 @@ func (g *GUI) setInsetRight(right int) {
 	}
 }
 
+// squeeze shrinks the window to fit current insets.
 func (g *GUI) squeeze() image.Point {
 	size := g.dimensions.max.Sub(image.Pt(g.inset.left+g.inset.right+1, 0))
 	g.window.Option(app.MinSize(unit.Dp(size.X), unit.Dp(size.Y)))
@@ -392,6 +413,7 @@ func (g *GUI) squeeze() image.Point {
 	return size
 }
 
+// unmaximize restores the window from fullscreen state.
 func (g *GUI) unmaximize() {
 	g.window.Perform(system.ActionUnmaximize)
 	g.dimensions.fullscreen = false
@@ -408,6 +430,7 @@ func (g *GUI) unmaximize() {
 	// )
 }
 
+// unsetInsetLeft decreases the left inset and adjusts the window.
 func (g *GUI) unsetInsetLeft(left int) {
 	g.inset.left -= left
 
@@ -421,6 +444,7 @@ func (g *GUI) unsetInsetLeft(left int) {
 	}
 }
 
+// unsetInsetRight decreases the right inset and adjusts the window.
 func (g *GUI) unsetInsetRight(right int) {
 	g.inset.right -= right
 

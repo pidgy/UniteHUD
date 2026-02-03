@@ -4,6 +4,7 @@ import (
 	"testing"
 )
 
+// TestLastStrings runs the routine.
 func TestLastStrings(t *testing.T) {
 	// 0 Posts.
 	expected := 0

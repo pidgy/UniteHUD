@@ -2,6 +2,8 @@
 
 package ui
 
+// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+
 import (
 	"fmt"
 	"image"
@@ -49,6 +51,7 @@ import (
 	"github.com/pidgy/unitehud/system/wapi"
 )
 
+// main defines main behavior and state.
 type main struct {
 	ops   op.Ops
 	stage system.Stage
@@ -124,6 +127,7 @@ type main struct {
 	tag      any
 }
 
+// main open's the Main Menu window.
 func (g *GUI) main() {
 	ui := g.mainUI()
 
@@ -585,6 +589,7 @@ func (g *GUI) main() {
 	}
 }
 
+// mainUI creates the main menu's UI state manager.
 func (g *GUI) mainUI() *main {
 	ui := &main{
 		stage:    system.StageRunning,
@@ -1238,6 +1243,7 @@ var (
 	}{}
 )
 
+// onFrame handles the event callback.
 func (ui *main) onFrame(frame int, fn func(*GUI), g *GUI) {
 	f := framer[frame]
 	if f.done || f.count == 4096 { // Frame limitation.
@@ -1252,6 +1258,7 @@ func (ui *main) onFrame(frame int, fn func(*GUI), g *GUI) {
 	framer[frame] = f
 }
 
+// onFrame1 handles the event callback.
 func (ui *main) onFrame1(g *GUI) {
 	g.window.Option(
 		app.Size(
@@ -1282,6 +1289,7 @@ func (ui *main) onFrame1(g *GUI) {
 	// go wapi.SetWindowLongPtrA.Call(g.HWND, wapi.GetWindowLongFlags.Style, uintptr(wapi.WindowStyles.Overlapped))
 }
 
+// onFrame2 handles the event callback.
 func (ui *main) onFrame2(g *GUI) {
 	if config.IsNew() {
 		g.ToastNewsletter(
@@ -1321,6 +1329,7 @@ func (ui *main) onFrame2(g *GUI) {
 	}
 }
 
+// onFrame3 handles the event callback.
 func (ui *main) onFrame3(g *GUI) {
 	if !discord.Connected() && config.Current.Remember.Discord == config.DiscordRememberStandby {
 		was := config.Current.Advanced.Discord.Disabled

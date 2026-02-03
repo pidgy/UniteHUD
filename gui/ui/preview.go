@@ -1,5 +1,7 @@
 package ui
 
+// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+
 import (
 	"image"
 	"sort"
@@ -24,6 +26,7 @@ import (
 	"github.com/pidgy/unitehud/media/video"
 )
 
+// preview defines preview behavior and state.
 type preview struct {
 	hwnd uintptr
 
@@ -58,6 +61,7 @@ type preview struct {
 	}
 }
 
+// preview open's the capture area preview window to the left of Configure.
 func (g *GUI) preview(a *areas, onclose func()) *preview {
 	ui := g.previewUI()
 
@@ -268,6 +272,7 @@ func (g *GUI) preview(a *areas, onclose func()) *preview {
 	return ui
 }
 
+// previewUI creates the preview window's UI state manager.
 func (g *GUI) previewUI() *preview {
 	ui := &preview{}
 
@@ -322,12 +327,14 @@ func (g *GUI) previewUI() *preview {
 	return ui
 }
 
+// close closes the preview window.
 func (p *preview) close() {
 	if p != nil {
 		p.windows.this.Perform(system.ActionClose)
 	}
 }
 
+// makePreviewCaptureButton creates a special button for saving previewed images.
 func (p *preview) makePreviewCaptureButton(cap *area.Capture, img image.Image) *button.ImageWidget {
 	return &button.ImageWidget{
 		Widget: &screen.Widget{
@@ -345,10 +352,12 @@ func (p *preview) makePreviewCaptureButton(cap *area.Capture, img image.Image) *
 	}
 }
 
+// open opens the target.
 func (p *preview) open() bool {
 	return p != nil
 }
 
+// resize sets a flag to indicate resizing next frame.
 func (p *preview) resize() {
 	if p != nil {
 		p.dimensions.resize = true

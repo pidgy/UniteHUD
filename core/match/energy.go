@@ -1,5 +1,7 @@
 package match
 
+// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+
 import (
 	"image"
 	"image/color"
@@ -16,6 +18,7 @@ import (
 	"github.com/pidgy/unitehud/core/template"
 )
 
+// AsAeosImage renders a preview image with the detected point value.
 func AsAeosImage(mat gocv.Mat, points int) (image.Image, error) {
 	if config.Current.Advanced.Matching.Disabled.Previews {
 		return nil, nil
@@ -35,8 +38,7 @@ func AsAeosImage(mat gocv.Mat, points int) (image.Image, error) {
 	return crop, nil
 }
 
-// Energy avoids the walking inset method in previous versions which fails for duplicate values.
-// Instead, Energy handles duplicate values by removing matched areas to avoid detection.
+// Energy detects the held energy value and handles duplicate digit matches.
 func Energy(matrix gocv.Mat, img image.Image) (Result, []int, int) {
 	mins := []int{math.MaxInt32, math.MaxInt32}
 	maxs := []float32{0, 0}
@@ -131,6 +133,8 @@ func Energy(matrix gocv.Mat, img image.Image) (Result, []int, int) {
 	}
 }
 
+
+// SelfScore detects self-score pre/post templates.
 func SelfScore(matrix gocv.Mat, img image.Image) (*Match, Result) {
 	templates := []*template.Template{}
 	for _, t := range config.Current.TemplatesScoring(team.Game.Name) {
@@ -141,6 +145,8 @@ func SelfScore(matrix gocv.Mat, img image.Image) (*Match, Result) {
 	return Matches(matrix, img, templates)
 }
 
+
+// SelfScoreIndicator detects the self-score indicator template.
 func SelfScoreIndicator(matrix gocv.Mat, img image.Image) (*Match, Result) {
 	templates := []*template.Template{}
 	for _, t := range config.Current.TemplatesScoring(team.Game.Name) {

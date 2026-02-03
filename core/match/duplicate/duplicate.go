@@ -1,5 +1,7 @@
 package duplicate
 
+// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+
 import (
 	"time"
 
@@ -10,6 +12,7 @@ import (
 
 const delay = time.Millisecond * 4000
 
+// Duplicate defines Duplicate behavior and state.
 type Duplicate struct {
 	Value int
 	time.Time
@@ -22,6 +25,7 @@ type Duplicate struct {
 	Potential bool
 }
 
+// New returns a new instance.
 func New(value int, mat, region gocv.Mat) *Duplicate {
 	return &Duplicate{
 		Value:  value,
@@ -31,6 +35,7 @@ func New(value int, mat, region gocv.Mat) *Duplicate {
 	}
 }
 
+// Close closes the target.
 func (d *Duplicate) Close() {
 	if d == nil {
 		return
@@ -46,6 +51,7 @@ func (d *Duplicate) Close() {
 		notify.Warn("[Duplicate] <ini:f:close> duplicate region")
 	}
 }
+
 
 func (d *Duplicate) Of(d2 *Duplicate) (bool, string) {
 	if d.Value == 0 || d2.Value == 0 {
@@ -93,6 +99,7 @@ func (d *Duplicate) Of(d2 *Duplicate) (bool, string) {
 
 	return false, ""
 }
+
 
 func (d *Duplicate) Overrides(prev *Duplicate) bool {
 	switch {

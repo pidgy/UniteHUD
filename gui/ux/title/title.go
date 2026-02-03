@@ -1,5 +1,7 @@
 package title
 
+// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+
 import (
 	"image"
 	"strings"
@@ -34,6 +36,7 @@ var (
 	tipTextSize    = unit.Sp(14)
 )
 
+// Widget defines Widget behavior and state.
 type Widget struct {
 	Title string
 	*fonts.Collection
@@ -46,6 +49,7 @@ type Widget struct {
 	*decorations
 }
 
+// decorations defines decorations behavior and state.
 type decorations struct {
 	title struct {
 		material.LabelStyle
@@ -86,6 +90,7 @@ type decorations struct {
 	}
 }
 
+// New returns a new instance.
 func New(title string, minimize, resize, close func()) *Widget {
 	collection := fonts.NewCollection()
 
@@ -260,6 +265,7 @@ func (b *Widget) Dragging() (image.Point, bool) {
 	return b.dragging.diff.Round(), true
 }
 
+// Layout lays out and renders the widget.
 func (b *Widget) Layout(gtx layout.Context, content layout.Widget) layout.Dimensions {
 	cursor.Draw(gtx)
 
@@ -465,12 +471,14 @@ func (b *Widget) Layout(gtx layout.Context, content layout.Widget) layout.Dimens
 	return dims
 }
 
+// OnClose handles the event callback.
 func (b *Widget) OnClose(fn func(*button.Widget)) ux.Thener {
 	tmp := b.buttons.close.Click
 	b.buttons.close.Click = fn
 	return ux.Then{Do: func() { b.buttons.close.Click = tmp }}
 }
 
+// Open opens the target.
 func (b *Widget) Open() {
 	this := b.decorations.buttons.custom[0]
 	this.Click(this)

@@ -1,5 +1,7 @@
 package lang
 
+// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+
 import (
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"

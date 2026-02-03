@@ -1,5 +1,7 @@
 package ui
 
+// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+
 import (
 	"fmt"
 	"image"
@@ -34,6 +36,7 @@ import (
 	"github.com/pidgy/unitehud/system/wapi"
 )
 
+// projector defines projector behavior and state.
 type projector struct {
 	hwnd uintptr
 
@@ -130,6 +133,7 @@ func (g *GUI) projector(onclose func()) {
 	statsLabel.Font.Weight = font.Light
 	decorate.LabelColor(&statsLabel, nrgba.Highlight.Alpha(200).Color())
 
+	// FrameTiming defines FrameTiming behavior and state.
 	type FrameTiming struct {
 		Start, End      time.Time
 		FrameCount      int
@@ -438,6 +442,7 @@ func (g *GUI) projectorUI() *projector {
 	return ui
 }
 
+// setWindowPos sets the related state.
 func (ui *projector) setWindowPos(shift image.Point) {
 	if ui.dimensions.fullscreened || ui.hwnd == 0 || ui.dimensions.moving {
 		notify.Warn("[UI] <ini:f:set> overlay position (hwnd:%d, fullscreen:%t, moving:%t)", ui.hwnd, ui.dimensions.fullscreened, ui.dimensions.moving)

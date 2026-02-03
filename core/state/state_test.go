@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// TestPast runs the routine.
 func TestPast(t *testing.T) {
 	Add(FinalObjectiveGroudonSecureOrange, "10:00", 0)
 	Add(RegiceSecureOrange, "10:00", 0)

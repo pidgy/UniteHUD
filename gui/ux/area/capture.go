@@ -1,5 +1,7 @@
 package area
 
+// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+
 import (
 	"fmt"
 	"image"
@@ -14,6 +16,7 @@ import (
 	"github.com/pidgy/unitehud/system/wapi"
 )
 
+// Capture defines Capture behavior and state.
 type Capture struct {
 	Option      string
 	File        string
@@ -24,6 +27,7 @@ type Capture struct {
 	MatchedText  string
 }
 
+// Open opens the target.
 func (c *Capture) Open() error {
 	img, err := video.CaptureRect(c.Base)
 	if err != nil {

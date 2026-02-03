@@ -1,5 +1,7 @@
 package match
 
+// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+
 import (
 	"image"
 	"image/color"
@@ -16,14 +18,21 @@ import (
 )
 
 const (
+	// Duplicate indicates a match that duplicates an existing one.
 	Duplicate Result = -3
-	Invalid   Result = -2
-	Missed    Result = -1
-	NotFound  Result = 0
-	Found     Result = 1
-	Override  Result = 2
+	// Invalid indicates a match that cannot be evaluated safely.
+	Invalid Result = -2
+	// Missed indicates a match that should have been found but was not.
+	Missed Result = -1
+	// NotFound indicates no match was found.
+	NotFound Result = 0
+	// Found indicates a valid match.
+	Found Result = 1
+	// Override indicates a match that should override existing state.
+	Override Result = 2
 )
 
+// Match defines Match behavior and state.
 type Match struct {
 	image.Point
 	*template.Template
@@ -35,6 +44,7 @@ type Match struct {
 	Value int
 }
 
+// AsImage returns a cropped preview image for the match, or nil when previews are disabled.
 func (m *Match) AsImage(mat gocv.Mat, points int) (image.Image, error) {
 	if config.Current.Advanced.Matching.Disabled.Previews {
 		return nil, nil
@@ -66,6 +76,7 @@ func (m *Match) AsImage(mat gocv.Mat, points int) (image.Image, error) {
 	return crop, nil
 }
 
+// process evaluates the match within the matrix and returns the result.
 func (m *Match) process(matrix gocv.Mat) Result {
 	switch m.Template.Category {
 	case "killed":
@@ -88,14 +99,17 @@ func (m *Match) process(matrix gocv.Mat) Result {
 	}
 }
 
+// rectangle returns the template bounds at the match location.
 func (m *Match) rectangle() image.Rectangle {
 	return image.Rect(m.Point.X, m.Point.Y, m.Point.X+m.Template.Mat.Cols(), m.Point.Y+m.Template.Mat.Rows())
 }
 
+// Matches finds the first acceptable match for the templates using the default acceptance.
 func Matches(matrix gocv.Mat, img image.Image, templates []*template.Template) (*Match, Result) {
 	return MatchesWithAcceptance(matrix, img, templates, config.Current.Acceptance)
 }
 
+// MatchesWithAcceptance finds the first acceptable match for the templates using the provided acceptance.
 func MatchesWithAcceptance(matrix gocv.Mat, img image.Image, templates []*template.Template, acceptance float32) (*Match, Result) {
 	results := make([]gocv.Mat, len(templates))
 

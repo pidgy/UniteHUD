@@ -1,5 +1,7 @@
 package ui
 
+// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+
 import (
 	"fmt"
 	"image"
@@ -494,6 +496,7 @@ func (g *GUI) ToastYesNoRemember(header, msg, decision string, y toastOnYes, n t
 	}
 }
 
+// makeToast builds the component.
 func (g *GUI) makeToast(header, msg string, width, height float32) *toast {
 	msg = ini.Format(msg)
 	header = ini.Format(header)
@@ -508,6 +511,7 @@ func (g *GUI) makeToast(header, msg string, width, height float32) *toast {
 	return g.makeToastForce(header, msg, width, height)
 }
 
+// makeToastForce builds the component.
 func (g *GUI) makeToastForce(header, msg string, width, height float32) *toast {
 	t := &toast{
 		g: g,
@@ -635,6 +639,7 @@ func titleFirstWord(s string) string {
 	return strings.ToUpper(s[:1]) + s[1:]
 }
 
+// close closes the target.
 func (t *toast) close() {
 	defer notify.Debug("[UI] Toast: Closed \"%s\") (active: %t)", t.label.Text, t.g.previous.toast.active)
 

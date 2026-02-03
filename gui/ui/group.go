@@ -1,5 +1,7 @@
 package ui
 
+// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+
 import (
 	"fmt"
 	"image"
@@ -27,6 +29,7 @@ import (
 	"github.com/pidgy/unitehud/system/lang"
 )
 
+// areas defines areas behavior and state.
 type areas struct {
 	energy             *area.Widget
 	objective          *area.Widget
@@ -36,11 +39,13 @@ type areas struct {
 	time               *area.Widget
 }
 
+// audios defines audios behavior and state.
 type audios struct {
 	in  capture
 	out capture
 }
 
+// capture defines capture behavior and state.
 type capture struct {
 	list     *checklist.Widget
 	populate func()
@@ -49,6 +54,7 @@ type capture struct {
 	prev string
 }
 
+// videos defines videos behavior and state.
 type videos struct {
 	devices  capture
 	windows  capture
