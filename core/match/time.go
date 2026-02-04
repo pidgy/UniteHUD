@@ -1,7 +1,5 @@
 package match
 
-// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
-
 import (
 	"fmt"
 	"image"
@@ -16,10 +14,12 @@ import (
 	"github.com/pidgy/unitehud/core/team"
 )
 
+// mask is a reusable matrix passed to template matching calls.
 var (
 	mask = gocv.NewMat()
 )
 
+// AsTimeImage renders a preview image of the detected time over the provided matrix.
 func AsTimeImage(mat gocv.Mat, kitchen string) (image.Image, error) {
 	if config.Current.Advanced.Matching.Disabled.Previews {
 		return nil, nil
@@ -49,6 +49,7 @@ func AsTimeImage(mat gocv.Mat, kitchen string) (image.Image, error) {
 	return crop, nil
 }
 
+// Time extracts the game clock from the matrix and returns minutes, seconds, and a formatted string.
 func Time(matrix gocv.Mat) (minutes, seconds int64, kitchen string) {
 	clock := [4]int64{-1, -1, -1, -1}
 	locs := []int{math.MaxInt32, math.MaxInt32, math.MaxInt32, math.MaxInt32}

@@ -1,7 +1,5 @@
 package output
 
-// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
-
 import (
 	"fmt"
 	"io"
@@ -12,6 +10,7 @@ import (
 	"github.com/pidgy/unitehud/media/audio/device"
 )
 
+// Device represents an audio playback device.
 type Device struct {
 	ID      string
 	Formats []malgo.DataFormat
@@ -27,6 +26,7 @@ type Device struct {
 	reconnects int
 }
 
+// New returns a playback device by name or disabled when requested.
 func New(ctx *malgo.AllocatedContext, name string) (*Device, error) {
 	if name == device.Disabled {
 		return &Device{name: device.Disabled}, nil
@@ -54,10 +54,12 @@ func New(ctx *malgo.AllocatedContext, name string) (*Device, error) {
 	return nil, fmt.Errorf("<ini:f:find> playback device: %s", name)
 }
 
+// Active reports whether the device is playing.
 func (d *Device) Active() bool {
 	return d == nil || d.active
 }
 
+// Close stops the playback device if active.
 func (d *Device) Close() {
 	if !d.Active() {
 		return
@@ -69,18 +71,22 @@ func (d *Device) Close() {
 	<-d.closedq
 }
 
+// Is reports whether this device matches the given name.
 func (d *Device) Is(name string) bool {
 	return device.Is(d, name)
 }
 
+// IsDefault reports whether this device is the system default.
 func (d *Device) IsDefault() bool {
 	return d.isDefault
 }
 
+// IsDisabled reports whether playback is disabled.
 func (d *Device) IsDisabled() bool {
 	return d.name == device.Disabled
 }
 
+// Name returns the device display name.
 func (d *Device) Name() string {
 	return d.name
 }
@@ -90,6 +96,7 @@ func (d *Device) Name() string {
 // provide stream configuration.
 // Playback will commence playing the samples provided from the reader until either the
 // reader returns an error, or the context signals done.
+// Start begins playback by reading samples from r.
 func (d *Device) Start(mctx malgo.Context, r io.ReadWriter) error {
 	if d.IsDisabled() {
 		return nil
@@ -161,14 +168,17 @@ func (d *Device) Start(mctx malgo.Context, r io.ReadWriter) error {
 	return <-errq
 }
 
+// String returns a safe display string for the device.
 func (d *Device) String() string {
 	return device.String(d)
 }
 
+// Type identifies this device as a playback output.
 func (d *Device) Type() device.Type {
 	return device.Output
 }
 
+// Devices enumerates available playback devices for the context.
 func Devices(ctx *malgo.AllocatedContext) (playbacks []*Device) {
 	d, err := ctx.Devices(malgo.Playback)
 	if err != nil {

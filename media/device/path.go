@@ -1,7 +1,5 @@
 package device
 
-// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
-
 import (
 	"regexp"
 )
@@ -18,6 +16,7 @@ type Path struct {
 	raw string
 }
 
+// regexPath groups regex matchers for path components.
 type regexPath struct {
 	vid,
 	pid,
@@ -26,8 +25,10 @@ type regexPath struct {
 }
 
 var (
+	// root extracts the root and bus type from a device path.
 	root = regexp.MustCompile(`(?P<ROOT>.+?)(:?)(?P<TYPE>usb|pci|sw?)(#|:)`)
 
+	// pci contains PCI-specific matchers.
 	pci = regexPath{
 		vid: regexp.MustCompile(`(ven_)(?P<VID>.*?)(&|#)`),
 		pid: regexp.MustCompile(`(pid_)(?P<PID>.*?)(&|#)`),
@@ -35,6 +36,7 @@ var (
 		dev: regexp.MustCompile(`(dev_)(?P<DEV>.*?)(&|#)`),
 	}
 
+	// usb contains USB-specific matchers.
 	usb = regexPath{
 		vid: regexp.MustCompile(`(vid_)(?P<VID>.*?)(&|#)`),
 		pid: regexp.MustCompile(`(pid_)(?P<PID>.*?)(&|#)`),
@@ -43,6 +45,7 @@ var (
 	}
 )
 
+// NewPath parses a raw device path into structured fields.
 func NewPath(s string) Path {
 	p := Path{
 		Root:      "unknown",
@@ -73,6 +76,7 @@ func NewPath(s string) Path {
 	return p
 }
 
+// extract populates path fields based on the provided regex set.
 func (p *Path) extract(r regexPath) {
 	m := r.vid.FindStringSubmatch(p.raw)
 	if m != nil {

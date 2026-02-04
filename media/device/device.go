@@ -7,7 +7,6 @@ package device
 #include "device.h"
 */
 import "C"
-// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
 
 import (
 	"fmt"
@@ -60,6 +59,7 @@ func VideoCaptureDevicePath(index int) (string, error) {
 	return path(index, C.DeviceTypeVideoCapture)
 }
 
+// deviceName resolves the friendly name for a device type and index.
 func deviceName(index int, t C.DeviceType) (string, error) {
 	name := C.DeviceName(C.int(index), t)
 	if name == nil {
@@ -70,6 +70,7 @@ func deviceName(index int, t C.DeviceType) (string, error) {
 	return C.GoString(name), nil
 }
 
+// newDevice builds a Device from native enumeration data.
 func newDevice(index int, t C.DeviceType) (*Device, error) {
 	d := C.Device{}
 	r := C.DeviceInit(&d, C.int(index), t)
@@ -89,6 +90,7 @@ func newDevice(index int, t C.DeviceType) (*Device, error) {
 	}, nil
 }
 
+// path resolves the device path for a device type and index.
 func path(index int, t C.DeviceType) (string, error) {
 	path := C.DevicePath(C.int(index), t)
 	if path == nil {

@@ -2,8 +2,6 @@
 
 package ui
 
-// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
-
 import (
 	"fmt"
 	"image"
@@ -1237,6 +1235,7 @@ func (g *GUI) mainUI() *main {
 }
 
 var (
+	// framer tracks one-shot frame callbacks by frame index.
 	framer = map[int]struct {
 		count int
 		done  bool

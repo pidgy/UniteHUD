@@ -1,7 +1,5 @@
 package ui
 
-// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
-
 import (
 	"fmt"
 	"image"
@@ -76,6 +74,7 @@ type projector struct {
 	ops op.Ops
 }
 
+// projector opens the overlay projector window and runs its event loop.
 func (g *GUI) projector(onclose func()) {
 	if electron.Active() {
 		return
@@ -302,6 +301,7 @@ func (g *GUI) projector(onclose func()) {
 	}
 }
 
+// fullscreen toggles projector fullscreen mode and updates power settings.
 func (ui *projector) fullscreen() {
 	electron.Hide()
 
@@ -329,6 +329,7 @@ func (ui *projector) fullscreen() {
 	}
 }
 
+// projectorUI initializes the projector window state and controls.
 func (g *GUI) projectorUI() *projector {
 	ui := &projector{
 		keybinds: keys.New().Bind(keys.NoMod, keys.Escape(), keys.F11()).Bind(keys.CtrlMod, "W"),

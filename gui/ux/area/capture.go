@@ -1,7 +1,5 @@
 package area
 
-// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
-
 import (
 	"fmt"
 	"image"
@@ -16,7 +14,7 @@ import (
 	"github.com/pidgy/unitehud/system/wapi"
 )
 
-// Capture defines Capture behavior and state.
+// Capture describes a screen region and its saved preview metadata.
 type Capture struct {
 	Option      string
 	File        string
@@ -27,7 +25,7 @@ type Capture struct {
 	MatchedText  string
 }
 
-// Open opens the target.
+// Open captures the region to a PNG and opens it with the shell.
 func (c *Capture) Open() error {
 	img, err := video.CaptureRect(c.Base)
 	if err != nil {
@@ -61,10 +59,12 @@ func (c *Capture) Open() error {
 	return nil
 }
 
+// Rectangle returns the capture region in screen coordinates.
 func (c *Capture) Rectangle() image.Rectangle {
 	return c.Base
 }
 
+// reset restores the capture region to its default bounds.
 func (c *Capture) reset() {
 	notify.Debug("[UI] Resetting %s capture area %s", c.Option, c.DefaultBase)
 	c.Base = c.DefaultBase

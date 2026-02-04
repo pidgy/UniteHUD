@@ -1,7 +1,5 @@
 package ui
 
-// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
-
 import (
 	"fmt"
 	"image"
@@ -29,7 +27,7 @@ import (
 	"github.com/pidgy/unitehud/system/lang"
 )
 
-// areas defines areas behavior and state.
+// areas groups the capture widgets used to configure on-screen regions.
 type areas struct {
 	energy             *area.Widget
 	objective          *area.Widget
@@ -39,13 +37,13 @@ type areas struct {
 	time               *area.Widget
 }
 
-// audios defines audios behavior and state.
+// audios groups audio input and output selector state.
 type audios struct {
 	in  capture
 	out capture
 }
 
-// capture defines capture behavior and state.
+// capture bundles a checklist with its populate callback and change tracking.
 type capture struct {
 	list     *checklist.Widget
 	populate func()
@@ -54,7 +52,7 @@ type capture struct {
 	prev string
 }
 
-// videos defines videos behavior and state.
+// videos collects video-related selectors and change handlers.
 type videos struct {
 	devices  capture
 	windows  capture
@@ -66,6 +64,7 @@ type videos struct {
 	onevent func(bool)
 }
 
+// audios builds the audio selector groups and initializes their items.
 func (g *GUI) audios(text float32) *audios {
 	a := &audios{
 		in: capture{
@@ -188,6 +187,7 @@ func (g *GUI) audios(text float32) *audios {
 	return a
 }
 
+// areas builds the capture region widgets with matching logic and defaults.
 func (g *GUI) areas(collection *fonts.Collection) *areas {
 	return &areas{
 		objective: &area.Widget{
@@ -521,6 +521,7 @@ func (g *GUI) areas(collection *fonts.Collection) *areas {
 	}
 }
 
+// videos builds the video device, window, and API selector groups.
 func (g *GUI) videos(text float32) *videos {
 	v := &videos{}
 
@@ -1062,6 +1063,7 @@ func (g *GUI) videos(text float32) *videos {
 	return v
 }
 
+// populate refreshes all video selector lists.
 func (v *videos) populate() {
 	v.devices.populate()
 	v.windows.populate()

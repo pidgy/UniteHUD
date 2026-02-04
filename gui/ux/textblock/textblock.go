@@ -1,7 +1,5 @@
 package textblock
 
-// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
-
 import (
 	"image"
 
@@ -120,6 +118,7 @@ func (t *Widget) cursor() {
 	}
 }
 
+// alpha computes a fade value based on position in the list.
 func alpha(index, nposts int) uint8 {
 	if index == nposts {
 		return 255

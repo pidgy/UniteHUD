@@ -1,7 +1,5 @@
 package team
 
-// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
-
 import (
 	"image"
 	"time"
@@ -13,7 +11,9 @@ import (
 )
 
 const (
-	delay      = time.Millisecond * 1850
+	// delay defines the default duplication delay for team capture windows.
+	delay = time.Millisecond * 1850
+	// acceptance defines the default duplication acceptance threshold.
 	acceptance = .84
 )
 
@@ -49,6 +49,7 @@ var (
 		Delay:      time.Second,
 	}
 
+	// First represents the "first goal" label capture context.
 	First = &Team{
 		Name:  "first",
 		title: "First",
@@ -60,6 +61,7 @@ var (
 		Delay:      time.Second,
 	}
 
+	// Game represents the overall game context label capture.
 	Game = &Team{
 		Name:  "game",
 		title: "Game",
@@ -71,6 +73,7 @@ var (
 		Acceptance: .8,
 	}
 
+	// None represents the default neutral team context.
 	None = &Team{
 		Name:  "none",
 		title: "None",
@@ -120,6 +123,7 @@ var (
 		Delay: time.Millisecond * 500,
 	}
 
+	// Time represents the match clock capture context.
 	Time = &Team{
 		Name:  "time",
 		title: "Time",
@@ -131,6 +135,7 @@ var (
 		Delay:      time.Second,
 	}
 
+	// nameOf maps team names to their Team instances.
 	nameOf = map[string]*Team{
 		Orange.Name: Orange,
 		Purple.Name: Purple,
@@ -142,10 +147,12 @@ var (
 	}
 )
 
+// By returns the Team instance for a given name.
 func By(name string) *Team {
 	return nameOf[name]
 }
 
+// Clear resets runtime state for all tracked teams.
 func Clear() {
 	for _, t := range []*Team{Orange, Purple, Self, Energy, Game, Time, First} {
 		t.Holding = 0
@@ -155,6 +162,7 @@ func Clear() {
 	}
 }
 
+// Color returns the NRGBA color for a team name.
 func Color(name string) nrgba.NRGBA {
 	switch name {
 	case Self.Name:
@@ -168,6 +176,7 @@ func Color(name string) nrgba.NRGBA {
 	}
 }
 
+// Delay returns the duplication delay for the named team.
 func Delay(team string) time.Duration {
 	return nameOf[team].Delay
 }

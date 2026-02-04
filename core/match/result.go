@@ -1,9 +1,9 @@
 package match
 
-// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
-
+// Result represents the outcome of a match operation.
 type Result int
 
+// String returns a human-readable label for the Result.
 func (r Result) String() string {
 	switch r {
 	case Duplicate:

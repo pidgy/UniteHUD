@@ -1,6 +1,6 @@
 package template
 
-// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+// Sortable tracks templates and cached data for stable, sortable grouping.
 
 import (
 	"image"
@@ -10,17 +10,20 @@ import (
 	"github.com/pidgy/unitehud/core/template/filter"
 )
 
-// Templates represents a sortable set of unique templates where set len > 1.
 type (
+	// Sortable stores templates, cached sort metadata, and invalidation state.
 	Sortable struct {
 		templates []*Template
 		cache     map[string]cached
 		invalid   bool
 	}
 
+	// byLocation sorts templates by cached X coordinate.
 	byLocation Sortable
-	byValues   Sortable
+	// byValues sorts templates by cached value.
+	byValues Sortable
 
+	// cached holds the cached location, value, and seen count for a template.
 	cached struct {
 		image.Point
 		value float32
@@ -28,13 +31,14 @@ type (
 	}
 )
 
-// NewSortable returns a new Sortable.
+// NewSortable returns a new Sortable with an initialized cache.
 func NewSortable() Sortable {
 	return Sortable{
 		cache: map[string]cached{},
 	}
 }
 
+// ByLocation sorts by cached location and validates the result.
 func ByLocation(t Sortable) bool {
 	if t.invalid || len(t.cache) == 0 || len(t.cache) > 3 {
 		return false
@@ -47,6 +51,7 @@ func ByLocation(t Sortable) bool {
 	return !t.invalid
 }
 
+// ByValues sorts by cached values and validates the result.
 func ByValues(t Sortable) bool {
 	for _, c := range t.cache {
 		if c.seen > 1 {
@@ -76,6 +81,7 @@ func (t *Sortable) Cache(t2 *Template, p image.Point, value float32) {
 	}
 }
 
+// Value returns a composite value for the sorted templates.
 func (t *Sortable) Value() int {
 	switch len(t.templates) {
 	case 1:
@@ -89,26 +95,32 @@ func (t *Sortable) Value() int {
 	}
 }
 
+// Len returns the number of templates.
 func (b byLocation) Len() int {
 	return len(b.templates)
 }
 
+// Less reports whether template i should sort before j by X coordinate.
 func (b byLocation) Less(i, j int) bool {
 	return b.cache[b.templates[i].File].X < b.cache[b.templates[j].File].X
 }
 
+// Swap swaps templates i and j.
 func (b byLocation) Swap(i, j int) {
 	b.templates[i], b.templates[j] = b.templates[j], b.templates[i]
 }
 
+// Len returns the number of templates.
 func (b byValues) Len() int {
 	return len(b.templates)
 }
 
+// Less reports whether template i should sort before j by cached value.
 func (b byValues) Less(i, j int) bool {
 	return b.cache[b.templates[i].File].value < b.cache[b.templates[j].File].value
 }
 
+// Swap swaps templates i and j.
 func (b byValues) Swap(i, j int) {
 	b.templates[i], b.templates[j] = b.templates[j], b.templates[i]
 }

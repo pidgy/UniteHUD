@@ -1,7 +1,5 @@
 package button
 
-// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
-
 import (
 	"image"
 
@@ -19,7 +17,7 @@ import (
 	"github.com/pidgy/unitehud/media/img/splash"
 )
 
-// ImageWidget defines ImageWidget behavior and state.
+// ImageWidget is a clickable image preview with hover hints.
 type ImageWidget struct {
 	*screen.Widget
 	Click func(*ImageWidget)
@@ -113,7 +111,7 @@ func (i *ImageWidget) HoverHint() {
 	}
 }
 
-// SetImage sets the related state.
+// SetImage updates the displayed image unless hidden.
 func (i *ImageWidget) SetImage(img image.Image) {
 	if i.Hide {
 		return

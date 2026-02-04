@@ -1,7 +1,5 @@
 package filter
 
-// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
-
 import (
 	"fmt"
 	"strings"
@@ -9,7 +7,7 @@ import (
 	"github.com/pidgy/unitehud/core/team"
 )
 
-// Filter defines Filter behavior and state.
+// Filter captures the file-backed filter metadata for a team template entry.
 type Filter struct {
 	*team.Team
 	File  string
@@ -17,11 +15,12 @@ type Filter struct {
 	Alias bool
 }
 
-// New returns a new instance.
+// New builds a Filter for a given team and filter file with its value and alias flag.
 func New(t *team.Team, file string, value int, alias bool) Filter {
 	return Filter{t, file, value, alias}
 }
 
+// Truncated collapses repeated "_alt" suffixes into a single "_alt_xN" filename.
 func (f *Filter) Truncated() string {
 	count := strings.Count(f.File, "_alt")
 
@@ -46,6 +45,7 @@ func (f *Filter) Truncated() string {
 	return f.File
 }
 
+// Strip removes known suffixes and extensions from a filter filename for comparisons.
 func Strip(file string) string {
 	return strings.ReplaceAll(
 		strings.ReplaceAll(

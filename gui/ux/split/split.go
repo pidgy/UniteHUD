@@ -1,7 +1,5 @@
 package split
 
-// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
-
 import (
 	"image"
 
@@ -16,15 +14,17 @@ import (
 	"github.com/pidgy/unitehud/gui/cursor"
 )
 
-// Widget defines Widget behavior and state.
+// Widget renders a split layout with two children.
 type Widget interface {
 	Layout(gtx layout.Context, left, right layout.Widget) layout.Dimensions
 }
 
+// Horizontal is a vertical stack split with an adjustable bar.
 type Horizontal split
+// Vertical is a horizontal split with an adjustable bar.
 type Vertical split
 
-// split defines split behavior and state.
+// split holds shared state for adjustable split layouts.
 type split struct {
 	// ratio keeps the current layout.
 	// 0 is center, -1 completely to the left, 1 completely to the right.
@@ -43,7 +43,9 @@ type split struct {
 }
 
 var (
+	// defaultBarSizeAdjustable is the drag handle size for adjustable splits.
 	defaultBarSizeAdjustable = unit.Dp(5)
+	// defaultBarSize is the bar size for fixed splits.
 	defaultBarSize           = unit.Dp(0)
 )
 

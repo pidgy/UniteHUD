@@ -1,8 +1,6 @@
 // https://github.com/gioui/gio-example/blob/main/tabs/slider.go
 package slider
 
-// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
-
 import (
 	"fmt"
 
@@ -27,7 +25,7 @@ type Widget struct {
 	slider material.SliderStyle
 }
 
-// Layout lays out and renders the widget.
+// Layout renders the slider and label and applies value changes.
 func (s *Widget) Layout(gtx layout.Context) layout.Dimensions {
 	if s.slider.Float == nil {
 		s.slider = material.Slider(s.Theme, &widget.Float{Value: float32(config.Current.Advanced.DecreasedCaptureLevel)})

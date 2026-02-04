@@ -1,6 +1,6 @@
 package video
 
-// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+// TODO: Add go style comments that reflect the purpose of each type, function, var, and const. Then remove this comment.
 
 import (
 	"fmt"

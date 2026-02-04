@@ -1,7 +1,5 @@
 package ui
 
-// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
-
 import (
 	"fmt"
 	"image"
@@ -43,7 +41,7 @@ import (
 	"github.com/pidgy/unitehud/system/save"
 )
 
-// configure defines configure behavior and state.
+// configure holds UI state for the configuration screen and its sub-windows.
 type configure struct {
 	ops op.Ops
 
@@ -108,7 +106,7 @@ type configure struct {
 	tag any
 }
 
-// footer defines footer behavior and state.
+// footer contains label styles for the bottom status bar.
 type footer struct {
 	api material.LabelStyle
 	log material.LabelStyle
@@ -118,7 +116,7 @@ type footer struct {
 	hz  material.LabelStyle
 }
 
-// configure open's the Configuration Menu window.
+// configure runs the configuration window event loop and renders its layout.
 func (g *GUI) configure() {
 	ui := g.configureUI()
 
@@ -474,6 +472,7 @@ func (g *GUI) configure() {
 }
 
 
+// configureUI initializes the configuration UI model and controls.
 func (g *GUI) configureUI() *configure {
 	ui := &configure{
 		img:   splash.Invalid(),
@@ -873,7 +872,7 @@ func (g *GUI) configureUI() *configure {
 	return ui
 }
 
-// Layout lays out and renders the widget.
+// Layout renders the live capture preview and computes capture bounds.
 func (ui *configure) Layout(gtx layout.Context, fullscreen bool) layout.Dimensions {
 	rect := clip.Rect{
 		Min: gtx.Constraints.Min.Add(image.Pt(0, title.Height)),
@@ -942,11 +941,13 @@ func (ui *configure) Layout(gtx layout.Context, fullscreen bool) layout.Dimensio
 }
 
 
+// empty returns a spacer child with the given dimensions.
 func (ui *configure) empty(x, y float32) layout.FlexChild {
 	return layout.Rigid(layout.Spacer{Width: unit.Dp(x), Height: unit.Dp(y)}.Layout)
 }
 
 
+// foot builds the footer bar showing status and performance metrics.
 func (ui *configure) foot(f *footer) layout.FlexChild {
 	return layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 		gtx.Constraints.Max.Y = gtx.Dp(25)
@@ -1012,6 +1013,7 @@ func (ui *configure) foot(f *footer) layout.FlexChild {
 }
 
 
+// spacer draws a decorated spacer with optional fixed width/height.
 func (ui *configure) spacer(x, y float32) layout.FlexChild {
 	return layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 		if x != 0 {

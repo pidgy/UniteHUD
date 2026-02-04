@@ -1,6 +1,6 @@
 package update
 
-// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+// TODO: Add go style comments that reflect the purpose of each type, function, var, and const. Then remove this comment.
 
 import (
 	"bytes"
@@ -12,7 +12,6 @@ import (
 
 	"github.com/pidgy/unitehud/exe"
 	"github.com/pidgy/unitehud/system/desktop"
-	"github.com/pidgy/unitehud/system/desktop/clicked"
 )
 
 const (
@@ -93,7 +92,7 @@ func Check() (Query, error) {
 
 		desktop.Notification("UniteHUD %s", remote).
 			Says("An update is available for UniteHUD").
-			When(clicked.VisitWebsite).
+			When(desktop.VisitWebsite).
 			Send()
 		q.Version = Older
 		return q, nil

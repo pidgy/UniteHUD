@@ -1,7 +1,5 @@
 package ui
 
-// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
-
 import (
 	"fmt"
 	"image"
@@ -30,14 +28,20 @@ import (
 )
 
 type (
+	// toastOnYes is the callback for affirmative toast actions.
 	toastOnYes      func()
+	// toastOnNo is the callback for negative toast actions.
 	toastOnNo       func()
+	// toastOnOK is the callback for OK-only toast actions.
 	toastOnOK       func()
+	// toastOnRemember is the callback for "remember my choice" actions.
 	toastOnRemember func(b bool)
+	// toastOnClose is the callback for toast close events.
 	toastOnClose    func()
 )
 
 type (
+	// bulletin defines a multi-section notice used in newsletters.
 	bulletin struct {
 		Title string
 
@@ -47,11 +51,13 @@ type (
 		}
 	}
 
+	// closeable wraps a toast with a ready signal.
 	closeable struct {
 		*toast
 		waitq chan bool
 	}
 
+	// toast represents a dialog window with a title bar and message label.
 	toast struct {
 		g *GUI
 
@@ -66,6 +72,7 @@ type (
 		keybinds keys.Bind
 	}
 
+	// waiter exposes toast readiness and close behavior.
 	waiter interface {
 		close()
 		wait() waiter
@@ -73,9 +80,11 @@ type (
 )
 
 const (
+	// toastTextSize is the default font size for toast labels.
 	toastTextSize = unit.Sp(15)
 )
 
+// ToastError shows an error dialog if the message is new.
 func (g *GUI) ToastError(err error) {
 	if g.previous.toast.err != nil && err.Error() == g.previous.toast.err.Error() {
 		return
@@ -107,6 +116,7 @@ func (g *GUI) ToastErrorf(format string, a ...interface{}) {
 	g.ToastError(fmt.Errorf(format, a...))
 }
 
+// ToastNewsletter shows a scrollable bulletin with multiple topics.
 func (g *GUI) ToastNewsletter(header string, bulletin bulletin, c toastOnClose) {
 	if c != nil {
 		defer c()
@@ -351,10 +361,12 @@ func (g *GUI) ToastSplash(header, msg string, img image.Image) waiter {
 	return c
 }
 
+// ToastYesNo shows a Yes/No dialog without a remember option.
 func (g *GUI) ToastYesNo(header, msg string, y toastOnYes, n toastOnNo) {
 	g.ToastYesNoRemember(header, msg, "", y, n, nil, nil)
 }
 
+// ToastYesNoRemember shows a Yes/No dialog with an optional remember checkbox.
 func (g *GUI) ToastYesNoRemember(header, msg, decision string, y toastOnYes, n toastOnNo, c toastOnClose, r toastOnRemember) {
 	if c != nil {
 		defer c()
@@ -496,7 +508,7 @@ func (g *GUI) ToastYesNoRemember(header, msg, decision string, y toastOnYes, n t
 	}
 }
 
-// makeToast builds the component.
+// makeToast creates a toast if no other toast is active.
 func (g *GUI) makeToast(header, msg string, width, height float32) *toast {
 	msg = ini.Format(msg)
 	header = ini.Format(header)
@@ -511,7 +523,7 @@ func (g *GUI) makeToast(header, msg string, width, height float32) *toast {
 	return g.makeToastForce(header, msg, width, height)
 }
 
-// makeToastForce builds the component.
+// makeToastForce creates a toast window regardless of existing toasts.
 func (g *GUI) makeToastForce(header, msg string, width, height float32) *toast {
 	t := &toast{
 		g: g,
@@ -541,6 +553,7 @@ func (g *GUI) makeToastForce(header, msg string, width, height float32) *toast {
 	return t
 }
 
+// toastOK runs the OK-only toast event loop.
 func (g *GUI) toastOK(t *toast, ok toastOnOK) {
 	notify.Debug("[UI] Toast: Opening OK \"%s\"", t.label.Text)
 	defer notify.Debug("[UI] Toast: Closing OK: \"%s\"", t.label.Text)
@@ -632,6 +645,7 @@ func (g *GUI) toastOK(t *toast, ok toastOnOK) {
 	}
 }
 
+// titleFirstWord uppercases the first rune of a string.
 func titleFirstWord(s string) string {
 	if len(s) < 1 {
 		return ""
@@ -639,7 +653,7 @@ func titleFirstWord(s string) string {
 	return strings.ToUpper(s[:1]) + s[1:]
 }
 
-// close closes the target.
+// close closes the toast and clears its active state.
 func (t *toast) close() {
 	defer notify.Debug("[UI] Toast: Closed \"%s\") (active: %t)", t.label.Text, t.g.previous.toast.active)
 
@@ -651,10 +665,12 @@ func (t *toast) close() {
 	t.open = false
 }
 
+// ready signals that the splash toast is ready to be waited on.
 func (c *closeable) ready() {
 	go func() { c.waitq <- true }()
 }
 
+// wait blocks until the closeable toast is ready.
 func (c *closeable) wait() waiter {
 	<-c.waitq
 	return c

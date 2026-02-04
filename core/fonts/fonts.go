@@ -1,7 +1,5 @@
 package fonts
 
-// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
-
 import (
 	"os"
 	"path/filepath"
@@ -145,6 +143,7 @@ func (s *Style) WithTheme() *Style {
 	return s
 }
 
+// copy returns a theme-ready duplicate of the style's font metadata.
 func (s *Style) copy() *Style {
 	// if c.copied[string(s.Typeface)] {
 	// 	return s

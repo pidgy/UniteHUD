@@ -1,7 +1,5 @@
 package area
 
-// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
-
 import (
 	"fmt"
 	"image"
@@ -27,12 +25,15 @@ import (
 )
 
 var (
+	// Locked is the default color for inactive or locked areas.
 	Locked = nrgba.Black
+	// Match is the highlight color for successful matches.
 	Match  = nrgba.Green
+	// Miss is the highlight color for failed matches.
 	Miss   = nrgba.Red
 )
 
-// Widget defines Widget behavior and state.
+// Widget represents an interactive capture area that can be dragged and matched.
 type Widget struct {
 	Text          string
 	TextSize      unit.Sp
@@ -339,6 +340,7 @@ func (a *Widget) Reset() {
 	a.Capture.reset()
 }
 
+// match runs the configured matcher and updates capture match metadata.
 func (a *Widget) match() error {
 	if a.Drag || a.Focus {
 		return nil
@@ -375,6 +377,7 @@ func (a *Widget) match() error {
 	return a.matched.err
 }
 
+// opacity returns the base alpha for area rendering.
 func (a *Widget) opacity() uint8 {
 	alpha := uint8(150)
 

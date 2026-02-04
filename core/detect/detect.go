@@ -1,7 +1,5 @@
 package detect
 
-// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
-
 import (
 	"fmt"
 	"image"
@@ -24,7 +22,6 @@ import (
 	"github.com/pidgy/unitehud/media/video/device"
 	"github.com/pidgy/unitehud/media/video/monitor"
 	"github.com/pidgy/unitehud/system/desktop"
-	"github.com/pidgy/unitehud/system/desktop/clicked"
 	"github.com/pidgy/unitehud/system/lang"
 	"github.com/pidgy/unitehud/system/save"
 )
@@ -35,7 +32,9 @@ var (
 	// Images toggles whether detection generates preview images.
 	Images = func(b bool) { images = b }
 
+	// paused gates all detection loops when true.
 	paused = true
+	// images enables preview and debug imagery when true.
 	images = false
 )
 
@@ -574,7 +573,7 @@ func States() {
 				desktop.Notification("Match Starting").
 					Says("Capturing from %s", d).
 					Logs(notify.Error).
-					When(clicked.OpenUniteHUD).
+					When(desktop.OpenUniteHUD).
 					Send()
 			}
 
@@ -647,7 +646,7 @@ func States() {
 					desktop.Notification("Match Ended").
 						Says("Purple: %d %s\nOrange: %d %s\nYou scored %d points", p, pwin, o, owin, self).
 						Logs(notify.Error).
-						When(clicked.OpenUniteHUD).
+						When(desktop.OpenUniteHUD).
 						Send()
 				}
 
@@ -678,6 +677,7 @@ func States() {
 // 	}
 // }
 
+// capture grabs the specified screen area and converts it to a Mat for matching.
 func capture(area image.Rectangle) (gocv.Mat, *image.RGBA, error) {
 	img, err := video.CaptureRect(area)
 	if err != nil {
@@ -692,14 +692,7 @@ func capture(area image.Rectangle) (gocv.Mat, *image.RGBA, error) {
 	return matrix, img, nil
 }
 
-// confirmEnergyWasScored is another step to confirm a self-score event occured. This function
-// handles multiple edge cases that can result in invalid detections, such as:
-//   - Interrupted score attempts.
-//   - Defeated while scoring.
-//   - ...
-//
-// If a call is made to this function it is because UniteHUD has detected were holding 0 points
-// after a confirmed score match.
+// confirmEnergyWasScored validates a self-score after a confirmed score indicator.
 func confirmEnergyWasScored(before, after int, at time.Time) {
 	if before == after {
 		return
@@ -745,6 +738,7 @@ func confirmEnergyWasScored(before, after int, at time.Time) {
 	notify.Feed(team.Self.NRGBA, "[Detect] [%s] [%s] [%s] +%d", server.Clock(), team.Purple, team.Self, before)
 }
 
+// plural returns a simple English pluralization for the provided count.
 func plural(s string, size int) string {
 	if size == 1 {
 		return s
@@ -752,6 +746,7 @@ func plural(s string, size int) string {
 	return s + "s"
 }
 
+// every blocks until the next tick, honoring pause and optional reset hooks.
 func every(d time.Duration, resets ...func()) bool {
 	for {
 		if !server.Match() {

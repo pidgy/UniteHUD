@@ -1,7 +1,5 @@
 package stats
 
-// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
-
 import (
 	"bytes"
 	"fmt"
@@ -18,25 +16,35 @@ import (
 	"github.com/pidgy/unitehud/exe"
 )
 
+// maxX is the maximum number of samples retained per series.
 const maxX = 100000
 
 var (
+	// averages holds per-stat average match percentages.
 	averages = make(map[string]int)
-	asets    = make(map[string][]float32)
+	// asets stores per-stat samples used to compute averages.
+	asets = make(map[string][]float32)
 
+	// frequencies holds per-stat average frequency percentages.
 	frequencies = make(map[string]float32)
-	fsets       = make(map[string][]float32)
+	// fsets stores per-stat samples used to compute frequencies.
+	fsets = make(map[string][]float32)
 
+	// matches tracks the number of matches per stat.
 	matches = make(map[string]int)
 
-	cpus    = []float64{0}
-	rams    = []float64{0}
+	// cpus holds sampled CPU usage percentages.
+	cpus = []float64{0}
+	// rams holds sampled RAM usage values.
+	rams = []float64{0}
+	// threads holds sampled thread counts.
 	threads = []float64{0}
 
+	// statsq serializes stats mutations to avoid data races.
 	statsq = make(chan func(), 1024)
 )
 
-// init initializes the component.
+// init starts the stats worker and clears any existing data.
 func init() {
 	go func() {
 		for fn := range statsq {
@@ -49,6 +57,7 @@ func init() {
 	}
 }
 
+// CPUGraph renders an ASCII graph of recent CPU samples.
 func CPUGraph() string {
 	return asciigraph.Plot(cpus,
 		asciigraph.LowerBound(0),
@@ -59,6 +68,7 @@ func CPUGraph() string {
 	)
 }
 
+// Clear resets all collected template match statistics.
 func Clear() {
 	notify.System("[Stats] Clearing matched image template statistics")
 	statsq <- func() {
@@ -66,6 +76,7 @@ func Clear() {
 	}
 }
 
+// Collect records a template match sample for aggregation.
 func Collect(stat string, maxv float32) {
 	if config.Current.Advanced.Stats.Disabled {
 		return
@@ -109,6 +120,7 @@ func Collect(stat string, maxv float32) {
 	}
 }
 
+// Counts returns the current per-template match counts.
 func Counts() map[string]int {
 	fq := make(chan map[string]int)
 
@@ -131,6 +143,7 @@ func Counts() map[string]int {
 	return <-fq
 }
 
+// Data emits formatted stats lines to the notifier with colors.
 func Data() {
 	for _, line := range Lines() {
 		if line == "" {
@@ -139,23 +152,24 @@ func Data() {
 
 		switch {
 		case strings.Contains(line, team.Orange.Name):
-			notify.Append(team.Orange.NRGBA, line)
+			notify.Append(team.Orange.NRGBA, "%s", line)
 		case strings.Contains(line, team.Purple.Name):
-			notify.Append(team.Purple.NRGBA, line)
+			notify.Append(team.Purple.NRGBA, "%s", line)
 		case strings.Contains(line, team.First.Name):
-			notify.Append(team.First.NRGBA, line)
+			notify.Append(team.First.NRGBA, "%s", line)
 		case strings.Contains(line, team.Energy.Name):
-			notify.Append(nrgba.DarkYellow, line)
+			notify.Append(nrgba.DarkYellow, "%s", line)
 		case strings.Contains(line, team.Time.Name):
-			notify.Append(nrgba.Slate, line)
+			notify.Append(nrgba.Slate, "%s", line)
 		case strings.Contains(line, team.Game.Name):
-			notify.Append(nrgba.Gray, line)
+			notify.Append(nrgba.Gray, "%s", line)
 		default:
 			notify.SystemAppend(line)
 		}
 	}
 }
 
+// Lines builds the formatted stats table lines.
 func Lines() []string {
 	lineq := make(chan []string)
 
@@ -240,6 +254,7 @@ func Lines() []string {
 	return <-lineq
 }
 
+// Procs records process resource samples for graphing.
 func Procs(cpu, ram, thread float64) {
 	statsq <- func() {
 		if ram > 0 && ram != rams[len(rams)-1] {
@@ -266,6 +281,7 @@ func Procs(cpu, ram, thread float64) {
 	}
 }
 
+// RAMGraph renders an ASCII graph of recent RAM samples.
 func RAMGraph() string {
 	return asciigraph.Plot(rams,
 		asciigraph.LowerBound(0),
@@ -276,6 +292,7 @@ func RAMGraph() string {
 	)
 }
 
+// ThreadsGraph renders an ASCII graph of recent thread samples.
 func ThreadsGraph() string {
 	return asciigraph.Plot(threads,
 		asciigraph.LowerBound(0),
@@ -286,6 +303,7 @@ func ThreadsGraph() string {
 	)
 }
 
+// clear resets in-memory aggregates.
 func clear() {
 	averages = make(map[string]int)
 	asets = make(map[string][]float32)
@@ -296,6 +314,7 @@ func clear() {
 	matches = make(map[string]int)
 }
 
+// round buckets a value into 5-unit steps with a 100% cap.
 func round(v float64) float64 {
 	if v > 95 {
 		return 100
@@ -304,6 +323,7 @@ func round(v float64) float64 {
 	return float64(int(math.Round(math.Floor(v/5))) * 5)
 }
 
+// sanitize normalizes template names for consistent keys.
 func sanitize(stat string) string {
 	stat = strings.ReplaceAll(strings.ReplaceAll(stat, "\\", "/"), "PNG", "png")
 

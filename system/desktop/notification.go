@@ -1,6 +1,6 @@
 package desktop
 
-// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+// TODO: Add go style comments that reflect the purpose of each type, function, var, and const. Then remove this comment.
 
 import (
 	"fmt"
@@ -8,7 +8,6 @@ import (
 	"git.sr.ht/~jackmordaunt/go-toast"
 
 	"github.com/pidgy/unitehud/core/config"
-	"github.com/pidgy/unitehud/system/desktop/clicked"
 )
 
 type Factory struct {
@@ -16,22 +15,25 @@ type Factory struct {
 	errors func(string, ...any)
 }
 
-func Notification(format string, args ...interface{}) *Factory {
-	a := toast.Mail
-	if config.Current.Advanced.Notifications.Muted {
-		a = toast.Silent
+var (
+	OpenUniteHUD = toast.Action{
+		Type:      toast.Foreground,
+		Content:   "Open",
+		Arguments: "",
 	}
-	return &Factory{
-		toast: toast.Notification{
-			AppID:               "UniteHUD",
-			Title:               fmt.Sprintf(format, args...),
-			Body:                "Notification",
-			Icon:                config.Current.AssetIcon("icon256x256.png"),
-			ActivationArguments: "https://unitehud.dev",
-			Audio:               a,
-		},
+
+	ViewDetails = toast.Action{
+		Type:      toast.Foreground,
+		Content:   "View Details",
+		Arguments: "UniteHUD.exe",
 	}
-}
+
+	VisitWebsite = toast.Action{
+		Type:      toast.Protocol,
+		Content:   "Download",
+		Arguments: "https://unitehud.dev",
+	}
+)
 
 func (f *Factory) Logs(fn func(string, ...any)) *Factory {
 	f.errors = fn
@@ -56,11 +58,24 @@ func (f *Factory) Send() {
 	}
 }
 
-func (f *Factory) When(clicked ...clicked.Action) *Factory {
-	for _, clicked := range clicked {
-		f.toast.Actions = append(f.toast.Actions,
-			clicked.Then(),
-		)
-	}
+func (f *Factory) When(clicked ...toast.Action) *Factory {
+	f.toast.Actions = append(f.toast.Actions, clicked...)
 	return f
+}
+
+func Notification(format string, args ...interface{}) *Factory {
+	a := toast.Mail
+	if config.Current.Advanced.Notifications.Muted {
+		a = toast.Silent
+	}
+	return &Factory{
+		toast: toast.Notification{
+			AppID:               "UniteHUD",
+			Title:               fmt.Sprintf(format, args...),
+			Body:                "Notification",
+			Icon:                config.Current.AssetIcon("icon256x256.png"),
+			ActivationArguments: "https://unitehud.dev",
+			Audio:               a,
+		},
+	}
 }

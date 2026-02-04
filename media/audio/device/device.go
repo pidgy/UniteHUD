@@ -1,25 +1,29 @@
 package device
 
-// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
-
 import (
 	"io"
 
 	"github.com/gen2brain/malgo"
 )
 
+// Type identifies whether an audio device is input or output.
 type Type string
 
 const (
+	// Input identifies a capture device.
 	Input  Type = "input"
+	// Output identifies a playback device.
 	Output Type = "output"
 )
 
 const (
+	// Default is the label for the system default device.
 	Default  = "Default"
+	// Disabled is the label for a disabled device.
 	Disabled = "Disabled"
 )
 
+// Device describes shared behavior for audio devices.
 type Device interface {
 	Active() bool
 	Close()
@@ -31,6 +35,7 @@ type Device interface {
 	String() string
 }
 
+// Free releases the audio context.
 func Free(ctx *malgo.AllocatedContext) error {
 	err := ctx.Uninit()
 	if err != nil {
@@ -42,6 +47,7 @@ func Free(ctx *malgo.AllocatedContext) error {
 	return nil
 }
 
+// Is reports whether the device matches the given name or default.
 func Is(d Device, name string) bool {
 	if name == Default {
 		return d.IsDefault()
@@ -49,6 +55,7 @@ func Is(d Device, name string) bool {
 	return d.Name() == name
 }
 
+// String formats the device name safely.
 func String(d Device) string {
 	if d == nil {
 		return "Invalid Device"

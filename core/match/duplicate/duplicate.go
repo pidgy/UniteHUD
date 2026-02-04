@@ -1,7 +1,5 @@
 package duplicate
 
-// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
-
 import (
 	"time"
 
@@ -10,9 +8,10 @@ import (
 	"github.com/pidgy/unitehud/core/notify"
 )
 
+// delay is the maximum time window for considering two captures as duplicates.
 const delay = time.Millisecond * 4000
 
-// Duplicate defines Duplicate behavior and state.
+// Duplicate tracks a captured value and image data for duplicate detection.
 type Duplicate struct {
 	Value int
 	time.Time
@@ -25,7 +24,7 @@ type Duplicate struct {
 	Potential bool
 }
 
-// New returns a new instance.
+// New creates a Duplicate with a cloned matrix and the capture time set to now.
 func New(value int, mat, region gocv.Mat) *Duplicate {
 	return &Duplicate{
 		Value:  value,
@@ -35,7 +34,7 @@ func New(value int, mat, region gocv.Mat) *Duplicate {
 	}
 }
 
-// Close closes the target.
+// Close releases any underlying matrices held by the Duplicate.
 func (d *Duplicate) Close() {
 	if d == nil {
 		return
@@ -52,7 +51,7 @@ func (d *Duplicate) Close() {
 	}
 }
 
-
+// Of determines whether d2 is a duplicate of d and returns a reason string.
 func (d *Duplicate) Of(d2 *Duplicate) (bool, string) {
 	if d.Value == 0 || d2.Value == 0 {
 		return false, "Zero Equality"
@@ -100,7 +99,7 @@ func (d *Duplicate) Of(d2 *Duplicate) (bool, string) {
 	return false, ""
 }
 
-
+// Overrides reports whether d should override prev as a likely duplicate progression.
 func (d *Duplicate) Overrides(prev *Duplicate) bool {
 	switch {
 	case d.Time.Sub(prev.Time) >= delay:

@@ -1,7 +1,5 @@
 package match
 
-// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
-
 import (
 	"fmt"
 	"image"
@@ -58,7 +56,6 @@ type Objectives struct {
 	Top    bool
 	Bottom bool
 }
-
 
 func goals(matrix gocv.Mat, img *image.RGBA) (Goals, bool) {
 	templates := config.Current.TemplatesGoals(team.Game.Name)
@@ -118,7 +115,6 @@ func goals(matrix gocv.Mat, img *image.RGBA) (Goals, bool) {
 
 	return Goals{}, true
 }
-
 
 func objectives(matrix gocv.Mat, img *image.RGBA) (Objectives, bool) {
 	return Objectives{}, true

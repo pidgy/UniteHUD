@@ -1,7 +1,5 @@
 package server
 
-// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
-
 import (
 	"context"
 	"encoding/json"
@@ -28,17 +26,24 @@ import (
 )
 
 const (
+	// Address is the local bind address for the HTTP/WebSocket server.
 	Address = "127.0.0.1:17069"
 
-	ObjectiveFinal     = "final" // "rayquaza", "groudon", etc.
-	ObjectiveRegice    = "regice"
+	// ObjectiveFinal marks the final objective placeholder name.
+	ObjectiveFinal = "final" // "rayquaza", "groudon", etc.
+	// ObjectiveRegice identifies a Regice objective.
+	ObjectiveRegice = "regice"
+	// ObjectiveRegidrago identifies a Regidrago objective.
 	ObjectiveRegidrago = "regidrago"
+	// ObjectiveRegieleki identifies a Regieleki objective.
 	ObjectiveRegieleki = "regieleki"
-	ObjectiveRegirock  = "regirock"
+	// ObjectiveRegirock identifies a Regirock objective.
+	ObjectiveRegirock = "regirock"
+	// ObjectiveRegisteel identifies a Registeel objective.
 	ObjectiveRegisteel = "registeel"
 )
 
-// Objective defines Objective behavior and state.
+// Objective is a single objective capture event and metadata.
 type Objective struct {
 	Name        string `json:"name"`
 	Team        string `json:"team"`
@@ -47,7 +52,7 @@ type Objective struct {
 	IsFinal     bool   `json:"is_final"`
 }
 
-// State defines State behavior and state.
+// State is the serialized server state exposed to clients.
 type State struct {
 	Objectives         []Objective `json:"objectives"`
 	Config             bool        `json:"config"`
@@ -71,7 +76,7 @@ type State struct {
 	lastSecondsUpdate time.Time
 }
 
-// info defines info behavior and state.
+// info holds server runtime stats and tracked clients.
 type info struct {
 	*State
 
@@ -84,7 +89,7 @@ type info struct {
 	mutex *sync.Mutex
 }
 
-// score defines score behavior and state.
+// score is a team's score snapshot.
 type score struct {
 	Team        string `json:"team"`
 	Value       int    `json:"value"`
@@ -93,24 +98,28 @@ type score struct {
 }
 
 var (
+	// current is the live server state and runtime tracker.
 	current = &info{
 		State:   reset(),
 		clients: map[string]time.Time{},
 		mutex:   &sync.Mutex{},
 	}
 
+	// track caches the last serialized payloads.
 	track struct {
 		ws   []byte
 		http []byte
 	}
 )
 
+// Clear resets server state while preserving readiness.
 func Clear() {
 	started := current.State.Ready
 	current.State = reset()
 	current.State.Ready = started
 }
 
+// Clients returns the number of active clients.
 func Clients() int {
 	current.mutex.Lock()
 	defer current.mutex.Unlock()
@@ -125,10 +134,12 @@ func Clients() int {
 	return len(current.clients)
 }
 
+// Clock returns the match clock as MM:SS.
 func Clock() string {
 	return fmt.Sprintf("%02d:%02d", current.State.Seconds/60, current.State.Seconds%60)
 }
 
+// FinalObjectiveName returns the name of the final objective, if present.
 func FinalObjectiveName() string {
 	if current.State.FinalObjectiveTeam != "" {
 		for _, o := range current.Objectives {
@@ -140,6 +151,7 @@ func FinalObjectiveName() string {
 	return "Final Objective"
 }
 
+// Holding returns the current energy held.
 func Holding() int {
 	return current.State.Energy
 }
@@ -158,6 +170,7 @@ func IsFinalStretch() bool {
 	return current.State.Seconds > 0 && current.State.Seconds < 121
 }
 
+// KOs returns the KO count for the provided team.
 func KOs(t *team.Team) int {
 	switch t.Name {
 	case team.Purple.Name:
@@ -169,7 +182,7 @@ func KOs(t *team.Team) int {
 	}
 }
 
-// Open opens the target.
+// Open starts the HTTP/WebSocket server and registers handlers.
 func Open() error {
 	http.Handle("/stream", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		current.client(r)
@@ -303,10 +316,12 @@ func Open() error {
 	return nil
 }
 
+// Match reports whether a match is currently in progress.
 func Match() bool {
 	return current.State.InMatch
 }
 
+// Objectives returns secured objective counts for a team.
 func Objectives(t *team.Team) (regielekis, regices, regirocks, registeels, regidragos, finals int) {
 	if current.State.FinalObjectiveTeam == t.Name {
 		finals = 1
@@ -314,14 +329,17 @@ func Objectives(t *team.Team) (regielekis, regices, regirocks, registeels, regid
 	return RegielekisSecured(t), RegicesSecured(t), RegirocksSecured(t), RegisteelsSecured(t), RegidragosSecured(t), finals
 }
 
+// ObjectivesSecured returns all recorded objectives.
 func ObjectivesSecured() []Objective {
 	return current.State.Objectives
 }
 
+// Ready reports whether the server is ready to serve state.
 func Ready() bool {
 	return current.State.Ready
 }
 
+// RegicesSecured returns the number of Regice secured by team.
 func RegicesSecured(t *team.Team) int {
 	n := 0
 	for _, b := range current.State.Objectives {
@@ -332,6 +350,7 @@ func RegicesSecured(t *team.Team) int {
 	return n
 }
 
+// RegidragosSecured returns the number of Regidrago secured by team.
 func RegidragosSecured(t *team.Team) int {
 	n := 0
 	for _, b := range current.State.Objectives {
@@ -342,6 +361,7 @@ func RegidragosSecured(t *team.Team) int {
 	return n
 }
 
+// RegielekiAdv returns which team has Regieleki advantage.
 func RegielekiAdv() *team.Team {
 	p := 0
 	o := 0
@@ -365,10 +385,12 @@ func RegielekiAdv() *team.Team {
 	}
 }
 
+// Regielekis returns the list of Regieleki captures.
 func Regielekis() []string {
 	return current.State.Regilekis
 }
 
+// RegielekisSecured returns the number of Regieleki secured by team.
 func RegielekisSecured(t *team.Team) int {
 	n := 0
 	for _, r := range current.State.Regilekis {
@@ -379,6 +401,7 @@ func RegielekisSecured(t *team.Team) int {
 	return n
 }
 
+// RegirocksSecured returns the number of Regirock secured by team.
 func RegirocksSecured(t *team.Team) int {
 	n := 0
 	for _, b := range current.State.Objectives {
@@ -389,6 +412,7 @@ func RegirocksSecured(t *team.Team) int {
 	return n
 }
 
+// RegisteelsSecured returns the number of Registeel secured by team.
 func RegisteelsSecured(t *team.Team) int {
 	n := 0
 	for _, b := range current.State.Objectives {
@@ -399,6 +423,7 @@ func RegisteelsSecured(t *team.Team) int {
 	return n
 }
 
+// Score returns the current score for the provided team.
 func Score(t *team.Team) int {
 	switch t {
 	case team.Purple:
@@ -412,6 +437,7 @@ func Score(t *team.Team) int {
 	}
 }
 
+// ScoreString formats the team score and surrender status.
 func ScoreString(t *team.Team) string {
 	switch t {
 	case team.Purple:
@@ -428,11 +454,12 @@ func ScoreString(t *team.Team) string {
 	return fmt.Sprintf("0 (Unknown Team %s)", t)
 }
 
+// Scores returns the orange, purple, and self scores.
 func Scores() (orange, purple, self int) {
 	return current.State.Orange.Value, current.State.Purple.Value, current.State.Self.Value
 }
 
-// SetBottomObjective sets the related state.
+// SetBottomObjective updates a bottom-lane objective entry at index n.
 func SetBottomObjective(t *team.Team, name string, n int) {
 	o := Objective{
 		Team: t.Name,
@@ -474,22 +501,22 @@ func SetBottomObjective(t *team.Team, name string, n int) {
 	}
 }
 
-// SetConfig sets the related state.
+// SetConfig toggles the config view flag in state.
 func SetConfig(c bool) {
 	current.State.Config = c
 }
 
-// SetDefeated sets the related state.
+// SetDefeated records the current time as a defeat.
 func SetDefeated() {
 	current.State.Defeated = append(current.State.Defeated, current.State.Seconds)
 }
 
-// SetEnergy sets the related state.
+// SetEnergy updates the current energy value.
 func SetEnergy(b int) {
 	current.State.Energy = b
 }
 
-// SetFinalObjective sets the related state.
+// SetFinalObjective records the final objective capture for a team.
 func SetFinalObjective(t *team.Team, e state.EventType) {
 	current.State.FinalObjectiveTeam = t.Name
 
@@ -501,7 +528,7 @@ func SetFinalObjective(t *team.Team, e state.EventType) {
 	})
 }
 
-// SetKO sets the related state.
+// SetKO increments the KO count for a team.
 func SetKO(t *team.Team) {
 	switch t.Name {
 	case team.Purple.Name:
@@ -511,17 +538,17 @@ func SetKO(t *team.Team) {
 	}
 }
 
-// SetMatchStarted sets the related state.
+// SetMatchStarted marks the match as in progress.
 func SetMatchStarted() {
 	current.State.InMatch = true
 }
 
-// SetMatchStopped sets the related state.
+// SetMatchStopped marks the match as not in progress.
 func SetMatchStopped() {
 	current.State.InMatch = false
 }
 
-// SetRegice sets the related state.
+// SetRegice records a Regice objective capture.
 func SetRegice(t *team.Team) {
 	current.Objectives = append(current.Objectives, Objective{
 		Team: t.Name,
@@ -530,7 +557,7 @@ func SetRegice(t *team.Team) {
 	})
 }
 
-// SetRegidrago sets the related state.
+// SetRegidrago records a Regidrago objective capture.
 func SetRegidrago(t *team.Team) {
 	current.Objectives = append(current.Objectives, Objective{
 		Team: t.Name,
@@ -539,7 +566,7 @@ func SetRegidrago(t *team.Team) {
 	})
 }
 
-// SetRegieleki sets the related state.
+// SetRegieleki records a Regieleki objective capture and rotation.
 func SetRegieleki(t *team.Team) {
 	current.Objectives = append(current.Objectives, Objective{
 		Team: t.Name,
@@ -559,7 +586,7 @@ func SetRegieleki(t *team.Team) {
 	current.State.Regilekis[2] = team.None.Name
 }
 
-// SetRegirock sets the related state.
+// SetRegirock records a Regirock objective capture.
 func SetRegirock(t *team.Team) {
 	current.Objectives = append(current.Objectives, Objective{
 		Team: t.Name,
@@ -568,7 +595,7 @@ func SetRegirock(t *team.Team) {
 	})
 }
 
-// SetRegisteel sets the related state.
+// SetRegisteel records a Registeel objective capture.
 func SetRegisteel(t *team.Team) {
 	current.Objectives = append(current.Objectives, Objective{
 		Team: t.Name,
@@ -577,19 +604,19 @@ func SetRegisteel(t *team.Team) {
 	})
 }
 
-// SetNotReady sets the related state.
+// SetNotReady marks the server as not ready and emits a stop event.
 func SetNotReady() {
 	current.State.Ready = false
 	state.Add(state.ServerStopped, Clock(), -1)
 }
 
-// SetReady sets the related state.
+// SetReady marks the server as ready and emits a start event.
 func SetReady() {
 	current.State.Ready = true
 	state.Add(state.ServerStarted, Clock(), -1)
 }
 
-// SetScore sets the related state.
+// SetScore applies a score change for the provided team.
 func SetScore(t *team.Team, v int) {
 	s := score{
 		Team:  t.Name,
@@ -617,7 +644,7 @@ func SetScore(t *team.Team, v int) {
 	}
 }
 
-// SetScoreSurrendered sets the related state.
+// SetScoreSurrendered marks a team's score as surrendered.
 func SetScoreSurrendered(t *team.Team) {
 	switch t {
 	case team.Purple:
@@ -627,7 +654,7 @@ func SetScoreSurrendered(t *team.Team) {
 	}
 }
 
-// SetTime sets the related state.
+// SetTime updates the match timer and in-match state.
 func SetTime(minutes, seconds int64) {
 	current.State.lastSecondsUpdate = time.Now()
 
@@ -641,10 +668,12 @@ func SetTime(minutes, seconds int64) {
 	current.State.Seconds = minutes*60 + seconds
 }
 
+// Seconds returns the current match seconds remaining.
 func Seconds() int64 {
 	return current.State.Seconds
 }
 
+// client registers or refreshes a client connection and returns its timestamp.
 func (i *info) client(r *http.Request) time.Time {
 	i.mutex.Lock()
 	defer i.mutex.Unlock()
@@ -661,10 +690,12 @@ func (i *info) client(r *http.Request) time.Time {
 	return i.clients[key]
 }
 
+// listen starts the HTTP server and panics on failure.
 func listen() {
 	panic(http.ListenAndServe(Address, nil))
 }
 
+// metrics periodically reports server performance metrics.
 func metrics() {
 	for ; ; time.Sleep(time.Minute * 30) {
 		if current.requests < 2 {
@@ -682,6 +713,7 @@ func metrics() {
 	}
 }
 
+// reset builds a fresh State with default values.
 func reset() *State {
 	return &State{
 		Purple: &score{

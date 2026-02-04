@@ -1,7 +1,5 @@
 package match
 
-// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
-
 import (
 	"image"
 	"image/color"
@@ -133,7 +131,6 @@ func Energy(matrix gocv.Mat, img image.Image) (Result, []int, int) {
 	}
 }
 
-
 // SelfScore detects self-score pre/post templates.
 func SelfScore(matrix gocv.Mat, img image.Image) (*Match, Result) {
 	templates := []*template.Template{}
@@ -144,7 +141,6 @@ func SelfScore(matrix gocv.Mat, img image.Image) (*Match, Result) {
 	}
 	return Matches(matrix, img, templates)
 }
-
 
 // SelfScoreIndicator detects the self-score indicator template.
 func SelfScoreIndicator(matrix gocv.Mat, img image.Image) (*Match, Result) {

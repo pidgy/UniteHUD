@@ -1,7 +1,5 @@
 package colorpicker
 
-// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
-
 import (
 	"gioui.org/layout"
 	"gioui.org/text"
@@ -16,8 +14,10 @@ import (
 )
 
 type (
+	// Option describes a selectable color target for the picker.
 	Option colorpicker.MuxOption
 
+	// Widget provides a color picker with radio options and sliders.
 	Widget struct {
 		DrawButton bool
 
@@ -30,7 +30,7 @@ type (
 	}
 )
 
-// New returns a new instance.
+// New builds a color picker with the provided options.
 func New(style *fonts.Style, options ...Option) *Widget {
 	collection := fonts.NewCollection()
 
@@ -69,7 +69,7 @@ func New(style *fonts.Style, options ...Option) *Widget {
 	return c
 }
 
-// Layout lays out and renders the widget.
+// Layout renders the color picker and syncs state between controls.
 func (c *Widget) Layout(gtx layout.Context) layout.Dimensions {
 	//gtx.Constraints.Max.Y = 250
 	gtx.Constraints.Min.X = 1 // Sets the radio button size.
@@ -109,6 +109,7 @@ func (c *Widget) Layout(gtx layout.Context) layout.Dimensions {
 	})
 }
 
+// ApplyDefaults loads default picker options and colors.
 func (c *Widget) ApplyDefaults() {
 	collection := fonts.NewCollection()
 

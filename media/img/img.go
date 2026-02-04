@@ -1,7 +1,5 @@
 package img
 
-// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
-
 import (
 	"bytes"
 	"fmt"
@@ -17,10 +15,12 @@ import (
 	"github.com/pidgy/unitehud/core/notify"
 )
 
+// PNGPool reuses png.EncoderBuffer instances to reduce allocations.
 type PNGPool struct {
 	sync *sync.Pool
 }
 
+// cached stores icon data to avoid repeated loads.
 type cached struct {
 	name  string
 	img   image.Image
@@ -28,11 +28,14 @@ type cached struct {
 }
 
 var (
+	// Empty is a fallback image when decoding fails.
 	Empty = image.NewRGBA(image.Rect(0, 0, 128, 128))
 
+	// cache stores icon images and bytes by name.
 	cache = []*cached{}
 )
 
+// NewPNGPool returns a pool of reusable png encoder buffers.
 func NewPNGPool() *PNGPool {
 	p := &PNGPool{
 		sync: &sync.Pool{
@@ -47,6 +50,7 @@ func NewPNGPool() *PNGPool {
 	return p
 }
 
+// Icon loads and caches an icon image by name.
 func Icon(name string) image.Image {
 	for i, c := range cache {
 		if c.name == name {
@@ -76,6 +80,7 @@ func Icon(name string) image.Image {
 	return c.img
 }
 
+// IconBytes loads and caches an icon as ICO bytes.
 func IconBytes(name string) []byte {
 	for i, c := range cache {
 		if c.name == name {
@@ -113,6 +118,7 @@ func IconBytes(name string) []byte {
 	return c.bytes
 }
 
+// NRGBA converts a Mat to an *image.NRGBA.
 func NRGBA(mat gocv.Mat) (*image.NRGBA, error) {
 	i, err := mat.ToImage()
 	if err != nil {
@@ -127,14 +133,17 @@ func NRGBA(mat gocv.Mat) (*image.NRGBA, error) {
 	return img, nil
 }
 
+// Get returns a buffer from the pool.
 func (p *PNGPool) Get() *png.EncoderBuffer {
 	return p.sync.Get().(*png.EncoderBuffer)
 }
 
+// Put returns a buffer to the pool.
 func (p *PNGPool) Put(e *png.EncoderBuffer) {
 	p.sync.Put(e)
 }
 
+// RGBA converts a Mat to an *image.RGBA.
 func RGBA(mat gocv.Mat) (*image.RGBA, error) {
 	i, err := mat.ToImage()
 	if err != nil {

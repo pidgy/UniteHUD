@@ -1,7 +1,5 @@
 package electron
 
-// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
-
 import (
 	"context"
 	"fmt"
@@ -35,28 +33,34 @@ import (
 //! }
 
 const (
+	// name is the Electron window title.
 	name = "UniteHUD Overlay"
 )
 
-// debugger defines debugger behavior and state.
+// debugger adapts logging to astilectron's debugger interface.
 type debugger struct {
 	fmt,
 	ftl func(format string, v ...interface{})
 }
 
 var (
+	// app is the active astilectron application instance.
 	app            *astilectron.Astilectron
+	// window is the overlay window instance.
 	window         *astilectron.Window
+	// active reports whether the overlay app is running.
 	active, hidden bool
 
+	// html is the path to the overlay UI HTML file.
 	html = filepath.Join(exe.Directory(), "www", "UniteHUD Client.html")
 )
 
+// Active reports whether the Electron overlay is running.
 func Active() bool {
 	return active
 }
 
-// Close closes the target.
+// Close shuts down the overlay window and app.
 func Close() {
 	if !active {
 		notify.Warn("[Electron] <ini:f:close> (inactive)")
@@ -85,6 +89,7 @@ var prev struct {
 
 var lock = &sync.Mutex{}
 
+// Follow positions the overlay over the given window and scales it to size.
 func Follow(hwnd uintptr, size image.Point, force bool) {
 	if !active || hwnd == 0 {
 		notify.Debug("[Electron] Not following HWND:%d (active:%t) ", hwnd, active)
@@ -187,7 +192,7 @@ func Hide() {
 	}
 }
 
-// Open opens the target.
+// Open starts the overlay app and window.
 func Open(size image.Point) error {
 	if active {
 		return fmt.Errorf("window is active")
@@ -210,7 +215,7 @@ func Open(size image.Point) error {
 	return nil
 }
 
-// closeApp closes the target.
+// closeApp terminates the astilectron app instance.
 func closeApp() error {
 	notify.Debug("[Electron] Closing app...")
 	defer notify.Debug("[Electron] Closed app")
@@ -226,7 +231,7 @@ func closeApp() error {
 	return nil
 }
 
-// closeWindow closes the target.
+// closeWindow destroys the overlay window instance.
 func closeWindow() error {
 	notify.Debug("[Electron] Closing window...")
 	defer notify.Debug("[Electron] Closed window")
@@ -244,7 +249,7 @@ func closeWindow() error {
 	return nil
 }
 
-// newDebugger returns a new Debugger.
+// newDebugger returns a logger wired to the notify system.
 func newDebugger(prefix string) *debugger {
 	return &debugger{
 		fmt: func(format string, v ...interface{}) { notify.Debug(prefix+" "+format, v...) },
@@ -252,15 +257,19 @@ func newDebugger(prefix string) *debugger {
 	}
 }
 
+// Fatal logs a fatal message.
 func (d *debugger) Fatal(v ...interface{}) { d.ftl("%s", fmt.Sprint(v...)) }
 
+// Fatalf logs a formatted fatal message.
 func (d *debugger) Fatalf(format string, v ...interface{}) { d.ftl(format, v...) }
 
+// Print logs a message.
 func (d *debugger) Print(v ...interface{}) { d.fmt("%s", fmt.Sprint(v...)) }
 
+// Printf logs a formatted message.
 func (d *debugger) Printf(format string, v ...interface{}) { d.fmt(format, v...) }
 
-// openApp opens the target.
+// openApp starts the astilectron application.
 func openApp() error {
 	notify.Debug("[Electron] Opening app...")
 	defer notify.Debug("[Electron] Opened app")
@@ -305,7 +314,7 @@ func openApp() error {
 	return nil
 }
 
-// openWindow opens the target.
+// openWindow creates the transparent overlay window.
 func openWindow(size image.Point) error {
 	notify.Debug("[Electron] Opening window...")
 	defer notify.Debug("[Electron] Opened window")
@@ -379,6 +388,7 @@ func openWindow(size image.Point) error {
 	return nil
 }
 
+// show makes the overlay visible.
 func show() error {
 	if !hidden {
 		return nil
@@ -396,6 +406,7 @@ func show() error {
 	// return window.Show()
 }
 
+// trySetBounds updates the overlay window bounds with a timeout.
 func trySetBounds(next wapi.Rect, w, h int, force bool) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()

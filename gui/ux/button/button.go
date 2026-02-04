@@ -1,7 +1,5 @@
 package button
 
-// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
-
 import (
 	"image"
 	"time"
@@ -20,7 +18,7 @@ import (
 	"github.com/pidgy/unitehud/gui/cursor"
 )
 
-// Widget defines Widget behavior and state.
+// Widget represents a clickable UI button with hover/press state.
 type Widget struct {
 	Text            string
 	TextSize        unit.Sp
@@ -61,18 +59,23 @@ type Widget struct {
 }
 
 var (
+	// DefaultSize is the standard button size.
 	DefaultSize = image.Pt(100, 35)
+	// IconSize is the size for icon-only buttons.
 	IconSize    = image.Pt(31, 26)
 )
 
+// Activate marks the button as pressed/active.
 func (b *Widget) Activate() {
 	b.active = true
 }
 
+// Deactivate clears the pressed/active state.
 func (b *Widget) Deactivate() {
 	b.active = false
 }
 
+// Error flashes the button as an error state briefly.
 func (b *Widget) Error() {
 	tmp := b.Pressed
 	b.Pressed = nrgba.Red
@@ -196,6 +199,7 @@ func (b *Widget) HoverHint() {
 	}
 }
 
+// uniform draws the button background shape and fill.
 func (b *Widget) uniform(gtx layout.Context) layout.Dimensions {
 	rect := clip.RRect{SE: 3, SW: 3, NE: 3, NW: 3, Rect: image.Rectangle{Max: image.Pt((b.Size.X), b.Size.Y)}}
 	if b.SharpCorners {

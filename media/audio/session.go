@@ -1,7 +1,5 @@
 package audio
 
-// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
-
 import (
 	"bytes"
 	"fmt"
@@ -18,14 +16,18 @@ import (
 )
 
 const (
+	// Default is the default audio device name.
 	Default  = device.Default
+	// Disabled is the sentinel name for disabled audio devices.
 	Disabled = device.Disabled
 )
 
 var (
+	// Current is the active audio session.
 	Current *Session
 )
 
+// Session manages input/output devices and streaming context.
 type Session struct {
 	Input, Output device.Device
 
@@ -37,6 +39,7 @@ type Session struct {
 	context *malgo.AllocatedContext
 }
 
+// Close stops the current audio session and frees resources.
 func Close() {
 	notify.System("[Audio] Closing...")
 	defer notify.Debug("[Audio] Closed")
@@ -51,6 +54,7 @@ func Close() {
 	Current.context.Free()
 }
 
+// Input switches the capture device and restarts audio.
 func Input(name string) (err error) {
 	if Current == nil {
 		return nil
@@ -70,6 +74,7 @@ func Input(name string) (err error) {
 	return Start()
 }
 
+// Inputs returns available input devices for the current context.
 func Inputs() []*input.Device {
 	if Current == nil {
 		return nil
@@ -78,6 +83,7 @@ func Inputs() []*input.Device {
 	return input.Devices(Current.context)
 }
 
+// Label returns a user-facing summary of input and output status.
 func Label() string {
 	if Current == nil {
 		return "🔈 Audio Disabled"
@@ -96,6 +102,7 @@ func Label() string {
 	return fmt.Sprintf("%s %s → %s %s", speakers[0], strings.Split(Current.Input.Name(), " (")[0], speakers[1], strings.Split(Current.Output.Name(), " (")[0])
 }
 
+// Open initializes the audio context and devices, then starts streaming.
 func Open() error {
 	ctx, err := malgo.InitContext(
 		[]malgo.Backend{
@@ -139,6 +146,7 @@ func Open() error {
 	return Start()
 }
 
+// Output switches the playback device and restarts audio.
 func Output(name string) (err error) {
 	if Current == nil {
 		return nil
@@ -158,6 +166,7 @@ func Output(name string) (err error) {
 	return Start()
 }
 
+// Outputs returns available output devices for the current context.
 func Outputs() []*output.Device {
 	if Current == nil {
 		return nil
@@ -166,6 +175,7 @@ func Outputs() []*output.Device {
 	return output.Devices(Current.context)
 }
 
+// Restart reloads the current input/output devices.
 func Restart() {
 	Current.Input.Close()
 	Current.Output.Close()
@@ -184,6 +194,7 @@ func Restart() {
 	Current.Output = out
 }
 
+// Start begins streaming from input to output.
 func Start() error {
 	if Current.Input.IsDisabled() || Current.Output.IsDisabled() {
 		notify.System("[Audio] Disabled")
@@ -205,6 +216,7 @@ func Start() error {
 	return nil
 }
 
+// String formats the session device route.
 func (s *Session) String() string {
 	return fmt.Sprintf("%s -> %s", s.Input, s.Output)
 }

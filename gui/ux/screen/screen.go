@@ -1,7 +1,5 @@
 package screen
 
-// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
-
 import (
 	"image"
 
@@ -44,6 +42,7 @@ func (s *Widget) Layout(gtx layout.Context) layout.Dimensions {
 	return s.layout(gtx)
 }
 
+// Scale returns the image scale based on current options.
 func (s *Widget) Scale(gtx layout.Context) float32 {
 	if s.AutoScale {
 		return 1
@@ -56,7 +55,7 @@ func (s *Widget) Scale(gtx layout.Context) float32 {
 	return float32(gtx.Constraints.Max.X) / float32(s.Image.Bounds().Dx())
 }
 
-// layout lays out and renders the widget.
+// layout lays out and renders the widget with optional border and splash.
 func (s *Widget) layout(gtx layout.Context) layout.Dimensions {
 	if s.Splash {
 		defer clip.Rect{Max: gtx.Constraints.Max}.Push(gtx.Ops).Pop()

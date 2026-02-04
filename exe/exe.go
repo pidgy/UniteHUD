@@ -1,7 +1,5 @@
 package exe
 
-// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
-
 import (
 	"os"
 	"os/signal"
@@ -14,17 +12,25 @@ import (
 )
 
 const (
+	// AssetDirectory is the default folder name for bundled app assets.
 	AssetDirectory  = `assets`
+	// Title is the human-facing app name.
 	Title           = "UniteHUD"
+	// TitleAndVersion is the full title string with the current version appended.
 	TitleAndVersion = Title + " " + Version
+	// Version is the semantic version prefixed with "v".
 	Version         = "v" + VersionSemVer
+	// VersionSemVer is the raw semantic version string.
 	VersionSemVer   = "4.5.0"
 )
 
 var (
+	// Debug reports whether the executable name suggests a debug build.
 	Debug  = strings.Contains(strings.ToLower(os.Args[0]), "debug")
+	// Uptime records the process start time.
 	Uptime = time.Now()
 
+	// Caser provides consistent title casing for UI strings.
 	Caser = cases.Title(language.English)
 
 	sigq = make(chan os.Signal, 1)
@@ -32,6 +38,7 @@ var (
 	dir = ""
 )
 
+// Close shuts down the signal channel used for orderly exits.
 func Close() {
 	if sigq == nil {
 		return
@@ -40,6 +47,7 @@ func Close() {
 	sigq = nil
 }
 
+// Directory returns the executable's directory, caching the result.
 func Directory() string {
 	if dir == "" {
 		e, err := os.Executable()
@@ -51,14 +59,17 @@ func Directory() string {
 	return dir
 }
 
+// Exit terminates the process immediately with a zero status.
 func Exit() {
 	os.Exit(0)
 }
 
+// VersionDash returns Version with dots replaced by dashes.
 func VersionDash() string {
 	return strings.ReplaceAll(Version, ".", "-")
 }
 
+// WaitForSignal blocks until an interrupt signal is received.
 func WaitForSignal() os.Signal {
 	signal.Notify(sigq, os.Interrupt)
 	return <-sigq

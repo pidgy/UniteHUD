@@ -1,7 +1,5 @@
 package checklist
 
-// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
-
 import (
 	"image"
 
@@ -17,7 +15,7 @@ import (
 	"github.com/pidgy/unitehud/gui/ux/decorate"
 )
 
-// Item defines Item behavior and state.
+// Item represents a single checklist row with state and callbacks.
 type Item struct {
 	Text     string
 	Hint     string
@@ -36,7 +34,7 @@ type Item struct {
 	hintLabel material.LabelStyle
 }
 
-// Widget defines Widget behavior and state.
+// Widget renders a checklist with optional radio behavior.
 type Widget struct {
 	Items         []*Item
 	Callback      func(item *Item, this *Widget) (check bool)
@@ -48,6 +46,7 @@ type Widget struct {
 	liststyle material.ListStyle
 }
 
+// hint lays out an optional hint label under the item.
 func (item *Item) hint(gtx layout.Context, theme *material.Theme) layout.Dimensions {
 	if item.Hint == "" {
 		return layout.Dimensions{}
@@ -67,6 +66,7 @@ func (item *Item) hint(gtx layout.Context, theme *material.Theme) layout.Dimensi
 	return layout.Inset{Top: 20, Left: item.check.Size * 1.5, Bottom: -20}.Layout(gtx, item.hintLabel.Layout)
 }
 
+// Default returns the first item or an empty placeholder.
 func (l *Widget) Default() *Item {
 	if len(l.Items) == 0 {
 		return &Item{}
@@ -74,7 +74,7 @@ func (l *Widget) Default() *Item {
 	return l.Items[0]
 }
 
-// Layout handles drawing the letters view.
+// Layout renders the checklist and handles item interactions.
 func (list *Widget) Layout(gtx layout.Context) layout.Dimensions {
 	list.defaultList()
 
@@ -99,6 +99,7 @@ func (list *Widget) Layout(gtx layout.Context) layout.Dimensions {
 	)
 }
 
+// defaultCheckBox initializes checkbox styles and callbacks.
 func (list *Widget) defaultCheckBox(i *Item) {
 	defer decorate.CheckBox(&i.check)
 
@@ -125,6 +126,7 @@ func (list *Widget) defaultCheckBox(i *Item) {
 	}
 }
 
+// defaultList initializes the list style and selection behavior.
 func (list *Widget) defaultList() {
 	defer decorate.Scrollbar(&list.liststyle.ScrollbarStyle)
 	defer decorate.List(&list.liststyle)
@@ -161,7 +163,7 @@ func (list *Widget) defaultList() {
 	}
 }
 
-// draw draws the widget.
+// draw renders a single checklist row.
 func (list *Widget) draw(gtx layout.Context, item *Item) layout.Dimensions {
 	// list.liststyle.Scrollbar.AddTrack(gtx.Ops)
 
@@ -201,12 +203,14 @@ func (list *Widget) draw(gtx layout.Context, item *Item) layout.Dimensions {
 	return layout.Dimensions{Size: lineDims.Size.Add(hintDims.Size)}
 }
 
+// hovered applies hover styling to the item row.
 func (list *Widget) hovered(gtx layout.Context, i *Item) {
 	i.hovered = true
 	decorate.ColorBox(gtx, image.Pt(gtx.Constraints.Max.X, 20), nrgba.White.Alpha(5))
 	cursor.Is(pointer.CursorPointer)
 }
 
+// radio enforces single selection when enabled.
 func (list *Widget) radio(item *Item) {
 	if !list.Radio {
 		return
@@ -220,6 +224,7 @@ func (list *Widget) radio(item *Item) {
 	}
 }
 
+// unhovered clears hover state and cursor hints.
 func (list *Widget) unhovered(i *Item) {
 	if i.hovered {
 		cursor.Is(pointer.CursorDefault)

@@ -1,7 +1,5 @@
 package input
 
-// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
-
 import (
 	"fmt"
 	"io"
@@ -12,6 +10,7 @@ import (
 	"github.com/pidgy/unitehud/media/audio/device"
 )
 
+// Device represents an audio capture device.
 type Device struct {
 	ID      string
 	Formats []malgo.DataFormat
@@ -28,9 +27,11 @@ type Device struct {
 }
 
 var (
+	// disabled is a sentinel device for disabled capture.
 	disabled = &Device{name: device.Disabled}
 )
 
+// Custom is a placeholder for custom device configuration examples.
 func Custom() {
 	/*
 		ma_device_config config = ma_device_config_init(ma_device_type_playback);
@@ -43,6 +44,7 @@ func Custom() {
 	*/
 }
 
+// withDefaultConfig applies a standard capture configuration.
 func (d *Device) withDefaultConfig() *Device {
 	d.config = malgo.DefaultDeviceConfig(malgo.Capture)
 	d.config.Capture.Format = malgo.FormatS16
@@ -54,6 +56,7 @@ func (d *Device) withDefaultConfig() *Device {
 	return d
 }
 
+// New returns a capture device by name or the disabled device.
 func New(ctx *malgo.AllocatedContext, name string) (*Device, error) {
 	if name == device.Disabled || name == "" {
 		return disabled, nil
@@ -68,10 +71,12 @@ func New(ctx *malgo.AllocatedContext, name string) (*Device, error) {
 	return disabled, fmt.Errorf("<ini:f:find> capture device: %s", name)
 }
 
+// Active reports whether the device is capturing.
 func (d *Device) Active() bool {
 	return d.active
 }
 
+// Close stops the capture device if active.
 func (d *Device) Close() {
 	if !d.Active() {
 		return
@@ -82,22 +87,27 @@ func (d *Device) Close() {
 	<-d.closedq
 }
 
+// Is reports whether this device matches the given name.
 func (d *Device) Is(name string) bool {
 	return device.Is(d, name)
 }
 
+// IsDefault reports whether this device is the system default.
 func (d *Device) IsDefault() bool {
 	return d.isDefault
 }
 
+// IsDisabled reports whether this is the disabled sentinel device.
 func (d *Device) IsDisabled() bool {
 	return d == nil || d.name == device.Disabled
 }
 
+// Name returns the device display name.
 func (d *Device) Name() string {
 	return d.name
 }
 
+// Start begins capturing audio into the provided writer.
 func (d *Device) Start(mctx malgo.Context, w io.ReadWriter) error {
 	if d.IsDisabled() {
 		return nil
@@ -167,14 +177,17 @@ func (d *Device) Start(mctx malgo.Context, w io.ReadWriter) error {
 	return <-errq
 }
 
+// String returns a safe display string for the device.
 func (d *Device) String() string {
 	return device.String(d)
 }
 
+// Type identifies this device as a capture input.
 func (d *Device) Type() device.Type {
 	return device.Input
 }
 
+// Devices enumerates available capture devices for the context.
 func Devices(ctx *malgo.AllocatedContext) (captures []*Device) {
 	d, err := ctx.Devices(malgo.Capture)
 	if err != nil {

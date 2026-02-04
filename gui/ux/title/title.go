@@ -1,7 +1,5 @@
 package title
 
-// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
-
 import (
 	"image"
 	"strings"
@@ -29,14 +27,18 @@ import (
 )
 
 var (
+	// Height is the title bar height in pixels.
 	Height = 26
 
+	// buttonTextSize controls icon button glyph size.
 	buttonTextSize = unit.Sp(18)
+	// titleTextSize controls the title label size.
 	titleTextSize  = unit.Sp(16)
+	// tipTextSize controls the tooltip label size.
 	tipTextSize    = unit.Sp(14)
 )
 
-// Widget defines Widget behavior and state.
+// Widget renders a custom title bar with controls and tips.
 type Widget struct {
 	Title string
 	*fonts.Collection
@@ -49,7 +51,7 @@ type Widget struct {
 	*decorations
 }
 
-// decorations defines decorations behavior and state.
+// decorations holds layout state for title widgets and buttons.
 type decorations struct {
 	title struct {
 		material.LabelStyle
@@ -90,7 +92,7 @@ type decorations struct {
 	}
 }
 
-// New returns a new instance.
+// New creates a title bar widget with minimize, resize, and close actions.
 func New(title string, minimize, resize, close func()) *Widget {
 	collection := fonts.NewCollection()
 
@@ -237,6 +239,7 @@ func New(title string, minimize, resize, close func()) *Widget {
 	return b
 }
 
+// Add appends a custom button to the title bar.
 func (b *Widget) Add(btn *button.Widget) *button.Widget {
 	if btn.Size.Eq(image.Pt(0, 0)) {
 		btn.Size = button.IconSize
@@ -258,6 +261,7 @@ func (b *Widget) Add(btn *button.Widget) *button.Widget {
 	return btn
 }
 
+// Dragging reports the current drag offset, if any.
 func (b *Widget) Dragging() (image.Point, bool) {
 	if !b.dragging.is {
 		return image.Pt(0, 0), false
@@ -471,19 +475,20 @@ func (b *Widget) Layout(gtx layout.Context, content layout.Widget) layout.Dimens
 	return dims
 }
 
-// OnClose handles the event callback.
+// OnClose replaces the close button handler and returns a restorer.
 func (b *Widget) OnClose(fn func(*button.Widget)) ux.Thener {
 	tmp := b.buttons.close.Click
 	b.buttons.close.Click = fn
 	return ux.Then{Do: func() { b.buttons.close.Click = tmp }}
 }
 
-// Open opens the target.
+// Open toggles the custom menu button.
 func (b *Widget) Open() {
 	this := b.decorations.buttons.custom[0]
 	this.Click(this)
 }
 
+// Remove deletes a custom button from the title bar.
 func (b *Widget) Remove(btn *button.Widget) {
 	c := []*button.Widget{}
 	for _, b := range b.decorations.buttons.custom {
@@ -498,10 +503,12 @@ func (b *Widget) Remove(btn *button.Widget) {
 	}
 }
 
+// Resize triggers the resize button action.
 func (b *Widget) Resize() {
 	b.buttons.resize.Click(b.buttons.resize)
 }
 
+// Tip updates the hover tip text.
 func (b *Widget) Tip(t string) {
 	if t == "" {
 		b.decorations.tip.Text = exe.Version

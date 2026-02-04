@@ -1,7 +1,5 @@
 package ui
 
-// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
-
 import (
 	"fmt"
 	"image"
@@ -29,12 +27,11 @@ import (
 	"github.com/pidgy/unitehud/gui/ux/title"
 	"github.com/pidgy/unitehud/media/video/device"
 	"github.com/pidgy/unitehud/system/desktop"
-	"github.com/pidgy/unitehud/system/desktop/clicked"
 	"github.com/pidgy/unitehud/system/discord"
 	"github.com/pidgy/unitehud/system/ini"
 )
 
-// section defines section behavior and state.
+// section describes a single settings block with labels and widgets.
 type section struct {
 	h1                 bool
 	title, description material.LabelStyle
@@ -43,7 +40,7 @@ type section struct {
 	extras []ux.Widgeter
 }
 
-// settings defines settings behavior and state.
+// settings holds state for the advanced settings window.
 type settings struct {
 	hwnd uintptr
 
@@ -82,7 +79,7 @@ type settings struct {
 	}
 }
 
-// settings sets the related state.
+// settings opens the advanced settings window and runs its event loop.
 func (g *GUI) settings(onclose func()) *settings {
 	ui := g.settingsUI()
 
@@ -160,7 +157,7 @@ func (g *GUI) settings(onclose func()) *settings {
 	return ui
 }
 
-// settingsUI sets the related state.
+// settingsUI initializes the settings window controls and sections.
 func (g *GUI) settingsUI() *settings {
 	ui := &settings{}
 
@@ -494,7 +491,7 @@ func (g *GUI) settingsUI() *settings {
 					desktop.Notification(exe.Title).
 						Says("Testing 1, 2, 3").
 						Logs(notify.Error).
-						When(clicked.VisitWebsite).
+						When(desktop.VisitWebsite).
 						Send()
 				},
 			},
@@ -735,7 +732,7 @@ func (g *GUI) settingsUI() *settings {
 	return ui
 }
 
-
+// section renders the settings block with its title, widget, and warnings.
 func (s *section) section(gtx layout.Context) layout.Dimensions {
 	inset := layout.Inset{
 		Top:    5,
@@ -828,7 +825,7 @@ func (s *section) section(gtx layout.Context) layout.Dimensions {
 	})
 }
 
-
+// footer builds extra widgets that appear below the section content.
 func (s *section) footer(inset layout.Inset) []layout.FlexChild {
 	c := []layout.FlexChild{}
 
@@ -856,11 +853,12 @@ func (s *settings) close() {
 // 	})
 // }
 
+// isOpen reports whether the settings window is active.
 func (s *settings) isOpen() bool {
 	return s != nil
 }
 
-
+// resize flags the settings window to reposition on the next frame.
 func (s *settings) resize() {
 	if s != nil {
 		s.dimensions.resize = true

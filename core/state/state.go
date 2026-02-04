@@ -1,6 +1,6 @@
 package state
 
-// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
+// Package state tracks match events and provides helpers to query recent history.
 
 import (
 	"fmt"
@@ -12,59 +12,109 @@ import (
 
 // See [EventType.String] for literal descriptions.
 const (
+	// Custom represents a user-defined event type.
 	Custom EventType = iota - 2
+	// Nothing represents the absence of a meaningful event.
 	Nothing
+	// PreScore represents a pre-score state.
 	PreScore
+	// PostScore represents a post-score state.
 	PostScore
+	// Killed represents a defeat event.
 	Killed
+	// KilledWithPoints represents a defeat while holding points.
 	KilledWithPoints
+	// KilledWithoutPoints represents a defeat while holding no points.
 	KilledWithoutPoints
+	// MatchStarting represents the match starting.
 	MatchStarting
+	// MatchEnding represents the match ending.
 	MatchEnding
+	// HoldingEnergy represents the local player holding energy.
 	HoldingEnergy
+	// PurpleBaseOpen represents the purple base opening.
 	PurpleBaseOpen
+	// OrangeBaseOpen represents the orange base opening.
 	OrangeBaseOpen
+	// PurpleBaseClosed represents the purple base closing.
 	PurpleBaseClosed
+	// OrangeBaseClosed represents the orange base closing.
 	OrangeBaseClosed
+	// OrangeScore represents an orange team score.
 	OrangeScore
+	// PurpleScore represents a purple team score.
 	PurpleScore
+	// FirstScored represents the first score of the match.
 	FirstScored
+	// OrangeScoreMissed represents an orange team score miss.
 	OrangeScoreMissed
+	// PurpleScoreMissed represents a purple team score miss.
 	PurpleScoreMissed
+	// RegielekiSecureOrange represents orange securing Regieleki.
 	RegielekiSecureOrange
+	// RegielekiSecurePurple represents purple securing Regieleki.
 	RegielekiSecurePurple
+	// SelfScoreIndicator represents a self score indicator event.
 	SelfScoreIndicator
+	// ScoreOverride represents an override of the score.
 	ScoreOverride
+	// ObjectivePresent represents an objective being present.
 	ObjectivePresent
+	// ObjectiveReachedOrange represents an objective reaching the orange base.
 	ObjectiveReachedOrange
+	// ObjectiveReachedPurple represents an objective reaching the purple base.
 	ObjectiveReachedPurple
+	// ServerStarted represents the server starting.
 	ServerStarted
+	// ServerStopped represents the server stopping.
 	ServerStopped
+	// RegiceSecureOrange represents orange securing Regice.
 	RegiceSecureOrange
+	// RegiceSecurePurple represents purple securing Regice.
 	RegiceSecurePurple
+	// RegirockSecureOrange represents orange securing Regirock.
 	RegirockSecureOrange
+	// RegirockSecurePurple represents purple securing Regirock.
 	RegirockSecurePurple
+	// RegisteelSecureOrange represents orange securing Registeel.
 	RegisteelSecureOrange
+	// RegisteelSecurePurple represents purple securing Registeel.
 	RegisteelSecurePurple
+	// KOPurple represents a purple team KO.
 	KOPurple
+	// KOStreakPurple represents a purple KO streak.
 	KOStreakPurple
+	// KOOrange represents an orange team KO.
 	KOOrange
+	// KOStreakOrange represents an orange KO streak.
 	KOStreakOrange
+	// FinalObjectiveGroudonSecurePurple represents purple securing final Groudon.
 	FinalObjectiveGroudonSecurePurple
+	// FinalObjectiveGroudonSecureOrange represents orange securing final Groudon.
 	FinalObjectiveGroudonSecureOrange
+	// FinalObjectiveKyogreSecureKO represents a KO securing final Kyogre.
 	FinalObjectiveKyogreSecureKO
+	// FinalObjectiveKyogreSecurePurple represents purple securing final Kyogre.
 	FinalObjectiveKyogreSecurePurple
+	// FinalObjectiveKyogreSecureOrange represents orange securing final Kyogre.
 	FinalObjectiveKyogreSecureOrange
+	// FinalObjectiveRayquazaSecurePurple represents purple securing final Rayquaza.
 	FinalObjectiveRayquazaSecurePurple
+	// FinalObjectiveRayquazaSecureOrange represents orange securing final Rayquaza.
 	FinalObjectiveRayquazaSecureOrange
+	// SurrenderOrange represents orange surrendering.
 	SurrenderOrange
+	// SurrenderPurple represents purple surrendering.
 	SurrenderPurple
+	// RegidragoSecureKO represents a KO securing Regidrago.
 	RegidragoSecureKO
+	// RegidragoSecurePurple represents purple securing Regidrago.
 	RegidragoSecurePurple
+	// RegidragoSecureOrange represents orange securing Regidrago.
 	RegidragoSecureOrange
 )
 
-// Event defines Event behavior and state.
+// Event is a recorded match event with timing and metadata.
 type Event struct {
 	EventType
 	time.Time
@@ -75,15 +125,18 @@ type Event struct {
 	Verified bool
 }
 
-// EventType indicates the result and state of an event.
+// EventType indicates the kind of event that occurred.
 type EventType int
 
 var (
+	// Events holds the current event history with the newest event first.
 	Events = []*Event{{EventType: Nothing, Time: exe.Uptime}}
 
+	// past is a copy of all events recorded, newest first.
 	past = Events
 )
 
+// Add records an event and prepends it to the history.
 func Add(e EventType, clock string, points int) {
 	event := &Event{
 		EventType: e,
@@ -96,10 +149,12 @@ func Add(e EventType, clock string, points int) {
 	past = append([]*Event{event}, past...)
 }
 
+// Clear resets event history to the initial nothing event.
 func Clear() {
 	Events = []*Event{{EventType: Nothing, Time: exe.Uptime}}
 }
 
+// Dump returns a formatted event history and whether any data exists.
 func Dump() (string, bool) {
 	if len(Events) == 0 {
 		return "No event data is available to display...", false
@@ -124,6 +179,7 @@ func Dump() (string, bool) {
 	return str, true
 }
 
+// Eq reports whether two events are equal in type and metadata.
 func (e *Event) Eq(e2 *Event) bool {
 	if e2 == nil {
 		return e == nil
@@ -135,6 +191,7 @@ func (e *Event) Eq(e2 *Event) bool {
 		e.Verified == e2.Verified
 }
 
+// String formats the event with its timestamp, clock, and type.
 func (e *Event) String() string {
 	s := fmt.Sprintf("[%02d:%02d:%02d] [Event] [%s] %s", e.Time.Hour(), e.Time.Minute(), e.Time.Second(), e.Clock, e.EventType)
 	if e.Value > 0 {
@@ -143,6 +200,7 @@ func (e *Event) String() string {
 	return s
 }
 
+// Strip formats a compact event string without timestamp.
 func (e *Event) Strip() string {
 	s := fmt.Sprintf("[%s] %s", e.Clock, e.EventType)
 	if e.Value > 0 {
@@ -151,6 +209,7 @@ func (e *Event) Strip() string {
 	return s
 }
 
+// Before reports whether this event type appears earlier than the other in history.
 func (this EventType) Before(that EventType) bool {
 	for i := len(Events) - 1; i >= 0; i-- {
 		switch {
@@ -164,6 +223,7 @@ func (this EventType) Before(that EventType) bool {
 	return false
 }
 
+// Either reports whether this event type equals any of the provided types.
 func (this EventType) Either(those ...EventType) bool {
 	for _, that := range those {
 		if this == that {
@@ -173,10 +233,12 @@ func (this EventType) Either(those ...EventType) bool {
 	return false
 }
 
+// Int returns the integer value of the event type.
 func (e EventType) Int() int {
 	return int(e)
 }
 
+// ObjectiveString returns a short objective identifier for final objective events.
 func (e EventType) ObjectiveString() string {
 	switch e {
 	case FinalObjectiveGroudonSecurePurple, FinalObjectiveGroudonSecureOrange:
@@ -190,6 +252,7 @@ func (e EventType) ObjectiveString() string {
 	}
 }
 
+// Occured returns the most recent event of this type within the duration.
 func (this EventType) Occured(since time.Duration) *Event {
 	for _, event := range Events {
 		if time.Since(event.Time) > since {
@@ -204,6 +267,7 @@ func (this EventType) Occured(since time.Duration) *Event {
 	return nil
 }
 
+// String returns a human-readable description of the event type.
 func (e EventType) String() string {
 	switch e {
 	case Custom:
@@ -311,6 +375,7 @@ func (e EventType) String() string {
 	}
 }
 
+// Team returns the team associated with the event type.
 func (this EventType) Team() *team.Team {
 	switch this {
 	case SelfScoreIndicator, PreScore, PostScore, Killed, KilledWithPoints, KilledWithoutPoints, HoldingEnergy:
@@ -324,6 +389,7 @@ func (this EventType) Team() *team.Team {
 	}
 }
 
+// First returns the earliest event of the given type within the duration.
 func First(e EventType, since time.Duration) *Event {
 	events := []*Event{}
 
@@ -343,6 +409,7 @@ func First(e EventType, since time.Duration) *Event {
 	return nil
 }
 
+// Idle returns the duration since the most recent event.
 func Idle() time.Duration {
 	if len(Events) < 2 {
 		return 0
@@ -351,10 +418,12 @@ func Idle() time.Duration {
 	return time.Since(Events[0].Time)
 }
 
+// Last returns the most recent event.
 func Last() *Event {
 	return Events[0]
 }
 
+// Occured reports whether any of the given event types occurred recently.
 func Occured(since time.Duration, e ...EventType) bool {
 	for _, e := range e {
 		event := e.Occured(since)
@@ -365,6 +434,7 @@ func Occured(since time.Duration, e ...EventType) bool {
 	return false
 }
 
+// Past returns events of the given types within the duration from the full history.
 func Past(since time.Duration, es ...EventType) []*Event {
 	events := []*Event{}
 
@@ -383,6 +453,7 @@ func Past(since time.Duration, es ...EventType) []*Event {
 	return events
 }
 
+// Recent reports whether the given event type exists in history.
 func Recent(e EventType) bool {
 	for i := len(Events) - 1; i >= 0; i-- {
 		if Events[i].EventType == e {
@@ -392,6 +463,7 @@ func Recent(e EventType) bool {
 	return false
 }
 
+// ScoredBy maps a team name to the corresponding score event type.
 func ScoredBy(name string) EventType {
 	switch name {
 	case team.Purple.Name:
@@ -406,6 +478,7 @@ func ScoredBy(name string) EventType {
 	return Nothing
 }
 
+// ScoreMissedBy maps a team name to the corresponding score-missed event type.
 func ScoreMissedBy(name string) EventType {
 	switch name {
 	case team.Purple.Name:
@@ -420,6 +493,7 @@ func ScoreMissedBy(name string) EventType {
 	return Nothing
 }
 
+// Since returns the duration since the most recent event of the given type.
 func Since(e EventType) time.Duration {
 	for _, event := range Events {
 		if event.EventType == e {
@@ -429,7 +503,7 @@ func Since(e EventType) time.Duration {
 	return 0
 }
 
-// Start starts the operation.
+// Start returns the first event in history.
 func Start() *Event {
 	if len(Events) == 0 {
 		return &Event{}
@@ -437,6 +511,7 @@ func Start() *Event {
 	return Events[0]
 }
 
+// Strings returns compact event strings within the duration.
 func Strings(since time.Duration) []string {
 	s := []string{}
 

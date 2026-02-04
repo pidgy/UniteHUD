@@ -1,14 +1,12 @@
 package template
 
-// TODO: Add go style comments that reflect the purpose of each type, function, var, and const.
-
 import (
 	"gocv.io/x/gocv"
 
 	"github.com/pidgy/unitehud/core/template/filter"
 )
 
-// Template defines Template behavior and state.
+// Template holds image data, mask state, and template metadata.
 type Template struct {
 	filter.Filter
 	gocv.Mat
@@ -16,7 +14,7 @@ type Template struct {
 	Mask     gocv.Mat
 }
 
-// New returns a new instance.
+// New constructs a Template with the provided filter, image, and category.
 func New(f filter.Filter, m gocv.Mat, category, subcategory string) *Template {
 	return &Template{
 		Filter:   f,
@@ -26,6 +24,7 @@ func New(f filter.Filter, m gocv.Mat, category, subcategory string) *Template {
 	}
 }
 
+// Collection flattens template slices into a single slice.
 func Collection(t ...[]*Template) []*Template {
 	c := []*Template{}
 	for _, p := range t {
@@ -34,6 +33,7 @@ func Collection(t ...[]*Template) []*Template {
 	return c
 }
 
+// AsTransparent builds a transparency mask for the template image.
 func (t *Template) AsTransparent() *Template {
 	gocv.CvtColor(t.Mat, &t.Mask, gocv.ColorBGRAToBGR)
 	return t
