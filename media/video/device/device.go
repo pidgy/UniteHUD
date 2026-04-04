@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"image"
 	"runtime"
+	"slices"
 	"strings"
-	"sync"
 	"time"
 
 	"gocv.io/x/gocv"
@@ -80,7 +80,7 @@ var (
 
 	mat  = splash.DeviceMat().Clone()
 	size = mat.Size()
-	lock = &sync.RWMutex{}
+	// lock = &sync.RWMutex{}
 
 	cached = cache{
 		videos: make([]string, 100),
@@ -198,8 +198,8 @@ func Capture() (*image.RGBA, error) {
 }
 
 func CaptureRect(r image.Rectangle) (*image.RGBA, error) {
-	lock.RLock()
-	defer lock.RUnlock()
+	// lock.RLock()
+	// defer lock.RUnlock()
 
 	if mat.Empty() {
 		return nil, nil
@@ -359,10 +359,8 @@ var toCodec = (&gocv.VideoCapture{}).ToCodec
 func fourcc(name string) float64 {
 	c := codecByName(name)
 	if c != codecAny {
-		for _, codec := range cached.codecs {
-			if c == codec {
-				return toCodec(c.String())
-			}
+		if slices.Contains(cached.codecs, c) {
+			return toCodec(c.String())
 		}
 	}
 	return -1
@@ -371,8 +369,8 @@ func fourcc(name string) float64 {
 func (d *dev) reset() {
 	notify.Debug("[Device] Resetting %s device", d.name)
 
-	lock.Lock()
-	defer lock.Unlock()
+	// lock.Lock()
+	// defer lock.Unlock()
 
 	mat = splash.DeviceMat().Clone()
 	size = mat.Size()
@@ -394,7 +392,7 @@ func index(name string) int {
 		return config.NoVideoCaptureDevice
 	}
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		n, err := device.VideoCaptureDeviceName(i)
 		if err != nil {
 			notify.Error("[Device] <ini:f:find> %s (%v)", name, err)
@@ -551,15 +549,15 @@ func start() error {
 		}
 
 		for frames := float64(0); running(); frames++ {
-			lock.Lock()
+			// lock.Lock()
 			ok := video.Read(&mat)
 			if !ok {
 				defer active.reset()
 				notify.Error("[Device] <ini:f:capture> %s", active.name)
-				lock.Unlock()
+				// lock.Unlock()
 				goto close
 			}
-			lock.Unlock()
+			// lock.Unlock()
 
 			size = mat.Size()
 

@@ -91,11 +91,7 @@ func (d *Device) Name() string {
 	return d.name
 }
 
-// Playback streams samples from a reader to the sound device.
-// The function initializes a playback device in the default context using
-// provide stream configuration.
-// Playback will commence playing the samples provided from the reader until either the
-// reader returns an error, or the context signals done.
+
 // Start begins playback by reading samples from r.
 func (d *Device) Start(mctx malgo.Context, r io.ReadWriter) error {
 	if d.IsDisabled() {

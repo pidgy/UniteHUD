@@ -13,20 +13,20 @@ import (
 
 const (
 	// AssetDirectory is the default folder name for bundled app assets.
-	AssetDirectory  = `assets`
+	AssetDirectory = `assets`
 	// Title is the human-facing app name.
-	Title           = "UniteHUD"
+	Title = "UniteHUD"
 	// TitleAndVersion is the full title string with the current version appended.
 	TitleAndVersion = Title + " " + Version
 	// Version is the semantic version prefixed with "v".
-	Version         = "v" + VersionSemVer
+	Version = "v" + VersionSemVer
 	// VersionSemVer is the raw semantic version string.
-	VersionSemVer   = "4.5.0"
+	VersionSemVer = "4.5.1"
 )
 
 var (
 	// Debug reports whether the executable name suggests a debug build.
-	Debug  = strings.Contains(strings.ToLower(os.Args[0]), "debug")
+	Debug = strings.Contains(strings.ToLower(os.Args[0]), "debug")
 	// Uptime records the process start time.
 	Uptime = time.Now()
 
