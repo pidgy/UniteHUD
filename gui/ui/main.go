@@ -68,7 +68,8 @@ type main struct {
 		startstop,
 		hideTop,
 		hideRight,
-		alwaysOnTop *button.Widget
+		alwaysOnTop,
+		screenshot *button.Widget
 	}
 
 	split struct {
@@ -144,6 +145,7 @@ func (g *GUI) main() {
 	defer g.nav.Remove(g.nav.Add(ui.navButtons.logs))
 	defer g.nav.Remove(g.nav.Add(ui.navButtons.record))
 	defer g.nav.Remove(g.nav.Add(ui.navButtons.alwaysOnTop))
+	defer g.nav.Remove(g.nav.Add(ui.navButtons.screenshot))
 
 	// defer g.header.Remove(g.header.Add(ui.menu.stats))
 	// defer g.header.Remove(g.header.Add(ui.menu.results))
@@ -574,6 +576,8 @@ func (g *GUI) main() {
 				}
 			case keys.F11():
 				g.nav.Resize()
+			case keys.Command("Shift"), keys.Ctrl("V"):
+				ui.navButtons.screenshot.Click(ui.navButtons.screenshot)
 			}
 
 			g.frame(gtx, event)
@@ -590,9 +594,12 @@ func (g *GUI) main() {
 // mainUI creates the main menu's UI state manager.
 func (g *GUI) mainUI() *main {
 	ui := &main{
-		stage:    system.StageRunning,
-		keybinds: keys.New().Bind(keys.NoMod, keys.Escape(), keys.F11()).Bind(keys.CtrlMod, "C", "F", "P", "S", "W", "M"),
-		tag:      new(bool),
+		stage: system.StageRunning,
+		keybinds: keys.New().
+			Bind(keys.NoMod, keys.Escape(), keys.F11()).
+			Bind(keys.CtrlMod, "C", "F", "M", "P", "S", "V", "W").
+			Bind(keys.CommandMod, "Shift"),
+		tag: new(bool),
 	}
 
 	var err error
@@ -694,7 +701,7 @@ func (g *GUI) mainUI() *main {
 	}
 
 	ui.buttons.settingsImage = &button.ImageWidget{
-		Hint:        "Open a projector window",
+		Hint:        "Open the configuration settings window",
 		OnHoverHint: g.nav.Tip,
 
 		Widget: &screen.Widget{
@@ -907,8 +914,8 @@ func (g *GUI) mainUI() *main {
 	ui.navButtons.client = &button.Widget{
 		Text:        "📺",
 		Font:        g.nav.NishikiTeki(),
-		Hint:        ui.buttons.settingsImage.Hint,
-		OnHoverHint: ui.buttons.settingsImage.OnHoverHint,
+		Hint:        "Open a projector window (Ctrl+P)",
+		OnHoverHint: g.nav.Tip,
 		Pressed:     nrgba.Discord.Alpha(100),
 		TextSize:    unit.Sp(16),
 
@@ -1227,6 +1234,53 @@ func (g *GUI) mainUI() *main {
 				this.Text = "📌×"
 				this.Radio = true
 				wapi.SetWindowAlwaysOnTop(g.HWND)
+			}
+		},
+	}
+
+	ui.navButtons.screenshot = &button.Widget{
+		Text:            "📸",
+		Font:            g.nav.NishikiTeki(),
+		Hint:            "Take a screenshot of this window (Ctrl+V)",
+		OnHoverHint:     g.nav.Tip,
+		Released:        nrgba.Transparent80,
+		Pressed:         nrgba.Night,
+		TextSize:        unit.Sp(16),
+		TextInsetBottom: -1,
+
+		Click: func(this *button.Widget) {
+			defer this.Deactivate()
+
+			w := wapi.Window(g.HWND)
+
+			r, err := w.Dimensions()
+			if err != nil {
+				notify.Error("[UI] Failed to determine screenshot dimensions (%v)", err)
+				g.ToastErrorf("Failed to capture screenshot (%v)", err)
+				return
+			}
+
+			img, err := w.Capture(r, 1)
+			if err != nil {
+				notify.Error("[UI] Failed to capture screenshot (%v)", err)
+				g.ToastErrorf("Failed to capture screenshot (%v)", err)
+				return
+			}
+
+			file := fmt.Sprintf("%s/img/Screenshot_%s.png", save.Directory, save.KitchenTime())
+
+			err = save.PNG(img, "%s", file)
+			if err != nil {
+				notify.Error("[UI] Failed to save screenshot (%v)", err)
+				g.ToastErrorf("Failed to capture screenshot (%v)", err)
+				return
+			}
+
+			err = save.OpenImage("%s", file)
+			if err != nil {
+				notify.Error("[UI] Failed to open screenshot (%v)", err)
+				g.ToastErrorf("Failed to capture screenshot (%v)", err)
+				return
 			}
 		},
 	}

@@ -39,6 +39,7 @@ import (
 	"github.com/pidgy/unitehud/media/video/window"
 	"github.com/pidgy/unitehud/system/process"
 	"github.com/pidgy/unitehud/system/save"
+	"github.com/pidgy/unitehud/system/wapi"
 )
 
 // configure holds UI state for the configuration screen and its sub-windows.
@@ -66,15 +67,16 @@ type configure struct {
 
 	buttons struct {
 		menu struct {
-			home     *button.Widget
-			settings *button.Widget
-			save     *button.Widget
-			hide     *button.Widget
-			capture  *button.Widget
-			preview  *button.Widget
-			file     *button.Widget
-			reset    *button.Widget
-			lock     *button.Widget
+			home,
+			settings,
+			save,
+			hide,
+			capture,
+			preview,
+			file,
+			reset,
+			lock,
+			screenshot *button.Widget
 		}
 	}
 
@@ -131,6 +133,7 @@ func (g *GUI) configure() {
 	defer g.nav.Remove(g.nav.Add(ui.buttons.menu.file))
 	defer g.nav.Remove(g.nav.Add(ui.buttons.menu.reset))
 	defer g.nav.Remove(g.nav.Add(ui.buttons.menu.lock))
+	defer g.nav.Remove(g.nav.Add(ui.buttons.menu.screenshot))
 	g.nav.Open()
 
 	g.window.Perform(system.ActionRaise)
@@ -470,7 +473,6 @@ func (g *GUI) configure() {
 	ui.windows.settings.close()
 	ui = nil
 }
-
 
 // configureUI initializes the configuration UI model and controls.
 func (g *GUI) configureUI() *configure {
@@ -817,6 +819,53 @@ func (g *GUI) configureUI() *configure {
 		},
 	}
 
+	ui.buttons.menu.screenshot = &button.Widget{
+		Text:            "📸",
+		Font:            g.nav.NishikiTeki(),
+		Hint:            "Take a screenshot of this window (Ctrl+V)",
+		OnHoverHint:     g.nav.Tip,
+		Released:        nrgba.Transparent80,
+		Pressed:         nrgba.Night,
+		TextSize:        unit.Sp(16),
+		TextInsetBottom: -1,
+
+		Click: func(this *button.Widget) {
+			defer this.Deactivate()
+
+			w := wapi.Window(g.HWND)
+
+			r, err := w.Dimensions()
+			if err != nil {
+				notify.Error("[UI] Failed to determine screenshot dimensions (%v)", err)
+				g.ToastErrorf("Failed to capture screenshot (%v)", err)
+				return
+			}
+
+			img, err := w.Capture(r, 1)
+			if err != nil {
+				notify.Error("[UI] Failed to capture screenshot (%v)", err)
+				g.ToastErrorf("Failed to capture screenshot (%v)", err)
+				return
+			}
+
+			file := fmt.Sprintf("%s/img/Screenshot_%s.png", save.Directory, save.KitchenTime())
+
+			err = save.PNG(img, "%s", file)
+			if err != nil {
+				notify.Error("[UI] Failed to save screenshot (%v)", err)
+				g.ToastErrorf("Failed to capture screenshot (%v)", err)
+				return
+			}
+
+			err = save.OpenImage("%s", file)
+			if err != nil {
+				notify.Error("[UI] Failed to open screenshot (%v)", err)
+				g.ToastErrorf("Failed to capture screenshot (%v)", err)
+				return
+			}
+		},
+	}
+
 	ui.labels.audio.in = material.Label(g.nav.Calibri().Theme, unit.Sp(12), "Audio Input")
 	ui.labels.audio.in.Color = nrgba.Highlight.Color()
 	ui.labels.audio.in.Font.Weight = 100
@@ -867,7 +916,7 @@ func (g *GUI) configureUI() *configure {
 
 	ui.groups.videos.populate()
 
-	// ui.buttons.menu.settings.Click(ui.buttons.menu.settings)
+	ui.buttons.menu.settings.Click(ui.buttons.menu.settings)
 
 	return ui
 }
@@ -940,12 +989,10 @@ func (ui *configure) Layout(gtx layout.Context, fullscreen bool) layout.Dimensio
 	return dims
 }
 
-
 // empty returns a spacer child with the given dimensions.
 func (ui *configure) empty(x, y float32) layout.FlexChild {
 	return layout.Rigid(layout.Spacer{Width: unit.Dp(x), Height: unit.Dp(y)}.Layout)
 }
-
 
 // foot builds the footer bar showing status and performance metrics.
 func (ui *configure) foot(f *footer) layout.FlexChild {
@@ -1011,7 +1058,6 @@ func (ui *configure) foot(f *footer) layout.FlexChild {
 		})
 	})
 }
-
 
 // spacer draws a decorated spacer with optional fixed width/height.
 func (ui *configure) spacer(x, y float32) layout.FlexChild {

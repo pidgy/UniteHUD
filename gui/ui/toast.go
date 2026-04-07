@@ -29,15 +29,15 @@ import (
 
 type (
 	// toastOnYes is the callback for affirmative toast actions.
-	toastOnYes      func()
+	toastOnYes func()
 	// toastOnNo is the callback for negative toast actions.
-	toastOnNo       func()
+	toastOnNo func()
 	// toastOnOK is the callback for OK-only toast actions.
-	toastOnOK       func()
+	toastOnOK func()
 	// toastOnRemember is the callback for "remember my choice" actions.
 	toastOnRemember func(b bool)
 	// toastOnClose is the callback for toast close events.
-	toastOnClose    func()
+	toastOnClose func()
 )
 
 type (
@@ -100,14 +100,6 @@ func (g *GUI) ToastError(err error) {
 		return
 	}
 	defer t.close()
-
-	if len(err.Error()) > 100 {
-		t.window.Option(
-			app.Size(unit.Dp(600), unit.Dp(125)),
-			app.MinSize(unit.Dp(600), unit.Dp(125)),
-			app.MaxSize(unit.Dp(600), unit.Dp(125)),
-		)
-	}
 
 	g.toastOK(t, nil)
 }
@@ -558,11 +550,11 @@ func (g *GUI) toastOK(t *toast, ok toastOnOK) {
 	notify.Debug("[UI] Toast: Opening OK \"%s\"", t.label.Text)
 	defer notify.Debug("[UI] Toast: Closing OK: \"%s\"", t.label.Text)
 
-	if len(t.label.Text) > 50 {
+	if n := len(t.label.Text); n > 100 {
 		t.window.Option(
-			app.Size(unit.Dp(600), unit.Dp(125)),
-			app.MinSize(unit.Dp(600), unit.Dp(125)),
-			app.MaxSize(unit.Dp(600), unit.Dp(125)),
+			app.Size(unit.Dp(600), unit.Dp(200)),
+			app.MinSize(unit.Dp(600), unit.Dp(200)),
+			app.MaxSize(unit.Dp(600), unit.Dp(200)),
 		)
 	}
 

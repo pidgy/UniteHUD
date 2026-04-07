@@ -22,14 +22,16 @@ type (
 
 const (
 	// None represents an empty binding.
-	None    = ""
+	None = ""
 	// NoMod represents no modifier keys.
-	NoMod   = key.Modifiers(0)
+	NoMod = key.Modifiers(0)
 	// CtrlMod represents the Ctrl modifier.
 	CtrlMod = key.ModCtrl
 
 	// HintText is forwarded from gio's key hint text.
 	HintText = key.HintText
+
+	CommandMod = key.ModCommand
 )
 
 // New creates an empty binding list.
@@ -88,8 +90,12 @@ push:
 	return name
 }
 
-func Ctrl(s string) string {
-	return "Ctrl-" + s
+func Command(k string) string {
+	return fmt.Sprintf("%s-%s", key.NameCommand, k)
+}
+
+func Ctrl(k string) string {
+	return fmt.Sprintf("%s-%s", key.NameCtrl, k)
 }
 
 // Escape returns the key name for Escape.

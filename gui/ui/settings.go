@@ -360,6 +360,15 @@ func (g *GUI) settingsUI() *settings {
 			TextSize: 12,
 			Items: []*checklist.Item{
 				{
+					Text: "15 FPS",
+					Checked: widget.Bool{
+						Value: false,
+					},
+					Callback: func(this *checklist.Item) {
+						config.Current.Video.Capture.Device.FPS = 15
+					},
+				},
+				{
 					Text: "30 FPS",
 					Checked: widget.Bool{
 						Value: false,

@@ -11,11 +11,13 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/skratchdot/open-golang/open"
 
 	"github.com/pidgy/unitehud/exe"
+	"github.com/pidgy/unitehud/system/wapi"
 )
 
 var (
@@ -116,6 +118,39 @@ func OpenCurrentLog() error {
 		return fmt.Errorf("save: failed to create: %s: %v", Directory, err)
 	}
 	return open.Run(fmt.Sprintf("%s/%s/%s", d, Directory, log))
+}
+
+func OpenImage(format string, a ...any) error {
+	path := fmt.Sprintf(format, a...)
+
+	if !strings.HasSuffix(path, ".png") {
+		return fmt.Errorf("%s: invalid path, missing png extension", path)
+	}
+
+	path = filepath.Join(exe.Directory(), saved, path)
+
+	p := strings.Split(path, `\`)
+	for i := 1; i < len(p); i++ {
+		err := createDirIfNotExist(strings.Join(p[0:i], "/"))
+		if err != nil {
+			return err
+		}
+	}
+
+	argv, err := syscall.UTF16PtrFromString(os.Getenv("windir") + "\\system32\\cmd.exe /C " + fmt.Sprintf("\"%s\"", path))
+	if err != nil {
+		return fmt.Errorf("<ini:f:open> %s (%v)", path, err)
+	}
+
+	var sI syscall.StartupInfo
+	var pI syscall.ProcessInformation
+
+	err = syscall.CreateProcess(nil, argv, nil, nil, true, wapi.CreateProcessFlags.NoWindow, nil, nil, &sI, &pI)
+	if err != nil {
+		return fmt.Errorf("<ini:f:open> %s (%v)", path, err)
+	}
+
+	return nil
 }
 
 func OpenLogDirectory() error {
