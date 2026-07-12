@@ -28,7 +28,6 @@ require (
 
 require (
 	github.com/hashicorp/go-version v1.6.0
-	golang.org/x/image v0.18.0
 	golang.org/x/text v0.16.0
 	gopkg.in/ini.v1 v1.67.0
 )
@@ -36,7 +35,6 @@ require (
 require (
 	gioui.org/cpu v0.0.0-20220412190645-f1e9e8c3b1f7 // indirect
 	gioui.org/shader v1.0.8 // indirect
-	github.com/akrennmair/slice v0.0.0-20220105203817-49445747ab81 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-text/typesetting v0.0.0-20231202102523-0024ac628562 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
@@ -44,6 +42,7 @@ require (
 	github.com/stretchr/testify v1.8.4 // indirect
 	golang.org/x/exp v0.0.0-20231127185646-65229373498e // indirect
 	golang.org/x/exp/shiny v0.0.0-20231127185646-65229373498e // indirect
+	golang.org/x/image v0.18.0 // indirect
 	golang.org/x/mod v0.17.0 // indirect
 	golang.org/x/sync v0.7.0 // indirect
 	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d // indirect
