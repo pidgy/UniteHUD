@@ -16,6 +16,14 @@ func Title(s string) string {
 	return Titled.String(s)
 }
 
+// TitleFirst uppercases the first rune of a string.
+func TitleFirst(s string) string {
+	if len(s) < 1 {
+		return ""
+	}
+	return upper.String(s[:1]) + s[1:]
+}
+
 func Translate(s string) string {
 	return s
 }

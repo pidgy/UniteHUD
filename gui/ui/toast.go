@@ -3,7 +3,6 @@ package ui
 import (
 	"fmt"
 	"image"
-	"strings"
 	"time"
 
 	"gioui.org/app"
@@ -25,6 +24,7 @@ import (
 	"github.com/pidgy/unitehud/gui/ux/title"
 	"github.com/pidgy/unitehud/media/img/splash"
 	"github.com/pidgy/unitehud/system/ini"
+	"github.com/pidgy/unitehud/system/lang"
 )
 
 type (
@@ -69,7 +69,7 @@ type (
 		forced bool
 		open   bool
 
-		keybinds keys.Bind
+		keybinds *keys.Bind
 	}
 
 	// waiter exposes toast readiness and close behavior.
@@ -94,17 +94,17 @@ func (g *GUI) ToastError(err error) {
 	g.previous.toast.err = err
 	g.previous.toast.time = time.Now()
 
-	t := g.makeToastForce("Error", err.Error(), 400, 125)
-	if t == nil {
+	toast := g.makeToastForce("Error", err.Error(), 400, 125)
+	if toast == nil {
 		notify.Error("[UI] Toast: Failed to show error: %v", err)
 		return
 	}
-	defer t.close()
+	defer toast.close()
 
-	g.toastOK(t, nil)
+	g.toastOK(toast, nil)
 }
 
-func (g *GUI) ToastErrorf(format string, a ...interface{}) {
+func (g *GUI) ToastErrorf(format string, a ...any) {
 	g.ToastError(fmt.Errorf(format, a...))
 }
 
@@ -114,14 +114,14 @@ func (g *GUI) ToastNewsletter(header string, bulletin bulletin, c toastOnClose) 
 		defer c()
 	}
 
-	t := g.makeToastForce(header, bulletin.Title, float32(650), float32(450))
-	if t == nil {
+	toast := g.makeToastForce(header, bulletin.Title, float32(650), float32(450))
+	if toast == nil {
 		notify.Error("[UI] Toast: Failed to show Newsletter")
 		return
 	}
-	defer t.close()
+	defer toast.close()
 
-	t.label.TextSize = toastTextSize * 1.5
+	toast.label.TextSize = toastTextSize * 1.5
 
 	notify.Debug("[UI] Toast: Opening Newsletter")
 	defer notify.Debug("[UI] Toast: Closing Newsletter...")
@@ -129,7 +129,7 @@ func (g *GUI) ToastNewsletter(header string, bulletin bulletin, c toastOnClose) 
 	okButton := &button.Widget{
 		Text:            "OK",
 		TextSize:        unit.Sp(16),
-		Font:            t.nav.Calibri(),
+		Font:            toast.nav.Calibri(),
 		Pressed:         nrgba.Transparent80,
 		Released:        nrgba.DarkGray,
 		Size:            image.Pt(96, 32),
@@ -138,13 +138,13 @@ func (g *GUI) ToastNewsletter(header string, bulletin bulletin, c toastOnClose) 
 		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
-			t.window.Perform(system.ActionClose)
+			toast.window.Perform(system.ActionClose)
 		},
 	}
 
 	topic := func(i int) (topics []layout.FlexChild) {
 		topics = append(topics, layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			subtitle := material.Label(t.nav.Calibri().Theme, toastTextSize, bulletin.Topics[i].Subtitle)
+			subtitle := material.Label(toast.nav.Calibri().Theme, toastTextSize, bulletin.Topics[i].Subtitle)
 			decorate.Label(&subtitle, "%s", subtitle.Text)
 			subtitle.TextSize = toastTextSize * 1.25
 			subtitle.Font.Weight = font.Bold
@@ -153,7 +153,7 @@ func (g *GUI) ToastNewsletter(header string, bulletin bulletin, c toastOnClose) 
 
 		point := func(p string) layout.FlexChild {
 			return layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-				l := material.Label(t.nav.Calibri().Theme, toastTextSize, "")
+				l := material.Label(toast.nav.Calibri().Theme, toastTextSize, "")
 				decorate.Label(&l, "⬥ %s", p)
 				l.Font.Style = font.Italic
 				l.Alignment = text.Start
@@ -175,7 +175,7 @@ func (g *GUI) ToastNewsletter(header string, bulletin bulletin, c toastOnClose) 
 	}
 
 	list := material.List(
-		t.nav.Calibri().Theme,
+		toast.nav.Calibri().Theme,
 		&widget.List{
 			Scrollbar: widget.Scrollbar{},
 			List: layout.List{
@@ -192,16 +192,16 @@ func (g *GUI) ToastNewsletter(header string, bulletin bulletin, c toastOnClose) 
 	first := true
 
 	for {
-		switch event := t.window.NextEvent().(type) {
+		switch event := toast.window.NextEvent().(type) {
 		case app.ViewEvent, system.StageEvent:
-			t.window.Perform(system.ActionRaise)
+			toast.window.Perform(system.ActionRaise)
 		case system.DestroyEvent:
-			notify.Debug("[UI] Toast: DestroyEvent Newsletter \"%s\"", t.label.Text)
+			notify.Debug("[UI] Toast: DestroyEvent Newsletter \"%s\"", toast.label.Text)
 			return
 		case system.FrameEvent:
-			gtx := layout.NewContext(&t.ops, event)
+			gtx := layout.NewContext(&toast.ops, event)
 
-			t.nav.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+			toast.nav.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				return decorate.BackgroundAlt(gtx, func(gtx layout.Context) layout.Dimensions {
 					return layout.Flex{
 						Axis: layout.Horizontal,
@@ -217,7 +217,7 @@ func (g *GUI) ToastNewsletter(header string, bulletin bulletin, c toastOnClose) 
 
 								layout.Flexed(.2, func(gtx layout.Context) layout.Dimensions {
 									return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-										return decorate.Underline(gtx, decorate.Label(&t.label, "%s", t.label.Text).Layout)
+										return decorate.Underline(gtx, decorate.Label(&toast.label, "%s", toast.label.Text).Layout)
 									})
 								}),
 
@@ -257,16 +257,16 @@ func (g *GUI) ToastNewsletter(header string, bulletin bulletin, c toastOnClose) 
 			})
 
 			if first {
-				t.window.Perform(system.ActionCenter)
-				t.window.Perform(system.ActionRaise)
+				toast.window.Perform(system.ActionCenter)
+				toast.window.Perform(system.ActionRaise)
 				first = false
 			}
 
-			if t.keybinds.Escape(gtx, t) {
-				t.window.Perform(system.ActionClose)
+			if toast.keybinds.Escape(gtx) {
+				toast.window.Perform(system.ActionClose)
 			}
 
-			t.window.Invalidate()
+			toast.window.Invalidate()
 
 			event.Frame(gtx.Ops)
 		default:
@@ -280,14 +280,14 @@ func (g *GUI) ToastOK(header, msg string, ok toastOnOK, c toastOnClose) {
 		defer c()
 	}
 
-	t := g.makeToast(header, msg, float32(400), float32(125))
-	if t == nil {
+	toast := g.makeToast(header, msg, float32(400), float32(125))
+	if toast == nil {
 		notify.Error("[UI] Toast: Failed to open dialog")
 		return
 	}
-	defer t.close()
+	defer toast.close()
 
-	g.toastOK(t, ok)
+	g.toastOK(toast, ok)
 }
 
 func (g *GUI) ToastSplash(header, msg string, img image.Image) waiter {
@@ -371,21 +371,23 @@ func (g *GUI) ToastYesNoRemember(header, msg, decision string, y toastOnYes, n t
 		h = 150
 	}
 
-	t := g.makeToast(header, msg, 400, h)
-	if t == nil {
+	toast := g.makeToast(header, msg, 400, h)
+	if toast == nil {
 		return
 	}
-	defer t.close()
+	defer toast.close()
 
-	notify.Debug("[UI] Toast: Opening ToastYesNoRemember: \"%s\"", t.label.Text)
-	defer notify.Debug("[UI] Toast: Closing ToastYesNoRemember: \"%s\"", t.label.Text)
+	toast.keybinds.Bind(keys.NoMod, keys.Enter(), keys.Return())
 
-	check := material.CheckBox(t.nav.Calibri().Theme, &widget.Bool{}, titleFirstWord(decision))
+	notify.Debug("[UI] Toast: Opening ToastYesNoRemember: \"%s\"", toast.label.Text)
+	defer notify.Debug("[UI] Toast: Closing ToastYesNoRemember: \"%s\"", toast.label.Text)
+
+	check := material.CheckBox(toast.nav.Calibri().Theme, &widget.Bool{}, lang.TitleFirst(decision))
 
 	yButton := &button.Widget{
 		Text:            "Yes",
 		TextSize:        unit.Sp(16),
-		Font:            t.nav.Calibri(),
+		Font:            toast.nav.Calibri(),
 		Pressed:         nrgba.Transparent80,
 		Released:        nrgba.DarkGray,
 		Size:            image.Pt(96, 32),
@@ -397,14 +399,14 @@ func (g *GUI) ToastYesNoRemember(header, msg, decision string, y toastOnYes, n t
 			if r != nil {
 				r(check.CheckBox.Value)
 			}
-			t.window.Perform(system.ActionClose)
+			toast.window.Perform(system.ActionClose)
 		},
 	}
 
 	nButton := &button.Widget{
 		Text:            "No",
 		TextSize:        unit.Sp(16),
-		Font:            t.nav.Calibri(),
+		Font:            toast.nav.Calibri(),
 		Pressed:         nrgba.Transparent80,
 		Released:        nrgba.DarkGray,
 		Size:            image.Pt(96, 32),
@@ -416,7 +418,7 @@ func (g *GUI) ToastYesNoRemember(header, msg, decision string, y toastOnYes, n t
 			if r != nil {
 				r(check.CheckBox.Value)
 			}
-			t.window.Perform(system.ActionClose)
+			toast.window.Perform(system.ActionClose)
 		},
 	}
 
@@ -435,16 +437,16 @@ func (g *GUI) ToastYesNoRemember(header, msg, decision string, y toastOnYes, n t
 	first := true
 
 	for {
-		switch event := t.window.NextEvent().(type) {
+		switch event := toast.window.NextEvent().(type) {
 		case system.StageEvent:
-			t.window.Perform(system.ActionRaise)
+			toast.window.Perform(system.ActionRaise)
 		case system.DestroyEvent:
-			notify.Debug("[UI] Toast: DestroyEvent ToastYesNoRemember \"%s\"", t.label.Text)
+			notify.Debug("[UI] Toast: DestroyEvent ToastYesNoRemember \"%s\"", toast.label.Text)
 			return
 		case system.FrameEvent:
-			gtx := layout.NewContext(&t.ops, event)
+			gtx := layout.NewContext(&toast.ops, event)
 
-			t.nav.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+			toast.nav.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				return decorate.BackgroundAlt(gtx, func(gtx layout.Context) layout.Dimensions {
 					return layout.Flex{
 						Axis:      layout.Vertical,
@@ -453,7 +455,7 @@ func (g *GUI) ToastYesNoRemember(header, msg, decision string, y toastOnYes, n t
 						layout.Rigid(layout.Spacer{Height: 10}.Layout),
 
 						layout.Flexed(.5, func(gtx layout.Context) layout.Dimensions {
-							return layout.Center.Layout(gtx, decorate.Label(&t.label, "%s", t.label.Text).Layout)
+							return layout.Center.Layout(gtx, decorate.Label(&toast.label, "%s", toast.label.Text).Layout)
 						}),
 
 						remember(),
@@ -482,16 +484,19 @@ func (g *GUI) ToastYesNoRemember(header, msg, decision string, y toastOnYes, n t
 			})
 
 			if first {
-				t.window.Perform(system.ActionCenter)
-				t.window.Perform(system.ActionRaise)
+				toast.window.Perform(system.ActionCenter)
+				toast.window.Perform(system.ActionRaise)
 				first = false
 			}
 
-			if t.keybinds.Escape(gtx, t) {
-				t.window.Perform(system.ActionClose)
+			switch toast.keybinds.Event(gtx) {
+			case keys.Enter(), keys.Return():
+				yButton.Click(yButton)
+			case keys.Escape():
+				toast.window.Perform(system.ActionClose)
 			}
 
-			t.window.Invalidate()
+			toast.window.Invalidate()
 
 			event.Frame(gtx.Ops)
 		default:
@@ -539,7 +544,7 @@ func (g *GUI) makeToastForce(header, msg string, width, height float32) *toast {
 	t.nav.NoTip = true
 	t.nav.NoDrag = true
 
-	t.label = material.Label(t.nav.Calibri().Theme, toastTextSize, titleFirstWord(msg))
+	t.label = material.Label(t.nav.Calibri().Theme, toastTextSize, lang.TitleFirst(msg))
 	t.label.Alignment = text.Middle
 
 	return t
@@ -626,7 +631,7 @@ func (g *GUI) toastOK(t *toast, ok toastOnOK) {
 				first = false
 			}
 
-			if t.keybinds.Escape(gtx, t) {
+			if t.keybinds.Escape(gtx) {
 				t.window.Perform(system.ActionClose)
 			}
 
@@ -635,14 +640,6 @@ func (g *GUI) toastOK(t *toast, ok toastOnOK) {
 			notify.Missed(event, "ToastOk")
 		}
 	}
-}
-
-// titleFirstWord uppercases the first rune of a string.
-func titleFirstWord(s string) string {
-	if len(s) < 1 {
-		return ""
-	}
-	return strings.ToUpper(s[:1]) + s[1:]
 }
 
 // close closes the toast and clears its active state.

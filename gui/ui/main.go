@@ -51,8 +51,7 @@ import (
 
 // main defines main behavior and state.
 type main struct {
-	ops   op.Ops
-	stage system.Stage
+	ops op.Ops
 
 	navButtons struct {
 		settings,
@@ -103,7 +102,7 @@ type main struct {
 	buttons struct {
 		start,
 		stop *button.Widget
-		settingsImage *button.ImageWidget
+		previewImage *button.ImageWidget
 	}
 
 	textblocks struct {
@@ -122,8 +121,7 @@ type main struct {
 		stop *spinner.Widget
 	}
 
-	keybinds keys.Bind
-	tag      any
+	keybinds *keys.Bind
 }
 
 // main open's the Main Menu window.
@@ -201,9 +199,8 @@ func (g *GUI) main() {
 		// }
 
 		switch event := g.window.NextEvent().(type) {
-		case system.StageEvent:
-			ui.stage = event.Stage
-			notify.Debug("[UI] Main stage: %s", ui.stage)
+		case app.ConfigEvent:
+			g.dimensions.size = event.Config.Size
 		case system.DestroyEvent:
 			is.Next(is.Closing)
 			return
@@ -283,15 +280,12 @@ func (g *GUI) main() {
 							fps := device.FPS()
 							ui.labels.window.Color = nrgba.Percent(fps / float64(config.Current.Video.Capture.Device.FPS)).Color()
 							ui.labels.window.Text = fmt.Sprintf("📺 %s %.0fFPS", device.Name(config.Current.Video.Capture.Device.Index), fps)
-						case window.IsActive(), monitor.IsActive():
-							ui.labels.window.Text = fmt.Sprintf("📺 %s (%s) -> (%s)", config.Current.Video.Capture.Window.Name, monitor.Resolution(), notify.PreviewResolutionString())
+						case window.IsActive():
+							ui.labels.window.Text = fmt.Sprintf("📺 %s (%s) -> (%s)", config.Current.Video.Capture.Window.Name, window.Resolution(), notify.PreviewResolutionString())
+						case monitor.IsActive():
+							ui.labels.window.Text = fmt.Sprintf("📺 %s (%s) -> (%s)", config.Current.Video.Capture.Monitor.Name, monitor.Resolution(), notify.PreviewResolutionString())
 						}
 
-						if config.Current.Video.Capture.Window.Lost != "" {
-							ui.labels.window.Text = config.Current.Video.Capture.Window.Lost
-							ui.labels.window.Text = fmt.Sprintf("📺 %s", config.Current.Video.Capture.Window.Name)
-							ui.labels.window.Color = nrgba.PaleRed.Color()
-						}
 						layout.Inset{
 							Left: unit.Dp(2),
 							Top:  unit.Dp(50),
@@ -503,9 +497,9 @@ func (g *GUI) main() {
 								dims := layout.Inset{
 									Top: unit.Dp(60),
 								}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-									ui.buttons.settingsImage.SetImage(notify.Preview())
+									ui.buttons.previewImage.SetImage(notify.Preview())
 									return layout.UniformInset(unit.Dp(5)).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-										return ui.buttons.settingsImage.Layout(g.nav.Cascadia().Theme, gtx)
+										return ui.buttons.previewImage.Layout(g.nav.Cascadia().Theme, gtx)
 									})
 								})
 
@@ -549,11 +543,11 @@ func (g *GUI) main() {
 				)
 			})
 
-			switch ui.keybinds.Event(gtx, ui.tag) {
+			switch ui.keybinds.Event(gtx) {
 			case keys.Ctrl("M"):
 				g.minimize()
 			case keys.Ctrl("C"):
-				is.Next(is.Configuring)
+				ui.navButtons.settings.Click(ui.navButtons.settings)
 			case keys.Ctrl("F"):
 				g.nav.Resize()
 			case keys.Ctrl("P"):
@@ -594,12 +588,10 @@ func (g *GUI) main() {
 // mainUI creates the main menu's UI state manager.
 func (g *GUI) mainUI() *main {
 	ui := &main{
-		stage: system.StageRunning,
 		keybinds: keys.New().
 			Bind(keys.NoMod, keys.Escape(), keys.F11()).
 			Bind(keys.CtrlMod, "C", "F", "M", "P", "S", "V", "W").
 			Bind(keys.CommandMod, "Shift"),
-		tag: new(bool),
 	}
 
 	var err error
@@ -700,7 +692,7 @@ func (g *GUI) mainUI() *main {
 		notify.Warn("[UI] <ini:f:load> font: (%v)", err)
 	}
 
-	ui.buttons.settingsImage = &button.ImageWidget{
+	ui.buttons.previewImage = &button.ImageWidget{
 		Hint:        "Open the configuration settings window",
 		OnHoverHint: g.nav.Tip,
 
@@ -906,8 +898,7 @@ func (g *GUI) mainUI() *main {
 		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
-			tray.SetStartStopTitle("Start")
-			ui.buttons.settingsImage.Click(ui.buttons.settingsImage)
+			ui.buttons.previewImage.Click(ui.buttons.previewImage)
 		},
 	}
 
@@ -1267,16 +1258,16 @@ func (g *GUI) mainUI() *main {
 				return
 			}
 
-			file := fmt.Sprintf("%s/img/Screenshot_%s.png", save.Directory, save.KitchenTime())
+			file := fmt.Sprintf("Screenshot_%s.png", save.KitchenTime())
 
-			err = save.PNG(img, "%s", file)
+			err = save.PNG(img, file)
 			if err != nil {
 				notify.Error("[UI] Failed to save screenshot (%v)", err)
 				g.ToastErrorf("Failed to capture screenshot (%v)", err)
 				return
 			}
 
-			err = save.OpenImage("%s", file)
+			err = save.OpenImage(file)
 			if err != nil {
 				notify.Error("[UI] Failed to open screenshot (%v)", err)
 				g.ToastErrorf("Failed to capture screenshot (%v)", err)
@@ -1313,19 +1304,22 @@ func (ui *main) onFrame(frame int, fn func(*GUI), g *GUI) {
 
 // onFrame1 handles the event callback.
 func (ui *main) onFrame1(g *GUI) {
+	max := g.dimensions.max()
+	g.dimensions.size = image.Pt(1100, 700)
+
 	g.window.Option(
 		app.Size(
-			unit.Dp(g.dimensions.min.X),
-			unit.Dp(g.dimensions.min.Y),
+			unit.Dp(g.dimensions.size.X),
+			unit.Dp(g.dimensions.size.Y),
 		),
 		app.MinSize(
-			unit.Dp(g.dimensions.min.X),
-			unit.Dp(g.dimensions.min.Y),
+			unit.Dp(g.dimensions.size.X),
+			unit.Dp(g.dimensions.size.Y),
 		),
-	// 	// app.MaxSize(
-	// 	// 	unit.Dp(g.dimensions.max.X),
-	// 	// 	unit.Dp(g.dimensions.max.Y),
-	// 	// ),
+		app.MaxSize(
+			unit.Dp(max.X),
+			unit.Dp(max.Y),
+		),
 	)
 
 	// g.window.Perform(system.ActionCenter)

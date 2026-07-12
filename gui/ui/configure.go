@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"image"
 	"os/exec"
-	"strings"
 	"time"
 
 	"gioui.org/app"
@@ -23,7 +22,6 @@ import (
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/core/rgba/nrgba"
 	"github.com/pidgy/unitehud/core/server"
-	"github.com/pidgy/unitehud/exe"
 	"github.com/pidgy/unitehud/gui/cursor"
 	"github.com/pidgy/unitehud/gui/is"
 	"github.com/pidgy/unitehud/gui/ux/area"
@@ -37,6 +35,7 @@ import (
 	"github.com/pidgy/unitehud/media/video/device"
 	"github.com/pidgy/unitehud/media/video/monitor"
 	"github.com/pidgy/unitehud/media/video/window"
+	"github.com/pidgy/unitehud/system/lang"
 	"github.com/pidgy/unitehud/system/process"
 	"github.com/pidgy/unitehud/system/save"
 	"github.com/pidgy/unitehud/system/wapi"
@@ -65,7 +64,7 @@ type configure struct {
 		*preview
 	}
 
-	buttons struct {
+	navButtons struct {
 		menu struct {
 			home,
 			settings,
@@ -105,7 +104,7 @@ type configure struct {
 
 	*footer
 
-	tag any
+	keybinds *keys.Bind
 }
 
 // footer contains label styles for the bottom status bar.
@@ -122,25 +121,27 @@ type footer struct {
 func (g *GUI) configure() {
 	ui := g.configureUI()
 
-	defer g.nav.OnClose(ui.buttons.menu.home.Click).Then()
+	// Uncomment next line to make configuration menu close return to main.
+	defer g.nav.OnClose(func(w *button.Widget) {
+		ui.navButtons.menu.home.Click(ui.navButtons.menu.home)
+		is.Next(is.Closing)
+	}).Then()
 
-	defer g.nav.Remove(g.nav.Add(ui.buttons.menu.home))
-	defer g.nav.Remove(g.nav.Add(ui.buttons.menu.settings))
-	defer g.nav.Remove(g.nav.Add(ui.buttons.menu.save))
-	defer g.nav.Remove(g.nav.Add(ui.buttons.menu.preview))
-	defer g.nav.Remove(g.nav.Add(ui.buttons.menu.hide))
-	defer g.nav.Remove(g.nav.Add(ui.buttons.menu.capture))
-	defer g.nav.Remove(g.nav.Add(ui.buttons.menu.file))
-	defer g.nav.Remove(g.nav.Add(ui.buttons.menu.reset))
-	defer g.nav.Remove(g.nav.Add(ui.buttons.menu.lock))
-	defer g.nav.Remove(g.nav.Add(ui.buttons.menu.screenshot))
+	defer g.nav.Remove(g.nav.Add(ui.navButtons.menu.home))
+	defer g.nav.Remove(g.nav.Add(ui.navButtons.menu.settings))
+	defer g.nav.Remove(g.nav.Add(ui.navButtons.menu.save))
+	defer g.nav.Remove(g.nav.Add(ui.navButtons.menu.preview))
+	defer g.nav.Remove(g.nav.Add(ui.navButtons.menu.hide))
+	defer g.nav.Remove(g.nav.Add(ui.navButtons.menu.capture))
+	defer g.nav.Remove(g.nav.Add(ui.navButtons.menu.file))
+	defer g.nav.Remove(g.nav.Add(ui.navButtons.menu.reset))
+	defer g.nav.Remove(g.nav.Add(ui.navButtons.menu.lock))
+	defer g.nav.Remove(g.nav.Add(ui.navButtons.menu.screenshot))
 	g.nav.Open()
 
-	g.window.Perform(system.ActionRaise)
+	// g.window.Perform(system.ActionRaise)
 
-	lastPos := image.Pt(0, 0)
-
-	keybinds := keys.New().Bind(keys.NoMod, keys.Escape())
+	lastPos := g.position() // image.Pt(0, 0)
 
 	for is.Currently(is.Configuring) {
 		if ui.groups.ticks++; ui.groups.ticks > ui.groups.threshold {
@@ -149,14 +150,27 @@ func (g *GUI) configure() {
 		}
 
 		switch event := g.window.NextEvent().(type) {
+		case system.StageEvent:
 		case system.DestroyEvent:
-			ui.buttons.menu.home.Click(ui.buttons.menu.home)
+			ui.navButtons.menu.home.Click(ui.navButtons.menu.home)
 			is.Next(is.Closing)
 		case app.ViewEvent:
 			g.HWND = event.HWND
 		case system.FrameEvent:
 			gtx := layout.NewContext(&ui.ops, event)
-			op.InvalidateOp{At: gtx.Now}.Add(gtx.Ops)
+			// op.InvalidateOp{At: gtx.Now}.Add(gtx.Ops)
+			g.dimensions.size = event.Size
+
+			switch ui.keybinds.Event(gtx) {
+			case keys.Escape():
+				ui.navButtons.menu.home.Click(ui.navButtons.menu.home)
+			case keys.Ctrl("S"):
+				ui.navButtons.menu.save.Click(ui.navButtons.menu.save)
+			case keys.Ctrl("Z"):
+				ui.navButtons.menu.reset.Click(ui.navButtons.menu.reset)
+			case keys.Ctrl("F"):
+				g.resize()
+			}
 
 			if !g.dimensions.size.Eq(event.Size) || !g.position().Eq(lastPos) {
 				g.dimensions.size = event.Size
@@ -177,10 +191,6 @@ func (g *GUI) configure() {
 			decorate.LabelColor(&ui.footer.fps, nrgba.Percent(device.FPS()/float64(config.Current.Video.Capture.Device.FPS)).Color())
 
 			g.nav.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-				if keybinds.Escape(gtx, ui.tag) {
-					ui.buttons.menu.home.Click(ui.buttons.menu.home)
-				}
-
 				if ui.hideOptions {
 					return layout.Flex{
 						Alignment: layout.Baseline,
@@ -430,35 +440,33 @@ func (g *GUI) configure() {
 			case ui.hidePreview:
 				ui.img = splash.DeviceClickable()
 			case video.Current() != video.Unknown:
-				img, err := video.Capture()
-				if err != nil {
-					g.ToastErrorf("<ini:f:capture> (%v)", err)
+				select {
+				case <-ticker.C:
+					img, err := video.Capture()
+					if err != nil {
+						g.ToastErrorf("<ini:f:capture> (%v)", err)
+						defer video.Close()
 
-					// No video to default to, let's bail.
-					if monitor.IsActive() {
-						is.Next(is.MainMenu)
+						// No video to default to, let's bail.
+						if monitor.IsActive() {
+							is.Next(is.MainMenu)
+						}
+
+						if !window.IsActive() {
+							config.Current.SetDefaultMonitorCapture()
+						}
+
+						break
 					}
 
-					if window.IsActive() {
-						config.Current.Video.Capture.Window.Lost = config.Current.Video.Capture.Window.Name
+					ui.img = img
+
+					rgba, ok := ui.img.(*image.RGBA)
+					if !ok || rgba == nil {
+						ui.img = splash.Invalid()
 					}
-					config.Current.Video.Capture.Window.Name = config.MainDisplay
-
-					video.Close()
-
-					break
+				default:
 				}
-
-				ui.img = img
-
-				rgba, ok := ui.img.(*image.RGBA)
-				if !ok || rgba == nil {
-					ui.img = splash.Invalid()
-				}
-			case window.Lost():
-				config.Current.Video.Capture.Window.Lost = ""
-				ui.groups.videos.populate()
-				fallthrough
 			default:
 				ui.img = splash.Default()
 			}
@@ -474,6 +482,8 @@ func (g *GUI) configure() {
 	ui = nil
 }
 
+var ticker = time.NewTicker(66 * time.Millisecond) // ~15.15 FPS
+
 // configureUI initializes the configuration UI model and controls.
 func (g *GUI) configureUI() *configure {
 	ui := &configure{
@@ -484,7 +494,9 @@ func (g *GUI) configureUI() *configure {
 
 		listTextSize: float32(12),
 
-		tag: new(bool),
+		keybinds: keys.New().
+			Bind(keys.NoMod, keys.Escape()).
+			Bind(keys.CtrlMod, "S", "Z", "F"),
 	}
 
 	ui.groups.areas = g.areas(g.nav.Collection)
@@ -492,31 +504,18 @@ func (g *GUI) configureUI() *configure {
 	ui.groups.videos = g.videos(ui.listTextSize)
 	ui.groups.videos.onevent = func(b bool) {
 		ui.hidePreview = b
-		if exe.Debug {
-			src := video.Current()
-			img, err := video.Capture()
-			if err != nil {
-				notify.Error("[Debug] Failed to capture video (%v)", err)
-				return
-			}
-			err = save.PNG(img, "%s/img/%s_%s.png", save.Directory, save.KitchenTime(), strings.ReplaceAll(src.String(), " ", "_"))
-			if err != nil {
-				notify.Error("[Debug] Failed to save image (%v)", err)
-				return
-			}
-		}
 	}
 	ui.groups.threshold = 120
 	ui.groups.ticks = ui.groups.threshold
 
-	ui.buttons.menu.home = &button.Widget{
+	ui.navButtons.menu.home = &button.Widget{
 		Text:            "🏠",
 		Font:            g.nav.NishikiTeki(),
 		Pressed:         nrgba.Discord.Alpha(100),
 		TextSize:        unit.Sp(16),
 		TextInsetBottom: -1,
 		Disabled:        false,
-		Hint:            "Return to the Main Menu",
+		Hint:            "Return to the Main Menu (Esc)",
 		OnHoverHint:     g.nav.Tip,
 		Click: func(this *button.Widget) {
 			defer this.Deactivate()
@@ -565,7 +564,7 @@ func (g *GUI) configureUI() *configure {
 		},
 	}
 
-	ui.buttons.menu.settings = &button.Widget{
+	ui.navButtons.menu.settings = &button.Widget{
 		Text:            "⚙",
 		TextSize:        unit.Sp(18),
 		TextInsetBottom: -2,
@@ -574,27 +573,31 @@ func (g *GUI) configureUI() *configure {
 		OnHoverHint:     g.nav.Tip,
 		Pressed:         nrgba.Lilac,
 		BorderWidth:     unit.Sp(.1),
+		Radio:           false,
 		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
 			if ui.windows.settings.isOpen() {
 				ui.windows.settings.close()
+				this.Radio = false
 				return
 			}
+			this.Radio = true
 
-			ui.windows.settings = g.settings(func() {
+			onclose := func() {
 				ui.windows.settings = nil
 
 				this.Text = "⚙"
 				this.Hint = "Open advanced settings"
-			})
+			}
+			ui.windows.settings = g.settings(onclose)
 
 			this.Text = "⚙×"
 			this.Hint = "Close advanced settings"
 		},
 	}
 
-	ui.buttons.menu.preview = &button.Widget{
+	ui.navButtons.menu.preview = &button.Widget{
 		Text:            "🗗",
 		Font:            g.nav.NishikiTeki(),
 		TextSize:        unit.Sp(17),
@@ -624,14 +627,14 @@ func (g *GUI) configureUI() *configure {
 		},
 	}
 
-	ui.buttons.menu.save = &button.Widget{
+	ui.navButtons.menu.save = &button.Widget{
 		Text:            "🖫",
 		Font:            g.nav.NishikiTeki(),
 		Pressed:         nrgba.OfficeBlue,
 		TextSize:        unit.Sp(16),
 		TextInsetBottom: -1,
 		Disabled:        false,
-		Hint:            "Save configuration",
+		Hint:            "Save configuration (Ctrl+S)",
 		OnHoverHint:     g.nav.Tip,
 		Click: func(this *button.Widget) {
 			g.ToastYesNo("Save", "Save configuration changes?",
@@ -659,7 +662,7 @@ func (g *GUI) configureUI() *configure {
 		},
 	}
 
-	ui.buttons.menu.hide = &button.Widget{
+	ui.navButtons.menu.hide = &button.Widget{
 		Text:            "⇊",
 		Font:            g.nav.NishikiTeki(),
 		TextSize:        unit.Sp(16),
@@ -681,7 +684,7 @@ func (g *GUI) configureUI() *configure {
 		},
 	}
 
-	ui.buttons.menu.capture = &button.Widget{
+	ui.navButtons.menu.capture = &button.Widget{
 		Text:            "⛶",
 		Font:            g.nav.NishikiTeki(),
 		TextSize:        unit.Sp(16),
@@ -701,7 +704,7 @@ func (g *GUI) configureUI() *configure {
 		},
 	}
 
-	ui.buttons.menu.file = &button.Widget{
+	ui.navButtons.menu.file = &button.Widget{
 		Text:            "📝",
 		Font:            g.nav.NishikiTeki(),
 		Pressed:         nrgba.CoolBlue,
@@ -743,17 +746,17 @@ func (g *GUI) configureUI() *configure {
 		},
 	}
 
-	ui.buttons.menu.reset = &button.Widget{
+	ui.navButtons.menu.reset = &button.Widget{
 		Text:            "💣",
 		Font:            g.nav.NishikiTeki(),
 		Pressed:         nrgba.PaleRed,
 		TextSize:        unit.Sp(17),
 		TextInsetBottom: -1,
 		Disabled:        false,
-		Hint:            "Reset configuration",
+		Hint:            "Reset configuration (Ctrl+Z)",
 		OnHoverHint:     g.nav.Tip,
 		Click: func(this *button.Widget) {
-			g.ToastYesNo("Reset", fmt.Sprintf("<ini:i:reset> %s configuration?", config.Current.Gaming.Device),
+			g.ToastYesNo("Reset", fmt.Sprintf("<ini:i:reset> configuration for this profile? (%s)", lang.Title(config.Current.Gaming.Device)),
 				toastOnYes(func() {
 					server.Clear()
 
@@ -761,8 +764,7 @@ func (g *GUI) configureUI() *configure {
 					err := config.Current.Reset()
 					if err != nil {
 						config.Current = prev
-						notify.Warn("[UI] <ini:f:reset> %s configuration (%v)", config.Current.Gaming.Device, err)
-						g.ToastError(err)
+						g.ToastErrorf("[UI] <ini:f:reset> configuration for %s (%v)", lang.Title(config.Current.Gaming.Device), err)
 						return
 					}
 
@@ -782,19 +784,18 @@ func (g *GUI) configureUI() *configure {
 					ui.groups.areas.score.Min, ui.groups.areas.score.Max = config.Current.XY.Scores.Min, config.Current.XY.Scores.Max
 					ui.groups.areas.objective.Min, ui.groups.areas.objective.Max = config.Current.XY.Objectives.Min, config.Current.XY.Objectives.Max
 					// ui.groups.areas.ko.Min, ui.groups.areas.ko.Max = config.Current.XY.KOs.Min, config.Current.XY.KOs.Max
-					// ui.groups.videos.window.populate()
 					ui.groups.videos.populate()
 
 					is.Next(is.MainMenu)
 
-					notify.Announce("[UI] <ini:i:reset> UniteHUD %s configuration", config.Current.Gaming.Device)
+					notify.Announce("[UI] <ini:i:reset> UniteHUD configuration profile for %s", lang.Title(config.Current.Gaming.Device))
 				}),
 				toastOnNo(this.Deactivate),
 			)
 		},
 	}
 
-	ui.buttons.menu.lock = &button.Widget{
+	ui.navButtons.menu.lock = &button.Widget{
 		Text:            "🔓",
 		Font:            g.nav.NishikiTeki(),
 		Pressed:         nrgba.Gold.Alpha(150),
@@ -819,7 +820,7 @@ func (g *GUI) configureUI() *configure {
 		},
 	}
 
-	ui.buttons.menu.screenshot = &button.Widget{
+	ui.navButtons.menu.screenshot = &button.Widget{
 		Text:            "📸",
 		Font:            g.nav.NishikiTeki(),
 		Hint:            "Take a screenshot of this window (Ctrl+V)",
@@ -848,16 +849,16 @@ func (g *GUI) configureUI() *configure {
 				return
 			}
 
-			file := fmt.Sprintf("%s/img/Screenshot_%s.png", save.Directory, save.KitchenTime())
+			file := fmt.Sprintf("Screenshot_%s.png", save.KitchenTime())
 
-			err = save.PNG(img, "%s", file)
+			err = save.PNG(img, file)
 			if err != nil {
 				notify.Error("[UI] Failed to save screenshot (%v)", err)
 				g.ToastErrorf("Failed to capture screenshot (%v)", err)
 				return
 			}
 
-			err = save.OpenImage("%s", file)
+			err = save.OpenImage(file)
 			if err != nil {
 				notify.Error("[UI] Failed to open screenshot (%v)", err)
 				g.ToastErrorf("Failed to capture screenshot (%v)", err)
@@ -916,7 +917,9 @@ func (g *GUI) configureUI() *configure {
 
 	ui.groups.videos.populate()
 
-	ui.buttons.menu.settings.Click(ui.buttons.menu.settings)
+	// if !g.dimensions.fullscreen {
+	ui.navButtons.menu.settings.Click(ui.navButtons.menu.settings)
+	// }
 
 	return ui
 }

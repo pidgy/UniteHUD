@@ -64,8 +64,7 @@ type projector struct {
 	hover,
 	clicked time.Time
 
-	keybinds keys.Bind
-	tag      any
+	keybinds *keys.Bind
 
 	rect wapi.Rect
 
@@ -129,8 +128,8 @@ func (g *GUI) projector(onclose func()) {
 	ui.window.Perform(system.ActionRaise)
 
 	statsLabel := material.Label(ui.nav.Calibri().Theme, 16, "FPS: 60")
-	statsLabel.Font.Weight = font.Light
-	decorate.LabelColor(&statsLabel, nrgba.Highlight.Alpha(200).Color())
+	statsLabel.Font.Weight = font.ExtraBold
+	decorate.LabelColor(&statsLabel, nrgba.White.Color())
 
 	// FrameTiming defines FrameTiming behavior and state.
 	type FrameTiming struct {
@@ -236,10 +235,10 @@ func (g *GUI) projector(onclose func()) {
 									statsLabel.Text += fmt.Sprintf("ㅤ%s\n", process.Usage.RAM)
 									statsLabel.Text += fmt.Sprintf("ㅤ%s\n", process.Usage.Threads)
 
-									return layout.Inset{
+									return decorate.ColorBox(gtx, layout.Inset{
 										Top:  unit.Dp(2),
 										Left: unit.Dp(2),
-									}.Layout(gtx, statsLabel.Layout)
+									}.Layout(gtx, statsLabel.Layout).Size, nrgba.BackgroundAlt.Alpha(200))
 								}
 
 								return layout.Dimensions{}
@@ -258,7 +257,7 @@ func (g *GUI) projector(onclose func()) {
 				},
 			)
 
-			switch ui.keybinds.Event(gtx, ui.tag) {
+			switch ui.keybinds.Event(gtx) {
 			case keys.Ctrl("W"):
 				ui.window.Perform(system.ActionClose)
 			case keys.Ctrl("F"), keys.F11():
@@ -333,7 +332,6 @@ func (ui *projector) fullscreen() {
 func (g *GUI) projectorUI() *projector {
 	ui := &projector{
 		keybinds: keys.New().Bind(keys.NoMod, keys.Escape(), keys.F11()).Bind(keys.CtrlMod, "W"),
-		tag:      new(bool),
 		rect:     wapi.Rect{},
 	}
 

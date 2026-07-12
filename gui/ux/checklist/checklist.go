@@ -37,7 +37,7 @@ type Item struct {
 // Widget renders a checklist with optional radio behavior.
 type Widget struct {
 	Items         []*Item
-	Callback      func(item *Item, this *Widget) (check bool)
+	Callback      func(item *Item, this *Widget)
 	WidthModifier int
 	Radio         bool
 	TextSize      float32
@@ -76,7 +76,7 @@ func (l *Widget) Default() *Item {
 
 // Layout renders the checklist and handles item interactions.
 func (list *Widget) Layout(gtx layout.Context) layout.Dimensions {
-	list.defaultList()
+	list.defaultChecklist()
 
 	return list.liststyle.Layout(gtx, len(list.Items),
 		func(gtx layout.Context, index int) layout.Dimensions {
@@ -86,8 +86,8 @@ func (list *Widget) Layout(gtx layout.Context) layout.Dimensions {
 			switch {
 			case !item.Checked.Update(gtx):
 			case item.Disabled:
-				item.Checked.Value = false
-				item.Callback(item)
+				item.DisabledCallback(item)
+				item.Checked.Value = !item.Checked.Value
 			default:
 				item.Callback(item)
 				list.Callback(item, list)
@@ -112,7 +112,7 @@ func (list *Widget) defaultCheckBox(i *Item) {
 	}
 
 	if i.DisabledCallback == nil {
-		i.DisabledCallback = func(this *Item) { i.Checked.Value = false }
+		i.DisabledCallback = func(this *Item) {}
 	}
 
 	i.check = material.CheckBox(list.Theme, &i.Checked, i.Text)
@@ -126,8 +126,8 @@ func (list *Widget) defaultCheckBox(i *Item) {
 	}
 }
 
-// defaultList initializes the list style and selection behavior.
-func (list *Widget) defaultList() {
+// defaultChecklist initializes the list style and selection behavior.
+func (list *Widget) defaultChecklist() {
 	defer decorate.Scrollbar(&list.liststyle.ScrollbarStyle)
 	defer decorate.List(&list.liststyle)
 
@@ -136,12 +136,17 @@ func (list *Widget) defaultList() {
 	}
 
 	cb := list.Callback
-	list.Callback = func(item *Item, this *Widget) (check bool) {
-		if cb == nil {
-			return false
+	list.Callback = func(item *Item, this *Widget) {
+		if item.Disabled {
+			item.DisabledCallback(item)
+			return
 		}
-		item.Checked.Value = cb(item, this)
-		return false
+
+		item.Callback(item)
+
+		if cb != nil {
+			cb(item, this)
+		}
 	}
 
 	list.liststyle = material.List(

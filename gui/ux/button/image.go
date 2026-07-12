@@ -51,7 +51,7 @@ func (i *ImageWidget) Layout(th *material.Theme, gtx layout.Context) layout.Dime
 		layout.Inset{
 			Top:  unit.Dp(18),
 			Left: unit.Dp(29),
-		}.Layout(gtx, decorate.Label(&hidden, hidden.Text).Layout)
+		}.Layout(gtx, decorate.Label(&hidden, "%s", hidden.Text).Layout)
 	}
 
 	dims := i.Widget.Layout(gtx)

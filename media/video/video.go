@@ -54,12 +54,12 @@ func Capture() (*image.RGBA, error) {
 		return device.Capture()
 	}
 
-	if monitor.IsActive() {
-		return monitor.Capture()
-	}
-
 	if window.IsActive() {
 		return window.Capture()
+	}
+
+	if monitor.IsActive() {
+		return monitor.Capture()
 	}
 
 	return nil, fmt.Errorf("failed to capture video: exhausted sources")
@@ -70,12 +70,12 @@ func CaptureRect(r image.Rectangle) (*image.RGBA, error) {
 		return device.CaptureRect(r)
 	}
 
-	if monitor.IsActive() {
-		return monitor.CaptureRect(r)
-	}
-
 	if window.IsActive() {
 		return window.CaptureRect(r)
+	}
+
+	if monitor.IsActive() {
+		return monitor.CaptureRect(r)
 	}
 
 	return nil, fmt.Errorf("failed to capture video area: exhausted sources")
@@ -100,17 +100,21 @@ func FPS() float64 {
 	}
 }
 
+func Monitors() []string {
+	return monitor.Sources
+}
+
 func Name() string {
 	switch {
 	case device.IsActive():
 		return device.ActiveName()
 	default:
-		return config.Current.Video.Capture.Window.Name
+		return config.Current.Video.Capture.Monitor.Name
 	}
 }
 
 func Open() error {
-	monitor.Open()
+	defer monitor.Open()
 
 	err := device.Open()
 	if err != nil {
@@ -119,13 +123,15 @@ func Open() error {
 
 	err = window.Open()
 	if err != nil {
-		notify.Error("[Video] <ini:f:open> window capture library (%v)", err)
+		if err != window.ErrFailedFind {
+			notify.Error("[Video] <ini:f:open> window capture library (%v)", err)
+		}
 	}
 
 	return err
 }
 
-func Resolution() string {
+func Resolution() image.Point {
 	switch {
 	case device.IsActive():
 		return device.Resolution()
@@ -134,10 +140,6 @@ func Resolution() string {
 	default:
 		return monitor.Resolution()
 	}
-}
-
-func Screens() []string {
-	return monitor.Sources
 }
 
 func (s Source) String() string {

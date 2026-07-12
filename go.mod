@@ -36,6 +36,7 @@ require (
 require (
 	gioui.org/cpu v0.0.0-20220412190645-f1e9e8c3b1f7 // indirect
 	gioui.org/shader v1.0.8 // indirect
+	github.com/akrennmair/slice v0.0.0-20220105203817-49445747ab81 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-text/typesetting v0.0.0-20231202102523-0024ac628562 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect

@@ -307,7 +307,7 @@ var (
 	EnumDeviceDrivers       = psapi32.MustFindProc("EnumDeviceDrivers")
 	GetDeviceDriverBaseName = psapi32.MustFindProc("GetDeviceDriverBaseNameW")
 
-	getDC                        = user32.MustFindProc("GetDC")
+	GetDC                        = user32.MustFindProc("GetDC")
 	getMonitorInfoW              = user32.MustFindProc("GetMonitorInfoW")
 	GetWindowRect                = user32.MustFindProc("GetWindowRect")
 	GetWindowTextW               = user32.MustFindProc("GetWindowTextW")
@@ -340,8 +340,8 @@ var (
 	GetDeviceCaps          = gdi32.MustFindProc("GetDeviceCaps")
 	SelectObject           = gdi32.MustFindProc("SelectObject")
 	// Unexported.
-	bitBlt     = gdi32.MustFindProc("BitBlt")
-	stretchBlt = gdi32.MustFindProc("StretchBlt")
+	BitBlt     = gdi32.MustFindProc("BitBlt")
+	StretchBlt = gdi32.MustFindProc("StretchBlt")
 
 	DwmGetWindowAttribute = dwmapi.MustFindProc("DwmGetWindowAttribute")
 	DwmSetWindowAttribute = dwmapi.MustFindProc("DwmSetWindowAttribute")

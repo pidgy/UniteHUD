@@ -4,14 +4,10 @@ import (
 	"fmt"
 	"image"
 	"image/color"
-	"image/png"
-	"os"
-	"syscall"
 
 	"github.com/pidgy/unitehud/core/notify"
-	"github.com/pidgy/unitehud/exe"
 	"github.com/pidgy/unitehud/media/video"
-	"github.com/pidgy/unitehud/system/wapi"
+	"github.com/pidgy/unitehud/system/save"
 )
 
 // Capture describes a screen region and its saved preview metadata.
@@ -32,26 +28,12 @@ func (c *Capture) Open() error {
 		return fmt.Errorf("<ini:f:capture> %s (%v)", c.File, err)
 	}
 
-	fd, err := os.Create(c.File)
+	err = save.PNG(img, c.File)
 	if err != nil {
-		return err
-	}
-	defer fd.Close()
-
-	err = png.Encode(fd, img)
-	if err != nil {
-		return fmt.Errorf("Failed to create %s (%v)", c.File, err)
+		return fmt.Errorf("<ini:f:save> %s (%v)", c.File, err)
 	}
 
-	argv, err := syscall.UTF16PtrFromString(os.Getenv("windir") + "\\system32\\cmd.exe /C " + fmt.Sprintf("\"%s\\%s\"", exe.Directory(), c.File))
-	if err != nil {
-		return fmt.Errorf("<ini:f:open> %s (%v)", c.File, err)
-	}
-
-	var sI syscall.StartupInfo
-	var pI syscall.ProcessInformation
-
-	err = syscall.CreateProcess(nil, argv, nil, nil, true, wapi.CreateProcessFlags.NoWindow, nil, nil, &sI, &pI)
+	err = save.OpenImage(c.File)
 	if err != nil {
 		return fmt.Errorf("<ini:f:open> %s (%v)", c.File, err)
 	}

@@ -21,7 +21,7 @@ func TestList(t *testing.T) {
 		t.Fatal("failed to find windows")
 	}
 
-	config.Current.Video.Capture.Window.Name = Sources[1].Title
+	config.Current.Video.Capture.Monitor.Name = Sources[1].Title
 
 	for i := 0; i < 5; i++ {
 		img, err := Capture()
@@ -29,7 +29,7 @@ func TestList(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		t.Logf("%s: %s", config.Current.Video.Capture.Window.Name, img.Bounds())
+		t.Logf("%s: %s", config.Current.Video.Capture.Monitor.Name, img.Bounds())
 
 		f, err := os.Create(fmt.Sprintf("window_%d.png", i))
 		if err != nil {

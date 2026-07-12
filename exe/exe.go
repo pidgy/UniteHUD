@@ -21,7 +21,7 @@ const (
 	// Version is the semantic version prefixed with "v".
 	Version = "v" + VersionSemVer
 	// VersionSemVer is the raw semantic version string.
-	VersionSemVer = "4.6.0"
+	VersionSemVer = "4.7.0"
 )
 
 var (

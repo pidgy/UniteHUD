@@ -21,7 +21,8 @@ import (
 )
 
 var (
-	Directory = now.Format(time.DateOnly)
+	Directory      = now.Format(time.DateOnly)
+	ImageDirectory = fmt.Sprintf("%s/img", Directory)
 )
 
 const (
@@ -120,14 +121,12 @@ func OpenCurrentLog() error {
 	return open.Run(fmt.Sprintf("%s/%s/%s", d, Directory, log))
 }
 
-func OpenImage(format string, a ...any) error {
-	path := fmt.Sprintf(format, a...)
-
-	if !strings.HasSuffix(path, ".png") {
-		return fmt.Errorf("%s: invalid path, missing png extension", path)
+func OpenImage(name string) error {
+	if !strings.HasSuffix(name, ".png") {
+		name = fmt.Sprintf("%s.png", name)
 	}
 
-	path = filepath.Join(exe.Directory(), saved, path)
+	path := filepath.Join(exe.Directory(), saved, ImageDirectory, name)
 
 	p := strings.Split(path, `\`)
 	for i := 1; i < len(p); i++ {
@@ -161,14 +160,12 @@ func OpenLogDirectory() error {
 	return open.Run(fmt.Sprintf("%s/%s", d, Directory))
 }
 
-func PNG(img image.Image, format string, a ...any) error {
-	path := fmt.Sprintf(format, a...)
-
-	if !strings.HasSuffix(path, ".png") {
-		return fmt.Errorf("%s: invalid path, missing png extension", path)
+func PNG(img image.Image, name string) error {
+	if !strings.HasSuffix(name, ".png") {
+		name = fmt.Sprintf("%s.png", name)
 	}
 
-	path = filepath.Join(exe.Directory(), saved, path)
+	path := filepath.Join(exe.Directory(), saved, ImageDirectory, name)
 
 	p := strings.Split(path, `\`)
 	for i := 1; i < len(p); i++ {

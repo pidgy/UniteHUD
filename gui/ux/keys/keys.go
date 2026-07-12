@@ -17,7 +17,10 @@ type (
 	}
 
 	// Bind is a collection of key bindings.
-	Bind []bind
+	Bind struct {
+		binds []bind
+		tag   any
+	}
 )
 
 const (
@@ -35,27 +38,33 @@ const (
 )
 
 // New creates an empty binding list.
-func New() Bind {
-	return []bind{}
+func New() *Bind {
+	return &Bind{binds: []bind{}, tag: new(bool)}
 }
 
 // Bind appends a new binding for the given modifiers and keys.
-func (b Bind) Bind(m key.Modifiers, s ...string) Bind {
-	return append(b, bind{set: key.Set(strings.Join(s, "|")), mods: m})
+func (b *Bind) Bind(m key.Modifiers, s ...string) *Bind {
+	b.binds = append(b.binds, bind{set: key.Set(strings.Join(s, "|")), mods: m})
+	return b
+}
+
+// Enter reports whether the escape binding fired.
+func (b *Bind) Enter(gtx layout.Context) bool {
+	return b.Event(gtx) == Enter()
 }
 
 // Escape reports whether the escape binding fired.
-func (b Bind) Escape(gtx layout.Context, tag any) bool {
-	return b.Event(gtx, tag) == Escape()
+func (b *Bind) Escape(gtx layout.Context) bool {
+	return b.Event(gtx) == Escape()
 }
 
 // Event processes key events and returns the matched binding name.
-func (b Bind) Event(gtx layout.Context, tag any) (name string) {
-	if len(b) == 0 {
+func (b *Bind) Event(gtx layout.Context) (name string) {
+	if len(b.binds) == 0 {
 		return ""
 	}
 
-	for _, e := range gtx.Events(tag) {
+	for _, e := range gtx.Events(b.tag) {
 		event, ok := e.(key.Event)
 		if !ok {
 			continue
@@ -63,8 +72,8 @@ func (b Bind) Event(gtx layout.Context, tag any) (name string) {
 		if event.State != key.Release {
 			continue
 		}
-		for _, bind := range b {
-			if bind.set.Contains(event.Name, 0) && bind.mods.Contain(event.Modifiers) {
+		for _, bind := range b.binds {
+			if bind.set.Contains(event.Name, 0) && event.Modifiers.Contain(bind.mods) {
 				name = event.Name
 				if bind.mods != NoMod {
 					name = bind.mods.String() + "-" + event.Name
@@ -75,14 +84,14 @@ func (b Bind) Event(gtx layout.Context, tag any) (name string) {
 	}
 
 push:
-	set := b[0].set
-	for _, bind := range b[1:] {
+	set := b.binds[0].set
+	for _, bind := range b.binds[1:] {
 		set = key.Set(fmt.Sprintf("%s|%s", set, bind.set))
 	}
 
 	area := clip.Rect(gtx.Constraints).Push(gtx.Ops)
 	key.InputOp{
-		Tag:  tag,
+		Tag:  b.tag,
 		Keys: set,
 	}.Add(gtx.Ops)
 	area.Pop()
@@ -98,6 +107,10 @@ func Ctrl(k string) string {
 	return fmt.Sprintf("%s-%s", key.NameCtrl, k)
 }
 
+func Enter() string {
+	return key.NameEnter
+}
+
 // Escape returns the key name for Escape.
 func Escape() string {
 	return key.NameEscape
@@ -106,4 +119,8 @@ func Escape() string {
 // F11 returns the key name for F11.
 func F11() string {
 	return key.NameF11
+}
+
+func Return() string {
+	return key.NameReturn
 }

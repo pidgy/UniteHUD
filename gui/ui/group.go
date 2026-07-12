@@ -24,6 +24,7 @@ import (
 	"github.com/pidgy/unitehud/media/audio"
 	"github.com/pidgy/unitehud/media/video"
 	"github.com/pidgy/unitehud/media/video/device"
+	"github.com/pidgy/unitehud/media/video/window"
 	"github.com/pidgy/unitehud/system/lang"
 )
 
@@ -230,7 +231,7 @@ func (g *GUI) areas(collection *fonts.Collection) *areas {
 
 			Capture: &area.Capture{
 				Option:      "Objective",
-				File:        "objective_area.png",
+				File:        "Preview_objective_area.png",
 				Base:        config.Current.XY.Objectives,
 				DefaultBase: config.Current.XY.Objectives,
 			},
@@ -298,7 +299,7 @@ func (g *GUI) areas(collection *fonts.Collection) *areas {
 
 			Capture: &area.Capture{
 				Option:      "Aeos",
-				File:        "aeos_area.png",
+				File:        "Preview_aeos_area.png",
 				Base:        config.Current.XY.Energy,
 				DefaultBase: config.Current.XY.Energy,
 			},
@@ -346,7 +347,7 @@ func (g *GUI) areas(collection *fonts.Collection) *areas {
 
 			Capture: &area.Capture{
 				Option:      "Time",
-				File:        "time_area.png",
+				File:        "Preview_time_area.png",
 				Base:        config.Current.XY.Time,
 				DefaultBase: config.Current.XY.Time,
 			},
@@ -404,7 +405,7 @@ func (g *GUI) areas(collection *fonts.Collection) *areas {
 
 			Capture: &area.Capture{
 				Option:      "Score",
-				File:        "score_area.png",
+				File:        "Preview_score_area.png",
 				Base:        config.Current.XY.Scores,
 				DefaultBase: config.Current.XY.Scores,
 			},
@@ -465,7 +466,7 @@ func (g *GUI) areas(collection *fonts.Collection) *areas {
 
 			Capture: &area.Capture{
 				Option:      "State",
-				File:        "state_area.png",
+				File:        "Preview_state_area.png",
 				Base:        config.Current.XY.States,
 				DefaultBase: config.Current.XY.States,
 			},
@@ -513,7 +514,7 @@ func (g *GUI) areas(collection *fonts.Collection) *areas {
 
 			Capture: &area.Capture{
 				Option:      "Self-Score",
-				File:        "self_score_area.png",
+				File:        "Preview_self_score_area.png",
 				Base:        config.Current.XY.SelfScore,
 				DefaultBase: config.Current.XY.SelfScore,
 			},
@@ -532,40 +533,29 @@ func (g *GUI) videos(text float32) *videos {
 			Theme:    g.nav.NotoSans().Theme,
 			TextSize: text,
 			Items:    []*checklist.Item{},
-			Callback: func(i *checklist.Item, _ *checklist.Widget) (check bool) {
+			Callback: func(item *checklist.Item, this *checklist.Widget) {
 				video.Close()
+				config.Current.SetDefaultWindowCapture()
 
-				config.Current.Video.Capture.Window.Name = i.Text
-				if config.Current.Video.Capture.Window.Name == "" {
-					config.Current.Video.Capture.Window.Name = config.MainDisplay
-				}
+				config.Current.Video.Capture.Monitor.Name = item.Text
 
 				v.populate()
 
 				v.onevent(false)
-
-				return true
 			},
 		},
 		populate: func() {
-			if v.monitors.prev == device.ActiveName() && len(video.Screens()) == v.monitors.len {
-				return
-			}
-
 			v.monitors.prev = device.ActiveName()
-			v.monitors.len = len(video.Screens())
+			v.monitors.len = len(video.Monitors())
 
 			items := []*checklist.Item{}
 
-			if config.Current.Video.Capture.Window.Name == "" {
-				config.Current.Video.Capture.Window.Name = config.MainDisplay
-			}
-
-			for _, screen := range video.Screens() {
+			for _, m := range video.Monitors() {
 				items = append(items,
 					&checklist.Item{
-						Text:    screen,
-						Checked: widget.Bool{Value: video.Active(video.Monitor, screen)},
+						Text: m,
+						Checked: widget.Bool{
+							Value: config.Current.Video.Capture.Monitor.Name == m && !device.IsActive() && !window.IsActive()},
 					},
 				)
 			}
@@ -579,24 +569,20 @@ func (g *GUI) videos(text float32) *videos {
 			Theme:    g.nav.NotoSans().Theme,
 			TextSize: text,
 			Items:    []*checklist.Item{},
-			Callback: func(i *checklist.Item, _ *checklist.Widget) (check bool) {
+			Callback: func(item *checklist.Item, this *checklist.Widget) {
 				video.Close()
+				config.Current.SetDefaultMonitorCapture()
+
+				config.Current.Video.Capture.Window.Name = item.Text
 
 				defer v.populate()
 
-				config.Current.Video.Capture.Window.Name = i.Text
-				if config.Current.Video.Capture.Window.Name == "" {
-					config.Current.Video.Capture.Window.Name = config.MainDisplay
-				}
-
 				v.onevent(false)
-
-				return true
 			},
 		},
 		populate: func() {
 			if config.Current.Video.Capture.Window.Name == "" {
-				config.Current.Video.Capture.Window.Name = config.MainDisplay
+				config.Current.SetDefaultWindowCapture()
 			}
 
 			for _, item := range v.windows.list.Items {
@@ -637,7 +623,6 @@ func (g *GUI) videos(text float32) *videos {
 			}
 
 			v.windows.list.Items = items
-
 		},
 	}
 
@@ -654,20 +639,20 @@ func (g *GUI) videos(text float32) *videos {
 					},
 				},
 			},
-			Callback: func(i *checklist.Item, _ *checklist.Widget) (check bool) {
+			Callback: func(item *checklist.Item, this *checklist.Widget) {
 				video.Close()
 
-				if i.Text == "Disabled" {
-					i.Checked.Value = true
+				if item.Text == "Disabled" {
+					item.Checked.Value = true
 				}
 
 				go func() {
-					config.Current.Video.Capture.Device.Index = i.Value
-					config.Current.Video.Capture.Device.Name = i.Text
+					config.Current.Video.Capture.Device.Index = item.Value
+					config.Current.Video.Capture.Device.Name = item.Text
 					// config.Current.Video.Capture.Device.API = config.DefaultVideoCaptureAPI
 					// config.Current.Video.Capture.Device.Codec = config.DefaultVideoCaptureCodec
-					config.Current.Video.Capture.Window.Lost = ""
-					config.Current.Video.Capture.Window.Name = config.MainDisplay
+					config.Current.SetDefaultMonitorCapture()
+					config.Current.SetDefaultWindowCapture()
 
 					err := device.Open()
 					if err != nil {
@@ -685,15 +670,13 @@ func (g *GUI) videos(text float32) *videos {
 
 					v.onevent(false)
 				}()
-
-				return true
 			},
 		},
 		populate: func() {
 			devices := video.Devices()
 
 			// Set the "Disabled" checkbox when device is not active.
-			if len(devices)+1 == len(v.devices.list.Items) {
+			if len(devices) == len(v.devices.list.Items)-1 {
 				v.devices.list.Default().Checked.Value = !device.IsActive()
 
 				for _, item := range v.devices.list.Items {
@@ -737,14 +720,14 @@ func (g *GUI) videos(text float32) *videos {
 			Theme:    g.nav.NotoSans().Theme,
 			TextSize: text,
 			Items:    []*checklist.Item{},
-			Callback: func(item *checklist.Item, this *checklist.Widget) (check bool) {
+			Callback: func(item *checklist.Item, this *checklist.Widget) {
 				if item.Text == config.Current.Video.Capture.Device.API {
-					return true
+					return
 				}
 
 				if config.Current.Video.Capture.Device.Index == config.NoVideoCaptureDevice {
 					config.Current.Video.Capture.Device.API = item.Text
-					return false
+					return
 				}
 
 				defer v.populate()
@@ -789,8 +772,7 @@ func (g *GUI) videos(text float32) *videos {
 						}),
 						toastOnClose(nil),
 					)
-
-					return false
+					return
 				}
 
 				if config.Current.Video.Capture.Device.API != item.Text {
@@ -805,7 +787,7 @@ func (g *GUI) videos(text float32) *videos {
 							toastOnClose(nil),
 						)
 
-						return false
+						return
 					}
 
 					video.Close()
@@ -837,12 +819,10 @@ func (g *GUI) videos(text float32) *videos {
 						toastOnClose(nil),
 					)
 
-					return false
+					return
 				}
 
 				v.onevent(false) // Show preview.
-
-				return true
 			},
 		},
 		populate: func() {
@@ -877,14 +857,14 @@ func (g *GUI) videos(text float32) *videos {
 			Theme:    g.nav.NotoSans().Theme,
 			TextSize: text,
 			Items:    []*checklist.Item{},
-			Callback: func(i *checklist.Item, this *checklist.Widget) (check bool) {
+			Callback: func(i *checklist.Item, this *checklist.Widget) {
 				if i.Text == config.Current.Video.Capture.Device.API {
-					return true
+					return
 				}
 
 				if config.Current.Video.Capture.Device.Index == config.NoVideoCaptureDevice {
 					config.Current.Video.Capture.Device.Codec = i.Text
-					return false
+					return
 				}
 
 				defer v.populate()
@@ -930,7 +910,7 @@ func (g *GUI) videos(text float32) *videos {
 						toastOnClose(nil),
 					)
 
-					return false
+					return
 				}
 
 				if config.Current.Video.Capture.Device.Codec != i.Text {
@@ -945,7 +925,7 @@ func (g *GUI) videos(text float32) *videos {
 							toastOnClose(nil),
 						)
 
-						return false
+						return
 					}
 
 					video.Close()
@@ -977,12 +957,10 @@ func (g *GUI) videos(text float32) *videos {
 						toastOnClose(nil),
 					)
 
-					return false
+					return
 				}
 
 				v.onevent(false) // Show preview.
-
-				return true
 			},
 		},
 		populate: func() {
@@ -1026,7 +1004,7 @@ func (g *GUI) videos(text float32) *videos {
 					Checked: widget.Bool{Value: config.Current.Gaming.Device == config.DeviceBluestacks},
 				},
 			},
-			Callback: func(i *checklist.Item, l *checklist.Widget) (check bool) {
+			Callback: func(i *checklist.Item, l *checklist.Widget) {
 				for _, item := range l.Items {
 					if item != i {
 						item.Checked.Value = false
@@ -1039,13 +1017,13 @@ func (g *GUI) videos(text float32) *videos {
 					err := config.Current.Save()
 					if err != nil {
 						notify.Error("[UI] <ini:f:load> %s configuration", config.Current.Gaming.Device)
-						return false
+						return
 					}
 
 					err = config.Open()
 					if err != nil {
 						notify.Error("[UI] <ini:f:load> %s configuration", config.Current.Gaming.Device)
-						return false
+						return
 					}
 
 					time.AfterFunc(time.Second, func() {
@@ -1055,7 +1033,6 @@ func (g *GUI) videos(text float32) *videos {
 						}
 					})
 				}
-				return true
 			},
 		},
 	}

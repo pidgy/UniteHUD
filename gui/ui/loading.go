@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"image"
 	"time"
 
 	"gioui.org/app"
@@ -41,12 +42,11 @@ func (g *GUI) loading() {
 
 	go ui.while()
 
-	width := 720
-	height := 440
+	g.dimensions.size = image.Pt(720, 440)
 
 	g.window.Option(
-		app.Size(unit.Dp(width), unit.Dp(height)),
-		app.MinSize(unit.Dp(width), unit.Dp(height)),
+		app.Size(unit.Dp(g.dimensions.size.X), unit.Dp(g.dimensions.size.Y)),
+		app.MinSize(unit.Dp(g.dimensions.size.X), unit.Dp(g.dimensions.size.Y)),
 		// app.MaxSize(unit.Dp(width), unit.Dp(height)),
 		// app.MinSize(unit.Dp(width), unit.Dp(height)),
 	)

@@ -13,7 +13,7 @@ import (
 func init() {
 	exe.Debug = true
 	notify.Disabled.Debug = false
-	config.Current.Video.Capture.Window.Name = config.MainDisplay
+	config.Current.Video.Capture.Monitor.Name = config.MainDisplay
 	Open()
 }
 
@@ -38,7 +38,7 @@ func TestScreenshot(t *testing.T) {
 func BenchmarkLoadMap(b *testing.B) {
 	m, ok := active()
 	if !ok {
-		b.Fatalf("%s: <ini:f:load> display", config.Current.Video.Capture.Window.Name)
+		b.Fatalf("%s: <ini:f:load> display", config.Current.Video.Capture.Monitor.Name)
 	}
 
 	s := fmt.Sprintf("%dx%d", m.bounds.Dx(), m.bounds.Dy())

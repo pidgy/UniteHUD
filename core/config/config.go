@@ -30,6 +30,8 @@ import (
 const (
 	// MainDisplay is the default capture target name.
 	MainDisplay = "Main Display"
+	// NoDeviceName represents a disabled video capture window.
+	NoDeviceName = ""
 	// ProjectorWindow is the default projector window title.
 	ProjectorWindow = "UniteHUD Projector"
 	// NoVideoCaptureDevice represents a disabled video capture device.
@@ -154,9 +156,11 @@ type (
 					Name  string
 					Codec string
 				}
+				Monitor struct {
+					Name string
+				}
 				Window struct {
 					Name string
-					Lost string `json:"-"`
 				}
 			}
 		}
@@ -278,6 +282,7 @@ func (c *Config) Save() error {
 	if err != nil {
 		return err
 	}
+	defer f.Close()
 
 	b, err := json.Marshal(c)
 	if err != nil {
@@ -334,6 +339,24 @@ func (c *Config) SetDefaultTheme() {
 	c.Theme.ScrollbarForeground = nrgba.Discord.Alpha(100).Color()
 }
 
+// SetDefaultVideoCaptureDevice resets the current video capture device settings.
+func (c *Config) SetDefaultVideoCaptureDevice() {
+	c.Video.Capture.Device.Index = NoVideoCaptureDevice
+	c.Video.Capture.Device.API = DefaultVideoCaptureAPI
+	c.Video.Capture.Device.Codec = DefaultVideoCaptureCodec
+	c.Video.Capture.Device.Name = NoDeviceName
+}
+
+// SetDefaultVideoCaptureDevice resets the current monitor capture settings.
+func (c *Config) SetDefaultMonitorCapture() {
+	c.Video.Capture.Monitor.Name = MainDisplay
+}
+
+// SetDefaultWindowCapture resets the current window capture settings.
+func (c *Config) SetDefaultWindowCapture() {
+	c.Video.Capture.Window.Name = NoDeviceName
+}
+
 // TemplateMatchMap returns a map of template names to match counts.
 func (c *Config) TemplateMatchMap() map[string]int {
 	m := make(map[string]int)
@@ -383,10 +406,10 @@ func (c *Config) TemplatesSurrender() []*template.Template {
 	return c.templates["surrender"][team.Game.Name]
 }
 
-// TemplatesGoals returns goal templates for the given team name.
-func (c *Config) TemplatesGoals(n string) []*template.Template {
-	return c.templates["goals"][n]
-}
+// // TemplatesGoals returns goal templates for the given team name.
+// func (c *Config) TemplatesGoals(n string) []*template.Template {
+// 	return c.templates["goals"][n]
+// }
 
 // TemplatesKilled returns killed templates for the given team name.
 func (c *Config) TemplatesKilled(n string) []*template.Template {
@@ -484,14 +507,14 @@ func (c *Config) deviceAssets() string {
 // loadDeviceAssets loads the requested data.
 func (c *Config) loadDeviceAssets() {
 	c.filenames = map[string]map[string][]filter.Filter{
-		"goals": {
-			team.Game.Name: {
-				filter.New(team.Game, c.deviceAsset(team.Game.Name, "purple_base_open.png"), state.PurpleBaseOpen.Int(), false),
-				filter.New(team.Game, c.deviceAsset(team.Game.Name, "orange_base_open.png"), state.OrangeBaseOpen.Int(), false),
-				filter.New(team.Game, c.deviceAsset(team.Game.Name, "purple_base_closed.png"), state.PurpleBaseClosed.Int(), false),
-				filter.New(team.Game, c.deviceAsset(team.Game.Name, "orange_base_closed.png"), state.OrangeBaseClosed.Int(), false),
-			},
-		},
+		// "goals": {
+		// 	team.Game.Name: {
+		// 		filter.New(team.Game, c.deviceAsset(team.Game.Name, "purple_base_open.png"), state.PurpleBaseOpen.Int(), false),
+		// 		filter.New(team.Game, c.deviceAsset(team.Game.Name, "orange_base_open.png"), state.OrangeBaseOpen.Int(), false),
+		// 		filter.New(team.Game, c.deviceAsset(team.Game.Name, "purple_base_closed.png"), state.PurpleBaseClosed.Int(), false),
+		// 		filter.New(team.Game, c.deviceAsset(team.Game.Name, "orange_base_closed.png"), state.OrangeBaseClosed.Int(), false),
+		// 	},
+		// },
 		"killed": {
 			team.Game.Name: {
 				filter.New(team.Game, c.deviceAsset(team.Game.Name, "killed.png"), state.Killed.Int(), false),
@@ -503,9 +526,7 @@ func (c *Config) loadDeviceAssets() {
 			team.Game.Name: {
 				filter.New(team.Game, c.deviceAsset(team.Game.Name, "groudon_ally.png"), state.FinalObjectiveGroudonSecurePurple.Int(), false),
 				filter.New(team.Game, c.deviceAsset(team.Game.Name, "groudon_enemy.png"), state.FinalObjectiveGroudonSecureOrange.Int(), false),
-
 				filter.New(team.Game, c.deviceAsset(team.Game.Name, "kyogre_ko.png"), state.FinalObjectiveKyogreSecureKO.Int(), false),
-
 				filter.New(team.Game, c.deviceAsset(team.Game.Name, "rayquaza_ally.png"), state.FinalObjectiveRayquazaSecurePurple.Int(), false),
 				filter.New(team.Game, c.deviceAsset(team.Game.Name, "rayquaza_enemy.png"), state.FinalObjectiveRayquazaSecureOrange.Int(), false),
 
@@ -551,13 +572,13 @@ func (c *Config) loadDeviceAssets() {
 				// filter.New(team.Game, Current.ProfileAssets()+"/game/ko_streak_enemy.png", state.KOStreakOrange.Int(), false),
 			},
 		},
-		"objective": {
-			team.Game.Name: {
-				filter.New(team.Game, c.deviceAsset(team.Game.Name, "objective.png"), state.ObjectivePresent.Int(), false),
-				filter.New(team.Game, c.deviceAsset(team.Game.Name, "objective_half.png"), state.ObjectivePresent.Int(), false),
-				filter.New(team.Game, c.deviceAsset(team.Game.Name, "objective_orange_base.png"), state.ObjectiveReachedOrange.Int(), false),
-			},
-		},
+		// "objective": {
+		// 	team.Game.Name: {
+		// 		filter.New(team.Game, c.deviceAsset(team.Game.Name, "objective.png"), state.ObjectivePresent.Int(), false),
+		// 		filter.New(team.Game, c.deviceAsset(team.Game.Name, "objective_half.png"), state.ObjectivePresent.Int(), false),
+		// 		// filter.New(team.Game, c.deviceAsset(team.Game.Name, "objective_orange_base.png"), state.ObjectiveReachedOrange.Int(), false),
+		// 	},
+		// },
 		"starting": {
 			team.Game.Name: {
 				// filter.New(team.Game, c.deviceAsset(team.Game.Name, "vs.png"), state.MatchStarting.Int(), false),
@@ -729,7 +750,7 @@ func Open() error {
 		// }
 	}
 
-	if device == "" {
+	if device == NoDeviceName {
 		Current.Gaming.Device = DeviceSwitch
 	}
 
@@ -748,10 +769,9 @@ func Open() error {
 	Current.Gaming.Device = DeviceSwitch
 
 	// Default video settings.
-	Current.Video.Capture.Window.Name = MainDisplay
-	Current.Video.Capture.Device.Index = NoVideoCaptureDevice
-	Current.Video.Capture.Device.API = DefaultVideoCaptureAPI
-	Current.Video.Capture.Device.Codec = DefaultVideoCaptureCodec
+
+	Current.SetDefaultMonitorCapture()
+	Current.SetDefaultVideoCaptureDevice()
 
 	// Default. theme settings.
 	Current.SetDefaultTheme()
@@ -801,9 +821,9 @@ func Open() error {
 		return err
 	}
 
-	if Current.Video.Capture.Window.Name == "" {
-		Current.Video.Capture.Window.Name = MainDisplay
-		Current.Video.Capture.Device.Index = NoVideoCaptureDevice
+	if Current.Video.Capture.Monitor.Name == NoDeviceName {
+		Current.Video.Capture.Monitor.Name = MainDisplay
+		Current.SetDefaultVideoCaptureDevice()
 	}
 
 	if Current.Themes == nil {
@@ -865,9 +885,9 @@ func validate() {
 	notify.Disabled.Debug = !Current.Advanced.Report.Debug
 
 	Current.templates = map[string]map[string][]*template.Template{
-		"goals": {
-			team.Game.Name: {},
-		},
+		// "goals": {
+		// 	team.Game.Name: {},
+		// },
 		"starting": {
 			team.Game.Name: {},
 		},
@@ -880,9 +900,9 @@ func validate() {
 		"ko": {
 			team.Game.Name: {},
 		},
-		"objective": {
-			team.Game.Name: {},
-		},
+		// "objective": {
+		// 	team.Game.Name: {},
+		// },
 		"killed": {
 			team.Game.Name: {},
 		},

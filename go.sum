@@ -13,6 +13,8 @@ git.sr.ht/~jackmordaunt/go-toast v1.0.1 h1:NfBRM/Kz2wqGMOlToSgu2HCk17PKmUngQJw6O
 git.sr.ht/~jackmordaunt/go-toast v1.0.1/go.mod h1:aIuRX/HdBOz7yRS8rOVYQCwJQlFS7DbYBTpUV0SHeeg=
 github.com/Microsoft/go-winio v0.6.1 h1:9/kr64B9VUZrLm5YYwbGtUJnMgqWVOdUAXu6Migciow=
 github.com/Microsoft/go-winio v0.6.1/go.mod h1:LRdKpFKfdobln8UmuiYcKPot9D2v6svN5+sAH+4kjUM=
+github.com/akrennmair/slice v0.0.0-20220105203817-49445747ab81 h1:HnuAxArB0uUxqjRvZdjhBxE3uPXNeJvNNbuaV4QhHMU=
+github.com/akrennmair/slice v0.0.0-20220105203817-49445747ab81/go.mod h1:jk5mJ+KFznfxbCEsOPgmJkozvBfVGeaqIMs31NhXlv0=
 github.com/asticode/go-astikit v0.29.1/go.mod h1:h4ly7idim1tNhaVkdVBeXQZEE3L0xblP7fCWbgwipF0=
 github.com/asticode/go-astikit v0.42.0 h1:pnir/2KLUSr0527Tv908iAH6EGYYrYta132vvjXsH5w=
 github.com/asticode/go-astikit v0.42.0/go.mod h1:h4ly7idim1tNhaVkdVBeXQZEE3L0xblP7fCWbgwipF0=

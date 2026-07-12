@@ -17,7 +17,6 @@ import (
 	"github.com/pidgy/unitehud/core/team"
 	"github.com/pidgy/unitehud/core/template"
 	"github.com/pidgy/unitehud/exe"
-	"github.com/pidgy/unitehud/media/img/splash"
 	"github.com/pidgy/unitehud/media/video"
 	"github.com/pidgy/unitehud/media/video/device"
 	"github.com/pidgy/unitehud/media/video/monitor"
@@ -266,7 +265,7 @@ func Objectives() {
 				notify.Warn("[Detect] Missed Regidrago secure...")
 				if exe.Debug {
 					if exe.Debug {
-						err := save.PNG(img, "%s/img/regidrago_miss_%s.png", save.Directory, save.KitchenTime())
+						err := save.PNG(img, fmt.Sprintf("regidrago_miss_%s.png", save.KitchenTime()))
 						if err != nil {
 							notify.Error("[Detect] Failed to save kyogre miss (%v)", err)
 						}
@@ -305,14 +304,14 @@ func Objectives() {
 				continue
 			}
 
-			notify.Feed(t.NRGBA, "[Detect] [%s] %s", server.Clock(), event)
-
 			if event == state.FinalObjectiveKyogreSecureKO {
-				for i := 0; i < 3; i++ {
+				for range 3 {
 					m, r = match.Matches(matrix, img, config.Current.TemplatesPostSecure(team.Game.Name))
 					if r != match.Found {
+						notify.Warn("[Detect] [%s] %s (Unknown team)", server.Clock(), event)
 						continue
 					}
+
 					switch state.EventType(m.Value) {
 					case state.KOPurple:
 						event = state.FinalObjectiveKyogreSecurePurple
@@ -330,7 +329,7 @@ func Objectives() {
 				if r != match.Found {
 					notify.Warn("[Detect] Missed Kyogre secure...")
 					if exe.Debug {
-						err := save.PNG(img, "%s/img/kyogre_miss_%s.png", save.Directory, save.KitchenTime())
+						err := save.PNG(img, fmt.Sprintf("kyogre_miss_%s.png", save.KitchenTime()))
 						if err != nil {
 							notify.Error("[Detect] Failed to save Kyogre miss (%v)", err)
 						}
@@ -371,11 +370,6 @@ func Objectives() {
 
 // Preview periodically captures a preview image when enabled.
 func Preview() {
-	notify.SetPreview(splash.Projector())
-
-	tick := time.NewTicker(time.Second * 5)
-	poll := time.NewTicker(time.Second * 1)
-
 	preview := func() {
 		img, err := video.Capture()
 		if err != nil {
@@ -386,14 +380,17 @@ func Preview() {
 	}
 	preview()
 
-	for every(time.Second) {
+	tick := time.NewTicker(time.Second * 5)
+	poll := time.NewTicker(time.Second * 1)
+
+	for every(time.Second*5, func() {
 		if !images || config.Current.Advanced.Matching.Disabled.Previews {
-			continue
+			return
 		}
 
 		rgba, ok := notify.Preview().(*image.RGBA)
 		if ok && rgba == nil {
-			continue
+			return
 		}
 
 		if notify.Preview().Bounds().Max.X != 0 {
@@ -403,6 +400,8 @@ func Preview() {
 			case <-poll.C:
 			}
 		}
+	}) {
+
 	}
 }
 
@@ -562,7 +561,7 @@ func States() {
 			team.Clear()
 			state.Clear()
 
-			d := config.Current.Video.Capture.Window.Name
+			d := config.Current.Video.Capture.Monitor.Name
 			if device.IsActive() {
 				d = device.ActiveName()
 			}
@@ -662,20 +661,6 @@ func States() {
 		matrix.Close()
 	}
 }
-
-// func Window() {
-// 	for ; ; time.Sleep(time.Second * 2) {
-// 		if config.Current.Video.Capture.Window.Lost == "" {
-// 			continue
-// 		}
-
-// 		err := window.Reattach()
-// 		if err != nil {
-// 			notify.Error("[Detect] Failed to reattach window (%v)", err)
-// 			continue
-// 		}
-// 	}
-// }
 
 // capture grabs the specified screen area and converts it to a Mat for matching.
 func capture(area image.Rectangle) (gocv.Mat, *image.RGBA, error) {

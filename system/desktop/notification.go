@@ -40,7 +40,7 @@ func (f *Factory) Logs(fn func(string, ...any)) *Factory {
 	return f
 }
 
-func (f *Factory) Says(format string, args ...interface{}) *Factory {
+func (f *Factory) Says(format string, args ...any) *Factory {
 	f.toast.Body = fmt.Sprintf(format, args...)
 	return f
 }
@@ -63,7 +63,7 @@ func (f *Factory) When(clicked ...toast.Action) *Factory {
 	return f
 }
 
-func Notification(format string, args ...interface{}) *Factory {
+func Notification(format string, args ...any) *Factory {
 	a := toast.Mail
 	if config.Current.Advanced.Notifications.Muted {
 		a = toast.Silent

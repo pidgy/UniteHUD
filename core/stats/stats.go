@@ -164,7 +164,7 @@ func Data() {
 		case strings.Contains(line, team.Game.Name):
 			notify.Append(nrgba.Gray, "%s", line)
 		default:
-			notify.SystemAppend(line)
+			notify.SystemAppend("%s", line)
 		}
 	}
 }

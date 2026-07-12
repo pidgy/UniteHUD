@@ -40,14 +40,14 @@ const (
 // debugger adapts logging to astilectron's debugger interface.
 type debugger struct {
 	fmt,
-	ftl func(format string, v ...interface{})
+	ftl func(format string, v ...any)
 }
 
 var (
 	// app is the active astilectron application instance.
-	app            *astilectron.Astilectron
+	app *astilectron.Astilectron
 	// window is the overlay window instance.
-	window         *astilectron.Window
+	window *astilectron.Window
 	// active reports whether the overlay app is running.
 	active, hidden bool
 
@@ -252,22 +252,22 @@ func closeWindow() error {
 // newDebugger returns a logger wired to the notify system.
 func newDebugger(prefix string) *debugger {
 	return &debugger{
-		fmt: func(format string, v ...interface{}) { notify.Debug(prefix+" "+format, v...) },
-		ftl: func(format string, v ...interface{}) { notify.Debug(prefix+" [Fatal] "+format, v...) },
+		fmt: func(format string, v ...any) { notify.Debug(prefix+" "+format, v...) },
+		ftl: func(format string, v ...any) { notify.Debug(prefix+" [Fatal] "+format, v...) },
 	}
 }
 
 // Fatal logs a fatal message.
-func (d *debugger) Fatal(v ...interface{}) { d.ftl("%s", fmt.Sprint(v...)) }
+func (d *debugger) Fatal(v ...any) { d.ftl("%s", fmt.Sprint(v...)) }
 
 // Fatalf logs a formatted fatal message.
-func (d *debugger) Fatalf(format string, v ...interface{}) { d.ftl(format, v...) }
+func (d *debugger) Fatalf(format string, v ...any) { d.ftl(format, v...) }
 
 // Print logs a message.
-func (d *debugger) Print(v ...interface{}) { d.fmt("%s", fmt.Sprint(v...)) }
+func (d *debugger) Print(v ...any) { d.fmt("%s", fmt.Sprint(v...)) }
 
 // Printf logs a formatted message.
-func (d *debugger) Printf(format string, v ...interface{}) { d.fmt(format, v...) }
+func (d *debugger) Printf(format string, v ...any) { d.fmt(format, v...) }
 
 // openApp starts the astilectron application.
 func openApp() error {

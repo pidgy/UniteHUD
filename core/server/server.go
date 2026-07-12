@@ -27,7 +27,8 @@ import (
 
 const (
 	// Address is the local bind address for the HTTP/WebSocket server.
-	Address = "127.0.0.1:17069"
+	// Address = "127.0.0.1:17069"
+	Address = "0.0.0.0:17069"
 
 	// ObjectiveFinal marks the final objective placeholder name.
 	ObjectiveFinal = "final" // "rayquaza", "groudon", etc.

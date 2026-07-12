@@ -52,8 +52,7 @@ type (
 	}
 
 	properties struct {
-		resolution       image.Point
-		resolutionString string
+		resolution image.Point
 
 		fps,
 		bitrate float64
@@ -221,6 +220,8 @@ func CaptureRect(r image.Rectangle) (*image.RGBA, error) {
 }
 
 func Close() {
+	config.Current.SetDefaultVideoCaptureDevice()
+
 	if active.index == config.NoVideoCaptureDevice {
 		notify.Debug("[Device] Device disabled, ignoring close")
 		return
@@ -303,8 +304,8 @@ func Open() error {
 	return nil
 }
 
-func Resolution() string {
-	return active.applied.resolutionString
+func Resolution() image.Point {
+	return active.applied.resolution
 }
 
 func Restart() error {
@@ -367,7 +368,7 @@ func fourcc(name string) float64 {
 }
 
 func (d *dev) reset() {
-	notify.Debug("[Device] Resetting %s device", d.name)
+	notify.Debug("[Device] Resetting %s", d.name)
 
 	// lock.Lock()
 	// defer lock.Unlock()
@@ -375,10 +376,9 @@ func (d *dev) reset() {
 	mat = splash.DeviceMat().Clone()
 	size = mat.Size()
 
-	config.Current.Video.Capture.Window.Name = config.MainDisplay
-	config.Current.Video.Capture.Device.Index = config.NoVideoCaptureDevice
+	config.Current.SetDefaultVideoCaptureDevice()
 
-	notify.System("[Device] Capturing %s", config.Current.Video.Capture.Window.Name)
+	notify.System("[Device] Capturing %s", config.Current.Video.Capture.Monitor.Name)
 
 	d.name = Disabled
 	d.index = config.NoVideoCaptureDevice
@@ -411,7 +411,7 @@ func (p properties) String() string {
 	out += fmt.Sprintf("[Device] Properties: %s", active.name)
 	out += fmt.Sprintf("\n    → Codec:          %s", active.applied.codec)
 	out += fmt.Sprintf("\n    → FPS:            %.0f FPS", active.applied.fps)
-	out += fmt.Sprintf("\n    → Resolution:     %s", active.applied.resolutionString)
+	out += fmt.Sprintf("\n    → Resolution:     %s", active.applied.resolution)
 	out += fmt.Sprintf("\n    → API:            %s", active.applied.backend)
 	out += fmt.Sprintf("\n    → Bitrate:        %.0f kb/s", active.applied.bitrate)
 	out += fmt.Sprintf("\n    → BufferSize:     %d", active.applied.buffersize)
@@ -450,7 +450,6 @@ func (p *properties) poll(v *gocv.VideoCapture) *properties {
 	// 	hwcceleration: bool(v.Get(gocv.VideoCaptureHWAcceleration) > 0),
 	// 	convertRGB:    bool(v.Get(gocv.VideoCaptureConvertRGB) > 0),
 	// }
-	p.resolutionString = fmt.Sprintf("%dx%d", p.resolution.X, p.resolution.Y)
 	return p
 }
 

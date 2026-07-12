@@ -28,9 +28,9 @@ var (
 	// Locked is the default color for inactive or locked areas.
 	Locked = nrgba.Black
 	// Match is the highlight color for successful matches.
-	Match  = nrgba.Green
+	Match = nrgba.Green
 	// Miss is the highlight color for failed matches.
-	Miss   = nrgba.Red
+	Miss = nrgba.Red
 )
 
 // Widget represents an interactive capture area that can be dragged and matched.
@@ -99,11 +99,11 @@ func (a *Widget) Layout(gtx layout.Context, collection *fonts.Collection, captur
 	if a.titleLabel.TextSize == 0 {
 		a.titleLabel = material.Body1(a.Theme, "")
 		a.titleLabel.Font.Weight = 500
-		decorate.Label(&a.titleLabel, a.titleLabel.Text)
+		decorate.Label(&a.titleLabel, "%s", a.titleLabel.Text)
 
 		a.subtitleLabel = material.Body2(a.Theme, "")
 		a.subtitleLabel.Font.Weight = 1000
-		decorate.Label(&a.subtitleLabel, a.subtitleLabel.Text)
+		decorate.Label(&a.subtitleLabel, "%s", a.subtitleLabel.Text)
 
 		a.frameFrequency = 120
 	}

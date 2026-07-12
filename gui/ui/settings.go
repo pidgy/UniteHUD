@@ -70,7 +70,7 @@ type settings struct {
 		logs,
 		accessibility,
 		language,
-		video,
+		fps,
 		discord,
 		notifications,
 		factor,
@@ -83,11 +83,13 @@ type settings struct {
 func (g *GUI) settings(onclose func()) *settings {
 	ui := g.settingsUI()
 
+	wasFullscreen := g.dimensions.fullscreen
+
 	go func() {
 		defer onclose()
 
-		g.setInsetRight(ui.dimensions.width)
-		defer g.unsetInsetRight(ui.dimensions.width)
+		// g.setInsetRight(ui.dimensions.width)
+		// defer g.unsetInsetRight(ui.dimensions.width)
 
 		ui.state.open = true
 		defer func() {
@@ -99,7 +101,7 @@ func (g *GUI) settings(onclose func()) *settings {
 			ui.sections.logs,
 			ui.sections.accessibility,
 			ui.sections.language,
-			ui.sections.video,
+			ui.sections.fps,
 			ui.sections.discord,
 			ui.sections.notifications,
 			ui.sections.factor,
@@ -109,7 +111,10 @@ func (g *GUI) settings(onclose func()) *settings {
 
 		for {
 			switch event := ui.windows.this.NextEvent().(type) {
+			case app.ConfigEvent, system.StageEvent:
+				ui.dimensions.resize = true
 			case system.DestroyEvent:
+				g.deattachWindowRight()
 				return
 			case app.ViewEvent:
 				ui.hwnd = event.HWND
@@ -119,8 +124,10 @@ func (g *GUI) settings(onclose func()) *settings {
 					go ui.windows.this.Perform(system.ActionClose)
 				}
 
-				if ui.dimensions.resize {
+				if ui.dimensions.resize || wasFullscreen != g.dimensions.fullscreen {
 					ui.dimensions.resize = false
+					wasFullscreen = g.dimensions.fullscreen
+
 					g.attachWindowRight(ui.hwnd, ui.dimensions.width)
 				}
 
@@ -146,15 +153,28 @@ func (g *GUI) settings(onclose func()) *settings {
 					})
 				})
 
+				ui.update()
+
 				ui.windows.this.Invalidate()
 				event.Frame(gtx.Ops)
 			default:
+				g.attachWindowRight(ui.hwnd, ui.dimensions.width)
 				notify.Missed(event, "Settings")
 			}
 		}
 	}()
 
 	return ui
+}
+
+func (ui *settings) update() {
+	for _, item := range ui.sections.fps.widget.(*checklist.Widget).Items {
+		item.Disabled = config.Current.Video.Capture.Device.Index == config.NoVideoCaptureDevice
+
+		if strings.HasPrefix(item.Text, fmt.Sprintf("%d", config.Current.Video.Capture.Device.FPS)) {
+			item.Checked.Value = true
+		}
+	}
 }
 
 // settingsUI initializes the settings window controls and sections.
@@ -313,14 +333,16 @@ func (g *GUI) settingsUI() *settings {
 			Theme:    ui.bar.Collection.NotoSans().Theme,
 			Radio:    true,
 			TextSize: 12,
+			Callback: func(item *checklist.Item, this *checklist.Widget) {
+			},
 			Items: []*checklist.Item{
 				{
 					Text:    fmt.Sprintf("English (%s)", ini.EnUS),
-					Checked: widget.Bool{Value: true},
+					Checked: widget.Bool{Value: config.Current.Advanced.Locale == ini.EnUS},
 				},
 				{
 					Text:     fmt.Sprintf("Español (%s)", ini.EsES),
-					Checked:  widget.Bool{Value: false},
+					Checked:  widget.Bool{Value: config.Current.Advanced.Locale == ini.EsES},
 					Disabled: true,
 					DisabledCallback: func(this *checklist.Item) {
 						g.ToastErrorf("%s language detection is currently not supported", this.Text)
@@ -328,7 +350,7 @@ func (g *GUI) settingsUI() *settings {
 				},
 				{
 					Text:     fmt.Sprintf("日本語 (%s)", ini.JpJP),
-					Checked:  widget.Bool{Value: false},
+					Checked:  widget.Bool{Value: config.Current.Advanced.Locale == ini.JpJP},
 					Disabled: true,
 					DisabledCallback: func(this *checklist.Item) {
 						g.ToastErrorf("%s language detection is currently not supported", this.Text)
@@ -336,7 +358,7 @@ func (g *GUI) settingsUI() *settings {
 				},
 				{
 					Text:     fmt.Sprintf("한국어 (%s)", ini.KrKR),
-					Checked:  widget.Bool{Value: false},
+					Checked:  widget.Bool{Value: config.Current.Advanced.Locale == ini.KrKR},
 					Disabled: true,
 					DisabledCallback: func(this *checklist.Item) {
 						g.ToastErrorf("%s language detection is currently not supported", this.Text)
@@ -351,7 +373,7 @@ func (g *GUI) settingsUI() *settings {
 	languageWarning.Font.Weight = 0
 	ui.sections.language.warning = languageWarning
 
-	ui.sections.video = &section{
+	ui.sections.fps = &section{
 		title:       material.Label(ui.bar.Collection.Calibri().Theme, 14, "🎥 Video Capture Device"),
 		description: material.Caption(ui.bar.Collection.Calibri().Theme, "Advanced Video Capture Device settings"),
 		widget: &checklist.Widget{
@@ -414,21 +436,19 @@ func (g *GUI) settingsUI() *settings {
 					},
 				},
 			},
-			Callback: func(item *checklist.Item, this *checklist.Widget) (check bool) {
+			Callback: func(item *checklist.Item, this *checklist.Widget) {
 				if !device.IsActive() {
-					return true
+					return
 				}
 
 				err := device.Restart()
 				if err != nil {
 					g.ToastError(err)
 				}
-
-				return true
 			},
 		},
 	}
-	for _, item := range ui.sections.video.widget.(*checklist.Widget).Items {
+	for _, item := range ui.sections.fps.widget.(*checklist.Widget).Items {
 		if strings.HasPrefix(item.Text, fmt.Sprintf("%d", config.Current.Video.Capture.Device.FPS)) {
 			item.Checked.Value = true
 		}
@@ -437,7 +457,7 @@ func (g *GUI) settingsUI() *settings {
 	videoWarning := material.Label(ui.bar.Collection.Calibri().Theme, unit.Sp(12), "📌 Increased FPS can reduce input delay but requires more CPU")
 	videoWarning.Color = nrgba.PastelRed.Alpha(127).Color()
 	videoWarning.Font.Weight = 0
-	ui.sections.video.warning = videoWarning
+	ui.sections.fps.warning = videoWarning
 
 	ui.sections.discord = &section{
 		title:       material.Label(ui.bar.Collection.Calibri().Theme, 14, "🎮 Discord Activity"),
@@ -564,9 +584,9 @@ func (g *GUI) settingsUI() *settings {
 				},
 			},
 		},
-		Callback: func(item *checklist.Item, this *checklist.Widget) (check bool) {
+		Callback: func(item *checklist.Item, this *checklist.Widget) {
 			if item.Text != "Disabled" {
-				return item.Checked.Value
+				return
 			}
 
 			for _, that := range this.Items {
@@ -577,8 +597,6 @@ func (g *GUI) settingsUI() *settings {
 				that.Checked.Value = !item.Checked.Value
 				that.Callback(that)
 			}
-
-			return item.Checked.Value
 		},
 	}
 

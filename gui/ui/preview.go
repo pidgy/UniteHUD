@@ -63,6 +63,15 @@ type preview struct {
 func (g *GUI) preview(a *areas, onclose func()) *preview {
 	ui := g.previewUI()
 
+	wasFullscreen := g.dimensions.fullscreen
+
+	fullscreen := &area.Capture{
+		Option:      "Capture Area",
+		File:        "Preview_capture_area.png",
+		Base:        image.Rectangle{Max: video.Resolution()},
+		DefaultBase: image.Rectangle{Max: video.Resolution()},
+	}
+
 	go func() {
 		defer onclose()
 
@@ -79,6 +88,7 @@ func (g *GUI) preview(a *areas, onclose func()) *preview {
 			a.state.Capture,
 			a.time.Capture,
 			a.pressButtonToScore.Capture,
+			fullscreen,
 		}
 
 		// Ordered by least widest.
@@ -99,40 +109,53 @@ func (g *GUI) preview(a *areas, onclose func()) *preview {
 		go func() {
 			for ; ui.state.open; time.Sleep(time.Second) {
 				for i, cap := range ui.capture.areas {
-					img, err := video.CaptureRect(cap.Base)
-					if err != nil {
-						ui.windows.parent.ToastError(err)
-						return
-					}
+					if cap.Base.Empty() {
+						img, err := video.Capture()
+						if err != nil {
+							ui.windows.parent.ToastError(err)
+							return
+						}
+						ui.capture.images[i].SetImage(img)
 
-					ui.capture.images[i].SetImage(img)
+					} else {
+						img, err := video.CaptureRect(cap.Base)
+						if err != nil {
+							ui.windows.parent.ToastError(err)
+							return
+						}
+						ui.capture.images[i].SetImage(img)
+					}
 				}
 			}
 		}()
 
 		ui.windows.this.Perform(system.ActionRaise)
 
-		ui.windows.parent.setInsetLeft(ui.dimensions.width)
-		defer ui.windows.parent.unsetInsetLeft(ui.dimensions.width)
+		// ui.windows.parent.setInsetLeft(ui.dimensions.width)
+		// defer ui.windows.parent.unsetInsetLeft(ui.dimensions.width)
 
 		var ops op.Ops
 
 		for {
 			switch event := ui.windows.this.NextEvent().(type) {
+			case app.ConfigEvent, system.StageEvent:
+				ui.dimensions.resize = true
 			case system.DestroyEvent:
+				g.deattachWindowLeft()
 				ui.state.open = false
 				return
 			case app.ViewEvent:
 				ui.hwnd = event.HWND
-				ui.windows.parent.attachWindowLeft(ui.hwnd, ui.dimensions.width)
+				g.attachWindowLeft(ui.hwnd, ui.dimensions.width)
 			case system.FrameEvent:
 				if !ui.state.open {
 					go ui.windows.this.Perform(system.ActionClose)
 				}
 
-				if ui.dimensions.resize {
+				if ui.dimensions.resize || wasFullscreen != g.dimensions.fullscreen {
 					ui.dimensions.resize = false
-					ui.windows.parent.attachWindowLeft(ui.hwnd, ui.dimensions.width)
+					wasFullscreen = g.dimensions.fullscreen
+					g.attachWindowLeft(ui.hwnd, ui.dimensions.width)
 				}
 
 				gtx := layout.NewContext(&ops, event)
@@ -262,6 +285,7 @@ func (g *GUI) preview(a *areas, onclose func()) *preview {
 
 				event.Frame(gtx.Ops)
 			default:
+				g.attachWindowLeft(ui.hwnd, ui.dimensions.width)
 				notify.Missed(event, "Preview")
 			}
 		}
