@@ -46,7 +46,7 @@ import (
 	"github.com/pidgy/unitehud/system/process"
 	"github.com/pidgy/unitehud/system/save"
 	"github.com/pidgy/unitehud/system/tray"
-	"github.com/pidgy/unitehud/system/wapi"
+	"github.com/pidgy/unitehud/system/win32"
 )
 
 // main defines main behavior and state.
@@ -1219,12 +1219,12 @@ func (g *GUI) mainUI() *main {
 				this.Hint = "Show UniteHUD Overlay HUD above all windows"
 				this.Text = "📌"
 				this.Radio = false
-				wapi.SetWindowNotAlwaysOnTop(g.HWND)
+				win32.SetWindowNotAlwaysOnTop(g.HWND)
 			} else {
 				this.Hint = "Hide UniteHUD Overlay HUD under active windows"
 				this.Text = "📌×"
 				this.Radio = true
-				wapi.SetWindowAlwaysOnTop(g.HWND)
+				win32.SetWindowAlwaysOnTop(g.HWND)
 			}
 		},
 	}
@@ -1242,16 +1242,16 @@ func (g *GUI) mainUI() *main {
 		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
-			w := wapi.Window(g.HWND)
+			w := win32.Window(g.HWND)
 
-			r, err := w.Dimensions()
+			r, err := w.Rect()
 			if err != nil {
 				notify.Error("[UI] Failed to determine screenshot dimensions (%v)", err)
 				g.ToastErrorf("Failed to capture screenshot (%v)", err)
 				return
 			}
 
-			img, err := w.Capture(r, 1)
+			img, err := w.Capture(r.Image(), image.Point{})
 			if err != nil {
 				notify.Error("[UI] Failed to capture screenshot (%v)", err)
 				g.ToastErrorf("Failed to capture screenshot (%v)", err)
@@ -1333,7 +1333,7 @@ func (ui *main) onFrame1(g *GUI) {
 		}
 	}()
 
-	// go wapi.SetWindowLongPtrA.Call(g.HWND, wapi.GetWindowLongFlags.Style, uintptr(wapi.WindowStyles.Overlapped))
+	// go win32.SetWindowLongPtrA.Call(g.HWND, win32.GetWindowLongFlags.Style, uintptr(win32.WindowStyles.Overlapped))
 }
 
 // onFrame2 handles the event callback.

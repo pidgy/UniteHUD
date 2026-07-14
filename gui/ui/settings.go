@@ -132,11 +132,11 @@ func (g *GUI) settings(onclose func()) *settings {
 				}
 
 				if g.HWND != 0 {
-					// switch wapi.Window(g.HWND).InfoStatus() {
-					// case wapi.WindowInfoStatusNotVisible:
+					// switch win32.Window(g.HWND).InfoStatus() {
+					// case win32.WindowInfoStatusNotVisible:
 					// 	// ui.windows.this.Perform(system.ActionMinimize)
-					// case wapi.WindowInfoStatusVisible:
-					// 	if wapi.Window(ui.hwnd).InfoStatus() == wapi.WindowInfoStatusNotVisible {
+					// case win32.WindowInfoStatusVisible:
+					// 	if win32.Window(ui.hwnd).InfoStatus() == win32.WindowInfoStatusNotVisible {
 					// 		ui.windows.this.Perform(system.ActionRaise)
 					// 	}
 					// }

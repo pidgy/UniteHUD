@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"image"
 	"time"
-	"unsafe"
 
 	"gioui.org/app"
 	"gioui.org/font"
@@ -31,7 +30,7 @@ import (
 	"github.com/pidgy/unitehud/media/video/fps"
 	"github.com/pidgy/unitehud/media/video/monitor"
 	"github.com/pidgy/unitehud/system/process"
-	"github.com/pidgy/unitehud/system/wapi"
+	"github.com/pidgy/unitehud/system/win32"
 )
 
 // projector defines projector behavior and state.
@@ -47,6 +46,7 @@ type projector struct {
 		overlay,
 		stats,
 		alwaysOnTop *button.Widget
+		// screenshot *button.Widget
 	}
 
 	window *app.Window
@@ -66,7 +66,7 @@ type projector struct {
 
 	keybinds *keys.Bind
 
-	rect wapi.Rect
+	rect win32.Rect
 
 	imgDims layout.Dimensions
 
@@ -87,6 +87,7 @@ func (g *GUI) projector(onclose func()) {
 	defer ui.nav.Remove(ui.nav.overlay)
 	defer ui.nav.Remove(ui.nav.stats)
 	defer ui.nav.Remove(ui.nav.alwaysOnTop)
+	// defer ui.nav.Remove(ui.nav.screenshot)
 
 	notify.System("[UI] Opening Projector...")
 
@@ -212,11 +213,11 @@ func (g *GUI) projector(onclose func()) {
 							layout.Stacked(func(gtx layout.Context) layout.Dimensions {
 								if ui.nav.stats.Radio {
 									statsLabel.Text = ""
-									mi, err := wapi.GetMonitorInfoFromWindow(wapi.Window(ui.hwnd))
+									mi, err := win32.GetMonitorInfoFromWindow(win32.Window(ui.hwnd))
 									if err != nil {
 										statsLabel.Text += fmt.Sprintf("Error: %v\n", err)
 									}
-									index, err := wapi.GetMonitorIndexFromMonitorInfo(mi)
+									index, err := win32.GetMonitorIndexFromMonitorInfo(mi)
 									if err != nil {
 										statsLabel.Text += fmt.Sprintf("Error: %v\n", err)
 									}
@@ -307,22 +308,22 @@ func (ui *projector) fullscreen() {
 	ui.dimensions.fullscreened = !ui.dimensions.fullscreened
 	ui.nav.Hide = ui.dimensions.fullscreened
 
-	t := wapi.ThreadExecutionState(0)
+	t := win32.ThreadExecutionState(0)
 
 	if ui.dimensions.fullscreened {
-		t = wapi.ThreadExecutionStateDisplayRequired
+		t = win32.ThreadExecutionStateDisplayRequired
 
 		ui.window.Option(app.Fullscreen.Option())
 
 	} else {
-		t = wapi.ThreadExecutionStateSystemRequired
+		t = win32.ThreadExecutionStateSystemRequired
 
 		ui.window.Perform(system.ActionUnmaximize)
 		ui.window.Option(app.Windowed.Option(), app.Size(unit.Dp(ui.dimensions.size.X), unit.Dp(ui.dimensions.size.Y)))
 		ui.window.Perform(system.ActionCenter)
 	}
 
-	err := wapi.SetThreadExecutionState(t, wapi.ThreadExecutionStateContinuous)
+	err := win32.SetThreadExecutionState(t, win32.ThreadExecutionStateContinuous)
 	if err != nil {
 		notify.Warn("[UI] Projector <ini:f:set> thread execution state (%v)", err)
 	}
@@ -332,7 +333,7 @@ func (ui *projector) fullscreen() {
 func (g *GUI) projectorUI() *projector {
 	ui := &projector{
 		keybinds: keys.New().Bind(keys.NoMod, keys.Escape(), keys.F11()).Bind(keys.CtrlMod, "W"),
-		rect:     wapi.Rect{},
+		rect:     win32.Rect{},
 	}
 
 	ui.nav.Widget = title.New(
@@ -418,16 +419,64 @@ func (g *GUI) projectorUI() *projector {
 				this.Hint = "Show UniteHUD Overlay HUD above all windows"
 				this.Text = "📌"
 				this.Radio = false
-				wapi.SetWindowNotAlwaysOnTop(ui.hwnd)
+				win32.SetWindowNotAlwaysOnTop(ui.hwnd)
 			} else {
 				this.Hint = "Hide UniteHUD Overlay HUD under active windows"
 				this.Text = "📌×"
 				this.Radio = true
-				wapi.SetWindowAlwaysOnTop(ui.hwnd)
+				win32.SetWindowAlwaysOnTop(ui.hwnd)
 			}
 		},
 	}
 	ui.nav.Add(ui.nav.alwaysOnTop)
+
+	// ui.nav.screenshot = &button.Widget{
+	// 	Text:            "📸",
+	// 	Font:            g.nav.NishikiTeki(),
+	// 	Hint:            "Take a screenshot of this window (Ctrl+V)",
+	// 	OnHoverHint:     g.nav.Tip,
+	// 	Released:        nrgba.Transparent80,
+	// 	Pressed:         nrgba.Night,
+	// 	TextSize:        unit.Sp(16),
+	// 	TextInsetBottom: -1,
+
+	// 	Click: func(this *button.Widget) {
+	// 		defer this.Deactivate()
+
+	// 		w := win32.Window(ui.hwnd)
+
+	// 		r, err := w.Rect()
+	// 		if err != nil {
+	// 			notify.Error("[UI] Failed to determine screenshot dimensions (%v)", err)
+	// 			g.ToastErrorf("Failed to capture screenshot (%v)", err)
+	// 			return
+	// 		}
+
+	// 		img, err := w.Capture(r.Image(), image.Rectangle{})
+	// 		if err != nil {
+	// 			notify.Error("[UI] Failed to capture screenshot (%v)", err)
+	// 			g.ToastErrorf("Failed to capture screenshot (%v)", err)
+	// 			return
+	// 		}
+
+	// 		file := fmt.Sprintf("Screenshot_%s.png", save.KitchenTime())
+
+	// 		err = save.PNG(img, file)
+	// 		if err != nil {
+	// 			notify.Error("[UI] Failed to save screenshot (%v)", err)
+	// 			g.ToastErrorf("Failed to capture screenshot (%v)", err)
+	// 			return
+	// 		}
+
+	// 		err = save.OpenImage(file)
+	// 		if err != nil {
+	// 			notify.Error("[UI] Failed to open screenshot (%v)", err)
+	// 			g.ToastErrorf("Failed to capture screenshot (%v)", err)
+	// 			return
+	// 		}
+	// 	},
+	// }
+	// ui.nav.Add(ui.nav.screenshot)
 
 	ui.dimensions.size = image.Pt(1280, 720)
 
@@ -465,11 +514,15 @@ func (ui *projector) setWindowPos(shift image.Point) {
 		}
 		ui.dimensions.shift = shift
 
-		wapi.GetWindowRect.Call(ui.hwnd, uintptr(unsafe.Pointer(&ui.rect)))
+		r, err := win32.Window(ui.hwnd).RectComplete()
+		if err != nil {
+			notify.Error("[UI] Failed to determine window position")
+			return
+		}
+		ui.rect = r
+
 		pos := image.Pt(int(ui.rect.Left), int(ui.rect.Top)).Add(shift)
 
-		defer notify.Debug("[UI] Projector: Setting window position from drag shift=%s", shift.String())
-
-		go wapi.SetWindowPosNoSize(ui.hwnd, pos)
+		go win32.SetWindowPosNoSize(ui.hwnd, pos)
 	}()
 }

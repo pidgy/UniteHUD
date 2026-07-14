@@ -22,6 +22,7 @@ import (
 	"github.com/pidgy/unitehud/gui/ux/screen"
 	"github.com/pidgy/unitehud/gui/ux/title"
 	"github.com/pidgy/unitehud/media/video"
+	"github.com/pidgy/unitehud/media/video/monitor"
 )
 
 // preview defines preview behavior and state.
@@ -68,8 +69,8 @@ func (g *GUI) preview(a *areas, onclose func()) *preview {
 	fullscreen := &area.Capture{
 		Option:      "Capture Area",
 		File:        "Preview_capture_area.png",
-		Base:        image.Rectangle{Max: video.Resolution()},
-		DefaultBase: image.Rectangle{Max: video.Resolution()},
+		Base:        monitor.DefaultResolution,
+		DefaultBase: monitor.DefaultResolution,
 	}
 
 	go func() {

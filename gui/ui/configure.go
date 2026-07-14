@@ -38,7 +38,7 @@ import (
 	"github.com/pidgy/unitehud/system/lang"
 	"github.com/pidgy/unitehud/system/process"
 	"github.com/pidgy/unitehud/system/save"
-	"github.com/pidgy/unitehud/system/wapi"
+	"github.com/pidgy/unitehud/system/win32"
 )
 
 // configure holds UI state for the configuration screen and its sub-windows.
@@ -183,7 +183,13 @@ func (g *GUI) configure() {
 			decorate.Background(gtx)
 
 			// decorate.Label(&ui.footer.api, "API: %s", device.API(config.Current.Video.Capture.Device.API).String())
-			decorate.Label(&ui.footer.api, "Resolution: %dx%d", ui.img.Bounds().Dx(), ui.img.Bounds().Dy())
+			bounds := ui.img.Bounds().Size()
+			bounds2 := video.Resolution()
+			apiLabel := fmt.Sprintf("Resolution: %dx%d", bounds.X, bounds.Y)
+			if !bounds.Eq(bounds2) {
+				apiLabel = fmt.Sprintf("Resolution: %dx%d (Scaled: %dx%d)", bounds.X, bounds.Y, bounds2.X, bounds2.Y)
+			}
+			decorate.Label(&ui.footer.api, "%s", apiLabel)
 			decorate.Label(&ui.footer.cpu, "%s", process.Usage.CPU)
 			decorate.Label(&ui.footer.ram, "%s", process.Usage.RAM)
 			decorate.Label(&ui.footer.hz, "%s Hz", g.hz)
@@ -444,7 +450,7 @@ func (g *GUI) configure() {
 				case <-ticker.C:
 					img, err := video.Capture()
 					if err != nil {
-						g.ToastErrorf("<ini:f:capture> (%v)", err)
+						g.ToastErrorf("<ini:f:capture_video> (%v)", err)
 						defer video.Close()
 
 						// No video to default to, let's bail.
@@ -833,16 +839,16 @@ func (g *GUI) configureUI() *configure {
 		Click: func(this *button.Widget) {
 			defer this.Deactivate()
 
-			w := wapi.Window(g.HWND)
+			w := win32.Window(g.HWND)
 
-			r, err := w.Dimensions()
+			r, err := w.Rect()
 			if err != nil {
 				notify.Error("[UI] Failed to determine screenshot dimensions (%v)", err)
 				g.ToastErrorf("Failed to capture screenshot (%v)", err)
 				return
 			}
 
-			img, err := w.Capture(r, 1)
+			img, err := w.Capture(r.Image(), image.Point{})
 			if err != nil {
 				notify.Error("[UI] Failed to capture screenshot (%v)", err)
 				g.ToastErrorf("Failed to capture screenshot (%v)", err)

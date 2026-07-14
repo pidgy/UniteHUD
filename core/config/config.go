@@ -141,7 +141,6 @@ type (
 			Discord int16
 		}
 
-		Scale float64
 		Shift Shift
 
 		Theme  Theme
@@ -759,7 +758,6 @@ func Open() error {
 	notify.System("[Config] Loading %s profile (%s)", Current.Gaming.Device, Current.File())
 
 	Current = Config{
-		Scale:      1,
 		Shift:      Shift{},
 		Acceptance: DefaultAcceptance,
 	}

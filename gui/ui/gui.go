@@ -4,7 +4,6 @@ import (
 	"image"
 	"runtime"
 	"time"
-	"unsafe"
 
 	"gioui.org/app"
 	"gioui.org/io/system"
@@ -19,7 +18,7 @@ import (
 	"github.com/pidgy/unitehud/media/video/fps"
 	"github.com/pidgy/unitehud/media/video/monitor"
 	"github.com/pidgy/unitehud/system/process"
-	"github.com/pidgy/unitehud/system/wapi"
+	"github.com/pidgy/unitehud/system/win32"
 )
 
 // GUI manages the main application window, state, and UI lifecycle.
@@ -81,7 +80,7 @@ var UI *GUI
 
 // New initializes and returns a new GUI instance.
 func New() *GUI {
-	err := wapi.SetProcessDPIAwareness(wapi.PerMonitorAware)
+	err := win32.SetProcessDPIAwareness(win32.PerMonitorAware)
 	if err != nil {
 		notify.Warn("[UI] <ini:f:set> DPI awareness, %v", err)
 	}
@@ -201,7 +200,7 @@ func (g *GUI) attachWindowLeft(hwnd uintptr, width int) {
 	}
 
 	// Set the follower window.
-	wapi.SetWindowPosShow(hwnd, image.Pt(x, y), image.Pt(width, g.dimensions.size.Y))
+	win32.SetWindowPosShow(hwnd, image.Pt(x, y), image.Pt(width, g.dimensions.size.Y))
 
 	g.squeeze()
 }
@@ -231,7 +230,7 @@ func (g *GUI) attachWindowRight(hwnd uintptr, width int) {
 	}
 
 	// Set the follower window.
-	wapi.SetWindowPosShow(hwnd, attached, image.Pt(width, g.dimensions.size.Y))
+	win32.SetWindowPosShow(hwnd, attached, image.Pt(width, g.dimensions.size.Y))
 
 	g.squeeze()
 }
@@ -296,7 +295,7 @@ func (g *GUI) moveWindow(shift image.Point) {
 		g.dimensions.shift = shift
 
 		if g.dimensions.smoothing == g.dimensions.threshold {
-			wapi.MoveWindowNoSize(g.HWND, pos)
+			win32.MoveWindowNoSize(g.HWND, pos)
 			g.dimensions.smoothing = 0
 		}
 		g.dimensions.smoothing++
@@ -305,9 +304,11 @@ func (g *GUI) moveWindow(shift image.Point) {
 
 // position returns the current window position.
 func (g *GUI) position() image.Point {
-	r := &wapi.Rect{}
-	wapi.GetWindowRect.Call(g.HWND, uintptr(unsafe.Pointer(r)))
-	return image.Pt(int(r.Left), int(r.Top))
+	next, err := win32.Window(g.HWND).RectComplete()
+	if err != nil {
+		return image.Point{}
+	}
+	return next.Image().Min
 }
 
 // proc tracks and reports process performance over time.
@@ -347,7 +348,7 @@ func (g *GUI) squeeze() {
 		g.window.Option(app.Size(unit.Dp(size.X), unit.Dp(size.Y)))
 		g.window.Option(app.MaxSize(unit.Dp(size.X), unit.Dp(size.Y)))
 
-		wapi.SetWindowPosNone(
+		win32.SetWindowPosNone(
 			g.HWND,
 			//  image.Pt(g.dimensions.inset.left, 0),
 			monitor.BoundsFromCoordinate(g.position().X).Min.Add(image.Pt(g.dimensions.inset.left, 0)),

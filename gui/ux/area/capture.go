@@ -23,19 +23,21 @@ type Capture struct {
 
 // Open captures the region to a PNG and opens it with the shell.
 func (c *Capture) Open() error {
+	file := fmt.Sprintf("%s_%s.png", c.File, save.KitchenTime())
+
 	img, err := video.CaptureRect(c.Base)
 	if err != nil {
-		return fmt.Errorf("<ini:f:capture> %s (%v)", c.File, err)
+		return fmt.Errorf("<ini:f:capture> %s (%v)", file, err)
 	}
 
-	err = save.PNG(img, c.File)
+	err = save.PNG(img, file)
 	if err != nil {
-		return fmt.Errorf("<ini:f:save> %s (%v)", c.File, err)
+		return fmt.Errorf("<ini:f:save> %s (%v)", file, err)
 	}
 
-	err = save.OpenImage(c.File)
+	err = save.OpenImage(file)
 	if err != nil {
-		return fmt.Errorf("<ini:f:open> %s (%v)", c.File, err)
+		return fmt.Errorf("<ini:f:open> %s (%v)", file, err)
 	}
 
 	return nil

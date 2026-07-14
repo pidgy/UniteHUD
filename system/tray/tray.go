@@ -22,7 +22,7 @@ import (
 	"github.com/pidgy/unitehud/system/lang"
 	"github.com/pidgy/unitehud/system/process"
 	"github.com/pidgy/unitehud/system/save"
-	"github.com/pidgy/unitehud/system/wapi"
+	"github.com/pidgy/unitehud/system/win32"
 )
 
 type toggle struct {
@@ -279,7 +279,7 @@ func header(title, version string) toggle {
 			if menu.hidden {
 				menu.hideshow.event()
 			} else {
-				wapi.SetWindowPosNoSizeNoMoveShowWindow(menu.hwnd)
+				win32.SetWindowPosNoSizeNoMoveShowWindow(menu.hwnd)
 			}
 		},
 	}
@@ -294,11 +294,11 @@ func hideshow() toggle {
 			notify.Debug("[Tray] Hiding/Showing HWND: %d", menu.hwnd)
 
 			if menu.hidden {
-				wapi.ShowWindowRestore(menu.hwnd)
+				win32.ShowWindowRestore(menu.hwnd)
 				menu.hideshow.SetTitle("Hide")
 				menu.hideshow.SetTooltip("Hide UniteHUD in System Tray")
 			} else {
-				wapi.ShowWindowHide(menu.hwnd)
+				win32.ShowWindowHide(menu.hwnd)
 				menu.hideshow.SetTitle("Show")
 				menu.hideshow.SetTooltip("Restore UniteHUD on your Desktop")
 			}

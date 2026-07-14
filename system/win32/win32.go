@@ -1,4 +1,4 @@
-package wapi
+package win32
 
 // TODO: Add go style comments that reflect the purpose of each type, function, var, and const. Then remove this comment.
 
@@ -43,7 +43,10 @@ type (
 
 	// Windows RECT structure.
 	Rect struct {
-		Left, Top, Right, Bottom int32
+		Left   int32 // Min.X
+		Top    int32 // Min.Y
+		Right  int32 // Max.X
+		Bottom int32 // Max.Y
 	}
 
 	// http://msdn.microsoft.com/en-us/library/windows/desktop/dd162938.aspx
@@ -102,7 +105,7 @@ const (
 )
 
 var (
-	BitBltRasterOperations = struct {
+	bitBltRasterOperations = struct {
 		SrcCopy,
 		CaptureBLT,
 		SrcPaint,
@@ -304,50 +307,81 @@ var (
 		GetWorkArea: 0x0030,
 	}
 
-	EnumDeviceDrivers       = psapi32.MustFindProc("EnumDeviceDrivers")
-	GetDeviceDriverBaseName = psapi32.MustFindProc("GetDeviceDriverBaseNameW")
+	// https://learn.microsoft.com/en-us/windows/win32/api/wingdi/nf-wingdi-setstretchbltmode.
+	SetStretchBltMode = struct {
+		// Performs a Boolean AND operation using the color values for the eliminated and existing pixels. If the bitmap is a monochrome bitmap, this mode preserves black pixels at the expense of white pixels.
+		BlackOnWhite,
+		// Performs a Boolean OR operation using the color values for the eliminated and existing pixels. If the bitmap is a monochrome bitmap, this mode preserves white pixels at the expense of black pixels.
+		WhiteOnBlack,
+		// Deletes the pixels. This mode deletes all eliminated lines of pixels without trying to preserve their information.
+		ColorOnColor,
+		// Maps pixels from the source rectangle into blocks of pixels in the destination rectangle. The average color over the destination block of pixels approximates the color of the source pixels.
+		// After setting the HALFTONE stretching mode, an application must call the SetBrushOrgEx function to set the brush origin. If it fails to do so, brush misalignment occurs.
+		HalfTone uintptr
+	}{
+		1, 2, 3, 4,
+	}
 
-	GetDC                        = user32.MustFindProc("GetDC")
+	printWindowFlags = struct {
+		ClientOnly        uintptr
+		RenderFullContent uintptr
+	}{
+		ClientOnly:        1,
+		RenderFullContent: 2,
+	}
+
+	getDIBitsUsage = struct {
+		RGBColors,
+		PALColors,
+		PALIndicies uintptr
+	}{0, 1, 2}
+
+	enumDeviceDrivers       = psapi32.MustFindProc("EnumDeviceDrivers")
+	getDeviceDriverBaseName = psapi32.MustFindProc("GetDeviceDriverBaseNameW")
+
+	getDC                        = user32.MustFindProc("GetDC")
 	getMonitorInfoW              = user32.MustFindProc("GetMonitorInfoW")
-	GetWindowRect                = user32.MustFindProc("GetWindowRect")
-	GetWindowTextW               = user32.MustFindProc("GetWindowTextW")
-	IsWindowVisible              = user32.MustFindProc("IsWindowVisible")
-	MoveWindow                   = user32.MustFindProc("MoveWindow")
-	ReleaseDC                    = user32.MustFindProc("ReleaseDC")
-	SetForegroundWindow          = user32.MustFindProc("SetForegroundWindow")
-	SetThreadDpiAwarenessContext = user32.MustFindProc("GetThreadDpiAwarenessContext")
-	SetWindowLongPtrA            = user32.MustFindProc("SetWindowLongPtrA")
-	SetWindowLongPtrW            = user32.MustFindProc("SetWindowLongPtrW")
-	SetWindowPlacement           = user32.MustFindProc("SetWindowPlacement")
-	SetWindowPos                 = user32.MustFindProc("SetWindowPos")
-	// Unexported.
-	enumWindows           = user32.MustFindProc("EnumWindows") // https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-enumwindows
-	enumDisplayMonitors   = user32.MustFindProc("EnumDisplayMonitors")
-	findWindow            = user32.MustFindProc("FindWindowW")
-	getClientRect         = user32.MustFindProc("GetClientRect")
-	getWindowInfo         = user32.MustFindProc("GetWindowInfo")
-	monitorFromWindow     = user32.MustFindProc("MonitorFromWindow")
-	showWindow            = user32.MustFindProc("ShowWindow")
-	systemParametersInfoA = user32.MustFindProc("SystemParametersInfoA")
+	getWindowRect                = user32.MustFindProc("GetWindowRect")
+	getWindowTextW               = user32.MustFindProc("GetWindowTextW")
+	isWindowVisible              = user32.MustFindProc("IsWindowVisible")
+	moveWindow                   = user32.MustFindProc("MoveWindow")
+	printWindow                  = user32.MustFindProc("PrintWindow")
+	rReleaseDC                   = user32.MustFindProc("ReleaseDC")
+	setForegroundWindow          = user32.MustFindProc("SetForegroundWindow")
+	setThreadDpiAwarenessContext = user32.MustFindProc("GetThreadDpiAwarenessContext")
+	setWindowLongPtrA            = user32.MustFindProc("SetWindowLongPtrA")
+	setWindowLongPtrW            = user32.MustFindProc("SetWindowLongPtrW")
+	setWindowPlacement           = user32.MustFindProc("SetWindowPlacement")
+	setWindowPos                 = user32.MustFindProc("SetWindowPos")
+	enumWindows                  = user32.MustFindProc("EnumWindows") // https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-enumwindows
+	enumDisplayMonitors          = user32.MustFindProc("EnumDisplayMonitors")
+	findWindow                   = user32.MustFindProc("FindWindowW")
+	getClientRect                = user32.MustFindProc("GetClientRect")
+	getWindowInfo                = user32.MustFindProc("GetWindowInfo")
+	monitorFromWindow            = user32.MustFindProc("MonitorFromWindow")
+	showWindow                   = user32.MustFindProc("ShowWindow")
+	systemParametersInfoA        = user32.MustFindProc("SystemParametersInfoA")
 
-	CreateCompatibleBitmap = gdi32.MustFindProc("CreateCompatibleBitmap")
-	CreateCompatibleDC     = gdi32.MustFindProc("CreateCompatibleDC")
-	CreateDIBSection       = gdi32.MustFindProc("CreateDIBSection")
-	DeleteDC               = gdi32.MustFindProc("DeleteDC")
-	DeleteObject           = gdi32.MustFindProc("DeleteObject")
-	GetClipBox             = gdi32.MustFindProc("GetClipBox")
-	GetDIBits              = gdi32.MustFindProc("GetDIBits")
-	GetDeviceCaps          = gdi32.MustFindProc("GetDeviceCaps")
-	SelectObject           = gdi32.MustFindProc("SelectObject")
-	// Unexported.
-	BitBlt     = gdi32.MustFindProc("BitBlt")
-	StretchBlt = gdi32.MustFindProc("StretchBlt")
+	createCompatibleBitmap = gdi32.MustFindProc("CreateCompatibleBitmap")
+	createCompatibleDC     = gdi32.MustFindProc("CreateCompatibleDC")
+	createDIBSection       = gdi32.MustFindProc("CreateDIBSection")
+	deleteDC               = gdi32.MustFindProc("DeleteDC")
+	deleteObject           = gdi32.MustFindProc("DeleteObject")
+	getClipBox             = gdi32.MustFindProc("GetClipBox")
+	getDIBits              = gdi32.MustFindProc("GetDIBits")
+	getDeviceCaps          = gdi32.MustFindProc("GetDeviceCaps")
+	selectObject           = gdi32.MustFindProc("SelectObject")
+	bitBlt                 = gdi32.MustFindProc("BitBlt")
+	stretchBlt             = gdi32.MustFindProc("StretchBlt")
+	setStretchBltMode      = gdi32.MustFindProc("SetStretchBltMode")
 
-	DwmGetWindowAttribute = dwmapi.MustFindProc("DwmGetWindowAttribute")
-	DwmSetWindowAttribute = dwmapi.MustFindProc("DwmSetWindowAttribute")
+	dwmGetWindowAttribute = dwmapi.MustFindProc("DwmGetWindowAttribute")
+	dwmSetWindowAttribute = dwmapi.MustFindProc("DwmSetWindowAttribute")
 
 	getLastError            = modKernel32.NewProc("GetLastError")
 	setThreadExecutionState = modKernel32.NewProc("SetThreadExecutionState")
+
+	transparentBlt = msimg32.MustFindProc("TransparentBlt")
 
 	dwmapi      = syscall.MustLoadDLL("dwmapi.dll")
 	gdi32       = syscall.MustLoadDLL("gdi32.dll")
@@ -355,6 +389,7 @@ var (
 	modKernel32 = syscall.NewLazyDLL("kernel32.dll")
 	psapi32     = syscall.MustLoadDLL("psapi.dll")
 	user32      = syscall.MustLoadDLL("user32.dll")
+	msimg32     = syscall.MustLoadDLL("msimg32.dll")
 
 	setProcessDpiAwareness = modShcore.NewProc("SetProcessDpiAwareness")
 )

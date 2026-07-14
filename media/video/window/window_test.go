@@ -10,20 +10,18 @@ import (
 )
 
 func TestList(t *testing.T) {
-	config.Current.Scale = 1
-
-	err := list()
+	err := background()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if len(Sources) == 0 {
+	if len(sources) == 0 {
 		t.Fatal("failed to find windows")
 	}
 
-	config.Current.Video.Capture.Monitor.Name = Sources[1].Title
+	config.Current.Video.Capture.Monitor.Name = sources[1].Title
 
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		img, err := Capture()
 		if err != nil {
 			t.Fatal(err)

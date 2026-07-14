@@ -1,4 +1,4 @@
-package wapi
+package win32
 
 import (
 	"testing"

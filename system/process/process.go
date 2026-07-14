@@ -16,7 +16,7 @@ import (
 
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/exe"
-	"github.com/pidgy/unitehud/system/wapi"
+	"github.com/pidgy/unitehud/system/win32"
 )
 
 type part struct {
@@ -75,7 +75,7 @@ func Uptime() string {
 }
 
 func all() ([]process, error) {
-	handle, err := windows.CreateToolhelp32Snapshot(wapi.CreateToolhelp32SnapshotFlags.SnapProcess, 0)
+	handle, err := windows.CreateToolhelp32Snapshot(win32.CreateToolhelp32SnapshotFlags.SnapProcess, 0)
 	if err != nil {
 		return nil, err
 	}

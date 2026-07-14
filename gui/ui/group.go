@@ -231,7 +231,7 @@ func (g *GUI) areas(collection *fonts.Collection) *areas {
 
 			Capture: &area.Capture{
 				Option:      "Objective",
-				File:        "Preview_objective_area.png",
+				File:        "Preview_objective_area",
 				Base:        config.Current.XY.Objectives,
 				DefaultBase: config.Current.XY.Objectives,
 			},
@@ -299,7 +299,7 @@ func (g *GUI) areas(collection *fonts.Collection) *areas {
 
 			Capture: &area.Capture{
 				Option:      "Aeos",
-				File:        "Preview_aeos_area.png",
+				File:        "Preview_aeos_area",
 				Base:        config.Current.XY.Energy,
 				DefaultBase: config.Current.XY.Energy,
 			},
@@ -347,7 +347,7 @@ func (g *GUI) areas(collection *fonts.Collection) *areas {
 
 			Capture: &area.Capture{
 				Option:      "Time",
-				File:        "Preview_time_area.png",
+				File:        "Preview_time_area",
 				Base:        config.Current.XY.Time,
 				DefaultBase: config.Current.XY.Time,
 			},
@@ -405,7 +405,7 @@ func (g *GUI) areas(collection *fonts.Collection) *areas {
 
 			Capture: &area.Capture{
 				Option:      "Score",
-				File:        "Preview_score_area.png",
+				File:        "Preview_score_area",
 				Base:        config.Current.XY.Scores,
 				DefaultBase: config.Current.XY.Scores,
 			},
@@ -466,7 +466,7 @@ func (g *GUI) areas(collection *fonts.Collection) *areas {
 
 			Capture: &area.Capture{
 				Option:      "State",
-				File:        "Preview_state_area.png",
+				File:        "Preview_state_area",
 				Base:        config.Current.XY.States,
 				DefaultBase: config.Current.XY.States,
 			},
@@ -514,7 +514,7 @@ func (g *GUI) areas(collection *fonts.Collection) *areas {
 
 			Capture: &area.Capture{
 				Option:      "Self-Score",
-				File:        "Preview_self_score_area.png",
+				File:        "Preview_self_score_area",
 				Base:        config.Current.XY.SelfScore,
 				DefaultBase: config.Current.XY.SelfScore,
 			},
@@ -591,7 +591,7 @@ func (g *GUI) videos(text float32) *videos {
 
 			items := []*checklist.Item{}
 
-			windows := video.Windows()
+			windows := window.Titles()
 			if len(windows) == len(v.windows.list.Items) {
 				if len(v.windows.list.Items) == 0 {
 					return

@@ -17,7 +17,7 @@ import (
 	"github.com/skratchdot/open-golang/open"
 
 	"github.com/pidgy/unitehud/exe"
-	"github.com/pidgy/unitehud/system/wapi"
+	"github.com/pidgy/unitehud/system/win32"
 )
 
 var (
@@ -68,7 +68,7 @@ func Image(img image.Image, value int, team, result, clock string) error {
 
 	err = png.Encode(f, img)
 	if err != nil {
-		return fmt.Errorf("Failed to create %s (%v)", file, err)
+		return fmt.Errorf("failed to create %s (%v)", file, err)
 	}
 
 	return nil
@@ -144,7 +144,7 @@ func OpenImage(name string) error {
 	var sI syscall.StartupInfo
 	var pI syscall.ProcessInformation
 
-	err = syscall.CreateProcess(nil, argv, nil, nil, true, wapi.CreateProcessFlags.NoWindow, nil, nil, &sI, &pI)
+	err = syscall.CreateProcess(nil, argv, nil, nil, true, win32.CreateProcessFlags.NoWindow, nil, nil, &sI, &pI)
 	if err != nil {
 		return fmt.Errorf("<ini:f:open> %s (%v)", path, err)
 	}

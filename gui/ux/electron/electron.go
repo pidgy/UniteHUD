@@ -6,9 +6,7 @@ import (
 	"image"
 	"path/filepath"
 	"sync"
-	"syscall"
 	"time"
-	"unsafe"
 
 	"github.com/asticode/go-astikit"
 	"github.com/asticode/go-astilectron"
@@ -16,7 +14,7 @@ import (
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/exe"
 	"github.com/pidgy/unitehud/gui/ux/title"
-	"github.com/pidgy/unitehud/system/wapi"
+	"github.com/pidgy/unitehud/system/win32"
 )
 
 //! Required: assets/electron/vendor/astilelectron/index.js
@@ -83,7 +81,7 @@ func Close() {
 }
 
 var prev struct {
-	rect   wapi.Rect
+	rect   win32.Rect
 	hidden bool
 }
 
@@ -102,20 +100,19 @@ func Follow(hwnd uintptr, size image.Point, force bool) {
 	// }
 	// defer lock.Unlock()
 
-	switch wapi.Window(hwnd).Info().Status {
-	case wapi.WindowStatusNotVisible:
+	switch win32.Window(hwnd).Info().Status {
+	case win32.WindowStatusNotVisible:
 		if !force {
 			Hide()
 		}
-	case wapi.WindowStatusVisible:
+	case win32.WindowStatusVisible:
 		err := show()
 		if err != nil {
 			notify.Error("[Electron] <ini:f:to> show HUD (%v)", err)
 		}
 
-		next := wapi.Rect{}
-		_, _, err = wapi.GetWindowRect.Call(hwnd, uintptr(unsafe.Pointer(&next)))
-		if err != syscall.Errno(0) {
+		next, err := win32.Window(hwnd).RectComplete()
+		if err != nil {
 			notify.Error("[Electron] Failed to find projector dimensions (%v)", err)
 			return
 		}
@@ -166,7 +163,7 @@ func Follow(hwnd uintptr, size image.Point, force bool) {
 		if err != nil {
 			notify.Error("[Electron] <ini:f:to> move HUD to top (%v)", err)
 		}
-	case wapi.WindowStatusUnknown:
+	case win32.WindowStatusUnknown:
 		notify.Error("[Electron] Unknown Window Info Status")
 		return
 	}
@@ -407,7 +404,7 @@ func show() error {
 }
 
 // trySetBounds updates the overlay window bounds with a timeout.
-func trySetBounds(next wapi.Rect, w, h int, force bool) error {
+func trySetBounds(next win32.Rect, w, h int, force bool) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 

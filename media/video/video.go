@@ -163,11 +163,3 @@ func StateArea() image.Rectangle {
 
 	return r
 }
-
-func Windows() []string {
-	s := []string{}
-	for _, w := range window.Sources {
-		s = append(s, w.Title)
-	}
-	return s
-}
