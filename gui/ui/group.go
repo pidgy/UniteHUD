@@ -55,12 +55,14 @@ type capture struct {
 
 // videos collects video-related selectors and change handlers.
 type videos struct {
-	devices  capture
-	windows  capture
-	monitors capture
-	platform capture
-	apis     capture
-	codecs   capture
+	devices    capture
+	windows    capture
+	monitors   capture
+	platform   capture
+	apis       capture
+	codecs     capture
+	winMethods capture
+	monMethods capture
 
 	onevent func(bool)
 }
@@ -1037,6 +1039,74 @@ func (g *GUI) videos(text float32) *videos {
 		},
 	}
 
+	v.winMethods = capture{
+		list: &checklist.Widget{
+			Theme:    g.nav.NotoSans().Theme,
+			TextSize: text,
+			Items:    []*checklist.Item{},
+			Callback: func(i *checklist.Item, this *checklist.Widget) {
+				defer v.populate()
+
+				for _, item := range this.Items {
+					item.Checked.Value = false
+				}
+				i.Checked.Value = true
+
+				config.Current.Video.Capture.Window.Method = i.Text
+
+				v.onevent(false) // Show preview.
+			},
+		},
+		populate: func() {
+			v.winMethods.list.Items = []*checklist.Item{
+				{
+					Text:     config.CaptureMethodDefault,
+					Checked:  widget.Bool{Value: config.Current.Video.Capture.Window.Method == config.CaptureMethodDefault},
+					Disabled: video.Current() != video.Window,
+				},
+				{
+					Text:     config.CaptureMethodDirect3D11,
+					Checked:  widget.Bool{Value: config.Current.Video.Capture.Window.Method == config.CaptureMethodDirect3D11},
+					Disabled: video.Current() != video.Window,
+				},
+			}
+		},
+	}
+
+	v.monMethods = capture{
+		list: &checklist.Widget{
+			Theme:    g.nav.NotoSans().Theme,
+			TextSize: text,
+			Items:    []*checklist.Item{},
+			Callback: func(i *checklist.Item, this *checklist.Widget) {
+				defer v.populate()
+
+				for _, item := range this.Items {
+					item.Checked.Value = false
+				}
+				i.Checked.Value = true
+
+				config.Current.Video.Capture.Monitor.Method = i.Text
+
+				v.onevent(false) // Show preview.
+			},
+		},
+		populate: func() {
+			v.monMethods.list.Items = []*checklist.Item{
+				{
+					Text:     config.CaptureMethodDefault,
+					Checked:  widget.Bool{Value: config.Current.Video.Capture.Monitor.Method == config.CaptureMethodDefault},
+					Disabled: video.Current() != video.Monitor,
+				},
+				{
+					Text:     config.CaptureMethodDirect3D11,
+					Checked:  widget.Bool{Value: config.Current.Video.Capture.Monitor.Method == config.CaptureMethodDirect3D11},
+					Disabled: video.Current() != video.Monitor,
+				},
+			}
+		},
+	}
+
 	return v
 }
 
@@ -1047,4 +1117,6 @@ func (v *videos) populate() {
 	v.monitors.populate()
 	v.apis.populate()
 	v.codecs.populate()
+	v.monMethods.populate()
+	v.winMethods.populate()
 }

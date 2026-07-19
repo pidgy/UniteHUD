@@ -42,7 +42,7 @@ type (
 	}
 
 	// Windows RECT structure.
-	Rect struct {
+	Rect struct { 
 		Left   int32 // Min.X
 		Top    int32 // Min.Y
 		Right  int32 // Max.X
@@ -163,7 +163,7 @@ var (
 		10,
 	}
 
-	GetWindowFlags = struct {
+	getWindowFlags = struct {
 		Child,
 		EnabledPopUp,
 		First,
@@ -197,10 +197,14 @@ var (
 		TopMost:   -1,
 	}
 
-	MonitorFromWindowOptions = struct {
-		DefaultToPrimary uintptr
+	MonitorFlags = struct {
+		DefaultToNULL,
+		DefaultToPrimary,
+		DefaultToNearest uintptr
 	}{
+		DefaultToNULL:    0,
 		DefaultToPrimary: 1,
+		DefaultToNearest: 2,
 	}
 
 	SetWindowPosFlags = struct {
@@ -219,8 +223,8 @@ var (
 		ShowWindow: 0x0040,
 	}
 
-	ShowWindowFlags = struct {
-		Hide,
+	showWindowFlags = struct {
+		hide,
 		Normal,
 		ShowNormal,
 		ShowMinimized,
@@ -235,7 +239,7 @@ var (
 		ShowDefault,
 		ForceMinimize uintptr
 	}{
-		Hide:            0,
+		hide:            0,
 		Normal:          1,
 		ShowNormal:      1,
 		ShowMinimized:   2,
@@ -357,6 +361,7 @@ var (
 	enumDisplayMonitors          = user32.MustFindProc("EnumDisplayMonitors")
 	findWindow                   = user32.MustFindProc("FindWindowW")
 	getClientRect                = user32.MustFindProc("GetClientRect")
+	getWindow                    = user32.MustFindProc("GetWindow")
 	getWindowInfo                = user32.MustFindProc("GetWindowInfo")
 	monitorFromWindow            = user32.MustFindProc("MonitorFromWindow")
 	showWindow                   = user32.MustFindProc("ShowWindow")
@@ -378,20 +383,17 @@ var (
 	dwmGetWindowAttribute = dwmapi.MustFindProc("DwmGetWindowAttribute")
 	dwmSetWindowAttribute = dwmapi.MustFindProc("DwmSetWindowAttribute")
 
-	getLastError            = modKernel32.NewProc("GetLastError")
-	setThreadExecutionState = modKernel32.NewProc("SetThreadExecutionState")
+	getLastError            = kernel32.NewProc("GetLastError")
+	setThreadExecutionState = kernel32.NewProc("SetThreadExecutionState")
 
-	transparentBlt = msimg32.MustFindProc("TransparentBlt")
+	setProcessDpiAwareness = shcore.NewProc("SetProcessDpiAwareness")
 
-	dwmapi      = syscall.MustLoadDLL("dwmapi.dll")
-	gdi32       = syscall.MustLoadDLL("gdi32.dll")
-	modShcore   = syscall.NewLazyDLL("shcore.dll")
-	modKernel32 = syscall.NewLazyDLL("kernel32.dll")
-	psapi32     = syscall.MustLoadDLL("psapi.dll")
-	user32      = syscall.MustLoadDLL("user32.dll")
-	msimg32     = syscall.MustLoadDLL("msimg32.dll")
-
-	setProcessDpiAwareness = modShcore.NewProc("SetProcessDpiAwareness")
+	dwmapi   = syscall.MustLoadDLL("dwmapi.dll")
+	gdi32    = syscall.MustLoadDLL("gdi32.dll")
+	shcore   = syscall.NewLazyDLL("shcore.dll")
+	kernel32 = syscall.NewLazyDLL("kernel32.dll")
+	psapi32  = syscall.MustLoadDLL("psapi.dll")
+	user32   = syscall.MustLoadDLL("user32.dll")
 )
 
 func init() {

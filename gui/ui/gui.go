@@ -80,11 +80,6 @@ var UI *GUI
 
 // New initializes and returns a new GUI instance.
 func New() *GUI {
-	err := win32.SetProcessDPIAwareness(win32.PerMonitorAware)
-	if err != nil {
-		notify.Warn("[UI] <ini:f:set> DPI awareness, %v", err)
-	}
-
 	d := dimensions{threshold: 2}
 
 	notify.System("[UI] Generating")
@@ -304,7 +299,7 @@ func (g *GUI) moveWindow(shift image.Point) {
 
 // position returns the current window position.
 func (g *GUI) position() image.Point {
-	next, err := win32.Window(g.HWND).RectComplete()
+	next, err := win32.Window(g.HWND).RectWindow()
 	if err != nil {
 		return image.Point{}
 	}

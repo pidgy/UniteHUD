@@ -9,9 +9,6 @@ import (
 	"reflect"
 	"syscall"
 	"unsafe"
-
-	"github.com/pidgy/unitehud/core/config"
-	"github.com/pidgy/unitehud/core/notify"
 )
 
 const BitmapInfoHeaderSize = uint32(40)
@@ -146,23 +143,42 @@ func (d Device) HWND() uintptr {
 	return uintptr(d)
 }
 
-func GetAllMonitors() (Monitors, error) {
+func FindMonitors() (Monitors, error) {
 	m := Monitors{}
-	_, _, err := enumDisplayMonitors.Call(0, 0, enumerateDisplayMonitorsCallback, uintptr(unsafe.Pointer(&m)))
-	if err != syscall.Errno(0) {
-		return m, err
+	res, _, _ := enumDisplayMonitors.Call(0, 0, enumerateDisplayMonitorsCallback, uintptr(unsafe.Pointer(&m)))
+	if res == 0 {
+		return Monitors{}, fmt.Errorf("failed to enumerate display monitors")
 	}
 	return m, nil
 }
 
-func GetAllWindows() (Windows, error) {
+func FindWindows() (Windows, error) {
 	w := Windows{}
-	enumWindows.Call(enumerateWindowsCallback, uintptr(unsafe.Pointer(&w)))
+	res, _, err := enumWindows.Call(enumerateWindowsCallback, uintptr(unsafe.Pointer(&w)))
+	if res == 0 {
+		return Windows{}, err
+	}
+
 	return w, nil
 }
 
-func GetMonitorHandleFromIndex(index int) (hwnd uintptr, err error) {
-	ms, err := GetAllMonitors()
+func NewMonitorInfo() (MonitorInfo, error) {
+	mi := MonitorInfo{
+		cbSize: uint32(unsafe.Sizeof(MonitorInfo{})),
+	}
+
+	v1, _, _ := monitorFromWindow.Call(0, MonitorFlags.DefaultToNearest)
+
+	v2, _, err := getMonitorInfoW.Call(v1, uintptr(unsafe.Pointer(&mi)))
+	if v2 == 0 {
+		return mi, err
+	}
+
+	return mi, nil
+}
+
+func MonitorHandleFromIndex(index int) (hwnd uintptr, err error) {
+	ms, err := FindMonitors()
 	if err != nil {
 		return 0, err
 	}
@@ -173,55 +189,6 @@ func GetMonitorHandleFromIndex(index int) (hwnd uintptr, err error) {
 	}
 
 	return 0, fmt.Errorf("invalid monitor index: %d", index)
-}
-
-func GetMonitorIndexFromMonitorInfo(mi MonitorInfo) (int, error) {
-	ms, err := GetAllMonitors()
-	if err != nil {
-		return -1, err
-	}
-	for i, m := range ms.Active {
-		if m.Rect.Eq(mi.Monitor) {
-			return i, nil
-		}
-	}
-	return -1, fmt.Errorf("invalid monitor info")
-}
-
-func GetMonitorInfo() (MonitorInfo, error) {
-	mi := MonitorInfo{
-		cbSize: uint32(unsafe.Sizeof(MonitorInfo{})),
-	}
-
-	v, _, err := monitorFromWindow.Call(0, MonitorFromWindowOptions.DefaultToPrimary)
-	if v == 0 {
-		return mi, err
-	}
-
-	v, _, err = getMonitorInfoW.Call(v, uintptr(unsafe.Pointer(&mi)))
-	if v == 0 {
-		return mi, err
-	}
-
-	return mi, nil
-}
-
-func GetMonitorInfoFromWindow(w Window) (MonitorInfo, error) {
-	mi := MonitorInfo{
-		cbSize: uint32(unsafe.Sizeof(MonitorInfo{})),
-	}
-
-	v, _, err := monitorFromWindow.Call(w.HWND(), MonitorFromWindowOptions.DefaultToPrimary)
-	if v == 0 {
-		return mi, err
-	}
-
-	v, _, err = getMonitorInfoW.Call(v, uintptr(unsafe.Pointer(&mi)))
-	if v == 0 {
-		return mi, err
-	}
-
-	return mi, nil
 }
 
 func (w Monitor) Capture(area image.Rectangle, resize image.Point) (*image.RGBA, error) {
@@ -267,7 +234,7 @@ func (w Monitor) Capture(area image.Rectangle, resize image.Point) (*image.RGBA,
 		0,
 	)
 	if bitmap == 0 {
-		return nil, fmt.Errorf("failed to create bitmap for \"%s\" monitor: %v", config.Current.Video.Capture.Window.Name, err)
+		return nil, fmt.Errorf("failed to create bitmap for monitor: %v", err)
 	}
 	defer deleteObject.Call(bitmap)
 
@@ -296,7 +263,6 @@ func (w Monitor) Capture(area image.Rectangle, resize image.Point) (*image.RGBA,
 			bitBltRasterOperations.SrcPaint,
 		)
 		if res == 0 {
-			notify.Error("[Win32] Failed to scale and capture monitor")
 			return nil, fmt.Errorf("bitblt returned: %d", res)
 		}
 	} else {
@@ -314,7 +280,6 @@ func (w Monitor) Capture(area image.Rectangle, resize image.Point) (*image.RGBA,
 			bitBltRasterOperations.SrcPaint,
 		)
 		if res == 0 {
-			notify.Error("[Win32] Failed to capture monitor (%v)", err)
 			return nil, fmt.Errorf("failed to capture window: %v", err)
 		}
 	}
@@ -344,8 +309,22 @@ func (w Monitor) Capture(area image.Rectangle, resize image.Point) (*image.RGBA,
 		),
 	}, nil
 }
+
 func (w Monitor) String() string {
-	return fmt.Sprintf("Monitor: Handle: %d, Index: %d, Rect: %s", w.HWND, w.Index, w.Rect)
+	return fmt.Sprintf("Handle: %d, Index: %d, Rect: %s", w.HWND, w.Index, w.Rect)
+}
+
+func (m MonitorInfo) Index() (int, error) {
+	all, err := FindMonitors()
+	if err != nil {
+		return -1, err
+	}
+	for i, m2 := range all.Active {
+		if m2.Rect.Eq(m.Monitor) {
+			return i, nil
+		}
+	}
+	return -1, fmt.Errorf("invalid monitor info")
 }
 
 func (mi MonitorInfo) String() string {
@@ -398,8 +377,8 @@ func (r Rect) String() string {
 	return fmt.Sprintf("[L:%d,T:%d,R:%d,B:%d]", r.Left, r.Top, r.Right, r.Bottom)
 }
 
-// SetProcessDpiAwareness ensures that Windows API calls will tell us the scale factor for our
-// screen so that our screenshot works on hi-res displays.
+// SetProcessDpiAwareness ensures that Windows API calls will tell us the scale factor for our screen so that our screenshot works on hi-res displays.
+// This is already declared in the installation executable for UniteHUD, so there is no need for it to be called by the main thread.
 func SetProcessDPIAwareness(ctx SetProcessDpiAwarenessContext) error {
 	_, _, err := setProcessDpiAwareness.Call(uintptr(ctx))
 	if err != syscall.Errno(0) {
@@ -413,9 +392,8 @@ func SetThreadExecutionState(states ...ThreadExecutionState) error {
 	for _, state := range states {
 		t |= state
 	}
-	_, _, err := setThreadExecutionState.Call(uintptr(t))
-	if err != syscall.Errno(0) {
-		return err
+	if res, _, _ := setThreadExecutionState.Call(uintptr(t)); res == 0 {
+		return fmt.Errorf("failed to set thread execution state")
 	}
 	return nil
 }
@@ -450,15 +428,15 @@ func SetWindowPosShow(hwnd uintptr, pt image.Point, size image.Point) {
 
 // ? ShowWindowMinimizedRestore: ShowWindowFlags.ShowMinimized not working.
 func ShowWindowMinimizedRestore(hwnd uintptr) {
-	showWindow.Call(hwnd, ShowWindowFlags.ShowMinimized|ShowWindowFlags.Restore)
+	showWindow.Call(hwnd, showWindowFlags.ShowMinimized|showWindowFlags.Restore)
 }
 
 func ShowWindowHide(hwnd uintptr) {
-	showWindow.Call(hwnd, ShowWindowFlags.Hide)
+	showWindow.Call(hwnd, showWindowFlags.hide)
 }
 
 func ShowWindowRestore(hwnd uintptr) {
-	showWindow.Call(hwnd, ShowWindowFlags.Restore)
+	showWindow.Call(hwnd, showWindowFlags.Restore)
 }
 
 /*
@@ -505,7 +483,7 @@ func (w Window) Capture2(area image.Rectangle, resize image.Point) (*image.RGBA,
 		0,
 	)
 	if bitmap == 0 {
-		return nil, fmt.Errorf("failed to create bitmap for \"%s\" window: %v", config.Current.Video.Capture.Window.Name, err)
+		return nil, fmt.Errorf("failed to create bitmap for window: %v", err)
 	}
 	defer DeleteObject.Call(bitmap)
 
@@ -515,7 +493,6 @@ func (w Window) Capture2(area image.Rectangle, resize image.Point) (*image.RGBA,
 	if scaling {
 				// res, _, _ := setStretchBltMode.Call(dst, SetStretchBltMode.ColorOnColor)
 		// if res == 0 {
-		// 	notify.Warn("[Win32] Failed to set StretchBlt mode")
 		// }
 
 		res, _, _ := stretchBlt.Call(
@@ -536,7 +513,6 @@ func (w Window) Capture2(area image.Rectangle, resize image.Point) (*image.RGBA,
 			BitBltRasterOperations.SrcPaint,
 		)
 		if res == 0 {
-			notify.Error("[Win32] Failed to scale and capture \"%s\" window", config.Current.Video.Capture.Window.Name)
 			return nil, fmt.Errorf("bitblt returned: %d", res)
 		}
 	} else {
@@ -554,7 +530,6 @@ func (w Window) Capture2(area image.Rectangle, resize image.Point) (*image.RGBA,
 			BitBltRasterOperations.SrcPaint,
 		)
 		if res == 0 {
-			notify.Error("[Win32] Failed to capture \"%s\" window (%v)", config.Current.Video.Capture.Window.Name, err)
 		return nil, fmt.Errorf("failed to capture window: %v", err)
 		}
 	}
@@ -626,7 +601,7 @@ func (w Window) capture(area image.Rectangle) (*image.RGBA, error) {
 	// Select the object and paint it.
 	selectObject.Call(dst, bitmap)
 
-	res, _, err := transparentBlt.Call(
+	res, _, err := bitBlt.Call(
 		// Dst.
 		dst,
 		0,
@@ -637,32 +612,11 @@ func (w Window) capture(area image.Rectangle) (*image.RGBA, error) {
 		src,
 		uintptr(area.Min.X),
 		uintptr(area.Min.Y),
-		uintptr(area.Max.X),
-		uintptr(area.Max.Y),
-		232323,
+		bitBltRasterOperations.SrcPaint,
 	)
 	if res == 0 {
-		notify.Error("[Win32] Failed to capture \"%s\" (%v)", config.Current.Video.Capture.Window.Name, err)
 		return nil, fmt.Errorf("failed to capture window: %v", err)
 	}
-
-	// res, _, err := bitBlt.Call(
-	// 	// Dst.
-	// 	dst,
-	// 	0,
-	// 	0,
-	// 	uintptr(area.Dx()),
-	// 	uintptr(area.Dy()),
-	// 	// Src.
-	// 	src,
-	// 	uintptr(area.Min.X),
-	// 	uintptr(area.Min.Y),
-	// 	bitBltRasterOperations.SrcPaint,
-	// )
-	// if res == 0 {
-	// 	notify.Error("[Win32] Failed to capture \"%s\" (%v)", config.Current.Video.Capture.Window.Name, err)
-	// 	return nil, fmt.Errorf("failed to capture window: %v", err)
-	// }
 
 	// Convert the bitmap to an image.Image. We first start by directly
 	// creating a slice. This is unsafe but we know the underlying structure
@@ -750,7 +704,6 @@ func (w Window) captureResize(area image.Rectangle, resize image.Point) (*image.
 
 	// res, _, _ := setStretchBltMode.Call(dst, SetStretchBltMode.ColorOnColor)
 	// if res == 0 {
-	// 	notify.Warn("[Win32] Failed to set StretchBlt mode")
 	// }
 
 	res, _, _ := stretchBlt.Call(
@@ -769,7 +722,6 @@ func (w Window) captureResize(area image.Rectangle, resize image.Point) (*image.
 		bitBltRasterOperations.SrcPaint,
 	)
 	if res == 0 {
-		notify.Error("[Win32] Failed to scale and capture \"%s\"", config.Current.Video.Capture.Window.Name)
 		return nil, fmt.Errorf("failed to scale window")
 	}
 
@@ -806,7 +758,7 @@ func (w Window) captureResize(area image.Rectangle, resize image.Point) (*image.
 		0,
 	)
 	if bitmap2 == 0 {
-		return nil, fmt.Errorf("failed to create bitmap for \"%s\" window: %v", config.Current.Video.Capture.Window.Name, err)
+		return nil, fmt.Errorf("failed to create bitmap for window: %v", err)
 	}
 	defer deleteObject.Call(bitmap2)
 
@@ -815,7 +767,6 @@ func (w Window) captureResize(area image.Rectangle, resize image.Point) (*image.
 
 	// res, _, _ := setStretchBltMode.Call(dst, SetStretchBltMode.ColorOnColor)
 	// if res == 0 {
-	// 	notify.Warn("[Win32] Failed to set StretchBlt mode")
 	// }
 
 	res, _, _ = stretchBlt.Call(
@@ -834,7 +785,6 @@ func (w Window) captureResize(area image.Rectangle, resize image.Point) (*image.
 		bitBltRasterOperations.SrcPaint,
 	)
 	if res == 0 {
-		notify.Error("[Win32] Failed to scale and capture \"%s\" window", config.Current.Video.Capture.Window.Name)
 		return nil, fmt.Errorf("failed to resize window")
 	}
 
@@ -876,7 +826,7 @@ func (w Window) Capture(area image.Rectangle, resize image.Point) (*image.RGBA, 
 }
 
 func (w Window) Dimensions() (image.Point, error) {
-	rect, err := w.Rect()
+	rect, err := w.RectClient()
 	if err != nil {
 		return image.Pt(-1, -1), err
 	}
@@ -900,18 +850,52 @@ func (w Window) Info() WindowInfo {
 	return wi
 }
 
-func (w Window) Rect() (Rect, error) {
-	r := Rect{}
-	_, _, err := getClientRect.Call(w.HWND(), uintptr(unsafe.Pointer(&r)))
+func (w Window) Monitor() (Monitor, error) {
+	m, _, _ := monitorFromWindow.Call(w.HWND(), MonitorFlags.DefaultToNULL)
+	if m == 0 {
+		return Monitor{}, fmt.Errorf("window monitor not found")
+	}
+
+	i, err := w.MonitorInfo()
 	if err != nil {
-		if err != syscall.Errno(0) {
-			return r, err
-		}
+		return Monitor{}, err
+	}
+
+	index, err := i.Index()
+	if err != nil {
+		return Monitor{}, err
+	}
+
+	return Monitor{HWND: m, Index: index, Rect: i.Monitor}, nil
+}
+
+func (w Window) MonitorInfo() (MonitorInfo, error) {
+	mi := MonitorInfo{
+		cbSize: uint32(unsafe.Sizeof(MonitorInfo{})),
+	}
+
+	v, _, err := monitorFromWindow.Call(w.HWND(), MonitorFlags.DefaultToNULL)
+	if v == 0 {
+		return mi, err
+	}
+
+	v, _, err = getMonitorInfoW.Call(v, uintptr(unsafe.Pointer(&mi)))
+	if v == 0 {
+		return mi, err
+	}
+
+	return mi, nil
+}
+func (w Window) RectClient() (Rect, error) {
+	r := Rect{}
+	res, _, err := getClientRect.Call(w.HWND(), uintptr(unsafe.Pointer(&r)))
+	if res == 0 {
+		return r, err
 	}
 	return r, nil
 }
 
-func (w Window) RectComplete() (Rect, error) {
+func (w Window) RectWindow() (Rect, error) {
 	r := Rect{}
 	res, _, err := getWindowRect.Call(w.HWND(), uintptr(unsafe.Pointer(&r)))
 	if res == 0 {

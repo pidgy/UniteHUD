@@ -213,11 +213,11 @@ func (g *GUI) projector(onclose func()) {
 							layout.Stacked(func(gtx layout.Context) layout.Dimensions {
 								if ui.nav.stats.Radio {
 									statsLabel.Text = ""
-									mi, err := win32.GetMonitorInfoFromWindow(win32.Window(ui.hwnd))
+									mi, err := win32.Window(ui.hwnd).MonitorInfo()
 									if err != nil {
 										statsLabel.Text += fmt.Sprintf("Error: %v\n", err)
 									}
-									index, err := win32.GetMonitorIndexFromMonitorInfo(mi)
+									index, err := mi.Index()
 									if err != nil {
 										statsLabel.Text += fmt.Sprintf("Error: %v\n", err)
 									}
@@ -514,7 +514,7 @@ func (ui *projector) setWindowPos(shift image.Point) {
 		}
 		ui.dimensions.shift = shift
 
-		r, err := win32.Window(ui.hwnd).RectComplete()
+		r, err := win32.Window(ui.hwnd).RectWindow()
 		if err != nil {
 			notify.Error("[UI] Failed to determine window position")
 			return

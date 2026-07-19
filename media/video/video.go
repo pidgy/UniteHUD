@@ -27,10 +27,10 @@ func Active(s Source, name string) bool {
 	switch s {
 	case Device:
 		return device.IsActive()
-	case Monitor:
-		return monitor.IsActive()
 	case Window:
 		return window.IsActive()
+	case Monitor:
+		return monitor.IsActive()
 	default:
 		return false
 	}
@@ -40,49 +40,45 @@ func Current() Source {
 	switch {
 	case device.IsActive():
 		return Device
-	case monitor.IsActive():
-		return Monitor
 	case window.IsActive():
 		return Window
+	case monitor.IsActive():
+		return Monitor
 	default:
 		return Unknown
 	}
 }
 
 func Capture() (*image.RGBA, error) {
-	if device.IsActive() {
+	switch Current() {
+	case Device:
 		return device.Capture()
-	}
-
-	if window.IsActive() {
+	case Window:
 		return window.Capture()
-	}
-
-	if monitor.IsActive() {
+	case Monitor:
 		return monitor.Capture()
+	default:
+		return nil, fmt.Errorf("failed to capture video: exhausted sources")
 	}
-
-	return nil, fmt.Errorf("failed to capture video: exhausted sources")
 }
 
 func CaptureRect(r image.Rectangle) (*image.RGBA, error) {
-	if device.IsActive() {
+	switch Current() {
+	case Device:
 		return device.CaptureRect(r)
-	}
-
-	if window.IsActive() {
+	case Window:
 		return window.CaptureRect(r)
-	}
-
-	if monitor.IsActive() {
+	case Monitor:
 		return monitor.CaptureRect(r)
+	default:
+		return nil, fmt.Errorf("failed to capture video area: exhausted sources")
 	}
-
-	return nil, fmt.Errorf("failed to capture video area: exhausted sources")
 }
 
 func Close() {
 	device.Close()
+	window.Close()
+	monitor.Close()
 }
 
 func Devices() []int {
@@ -98,6 +94,10 @@ func FPS() float64 {
 	default:
 		return -1
 	}
+}
+
+func Is(s Source) bool {
+	return Current() == s
 }
 
 func Monitors() []string {

@@ -14,21 +14,15 @@ import (
 	"github.com/pidgy/unitehud/exe"
 	"github.com/pidgy/unitehud/media/video/monitor"
 	"github.com/pidgy/unitehud/system/win32"
+	"github.com/pidgy/unitehud/system/win32/d3d11"
 )
 
 var (
 	titles        = []string{}
 	sources       = []win32.WindowInfoEx{}
 	ErrFailedFind = fmt.Errorf("failed to find window")
+	d3d           *d3d11.Capture
 )
-
-func activeEx() (win32.WindowInfoEx, bool) {
-	i := slices.IndexFunc(sources, func(e2 win32.WindowInfoEx) bool { return e2.Title == config.Current.Video.Capture.Window.Name })
-	if i == -1 {
-		return win32.WindowInfoEx{}, false
-	}
-	return sources[i], true
-}
 
 func Active() (w win32.Window) {
 	i := slices.Index(titles, config.Current.Video.Capture.Window.Name)
@@ -41,13 +35,40 @@ func Active() (w win32.Window) {
 // Capture captures the desired area from a Window and returns an image.
 func Capture() (*image.RGBA, error) {
 	w := Active()
+	switch config.Current.Video.Capture.Window.Method {
+	case config.CaptureMethodDefault:
+		if d3d != nil {
+			notify.Debug("[Window] Window Direct3D 11 capture")
+			d3d.Close()
+			d3d = nil
+		}
 
-	r32, err := w.Rect()
-	if err != nil {
-		return nil, fmt.Errorf("failed to determine client area")
+		r32, err := w.RectClient()
+		if err != nil {
+			return nil, fmt.Errorf("failed to determine client area")
+		}
+
+		return w.Capture(r32.Image(), monitor.DefaultResolution.Size())
+	case config.CaptureMethodDirect3D11:
+		if d3d == nil {
+			notify.Debug("[Window] Starting Direct3D 11 capture")
+
+			m, err := w.Monitor()
+			if err != nil {
+				return nil, err
+			}
+
+			c, err := d3d11.NewCapture(m.HWND)
+			if err != nil {
+				return nil, err
+			}
+			d3d = c
+		}
+
+		return d3d.CaptureWindow(w.Info().Window.Image())
+	default:
+		return nil, fmt.Errorf("unknown window capture method")
 	}
-
-	return w.Capture(r32.Image(), monitor.DefaultResolution.Size())
 }
 
 func CaptureRect(r image.Rectangle) (*image.RGBA, error) {
@@ -57,6 +78,13 @@ func CaptureRect(r image.Rectangle) (*image.RGBA, error) {
 	}
 
 	return img.SubImage(r).(*image.RGBA), nil
+}
+
+func Close() {
+	if d3d != nil {
+		d3d.Close()
+		d3d = nil
+	}
 }
 
 func IsActive() bool {
@@ -82,7 +110,7 @@ func Open() error {
 }
 
 func Resolution() image.Point {
-	r32, err := Active().Rect()
+	r32, err := Active().RectClient()
 	if err != nil {
 		return image.Point{}
 	}
@@ -95,7 +123,7 @@ func Titles() []string {
 
 func background() error {
 	fn := func() error {
-		windows, err := win32.GetAllWindows()
+		windows, err := win32.FindWindows()
 		if err != nil {
 			return err
 		}

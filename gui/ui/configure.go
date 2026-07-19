@@ -86,11 +86,13 @@ type configure struct {
 		}
 
 		video struct {
-			device  material.LabelStyle
-			monitor material.LabelStyle
-			window  material.LabelStyle
-			api     material.LabelStyle
-			codec   material.LabelStyle
+			device     material.LabelStyle
+			monitor    material.LabelStyle
+			window     material.LabelStyle
+			api        material.LabelStyle
+			codec      material.LabelStyle
+			monCapture material.LabelStyle
+			winCapture material.LabelStyle
 		}
 	}
 
@@ -374,7 +376,10 @@ func (g *GUI) configure() {
 										layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 											return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 												return layout.Inset{Top: unit.Dp(5)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-													return ui.labels.video.api.Layout(gtx)
+													if video.Is(video.Device) {
+														return ui.labels.video.api.Layout(gtx)
+													}
+													return ui.labels.video.monCapture.Layout(gtx)
 												})
 											})
 										}),
@@ -382,7 +387,10 @@ func (g *GUI) configure() {
 										ui.spacer(0, 1),
 
 										layout.Flexed(.9, func(gtx layout.Context) layout.Dimensions {
-											return ui.groups.videos.apis.list.Layout(gtx)
+											if video.Is(video.Device) {
+												return ui.groups.videos.apis.list.Layout(gtx)
+											}
+											return ui.groups.videos.monMethods.list.Layout(gtx)
 										}),
 									)
 								}),
@@ -394,7 +402,10 @@ func (g *GUI) configure() {
 										layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 											return layout.Center.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 												return layout.Inset{Top: unit.Dp(5)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-													return ui.labels.video.codec.Layout(gtx)
+													if video.Is(video.Device) {
+														return ui.labels.video.codec.Layout(gtx)
+													}
+													return ui.labels.video.winCapture.Layout(gtx)
 												})
 											})
 										}),
@@ -402,7 +413,11 @@ func (g *GUI) configure() {
 										ui.spacer(0, 1),
 
 										layout.Flexed(.9, func(gtx layout.Context) layout.Dimensions {
-											return ui.groups.videos.codecs.list.Layout(gtx)
+											if video.Is(video.Device) {
+												return ui.groups.videos.codecs.list.Layout(gtx)
+											}
+											return ui.groups.videos.winMethods.list.Layout(gtx)
+
 										}),
 									)
 								}),
@@ -841,7 +856,7 @@ func (g *GUI) configureUI() *configure {
 
 			w := win32.Window(g.HWND)
 
-			r, err := w.Rect()
+			r, err := w.RectClient()
 			if err != nil {
 				notify.Error("[UI] Failed to determine screenshot dimensions (%v)", err)
 				g.ToastErrorf("Failed to capture screenshot (%v)", err)
@@ -900,6 +915,14 @@ func (g *GUI) configureUI() *configure {
 	ui.labels.video.codec = material.Label(g.nav.Calibri().Theme, unit.Sp(12), "Codec")
 	ui.labels.video.codec.Color = nrgba.Highlight.Color()
 	ui.labels.video.codec.Font.Weight = 100
+
+	ui.labels.video.monCapture = material.Label(g.nav.Calibri().Theme, unit.Sp(12), "Monitor Capture Method")
+	ui.labels.video.monCapture.Color = nrgba.Highlight.Color()
+	ui.labels.video.monCapture.Font.Weight = 100
+
+	ui.labels.video.winCapture = material.Label(g.nav.Calibri().Theme, unit.Sp(12), "Window Capture Method")
+	ui.labels.video.winCapture.Color = nrgba.Highlight.Color()
+	ui.labels.video.winCapture.Font.Weight = 100
 
 	ui.footer = &footer{
 		api: material.Label(g.nav.Calibri().Theme, unit.Sp(12), ""),

@@ -111,7 +111,7 @@ func Follow(hwnd uintptr, size image.Point, force bool) {
 			notify.Error("[Electron] <ini:f:to> show HUD (%v)", err)
 		}
 
-		next, err := win32.Window(hwnd).RectComplete()
+		next, err := win32.Window(hwnd).RectWindow()
 		if err != nil {
 			notify.Error("[Electron] Failed to find projector dimensions (%v)", err)
 			return

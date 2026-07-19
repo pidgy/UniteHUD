@@ -21,8 +21,6 @@ github.com/asticode/go-astilectron v0.30.0/go.mod h1:o7wZ7KDr3XH3xcEwcxfpWzNVf63
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/disintegration/gift v1.2.1 h1:Y005a1X4Z7Uc+0gLpSAsKhWi4qLtsdEcMIbbdvdZ6pc=
-github.com/disintegration/gift v1.2.1/go.mod h1:Jh2i7f7Q2BM7Ezno3PhfezbR1xpUg9dUg3/RlKGr4HI=
 github.com/gen2brain/malgo v0.11.10 h1:u41QchDBS7Z2rwEVPu7uycK6HA8IyzKoUOhLU7IvYW4=
 github.com/gen2brain/malgo v0.11.10/go.mod h1:f9TtuN7DVrXMiV/yIceMeWpvanyVzJQMlBecJFVMxww=
 github.com/go-ole/go-ole v1.3.0 h1:Dt6ye7+vXGIKZ7Xtk4s6/xVdGDQynvom7xCFEdWr6uE=
@@ -31,8 +29,6 @@ github.com/go-text/typesetting v0.0.0-20231202102523-0024ac628562 h1:p5ggfA4XKhX
 github.com/go-text/typesetting v0.0.0-20231202102523-0024ac628562/go.mod h1:ZTBPu1Pp5k3Hc28GAYUUK0hH3Ou0Sz3nMBpWetRgibc=
 github.com/go-text/typesetting-utils v0.0.0-20231121125213-61dadda55b86 h1:PZEJHpJCgm6PTMCYQOhXWpW7RbJ/k+AAeyHtDQK9Txc=
 github.com/go-text/typesetting-utils v0.0.0-20231121125213-61dadda55b86/go.mod h1:DDxDdQEnB70R8owOx3LVpEFvpMK9eeH1o2r0yZhFI9o=
-github.com/gonutz/d3d9 v1.2.4 h1:whsZkcFOxjPXkVgO6koGzE4prk2IkX5ZMxzIgW7gryk=
-github.com/gonutz/d3d9 v1.2.4/go.mod h1:q74g3QbR280b+qYauwEV0N9SVadszWPLZ4l/wHiD/AA=
 github.com/google/go-cmp v0.6.0 h1:ofyhxvXcZhMsU5ulbFiLKl/XBFqE1GSq7atu8tAmTRI=
 github.com/google/go-cmp v0.6.0/go.mod h1:17dUlkBOakJ0+DkrSSNjCkIjxS6bF9zb3elmeNGIjoY=
 github.com/google/uuid v1.4.0 h1:MtMxsa51/r9yyhkyLsVeVt0B+BGQZzpQiTQ4eHZ8bc4=

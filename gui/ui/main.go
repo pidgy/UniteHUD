@@ -281,9 +281,21 @@ func (g *GUI) main() {
 							ui.labels.window.Color = nrgba.Percent(fps / float64(config.Current.Video.Capture.Device.FPS)).Color()
 							ui.labels.window.Text = fmt.Sprintf("📺 %s %.0fFPS", device.Name(config.Current.Video.Capture.Device.Index), fps)
 						case window.IsActive():
-							ui.labels.window.Text = fmt.Sprintf("📺 %s (%s) -> (%s)", config.Current.Video.Capture.Window.Name, window.Resolution(), notify.PreviewResolutionString())
+							ui.labels.window.Text = fmt.Sprintf(
+								"📺 %s (%s) -> (%s) / %s",
+								config.Current.Video.Capture.Window.Name,
+								window.Resolution(),
+								notify.PreviewResolutionString(),
+								config.Current.Video.Capture.Window.Method,
+							)
 						case monitor.IsActive():
-							ui.labels.window.Text = fmt.Sprintf("📺 %s (%s) -> (%s)", config.Current.Video.Capture.Monitor.Name, monitor.Resolution(), notify.PreviewResolutionString())
+							ui.labels.window.Text = fmt.Sprintf(
+								"📺 %s (%s) -> (%s) / %s",
+								config.Current.Video.Capture.Monitor.Name,
+								monitor.Resolution(),
+								notify.PreviewResolutionString(),
+								config.Current.Video.Capture.Monitor.Method,
+							)
 						}
 
 						layout.Inset{
@@ -1244,7 +1256,7 @@ func (g *GUI) mainUI() *main {
 
 			w := win32.Window(g.HWND)
 
-			r, err := w.Rect()
+			r, err := w.RectClient()
 			if err != nil {
 				notify.Error("[UI] Failed to determine screenshot dimensions (%v)", err)
 				g.ToastErrorf("Failed to capture screenshot (%v)", err)

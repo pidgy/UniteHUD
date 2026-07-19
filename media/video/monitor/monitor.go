@@ -11,6 +11,7 @@ import (
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/system/win32"
+	"github.com/pidgy/unitehud/system/win32/d3d11"
 )
 
 type monitor struct {
@@ -25,6 +26,8 @@ var (
 
 	Sources  = []string{config.MainDisplay}
 	displays = []monitor{{name: config.MainDisplay, Monitor: win32.Monitor{Index: 0}, resolution: DefaultResolution.Size()}}
+
+	d3d *d3d11.Capture
 )
 
 func BoundsFromCoordinate(x int) image.Rectangle {
@@ -51,7 +54,31 @@ func Capture() (*image.RGBA, error) {
 		return nil, fmt.Errorf("%s: invalid display", m)
 	}
 
-	return m.Capture(m.bounds, DefaultResolution.Size())
+	switch config.Current.Video.Capture.Monitor.Method {
+	case config.CaptureMethodDefault:
+		if d3d != nil {
+			notify.Debug("[Monitor] Closing Direct3D 11 capture")
+
+			d3d.Close()
+			d3d = nil
+		}
+		return m.Capture(m.bounds, DefaultResolution.Size())
+	case config.CaptureMethodDirect3D11:
+		if d3d == nil {
+			notify.Debug("[Monitor] Starting Direct3D 11 capture")
+
+			c, err := d3d11.NewCapture(m.HWND)
+			if err != nil {
+				return nil, err
+			}
+			d3d = c
+		}
+
+		return d3d.CaptureWindow(m.bounds)
+	default:
+		return nil, fmt.Errorf("unknown window capture method")
+	}
+
 }
 
 func CaptureRect(r image.Rectangle) (*image.RGBA, error) {
@@ -61,6 +88,13 @@ func CaptureRect(r image.Rectangle) (*image.RGBA, error) {
 	}
 
 	return img.SubImage(r).(*image.RGBA), nil
+}
+
+func Close() {
+	if d3d != nil {
+		d3d.Close()
+		d3d = nil
+	}
 }
 
 func IsActive() bool {
@@ -86,7 +120,7 @@ func Open() {
 	topDisplays := 0
 	bottomDisplays := 0
 
-	ms, err := win32.GetAllMonitors()
+	ms, err := win32.FindMonitors()
 	if err != nil {
 		notify.Error("[Monitor] <ini:f:find> monitors (%v)", err)
 		return

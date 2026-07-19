@@ -5,7 +5,7 @@ import (
 )
 
 func TestEnumerateWindows(t *testing.T) {
-	windows, err := GetAllWindows()
+	windows, err := FindWindows()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -20,7 +20,7 @@ func TestEnumerateWindows(t *testing.T) {
 }
 
 func TestEnumerateDisplayMonitors(t *testing.T) {
-	m, err := GetAllMonitors()
+	m, err := FindMonitors()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -28,7 +28,7 @@ func TestEnumerateDisplayMonitors(t *testing.T) {
 }
 
 func TestGetMonitorInfo(t *testing.T) {
-	mi, err := GetMonitorInfo()
+	mi, err := NewMonitorInfo()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,7 +36,7 @@ func TestGetMonitorInfo(t *testing.T) {
 }
 
 func TestGetMonitorHandleFromIndex(t *testing.T) {
-	hwnd, err := GetMonitorHandleFromIndex(0)
+	hwnd, err := MonitorHandleFromIndex(0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,13 +44,13 @@ func TestGetMonitorHandleFromIndex(t *testing.T) {
 }
 
 func TestGetMonitorIndexFromMonitorInfo(t *testing.T) {
-	mi, err := GetMonitorInfo()
+	m, err := NewMonitorInfo()
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Logf("MonitorInfo: %s", mi)
+	t.Logf("MonitorInfo: %s", m)
 
-	i, err := GetMonitorIndexFromMonitorInfo(mi)
+	i, err := m.Index()
 	if err != nil {
 		t.Fatal(err)
 	}

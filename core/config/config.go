@@ -59,6 +59,9 @@ const (
 	DefaultAcceptance = .85
 	// DefaultMatchMethod is the default OpenCV template match method.
 	DefaultMatchMethod = gocv.TmCcoeffNormed
+
+	CaptureMethodDefault    = "BitBlt"
+	CaptureMethodDirect3D11 = "Direct3D 11"
 )
 
 // Config maintains the overall behavior and state for configurable options.
@@ -156,10 +159,12 @@ type (
 					Codec string
 				}
 				Monitor struct {
-					Name string
+					Name   string
+					Method string
 				}
 				Window struct {
-					Name string
+					Name   string
+					Method string
 				}
 			}
 		}
@@ -349,11 +354,13 @@ func (c *Config) SetDefaultVideoCaptureDevice() {
 // SetDefaultVideoCaptureDevice resets the current monitor capture settings.
 func (c *Config) SetDefaultMonitorCapture() {
 	c.Video.Capture.Monitor.Name = MainDisplay
+	c.Video.Capture.Monitor.Method = CaptureMethodDefault
 }
 
 // SetDefaultWindowCapture resets the current window capture settings.
 func (c *Config) SetDefaultWindowCapture() {
 	c.Video.Capture.Window.Name = NoDeviceName
+	c.Video.Capture.Window.Method = CaptureMethodDefault
 }
 
 // TemplateMatchMap returns a map of template names to match counts.
@@ -830,6 +837,14 @@ func Open() error {
 
 	if Current.Video.Capture.Device.FPS == 0 {
 		Current.Video.Capture.Device.FPS = 60
+	}
+
+	if Current.Video.Capture.Monitor.Method == "" {
+		Current.Video.Capture.Monitor.Method = CaptureMethodDefault
+	}
+
+	if Current.Video.Capture.Window.Method == "" {
+		Current.Video.Capture.Window.Method = CaptureMethodDefault
 	}
 
 	notify.Disabled.DebugColors = !Current.Advanced.Accessibility.ColorizedTerminalLogs

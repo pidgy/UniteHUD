@@ -165,13 +165,16 @@ func PNG(img image.Image, name string) error {
 		name = fmt.Sprintf("%s.png", name)
 	}
 
-	path := filepath.Join(exe.Directory(), saved, ImageDirectory, name)
+	path := name
+	if !strings.HasPrefix(name, "./") {
+		path = filepath.Join(exe.Directory(), saved, ImageDirectory, name)
 
-	p := strings.Split(path, `\`)
-	for i := 1; i < len(p); i++ {
-		err := createDirIfNotExist(strings.Join(p[0:i], "/"))
-		if err != nil {
-			return err
+		p := strings.Split(path, `\`)
+		for i := 1; i < len(p); i++ {
+			err := createDirIfNotExist(strings.Join(p[0:i], "/"))
+			if err != nil {
+				return err
+			}
 		}
 	}
 
