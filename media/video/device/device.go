@@ -378,8 +378,6 @@ func (d *dev) reset() {
 
 	config.Current.SetDefaultVideoCaptureDevice()
 
-	notify.System("[Device] Capturing %s", config.Current.Video.Capture.Monitor.Name)
-
 	d.name = Disabled
 	d.index = config.NoVideoCaptureDevice
 	d.fps = -1

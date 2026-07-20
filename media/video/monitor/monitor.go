@@ -57,15 +57,15 @@ func Capture() (*image.RGBA, error) {
 	switch config.Current.Video.Capture.Monitor.Method {
 	case config.CaptureMethodDefault:
 		if d3d != nil {
-			notify.Debug("[Monitor] Closing Direct3D 11 capture")
+			notify.Debug("[Monitor] Closing %s capture", config.Current.Video.Capture.Monitor.Method)
 
 			d3d.Close()
 			d3d = nil
 		}
 		return m.Capture(m.bounds, DefaultResolution.Size())
-	case config.CaptureMethodDirect3D11:
+	case config.CaptureMethodDirectX11:
 		if d3d == nil {
-			notify.Debug("[Monitor] Starting Direct3D 11 capture")
+			notify.Debug("[Monitor] Starting %s capture", config.Current.Video.Capture.Monitor.Method)
 
 			c, err := d3d11.NewCapture(m.HWND)
 			if err != nil {
@@ -78,7 +78,6 @@ func Capture() (*image.RGBA, error) {
 	default:
 		return nil, fmt.Errorf("unknown window capture method")
 	}
-
 }
 
 func CaptureRect(r image.Rectangle) (*image.RGBA, error) {

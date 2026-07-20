@@ -38,7 +38,7 @@ func Capture() (*image.RGBA, error) {
 	switch config.Current.Video.Capture.Window.Method {
 	case config.CaptureMethodDefault:
 		if d3d != nil {
-			notify.Debug("[Window] Window Direct3D 11 capture")
+			notify.Debug("[Window] Closing %s capture", config.Current.Video.Capture.Window.Method)
 			d3d.Close()
 			d3d = nil
 		}
@@ -49,9 +49,9 @@ func Capture() (*image.RGBA, error) {
 		}
 
 		return w.Capture(r32.Image(), monitor.DefaultResolution.Size())
-	case config.CaptureMethodDirect3D11:
+	case config.CaptureMethodDirectX11:
 		if d3d == nil {
-			notify.Debug("[Window] Starting Direct3D 11 capture")
+			notify.Debug("[Window] Starting %s capture", config.Current.Video.Capture.Window.Method)
 
 			m, err := w.Monitor()
 			if err != nil {

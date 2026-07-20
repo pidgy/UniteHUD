@@ -60,8 +60,8 @@ const (
 	// DefaultMatchMethod is the default OpenCV template match method.
 	DefaultMatchMethod = gocv.TmCcoeffNormed
 
-	CaptureMethodDefault    = "BitBlt"
-	CaptureMethodDirect3D11 = "Direct3D 11"
+	CaptureMethodDefault   = "BitBlt"
+	CaptureMethodDirectX11 = "DirectX 11"
 )
 
 // Config maintains the overall behavior and state for configurable options.

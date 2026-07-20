@@ -1065,8 +1065,8 @@ func (g *GUI) videos(text float32) *videos {
 					Disabled: video.Current() != video.Window,
 				},
 				{
-					Text:     config.CaptureMethodDirect3D11,
-					Checked:  widget.Bool{Value: config.Current.Video.Capture.Window.Method == config.CaptureMethodDirect3D11},
+					Text:     config.CaptureMethodDirectX11,
+					Checked:  widget.Bool{Value: config.Current.Video.Capture.Window.Method == config.CaptureMethodDirectX11},
 					Disabled: video.Current() != video.Window,
 				},
 			}
@@ -1099,8 +1099,8 @@ func (g *GUI) videos(text float32) *videos {
 					Disabled: video.Current() != video.Monitor,
 				},
 				{
-					Text:     config.CaptureMethodDirect3D11,
-					Checked:  widget.Bool{Value: config.Current.Video.Capture.Monitor.Method == config.CaptureMethodDirect3D11},
+					Text:     config.CaptureMethodDirectX11,
+					Checked:  widget.Bool{Value: config.Current.Video.Capture.Monitor.Method == config.CaptureMethodDirectX11},
 					Disabled: video.Current() != video.Monitor,
 				},
 			}
