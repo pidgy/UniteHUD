@@ -25,6 +25,7 @@ import (
 	"github.com/pidgy/unitehud/gui/ux/colorpicker"
 	"github.com/pidgy/unitehud/gui/ux/decorate"
 	"github.com/pidgy/unitehud/gui/ux/title"
+	"github.com/pidgy/unitehud/media/video"
 	"github.com/pidgy/unitehud/media/video/device"
 	"github.com/pidgy/unitehud/system/desktop"
 	"github.com/pidgy/unitehud/system/discord"
@@ -437,13 +438,11 @@ func (g *GUI) settingsUI() *settings {
 				},
 			},
 			Callback: func(item *checklist.Item, this *checklist.Widget) {
-				if !device.IsActive() {
-					return
-				}
-
-				err := device.Restart()
-				if err != nil {
-					g.ToastError(err)
+				if video.Is(video.Device) {
+					err := device.Restart()
+					if err != nil {
+						g.ToastError(err)
+					}
 				}
 			},
 		},

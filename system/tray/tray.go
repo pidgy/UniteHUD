@@ -207,11 +207,11 @@ func configuration() {
 		for ; ; time.Sleep(time.Second) {
 			gdev.SetTitle(fmt.Sprintf("Device\t%s", lang.Title(config.Current.Gaming.Device)))
 
-			vdev.SetTitle(fmt.Sprintf("%s\t%s", video.Current(), video.Name()))
+			vdev.SetTitle(fmt.Sprintf("%s\t%s", video.Active(), video.Name()))
 
 			api.SetTitle(fmt.Sprintf("API\t%s", lang.Title(config.Current.Video.Capture.Device.API)))
 			codec.SetTitle(fmt.Sprintf("Codec\t%s", config.Current.Video.Capture.Device.Codec))
-			fps.SetTitle(fmt.Sprintf("FPS\t%.1f/%d", device.FPS(), config.Current.Video.Capture.Device.FPS))
+			fps.SetTitle(fmt.Sprintf("FPS\t%.1f", device.FPS()))
 
 			audIn.SetTitle(fmt.Sprintf("Input\t %s", audio.Current.Input))
 			audOut.SetTitle(fmt.Sprintf("Output\t%s", audio.Current.Output))

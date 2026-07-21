@@ -4,6 +4,7 @@ package win32
 
 import (
 	"syscall"
+	"unsafe"
 )
 
 // http://msdn.microsoft.com/en-us/library/windows/desktop/dd183375.aspx
@@ -42,7 +43,7 @@ type (
 	}
 
 	// Windows RECT structure.
-	Rect struct { 
+	Rect struct {
 		Left   int32 // Min.X
 		Top    int32 // Min.Y
 		Right  int32 // Max.X
@@ -127,9 +128,11 @@ var (
 		RGB uint32
 	}{0}
 
-	CreateDIBSectionError = struct {
-		InvalidParameter uintptr
-	}{2}
+	error32 = struct {
+		invalidParameter uintptr
+	}{
+		0x00000057,
+	}
 
 	CreateDIBSectionUsage = struct {
 		RGBColors uint
@@ -255,6 +258,8 @@ var (
 		ForceMinimize:   11,
 	}
 
+	sizeOfBitmapInfoHeader = uint32(unsafe.Sizeof(BitmapInfoHeader{}))
+
 	// WindowStyles = struct {
 	// 	Caption,
 	// 	MinimizeBox,
@@ -350,7 +355,7 @@ var (
 	isWindowVisible              = user32.MustFindProc("IsWindowVisible")
 	moveWindow                   = user32.MustFindProc("MoveWindow")
 	printWindow                  = user32.MustFindProc("PrintWindow")
-	rReleaseDC                   = user32.MustFindProc("ReleaseDC")
+	releaseDC                    = user32.MustFindProc("ReleaseDC")
 	setForegroundWindow          = user32.MustFindProc("SetForegroundWindow")
 	setThreadDpiAwarenessContext = user32.MustFindProc("GetThreadDpiAwarenessContext")
 	setWindowLongPtrA            = user32.MustFindProc("SetWindowLongPtrA")

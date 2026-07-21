@@ -14,7 +14,6 @@ import (
 
 	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/notify"
-	"github.com/pidgy/unitehud/exe"
 	"github.com/pidgy/unitehud/media/device"
 	"github.com/pidgy/unitehud/media/img"
 	"github.com/pidgy/unitehud/media/img/splash"
@@ -101,8 +100,6 @@ var (
 		},
 	}
 
-	captures float32
-
 	apiUnknown = api{
 		name: "Unknown",
 		gocv: -1,
@@ -111,21 +108,6 @@ var (
 
 func init() {
 	active.reset()
-
-	if exe.Debug {
-		go func() {
-			last := captures
-			for range time.NewTicker(time.Minute).C {
-				if int(last) == int(captures) {
-					continue
-				}
-
-				notify.Debug("[Device] Captures per second: %.1f", captures/60)
-				last = captures
-				captures = 0
-			}
-		}()
-	}
 
 	go func() {
 		cached.apis = append(cached.apis,
@@ -193,7 +175,7 @@ func ActiveName() string {
 }
 
 func Capture() (*image.RGBA, error) {
-	return CaptureRect(image.Rectangle{Max: required.resolution})
+	return img.RGBA(mat)
 }
 
 func CaptureRect(r image.Rectangle) (*image.RGBA, error) {
@@ -213,8 +195,6 @@ func CaptureRect(r image.Rectangle) (*image.RGBA, error) {
 	if !r.In(mrect) {
 		return splash.AsRGBA(splash.Invalid()), fmt.Errorf("illegal boundaries: %s", r)
 	}
-
-	captures++
 
 	return img.RGBA(mat.Region(r))
 }
@@ -567,7 +547,6 @@ func start() error {
 				frames = 0
 			}
 		}
-
 	close:
 		err := video.Close()
 		if err != nil {

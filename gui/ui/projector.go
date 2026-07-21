@@ -28,7 +28,6 @@ import (
 	"github.com/pidgy/unitehud/media/img/splash"
 	"github.com/pidgy/unitehud/media/video"
 	"github.com/pidgy/unitehud/media/video/fps"
-	"github.com/pidgy/unitehud/media/video/monitor"
 	"github.com/pidgy/unitehud/system/process"
 	"github.com/pidgy/unitehud/system/win32"
 )
@@ -213,15 +212,13 @@ func (g *GUI) projector(onclose func()) {
 							layout.Stacked(func(gtx layout.Context) layout.Dimensions {
 								if ui.nav.stats.Radio {
 									statsLabel.Text = ""
-									mi, err := win32.Window(ui.hwnd).MonitorInfo()
+
+									title, err := win32.Window(ui.hwnd).Title()
 									if err != nil {
-										statsLabel.Text += fmt.Sprintf("Error: %v\n", err)
+										title = fmt.Sprintf("Error: %v\n", err)
 									}
-									index, err := mi.Index()
-									if err != nil {
-										statsLabel.Text += fmt.Sprintf("Error: %v\n", err)
-									}
-									statsLabel.Text += fmt.Sprintf("Monitor: %s\n", monitor.NameFromIndex(index))
+
+									statsLabel.Text += fmt.Sprintf("Monitor: %s\n", title)
 									statsLabel.Text += fmt.Sprintf("ㅤRefresh: %sHz\n", g.hz)
 									statsLabel.Text += fmt.Sprintf("ㅤProjector: %dFPS\n", frameTotal)
 									statsLabel.Text += fmt.Sprintf("ㅤCanvas: %dx%d\n", ui.imgDims.Size.X, ui.imgDims.Size.Y)

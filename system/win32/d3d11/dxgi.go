@@ -48,6 +48,13 @@ type errDXGI struct {
 	code uint32
 }
 
+type interfaceAccess struct {
+	vtbl *struct {
+		unknownVTbl
+		getInterface uintptr
+	}
+}
+
 type outduplPointerPosition struct {
 	position point
 	visible  uint32
@@ -241,6 +248,22 @@ func errNotFound(err error) bool {
 	}
 	return e.code == 0x887A0002
 }
+
+func (a *interfaceAccess) getInterfaceTexture2D(iid *guid) (*texture2D, error) {
+	var tex *texture2D
+	r, _, _ := syscall.SyscallN(
+		a.vtbl.getInterface,
+		uintptr(unsafe.Pointer(a)),
+		uintptr(unsafe.Pointer(iid)),
+		uintptr(unsafe.Pointer(&tex)),
+	)
+	if r != 0 {
+		return nil, errDXGI{name: "IDirect3DDxgiInterfaceAccess::GetInterface", code: uint32(r)}
+	}
+	return tex, nil
+}
+
+func (a *interfaceAccess) release() { release(unsafe.Pointer(a), a.vtbl.Release) }
 
 func (o *output) desc() (descOutput, error) {
 	desc := descOutput{}

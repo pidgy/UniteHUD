@@ -19,9 +19,7 @@ import (
 	"github.com/pidgy/unitehud/gui/ux/button"
 	"github.com/pidgy/unitehud/gui/ux/decorate"
 	"github.com/pidgy/unitehud/gui/ux/title"
-	"github.com/pidgy/unitehud/media/video/device"
-	"github.com/pidgy/unitehud/media/video/monitor"
-	"github.com/pidgy/unitehud/media/video/window"
+	"github.com/pidgy/unitehud/media/video"
 )
 
 var (
@@ -351,7 +349,7 @@ func (a *Widget) match() error {
 		a.readyq <- true
 	}
 
-	if !device.IsActive() && !monitor.IsActive() && !window.IsActive() {
+	if video.Active() == video.Unknown {
 		return nil
 	}
 

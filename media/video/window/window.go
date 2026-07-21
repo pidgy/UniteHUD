@@ -21,10 +21,11 @@ var (
 	titles        = []string{}
 	sources       = []win32.WindowInfoEx{}
 	ErrFailedFind = fmt.Errorf("failed to find window")
-	d3d           *d3d11.Capture
+	winRT         *d3d11.Window
+	dx11          *d3d11.Desktop
 )
 
-func Active() (w win32.Window) {
+func Active() win32.Window {
 	i := slices.Index(titles, config.Current.Video.Capture.Window.Name)
 	if i == -1 {
 		return win32.Window(0)
@@ -32,40 +33,70 @@ func Active() (w win32.Window) {
 	return sources[i].Window
 }
 
+func ActiveName() string {
+	i := slices.Index(titles, config.Current.Video.Capture.Window.Name)
+	if i == -1 {
+		return ""
+	}
+	return titles[i]
+}
+
 // Capture captures the desired area from a Window and returns an image.
 func Capture() (*image.RGBA, error) {
+	if config.Current.Video.Capture.Window.Method != config.CaptureMethodWinRT && winRT != nil {
+		notify.Debug("[Window] Closing WinRT capture")
+		winRT.Close()
+		winRT = nil
+	}
+	if config.Current.Video.Capture.Window.Method != config.CaptureMethodDirectX11 && dx11 != nil {
+		notify.Debug("[Window] Closing DirectX 11 capture")
+		dx11.Close()
+		dx11 = nil
+	}
+
 	w := Active()
+
+	r32, err := w.RectClient()
+	if err != nil {
+		return nil, fmt.Errorf("failed to determine client area")
+	}
+	area := r32.Image()
+
 	switch config.Current.Video.Capture.Window.Method {
 	case config.CaptureMethodDefault:
-		if d3d != nil {
-			notify.Debug("[Window] Closing %s capture", config.Current.Video.Capture.Window.Method)
-			d3d.Close()
-			d3d = nil
+		if !r32.Eq(monitor.DefaultResolution32) {
+			return w.CaptureResized(area, monitor.DefaultResolution.Size())
 		}
-
-		r32, err := w.RectClient()
-		if err != nil {
-			return nil, fmt.Errorf("failed to determine client area")
-		}
-
-		return w.Capture(r32.Image(), monitor.DefaultResolution.Size())
+		return w.Capture(area)
 	case config.CaptureMethodDirectX11:
-		if d3d == nil {
-			notify.Debug("[Window] Starting %s capture", config.Current.Video.Capture.Window.Method)
+		if dx11 == nil {
+			notify.Debug("[Window] Starting DirectX 11 capture")
 
 			m, err := w.Monitor()
 			if err != nil {
 				return nil, err
 			}
 
-			c, err := d3d11.NewCapture(m.HWND)
+			dx11, err = d3d11.NewDesktop(m.HWND)
 			if err != nil {
 				return nil, err
 			}
-			d3d = c
 		}
 
-		return d3d.CaptureWindow(w.Info().Window.Image())
+		return dx11.Capture(area)
+	case config.CaptureMethodWinRT:
+		if winRT == nil {
+			notify.Debug("[Window] Starting WinRT capture")
+
+			winRT, err = d3d11.NewWindow(w.HWND())
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		return winRT.Capture()
+	case config.CaptureMethodWin32:
+		return w.CapturePrintWindow(area)
 	default:
 		return nil, fmt.Errorf("unknown window capture method")
 	}
@@ -81,14 +112,30 @@ func CaptureRect(r image.Rectangle) (*image.RGBA, error) {
 }
 
 func Close() {
-	if d3d != nil {
-		d3d.Close()
-		d3d = nil
+	notify.Debug("[Window] Closing captures (DirectX 11: %t) (WinRT: %t)", dx11 != nil, winRT != nil)
+
+	config.Current.SetDefaultWindowCapture()
+
+	if dx11 != nil {
+		dx11.Close()
+		dx11 = nil
+	}
+
+	if winRT != nil {
+		winRT.Close()
+		winRT = nil
 	}
 }
 
 func IsActive() bool {
 	return Active() != win32.Window(0)
+}
+
+func Name(index int) string {
+	if len(titles) > index {
+		return ""
+	}
+	return titles[index]
 }
 
 func Open() error {

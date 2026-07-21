@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"image"
 	"math"
-	"reflect"
 	"syscall"
 	"unsafe"
 )
@@ -114,20 +113,6 @@ func (b Bitmap) id() uintptr {
 	return uintptr(b)
 }
 
-func (b *BitmapInfo) CreateRGBSection(d *Device) (bitmap Bitmap, data Bytes, err error) {
-	r, _, err := createDIBSection.Call(
-		uintptr(d.HWND()),
-		uintptr(unsafe.Pointer(b)),
-		uintptr(CreateDIBSectionUsage.RGBColors),
-		uintptr(unsafe.Pointer(&data)), 0, 0,
-	)
-	if r == 0 || r == CreateDIBSectionError.InvalidParameter {
-		return 0, 0, err
-	}
-
-	return Bitmap(r), data, nil
-}
-
 func (b Bytes) Slice(size image.Point) []byte {
 	data := uintptr(b)
 
@@ -191,7 +176,7 @@ func MonitorHandleFromIndex(index int) (hwnd uintptr, err error) {
 	return 0, fmt.Errorf("invalid monitor index: %d", index)
 }
 
-func (w Monitor) Capture(area image.Rectangle, resize image.Point) (*image.RGBA, error) {
+func (m Monitor) Capture(area image.Rectangle, resize image.Point) (*image.RGBA, error) {
 	scaling := true
 	if resize.Eq(image.Pt(0, 0)) || resize.Eq(area.Size()) {
 		scaling = false
@@ -199,23 +184,23 @@ func (w Monitor) Capture(area image.Rectangle, resize image.Point) (*image.RGBA,
 	}
 
 	// Get the device context for screenshotting.
-	src, _, err := getDC.Call(w.HWND)
+	src, _, err := getDC.Call(m.HWND)
 	if src == 0 {
-		return nil, fmt.Errorf("failed to prepare monitor capture: %v", err)
+		return nil, fmt.Errorf("failed to find device context: %v", err)
 	}
-	defer rReleaseDC.Call(0, src)
+	defer releaseDC.Call(0, src)
 
 	// Grab a compatible DC for drawing.
 	dst, _, err := createCompatibleDC.Call(src)
 	if dst == 0 {
-		return nil, fmt.Errorf("failed to create dest for monitor: %v", err)
+		return nil, fmt.Errorf("failed to create device context: %v", err)
 	}
 	defer deleteDC.Call(dst)
 
 	// Get the bitmap we're going to draw onto.
 	bitmapInfo := BitmapInfo{
 		BmiHeader: BitmapInfoHeader{
-			BiSize:        uint32(reflect.TypeFor[BitmapInfoHeader]().Size()),
+			BiSize:        sizeOfBitmapInfoHeader,
 			BiWidth:       int32(resize.X),
 			BiHeight:      -int32(resize.Y),
 			BiPlanes:      1,
@@ -239,7 +224,10 @@ func (w Monitor) Capture(area image.Rectangle, resize image.Point) (*image.RGBA,
 	defer deleteObject.Call(bitmap)
 
 	// Select the object and paint it.
-	selectObject.Call(dst, bitmap)
+	_, err = Window(m.HWND).selectObject(dst, bitmap)
+	if err != nil {
+		return nil, err
+	}
 
 	if scaling {
 		// res, _, _ := setStretchBltMode.Call(dst, SetStretchBltMode.ColorOnColor)
@@ -310,8 +298,8 @@ func (w Monitor) Capture(area image.Rectangle, resize image.Point) (*image.RGBA,
 	}, nil
 }
 
-func (w Monitor) String() string {
-	return fmt.Sprintf("Handle: %d, Index: %d, Rect: %s", w.HWND, w.Index, w.Rect)
+func (m Monitor) String() string {
+	return fmt.Sprintf("Handle: %d, Index: %d, Rect: %s", m.HWND, m.Index, m.Rect)
 }
 
 func (m MonitorInfo) Index() (int, error) {
@@ -439,143 +427,25 @@ func ShowWindowRestore(hwnd uintptr) {
 	showWindow.Call(hwnd, showWindowFlags.Restore)
 }
 
-/*
-func (w Window) Capture2(area image.Rectangle, resize image.Point) (*image.RGBA, error) {
-	scaling := true
-	if resize.Eq(image.Pt(0, 0)) {
-		scaling = true
-		resize = area.Size()
-	}
-
+func (w Window) Capture(area image.Rectangle) (*image.RGBA, error) {
 	// Get the device context for screenshotting.
 	src, _, err := getDC.Call(w.HWND())
 	if src == 0 {
-		return nil, fmt.Errorf("failed to prepare screen capture: %v", err)
+		return nil, fmt.Errorf("failed to find device context: %v", err)
 	}
-	defer ReleaseDC.Call(0, src)
-
-	// Grab a compatible DC for drawing.
-	dst, _, err := CreateCompatibleDC.Call(src)
-	if dst == 0 {
-		return nil, fmt.Errorf("failed to create DC for drawing: %v", err)
-	}
-	defer DeleteDC.Call(dst)
-
-	// Get the bitmap we're going to draw onto.
-	bitmapInfo := BitmapInfo{
-		BmiHeader: BitmapInfoHeader{
-			BiSize:        uint32(reflect.TypeFor[BitmapInfoHeader]().Size()),
-			BiWidth:       int32(resize.X),
-			BiHeight:      -int32(resize.Y),
-			BiPlanes:      1,
-			BiBitCount:    32,
-			BiCompression: BitmapInfoHeaderCompression.RGB,
-		},
-	}
-
-	bitmapData := unsafe.Pointer(uintptr(0))
-	bitmap, _, err := CreateDIBSection.Call(
-		dst,
-		uintptr(unsafe.Pointer(&bitmapInfo)),
-		0,
-		uintptr(unsafe.Pointer(&bitmapData)),
-		0,
-		0,
-	)
-	if bitmap == 0 {
-		return nil, fmt.Errorf("failed to create bitmap for window: %v", err)
-	}
-	defer DeleteObject.Call(bitmap)
-
-	// Select the object and paint it.
-	SelectObject.Call(dst, bitmap)
-
-	if scaling {
-				// res, _, _ := setStretchBltMode.Call(dst, SetStretchBltMode.ColorOnColor)
-		// if res == 0 {
-		// }
-
-		res, _, _ := stretchBlt.Call(
-
-		res, _, _ = stretchBlt.Call(
-			// Dst.
-			dst,
-			0,
-			0,
-			uintptr(resize.X),
-			uintptr(resize.Y),
-			// Src.
-			src,
-			uintptr(area.Min.X),
-			uintptr(area.Min.Y),
-			uintptr(area.Max.X),
-			uintptr(area.Max.Y),
-			BitBltRasterOperations.SrcPaint,
-		)
-		if res == 0 {
-			return nil, fmt.Errorf("bitblt returned: %d", res)
-		}
-	} else {
-		res, _, err := bitBlt.Call(
-			// Dst.
-			dst,
-			0,
-			0,
-			uintptr(resize.X),
-			uintptr(resize.Y),
-			// Src.
-			src,
-			uintptr(area.Min.X),
-			uintptr(area.Min.Y),
-			BitBltRasterOperations.SrcPaint,
-		)
-		if res == 0 {
-		return nil, fmt.Errorf("failed to capture window: %v", err)
-		}
-	}
-
-	// Convert the bitmap to an image.Image. We first start by directly
-	// creating a slice. This is unsafe but we know the underlying structure
-	// directly.
-	var slice []byte
-	hdr := (*sliceHeader)(unsafe.Pointer(&slice))
-	hdr.Data = uintptr(bitmapData)
-	hdr.Len = resize.X * resize.Y * 4
-	hdr.Cap = hdr.Len
-
-	// Using the raw data, grab the RGBA data and transform it into an image.RGBA
-	raw := make([]byte, len(slice))
-	for i := 0; i < len(raw); i += 4 {
-		raw[i], raw[i+2], raw[i+1], raw[i+3] =
-			slice[i+2], slice[i], slice[i+1], slice[i+3]
-	}
-
-	return &image.RGBA{
-		Pix:    raw,
-		Stride: 4 * resize.X,
-		Rect:   image.Rectangle{Max: resize},
-	}, nil
-*/
-
-func (w Window) capture(area image.Rectangle) (*image.RGBA, error) {
-	// Get the device context for screenshotting.
-	src, _, err := getDC.Call(w.HWND())
-	if src == 0 {
-		return nil, fmt.Errorf("failed to prepare window capture: %v", err)
-	}
-	defer rReleaseDC.Call(0, src)
+	defer releaseDC.Call(0, src)
 
 	// Grab a compatible DC for drawing.
 	dst, _, err := createCompatibleDC.Call(src)
 	if dst == 0 {
-		return nil, fmt.Errorf("failed to create dest for window: %v", err)
+		return nil, fmt.Errorf("failed to create device context: %v", err)
 	}
 	defer deleteDC.Call(dst)
 
 	// Get the bitmap we're going to draw onto.
 	bitmapInfo := BitmapInfo{
 		BmiHeader: BitmapInfoHeader{
-			BiSize:        uint32(reflect.TypeFor[BitmapInfoHeader]().Size()),
+			BiSize:        sizeOfBitmapInfoHeader,
 			BiWidth:       int32(area.Dx()),
 			BiHeight:      -int32(area.Dy()),
 			BiPlanes:      1,
@@ -599,7 +469,10 @@ func (w Window) capture(area image.Rectangle) (*image.RGBA, error) {
 	defer deleteObject.Call(bitmap)
 
 	// Select the object and paint it.
-	selectObject.Call(dst, bitmap)
+	_, err = w.selectObject(dst, bitmap)
+	if err != nil {
+		return nil, err
+	}
 
 	res, _, err := bitBlt.Call(
 		// Dst.
@@ -646,15 +519,87 @@ func (w Window) capture(area image.Rectangle) (*image.RGBA, error) {
 	}, nil
 }
 
-func (w Window) captureResize(area image.Rectangle, resize image.Point) (*image.RGBA, error) {
+// func (w Window) captureAll(area image.Rectangle, size ) (*image.RGBA, error) {
+func (w Window) CapturePrintWindow(area image.Rectangle) (*image.RGBA, error) {
 	// Get the device context for screenshotting.
 	src, _, err := getDC.Call(w.HWND())
 	if src == 0 {
-		return nil, fmt.Errorf("failed to prepare window capture: %v", err)
+		return nil, fmt.Errorf("failed to find device context: %v", err)
 	}
-	defer rReleaseDC.Call(0, src)
+	defer releaseDC.Call(0, src)
+
+	// Grab a compatible DC for drawing.
+	dst, _, err := createCompatibleDC.Call(src)
+	if dst == 0 {
+		return nil, fmt.Errorf("failed to create device context: %v", err)
+	}
+	defer deleteDC.Call(dst)
+
+	bmp, _, _ := createCompatibleBitmap.Call(src, uintptr(area.Dx()), uintptr(area.Dy()))
+	if bmp == 0 {
+		return nil, fmt.Errorf("failed to create compatible bitmap")
+	}
+
+	old, err := w.selectObject(dst, bmp)
+	if err != nil {
+		return nil, err
+	}
+	defer w.selectObject(dst, old)
+
+	r, _, _ := printWindow.Call(w.HWND(), dst, 0) // 0 = entire window, optional: printWindowFlags.ClientOnly
+	if r == 0 {
+		return nil, fmt.Errorf("failed to print window")
+	}
+
+	bitmapInfo := BitmapInfo{
+		BmiHeader: BitmapInfoHeader{
+			BiSize:        sizeOfBitmapInfoHeader,
+			BiWidth:       int32(area.Dx()),
+			BiHeight:      -int32(area.Dy()),
+			BiPlanes:      1,
+			BiBitCount:    32,
+			BiCompression: BitmapInfoHeaderCompression.RGB,
+		},
+	}
+
+	img := image.NewRGBA(image.Rectangle{Max: area.Size()})
+
+	getDIBits.Call(
+		src,
+		bmp,
+		0,
+		uintptr(area.Dy()),
+		uintptr(unsafe.Pointer(&img.Pix[0])),
+		uintptr(unsafe.Pointer(&bitmapInfo)),
+		getDIBitsUsage.RGBColors,
+	)
+	// if r == 0 {
+	// 	return nil, fmt.Errorf("failed to retrieve scan lines (%s)", err)
+	// }
+
+	for i := 0; i < len(img.Pix); i += 4 {
+		img.Pix[i], img.Pix[i+2] = img.Pix[i+2], img.Pix[i]
+	}
+
+	return img, nil
+}
+
+func (w Window) CaptureResized(area image.Rectangle, resize image.Point) (*image.RGBA, error) {
+	// Get the device context for screenshotting.
+	src, _, err := getDC.Call(w.HWND())
+	if src == 0 {
+		return nil, fmt.Errorf("failed to find device context: %v", err)
+	}
+	defer releaseDC.Call(0, src)
 
 	// ------- Part 1: Scaling -------
+
+	// Grab a compatible DC for drawing.
+	dst, _, err := createCompatibleDC.Call(src)
+	if dst == 0 {
+		return nil, fmt.Errorf("failed to create device context: %v", err)
+	}
+	defer deleteDC.Call(dst)
 
 	// Scale the original image to a 16:9 format.
 	scale := image.Pt(area.Dx(), 0)
@@ -664,17 +609,10 @@ func (w Window) captureResize(area image.Rectangle, resize image.Point) (*image.
 		scale.Y = int(float64(area.Dx())*9.0/16.0 + 0.5)
 	}
 
-	// Grab a compatible DC for drawing.
-	dst1, _, err := createCompatibleDC.Call(src)
-	if dst1 == 0 {
-		return nil, fmt.Errorf("failed to create dest for scaled window: %v", err)
-	}
-	defer deleteDC.Call(dst1)
-
 	// Get the bitmap we're going to draw onto.
 	bitmapInfo1 := BitmapInfo{
 		BmiHeader: BitmapInfoHeader{
-			BiSize:         uint32(reflect.TypeFor[BitmapInfoHeader]().Size()),
+			BiSize:         sizeOfBitmapInfoHeader,
 			BiWidth:        int32(scale.X),
 			BiHeight:       -int32(scale.Y),
 			BiPlanes:       1,
@@ -687,7 +625,7 @@ func (w Window) captureResize(area image.Rectangle, resize image.Point) (*image.
 
 	bitmapData1 := unsafe.Pointer(uintptr(0))
 	bitmap1, _, err := createDIBSection.Call(
-		dst1,
+		dst,
 		uintptr(unsafe.Pointer(&bitmapInfo1)),
 		0,
 		uintptr(unsafe.Pointer(&bitmapData1)),
@@ -700,7 +638,11 @@ func (w Window) captureResize(area image.Rectangle, resize image.Point) (*image.
 	defer deleteObject.Call(bitmap1)
 
 	// Select the object and paint it.
-	selectObject.Call(dst1, bitmap1)
+	// Select the object and paint it.
+	_, err = w.selectObject(dst, bitmap1)
+	if err != nil {
+		return nil, err
+	}
 
 	// res, _, _ := setStretchBltMode.Call(dst, SetStretchBltMode.ColorOnColor)
 	// if res == 0 {
@@ -708,7 +650,7 @@ func (w Window) captureResize(area image.Rectangle, resize image.Point) (*image.
 
 	res, _, _ := stretchBlt.Call(
 		// Dst.
-		dst1,
+		dst,
 		0,
 		0,
 		uintptr(scale.X),
@@ -737,7 +679,7 @@ func (w Window) captureResize(area image.Rectangle, resize image.Point) (*image.
 	// Get the bitmap we're going to draw onto.
 	bitmapInfo2 := BitmapInfo{
 		BmiHeader: BitmapInfoHeader{
-			BiSize:         uint32(reflect.TypeFor[BitmapInfoHeader]().Size()),
+			BiSize:         sizeOfBitmapInfoHeader,
 			BiWidth:        int32(resize.X),
 			BiHeight:       -int32(resize.Y),
 			BiPlanes:       1,
@@ -763,7 +705,10 @@ func (w Window) captureResize(area image.Rectangle, resize image.Point) (*image.
 	defer deleteObject.Call(bitmap2)
 
 	// Select the object and paint it.
-	selectObject.Call(dst2, bitmap2)
+	_, err = w.selectObject(dst2, bitmap2)
+	if err != nil {
+		return nil, err
+	}
 
 	// res, _, _ := setStretchBltMode.Call(dst, SetStretchBltMode.ColorOnColor)
 	// if res == 0 {
@@ -777,7 +722,7 @@ func (w Window) captureResize(area image.Rectangle, resize image.Point) (*image.
 		uintptr(resize.X),
 		uintptr(resize.Y),
 		// Src.
-		dst1,
+		dst,
 		uintptr(0),
 		uintptr(0),
 		uintptr(scale.X),
@@ -818,12 +763,15 @@ func (w Window) captureResize(area image.Rectangle, resize image.Point) (*image.
 	}, nil
 }
 
-func (w Window) Capture(area image.Rectangle, resize image.Point) (*image.RGBA, error) {
-	if resize.Eq(image.Pt(0, 0)) || resize.Eq(area.Size()) {
-		return w.capture(area)
-	}
-	return w.captureResize(area, resize)
-}
+// func (w Window) Capture(area image.Rectangle, resize image.Point, pw bool) (*image.RGBA, error) {
+// 	if resize.Eq(image.Pt(0, 0)) || resize.Eq(area.Size()) {
+// 		if pw {
+// 			return w.captureWin32(area)
+// 		}
+// 		return w.capture(area)
+// 	}
+// 	return w.captureResize(area, resize)
+// }
 
 func (w Window) Dimensions() (image.Point, error) {
 	rect, err := w.RectClient()
@@ -904,14 +852,6 @@ func (w Window) RectWindow() (Rect, error) {
 	return r, nil
 }
 
-func (w Window) Select(b Bitmap) error {
-	res, _, err := selectObject.Call(w.HWND(), b.id())
-	if res == 0 {
-		return err
-	}
-	return nil
-}
-
 func (w Window) StretchBlt(src Device, size, origin image.Point, scale float64) error {
 	r, _, err := stretchBlt.Call(
 		w.HWND(),
@@ -958,6 +898,23 @@ func (w Window) Title() (string, error) {
 func (w Window) Visible() bool {
 	f, _, _ := isWindowVisible.Call(w.HWND())
 	return f == 1
+}
+
+func (Window) selectObject(dst, bitmap uintptr) (uintptr, error) {
+	switch r, _, _ := selectObject.Call(dst, bitmap); r {
+	case 0 /* NULL */ :
+		return r, fmt.Errorf("failed to select bitmap (NULL)")
+	case 1 /* NULLREGION */ :
+		return r, fmt.Errorf("failed to select bitmap (NULLREGION)")
+	case 2 /* SIMPLEREGION */ :
+		return r, fmt.Errorf("failed to select bitmap (SIMPLEREGION)")
+	case 3 /* COMPLEXREGION */ :
+		return r, fmt.Errorf("failed to select bitmap (COMPLEXREGION)")
+	case 0xFFFFFFFF /* HGDI_ERROR */ :
+		return r, fmt.Errorf("failed to select bitmap (HGDI_ERROR)")
+	default:
+		return r, nil
+	}
 }
 
 func (i WindowInfo) HasVisibleStyle() bool {

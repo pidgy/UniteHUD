@@ -1,7 +1,6 @@
 package d3d11
 
 import (
-	"image"
 	"strings"
 	"testing"
 	"time"
@@ -23,47 +22,37 @@ func TestCaptureWindow(t *testing.T) {
 	ex := win32.WindowInfoEx{}
 
 	for _, ex = range ws.Infos {
-		if strings.Contains(ex.Title, "Chrome") {
+		if strings.Contains(ex.Title, "Projector") {
 			break
 		}
 	}
 
-	m, err := ex.Monitor()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	println("Windows:", len(ws.Infos))
 	println("Window:", ex.String(), "Rect:", ex.WindowInfo.Window.String())
-	println("Monitor:", m.String())
 	println("----------------------------------------")
 
-	c, err := NewCapture(m.HWND)
+	w, err := NewWindow(ex.HWND())
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer c.Close()
-
-	var img image.Image
+	defer w.Close()
 
 	for range 5 {
-		time.Sleep(time.Second)
-
 		now := time.Now()
-		img2, err := c.CaptureWindow(ex.WindowInfo.Window.Image())
+		_, err := w.Capture()
 		if err != nil {
-			t.Log(err)
-			continue
+			t.Fatal(err)
 		}
-		ms := time.Since(now)
-		println("took:", ms.String())
-		img = img2
+		took := time.Since(now)
+		println("took:", took.String())
+
+		time.Sleep(time.Second)
 	}
 
-	if img == nil {
-		t.Fatal("img nil")
+	img, err := w.Capture()
+	if err != nil {
+		t.Fatal(err)
 	}
-
 	err = save.PNG(img, "./d3d11.png")
 	if err != nil {
 		t.Fatal(err)

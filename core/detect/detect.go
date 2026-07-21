@@ -18,7 +18,6 @@ import (
 	"github.com/pidgy/unitehud/core/template"
 	"github.com/pidgy/unitehud/exe"
 	"github.com/pidgy/unitehud/media/video"
-	"github.com/pidgy/unitehud/media/video/device"
 	"github.com/pidgy/unitehud/media/video/monitor"
 	"github.com/pidgy/unitehud/system/desktop"
 	"github.com/pidgy/unitehud/system/lang"
@@ -561,16 +560,11 @@ func States() {
 			team.Clear()
 			state.Clear()
 
-			d := config.Current.Video.Capture.Monitor.Name
-			if device.IsActive() {
-				d = device.ActiveName()
-			}
-
 			notify.Feed(team.Game.NRGBA, "[Detect] [%s] Match starting", team.Game)
 
 			if !config.Current.Advanced.Notifications.Disabled.MatchStarting {
 				desktop.Notification("Match Starting").
-					Says("Capturing from %s", d).
+					Says("Capturing from %s", video.Name()).
 					Logs(notify.Error).
 					When(desktop.OpenUniteHUD).
 					Send()

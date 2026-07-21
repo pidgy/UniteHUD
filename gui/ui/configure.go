@@ -33,8 +33,6 @@ import (
 	"github.com/pidgy/unitehud/media/img/splash"
 	"github.com/pidgy/unitehud/media/video"
 	"github.com/pidgy/unitehud/media/video/device"
-	"github.com/pidgy/unitehud/media/video/monitor"
-	"github.com/pidgy/unitehud/media/video/window"
 	"github.com/pidgy/unitehud/system/lang"
 	"github.com/pidgy/unitehud/system/process"
 	"github.com/pidgy/unitehud/system/save"
@@ -195,8 +193,8 @@ func (g *GUI) configure() {
 			decorate.Label(&ui.footer.cpu, "%s", process.Usage.CPU)
 			decorate.Label(&ui.footer.ram, "%s", process.Usage.RAM)
 			decorate.Label(&ui.footer.hz, "%s Hz", g.hz)
-			decorate.Label(&ui.footer.fps, "%.0f FPS", device.FPS())
-			decorate.LabelColor(&ui.footer.fps, nrgba.Percent(device.FPS()/float64(config.Current.Video.Capture.Device.FPS)).Color())
+			decorate.Label(&ui.footer.fps, "%.0f FPS", video.FPS())
+			decorate.LabelColor(&ui.footer.fps, nrgba.Percent(video.FPS()/float64(config.Current.Video.Capture.Device.FPS)).Color())
 
 			g.nav.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				if ui.hideOptions {
@@ -460,7 +458,7 @@ func (g *GUI) configure() {
 			switch {
 			case ui.hidePreview:
 				ui.img = splash.DeviceClickable()
-			case video.Current() != video.Unknown:
+			case video.Active() != video.Unknown:
 				select {
 				case <-ticker.C:
 					img, err := video.Capture()
@@ -469,11 +467,12 @@ func (g *GUI) configure() {
 						defer video.Close()
 
 						// No video to default to, let's bail.
-						if monitor.IsActive() {
+						if video.Is(video.Monitor) {
 							is.Next(is.MainMenu)
 						}
 
-						if !window.IsActive() {
+						if !video.Is(video.Window) {
+							config.Current.SetDefaultWindowCapture()
 							config.Current.SetDefaultMonitorCapture()
 						}
 
@@ -758,7 +757,7 @@ func (g *GUI) configureUI() *configure {
 
 			ui.groups.areas = g.areas(g.nav.Collection)
 
-			if device.IsActive() {
+			if video.Is(video.Device) {
 				err := device.Restart()
 				if err != nil {
 					g.ToastError(err)
@@ -863,7 +862,7 @@ func (g *GUI) configureUI() *configure {
 				return
 			}
 
-			img, err := w.Capture(r.Image(), image.Point{})
+			img, err := w.Capture(r.Image())
 			if err != nil {
 				notify.Error("[UI] Failed to capture screenshot (%v)", err)
 				g.ToastErrorf("Failed to capture screenshot (%v)", err)

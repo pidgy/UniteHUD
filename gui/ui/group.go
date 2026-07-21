@@ -49,8 +49,6 @@ type capture struct {
 	list     *checklist.Widget
 	populate func()
 	len      int
-
-	prev string
 }
 
 // videos collects video-related selectors and change handlers.
@@ -529,15 +527,13 @@ func (g *GUI) videos(text float32) *videos {
 	v := &videos{}
 
 	v.monitors = capture{
-		prev: device.ActiveName(),
-
 		list: &checklist.Widget{
 			Theme:    g.nav.NotoSans().Theme,
 			TextSize: text,
 			Items:    []*checklist.Item{},
 			Callback: func(item *checklist.Item, this *checklist.Widget) {
 				video.Close()
-				config.Current.SetDefaultWindowCapture()
+				config.Current.SetDefaultWindowCapture() // New Monitor, reset Window settings.
 
 				config.Current.Video.Capture.Monitor.Name = item.Text
 
@@ -547,7 +543,6 @@ func (g *GUI) videos(text float32) *videos {
 			},
 		},
 		populate: func() {
-			v.monitors.prev = device.ActiveName()
 			v.monitors.len = len(video.Monitors())
 
 			items := []*checklist.Item{}
@@ -555,9 +550,8 @@ func (g *GUI) videos(text float32) *videos {
 			for _, m := range video.Monitors() {
 				items = append(items,
 					&checklist.Item{
-						Text: m,
-						Checked: widget.Bool{
-							Value: config.Current.Video.Capture.Monitor.Name == m && !device.IsActive() && !window.IsActive()},
+						Text:    m,
+						Checked: widget.Bool{Value: video.Is(video.Monitor) && video.Name() == m},
 					},
 				)
 			}
@@ -573,7 +567,7 @@ func (g *GUI) videos(text float32) *videos {
 			Items:    []*checklist.Item{},
 			Callback: func(item *checklist.Item, this *checklist.Widget) {
 				video.Close()
-				config.Current.SetDefaultMonitorCapture()
+				config.Current.SetDefaultMonitorCapture() // New Window, reset Monitor settings.
 
 				config.Current.Video.Capture.Window.Name = item.Text
 
@@ -637,7 +631,7 @@ func (g *GUI) videos(text float32) *videos {
 					Text:  "Disabled",
 					Value: config.NoVideoCaptureDevice,
 					Checked: widget.Bool{
-						Value: !device.IsActive(),
+						Value: !video.Is(video.Device),
 					},
 				},
 			},
@@ -656,7 +650,7 @@ func (g *GUI) videos(text float32) *videos {
 					config.Current.SetDefaultMonitorCapture()
 					config.Current.SetDefaultWindowCapture()
 
-					err := device.Open()
+					err := video.Open(video.Device)
 					if err != nil {
 						g.ToastOK(
 							config.Current.Video.Capture.Device.Name,
@@ -679,7 +673,7 @@ func (g *GUI) videos(text float32) *videos {
 
 			// Set the "Disabled" checkbox when device is not active.
 			if len(devices) == len(v.devices.list.Items)-1 {
-				v.devices.list.Default().Checked.Value = !device.IsActive()
+				v.devices.list.Default().Checked.Value = !video.Is(video.Device)
 
 				for _, item := range v.devices.list.Items {
 					item.Checked.Value = false
@@ -696,13 +690,13 @@ func (g *GUI) videos(text float32) *videos {
 					Text:  "Disabled",
 					Value: config.NoVideoCaptureDevice,
 					Checked: widget.Bool{
-						Value: !device.IsActive(),
+						Value: !video.Is(video.Device),
 					},
 				},
 			}
 			for _, d := range devices {
 				v.devices.list.Items = append(v.devices.list.Items, &checklist.Item{
-					Text:  device.Name(d),
+					Text:  video.NameOf(video.Device, d),
 					Value: d,
 				},
 				)
@@ -1062,12 +1056,22 @@ func (g *GUI) videos(text float32) *videos {
 				{
 					Text:     config.CaptureMethodDefault,
 					Checked:  widget.Bool{Value: config.Current.Video.Capture.Window.Method == config.CaptureMethodDefault},
-					Disabled: video.Current() != video.Window,
+					Disabled: !video.Is(video.Window),
 				},
 				{
 					Text:     config.CaptureMethodDirectX11,
 					Checked:  widget.Bool{Value: config.Current.Video.Capture.Window.Method == config.CaptureMethodDirectX11},
-					Disabled: video.Current() != video.Window,
+					Disabled: !video.Is(video.Window),
+				},
+				{
+					Text:     config.CaptureMethodWinRT,
+					Checked:  widget.Bool{Value: config.Current.Video.Capture.Window.Method == config.CaptureMethodWinRT},
+					Disabled: !video.Is(video.Window),
+				},
+				{
+					Text:     config.CaptureMethodWin32,
+					Checked:  widget.Bool{Value: config.Current.Video.Capture.Window.Method == config.CaptureMethodWin32},
+					Disabled: !video.Is(video.Window),
 				},
 			}
 		},
@@ -1096,12 +1100,12 @@ func (g *GUI) videos(text float32) *videos {
 				{
 					Text:     config.CaptureMethodDefault,
 					Checked:  widget.Bool{Value: config.Current.Video.Capture.Monitor.Method == config.CaptureMethodDefault},
-					Disabled: video.Current() != video.Monitor,
+					Disabled: !video.Is(video.Monitor),
 				},
 				{
 					Text:     config.CaptureMethodDirectX11,
 					Checked:  widget.Bool{Value: config.Current.Video.Capture.Monitor.Method == config.CaptureMethodDirectX11},
-					Disabled: video.Current() != video.Monitor,
+					Disabled: !video.Is(video.Monitor),
 				},
 			}
 		},

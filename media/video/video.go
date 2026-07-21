@@ -5,8 +5,8 @@ package video
 import (
 	"fmt"
 	"image"
+	"slices"
 
-	"github.com/pidgy/unitehud/core/config"
 	"github.com/pidgy/unitehud/core/notify"
 	"github.com/pidgy/unitehud/media/img/splash"
 	"github.com/pidgy/unitehud/media/video/device"
@@ -23,20 +23,7 @@ const (
 	Unknown Source = "Unknown"
 )
 
-func Active(s Source, name string) bool {
-	switch s {
-	case Device:
-		return device.IsActive()
-	case Window:
-		return window.IsActive()
-	case Monitor:
-		return monitor.IsActive()
-	default:
-		return false
-	}
-}
-
-func Current() Source {
+func Active() Source {
 	switch {
 	case device.IsActive():
 		return Device
@@ -50,26 +37,30 @@ func Current() Source {
 }
 
 func Capture() (*image.RGBA, error) {
-	switch Current() {
+	switch Active() {
 	case Device:
 		return device.Capture()
 	case Window:
 		return window.Capture()
 	case Monitor:
 		return monitor.Capture()
+	case Unknown:
+		fallthrough
 	default:
 		return nil, fmt.Errorf("failed to capture video: exhausted sources")
 	}
 }
 
 func CaptureRect(r image.Rectangle) (*image.RGBA, error) {
-	switch Current() {
+	switch Active() {
 	case Device:
 		return device.CaptureRect(r)
 	case Window:
 		return window.CaptureRect(r)
 	case Monitor:
 		return monitor.CaptureRect(r)
+	case Unknown:
+		fallthrough
 	default:
 		return nil, fmt.Errorf("failed to capture video area: exhausted sources")
 	}
@@ -86,18 +77,22 @@ func Devices() []int {
 }
 
 func FPS() float64 {
-	switch {
-	case device.IsActive():
+	switch Active() {
+	case Device:
 		return device.FPS()
-	case window.IsActive():
-		return -1
+	case Window:
+		return 0
+	case Monitor:
+		return 0
+	case Unknown:
+		fallthrough
 	default:
 		return -1
 	}
 }
 
 func Is(s Source) bool {
-	return Current() == s
+	return Active() == s
 }
 
 func Monitors() []string {
@@ -105,40 +100,73 @@ func Monitors() []string {
 }
 
 func Name() string {
-	switch {
-	case device.IsActive():
+	switch Active() {
+	case Device:
 		return device.ActiveName()
+	case Window:
+		return window.ActiveName()
+	case Monitor:
+		return monitor.ActiveName()
+	case Unknown:
+		fallthrough
 	default:
-		return config.Current.Video.Capture.Monitor.Name
+		return Unknown.String()
 	}
 }
 
-func Open() error {
-	defer monitor.Open()
+func NameOf(s Source, index int) string {
+	switch s {
+	case Device:
+		return device.Name(index)
+	case Window:
+		return window.Name(index)
+	case Monitor:
+		return monitor.Name(index)
+	case Unknown:
+		fallthrough
+	default:
+		return Unknown.String()
+	}
+}
 
-	err := device.Open()
-	if err != nil {
-		notify.Error("[Video] <ini:f:open> video capture device (%v)", err)
+func Open(sources ...Source) error {
+	if len(sources) == 0 {
+		sources = []Source{Device, Window, Monitor}
 	}
 
-	err = window.Open()
-	if err != nil {
-		if err != window.ErrFailedFind {
-			notify.Error("[Video] <ini:f:open> window capture library (%v)", err)
+	if slices.Contains(sources, Monitor) {
+		defer monitor.Open()
+	}
+
+	if slices.Contains(sources, Device) {
+		err := device.Open()
+		if err != nil {
+			notify.Error("[Video] <ini:f:open> video capture device (%v)", err)
 		}
 	}
 
-	return err
+	if slices.Contains(sources, Window) {
+		err := window.Open()
+		if err != nil {
+			if err != window.ErrFailedFind {
+				notify.Error("[Video] <ini:f:open> window capture library (%v)", err)
+			}
+		}
+	}
+
+	return nil
 }
 
 func Resolution() image.Point {
-	switch {
-	case device.IsActive():
+	switch Active() {
+	case Device:
 		return device.Resolution()
-	case window.IsActive():
+	case Window:
 		return window.Resolution()
-	default:
+	case Monitor:
 		return monitor.Resolution()
+	default:
+		return image.Pt(-1, -1)
 	}
 }
 

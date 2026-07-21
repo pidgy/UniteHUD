@@ -22,13 +22,19 @@ type monitor struct {
 }
 
 var (
-	DefaultResolution = image.Rect(0, 0, 1920, 1080)
+	DefaultResolution   = image.Rect(0, 0, 1920, 1080)
+	DefaultResolution32 = win32.Rect{Left: 0, Top: 0, Right: 1920, Bottom: 1080}
 
 	Sources  = []string{config.MainDisplay}
 	displays = []monitor{{name: config.MainDisplay, Monitor: win32.Monitor{Index: 0}, resolution: DefaultResolution.Size()}}
 
-	d3d *d3d11.Capture
+	d3d *d3d11.Desktop
 )
+
+func ActiveName() string {
+	m, _ := active()
+	return m.name
+}
 
 func BoundsFromCoordinate(x int) image.Rectangle {
 	for _, d := range displays {
@@ -67,14 +73,14 @@ func Capture() (*image.RGBA, error) {
 		if d3d == nil {
 			notify.Debug("[Monitor] Starting %s capture", config.Current.Video.Capture.Monitor.Method)
 
-			c, err := d3d11.NewCapture(m.HWND)
+			c, err := d3d11.NewDesktop(m.HWND)
 			if err != nil {
 				return nil, err
 			}
 			d3d = c
 		}
 
-		return d3d.CaptureWindow(m.bounds)
+		return d3d.Capture(m.bounds)
 	default:
 		return nil, fmt.Errorf("unknown window capture method")
 	}
@@ -90,6 +96,8 @@ func CaptureRect(r image.Rectangle) (*image.RGBA, error) {
 }
 
 func Close() {
+	config.Current.SetDefaultMonitorCapture()
+
 	if d3d != nil {
 		d3d.Close()
 		d3d = nil
@@ -101,7 +109,7 @@ func IsActive() bool {
 	return ok
 }
 
-func NameFromIndex(index int) string {
+func Name(index int) string {
 	for i, m := range displays {
 		if i == index {
 			return m.name

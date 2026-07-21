@@ -39,9 +39,7 @@ import (
 	"github.com/pidgy/unitehud/gui/ux/split"
 	"github.com/pidgy/unitehud/gui/ux/textblock"
 	"github.com/pidgy/unitehud/media/audio"
-	"github.com/pidgy/unitehud/media/video/device"
-	"github.com/pidgy/unitehud/media/video/monitor"
-	"github.com/pidgy/unitehud/media/video/window"
+	"github.com/pidgy/unitehud/media/video"
 	"github.com/pidgy/unitehud/system/discord"
 	"github.com/pidgy/unitehud/system/process"
 	"github.com/pidgy/unitehud/system/save"
@@ -275,27 +273,35 @@ func (g *GUI) main() {
 							return ui.labels.audio.Layout(gtx)
 						})
 
-						switch {
-						case device.IsActive():
-							fps := device.FPS()
-							ui.labels.window.Color = nrgba.Percent(fps / float64(config.Current.Video.Capture.Device.FPS)).Color()
-							ui.labels.window.Text = fmt.Sprintf("📺 %s %.0fFPS", device.Name(config.Current.Video.Capture.Device.Index), fps)
-						case window.IsActive():
+						switch wxh := video.Resolution(); video.Active() {
+						case video.Device:
+							fps := video.FPS()
+							ui.labels.window.Color = nrgba.Percent(
+								fps / float64(config.Current.Video.Capture.Device.FPS),
+							).Color()
 							ui.labels.window.Text = fmt.Sprintf(
-								"📺 %s (%s) -> (%s) / %s",
-								config.Current.Video.Capture.Window.Name,
-								window.Resolution(),
-								notify.PreviewResolutionString(),
+								"📺 %s (%dx%d) | %.0fFPS",
+								video.Name(),
+								wxh.X, wxh.Y,
+								fps,
+							)
+						case video.Window:
+							ui.labels.window.Text = fmt.Sprintf(
+								"📺 %s (%dx%d) | %s",
+								video.Name(),
+								wxh.X, wxh.Y,
 								config.Current.Video.Capture.Window.Method,
 							)
-						case monitor.IsActive():
+						case video.Monitor:
 							ui.labels.window.Text = fmt.Sprintf(
-								"📺 %s (%s) -> (%s) / %s",
-								config.Current.Video.Capture.Monitor.Name,
-								monitor.Resolution(),
-								notify.PreviewResolutionString(),
+								"📺 %s (%dx%d) | %s",
+								video.Name(),
+								wxh.X, wxh.Y,
 								config.Current.Video.Capture.Monitor.Method,
 							)
+						case video.Unknown:
+							ui.labels.window.Color = nrgba.PastelRed.Color()
+							ui.labels.window.Text = "❌ No video input selected"
 						}
 
 						layout.Inset{
@@ -1263,7 +1269,7 @@ func (g *GUI) mainUI() *main {
 				return
 			}
 
-			img, err := w.Capture(r.Image(), image.Point{})
+			img, err := w.Capture(r.Image())
 			if err != nil {
 				notify.Error("[UI] Failed to capture screenshot (%v)", err)
 				g.ToastErrorf("Failed to capture screenshot (%v)", err)

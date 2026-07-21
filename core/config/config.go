@@ -62,6 +62,8 @@ const (
 
 	CaptureMethodDefault   = "BitBlt"
 	CaptureMethodDirectX11 = "DirectX 11"
+	CaptureMethodWinRT     = "WinRT"
+	CaptureMethodWin32     = "Win32"
 )
 
 // Config maintains the overall behavior and state for configurable options.
