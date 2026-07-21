@@ -60,7 +60,7 @@ const (
 )
 
 var (
-	d3d11                               = windows.MustLoadDLL("D3D11.dll")
+	d3d11                               = windows.MustLoadDLL("d3d11.dll")
 	d3d11CreateDevice                   = d3d11.MustFindProc("D3D11CreateDevice")
 	d3d11CreateDirect3D11DeviceFromDXGI = d3d11.MustFindProc("CreateDirect3D11DeviceFromDXGIDevice")
 
