@@ -106,8 +106,7 @@ func NewWindow(hwnd uintptr) (*Window, error) {
 		return nil, fmt.Errorf("winrt init: %w", err)
 	}
 
-	wasMinimized := isWindowMinimized(hwnd)
-	if wasMinimized {
+	if isWindowMinimized(hwnd) {
 		restoreWindowForCapture(hwnd)
 		defer minimizeWindow(hwnd)
 		time.Sleep(150 * time.Millisecond) // let DWM render a real frame

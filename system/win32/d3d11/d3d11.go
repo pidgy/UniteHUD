@@ -228,45 +228,6 @@ type deviceCtx struct {
 	}
 }
 
-type framePool struct {
-	vtbl *struct {
-		// IUnknown.
-		unknownVTbl
-
-		// IInspectable.
-		getIIds             uintptr
-		getRuntimeClassName uintptr
-		getTrustLevel       uintptr
-
-		// IGraphicsCaptureItem.
-		// DisplayName   uintptr
-		// Size          uintptr
-		// add_Closed    uintptr
-		// remove_Closed uintptr
-
-		recreate             uintptr
-		tryGetNextFrame      uintptr
-		add_FrameArrived     uintptr
-		remove_FrameArrived  uintptr
-		createCaptureSession uintptr
-		get_DispatcherQueue  uintptr
-	}
-}
-
-type guid struct {
-	Data1   uint32
-	Data2   uint16
-	Data3   uint16
-	Data4_0 uint8
-	Data4_1 uint8
-	Data4_2 uint8
-	Data4_3 uint8
-	Data4_4 uint8
-	Data4_5 uint8
-	Data4_6 uint8
-	Data4_7 uint8
-}
-
 type mappedSubresource struct {
 	PData      *byte
 	RowPitch   uint32
@@ -294,11 +255,11 @@ type texture2D struct {
 	}
 }
 
-func (f *captureFrame) surface() (*unknown, error) {
+func (c *captureFrame) surface() (*unknown, error) {
 	var surf *unknown
 	r, _, _ := syscall.SyscallN(
-		f.vtbl.getSurface,
-		uintptr(unsafe.Pointer(f)),
+		c.vtbl.getSurface,
+		uintptr(unsafe.Pointer(c)),
 		uintptr(unsafe.Pointer(&surf)),
 	)
 	if r != 0 {
@@ -307,13 +268,13 @@ func (f *captureFrame) surface() (*unknown, error) {
 	return surf, nil
 }
 
-func (f *captureFrame) release() { release(unsafe.Pointer(f), f.vtbl.Release) }
+func (c *captureFrame) release() { release(unsafe.Pointer(c), c.vtbl.Release) }
 
-func (p *captureFramePool) tryGetNextFrame() (*captureFrame, error) {
+func (c *captureFramePool) tryGetNextFrame() (*captureFrame, error) {
 	var frame *captureFrame
 	r, _, _ := syscall.SyscallN(
-		p.vtbl.tryGetNextFrame,
-		uintptr(unsafe.Pointer(p)),
+		c.vtbl.tryGetNextFrame,
+		uintptr(unsafe.Pointer(c)),
 		uintptr(unsafe.Pointer(&frame)),
 	)
 	if r != 0 {
@@ -322,11 +283,11 @@ func (p *captureFramePool) tryGetNextFrame() (*captureFrame, error) {
 	return frame, nil // frame may legitimately be nil if none is ready yet
 }
 
-func (p *captureFramePool) createCaptureSession(item *graphicsCaptureItem) (*graphicsCaptureSession, error) {
+func (c *captureFramePool) createCaptureSession(item *graphicsCaptureItem) (*graphicsCaptureSession, error) {
 	var session *graphicsCaptureSession
 	r, _, _ := syscall.SyscallN(
-		p.vtbl.createCaptureSession,
-		uintptr(unsafe.Pointer(p)),
+		c.vtbl.createCaptureSession,
+		uintptr(unsafe.Pointer(c)),
 		uintptr(unsafe.Pointer(item)),
 		uintptr(unsafe.Pointer(&session)),
 	)
@@ -336,13 +297,13 @@ func (p *captureFramePool) createCaptureSession(item *graphicsCaptureItem) (*gra
 	return session, nil
 }
 
-func (p *captureFramePool) release() { release(unsafe.Pointer(p), p.vtbl.Release) }
+func (c *captureFramePool) release() { release(unsafe.Pointer(c), c.vtbl.Release) }
 
-func (s *captureFramePoolStatics2) createFreeThreaded(device *unknown, pixelFormat int32, numberOfBuffers int32, size size) (*captureFramePool, error) {
+func (c *captureFramePoolStatics2) createFreeThreaded(device *unknown, pixelFormat int32, numberOfBuffers int32, size size) (*captureFramePool, error) {
 	var pool *captureFramePool
 	r, _, _ := syscall.SyscallN(
-		s.vtbl.createFreeThreaded,
-		uintptr(unsafe.Pointer(s)),
+		c.vtbl.createFreeThreaded,
+		uintptr(unsafe.Pointer(c)),
 		uintptr(unsafe.Pointer(device)),
 		uintptr(pixelFormat),
 		uintptr(numberOfBuffers),
@@ -355,7 +316,7 @@ func (s *captureFramePoolStatics2) createFreeThreaded(device *unknown, pixelForm
 	return pool, nil
 }
 
-func (s *captureFramePoolStatics2) release() { release(unsafe.Pointer(s), s.vtbl.Release) }
+func (c *captureFramePoolStatics2) release() { release(unsafe.Pointer(c), c.vtbl.Release) }
 
 func createDevice(driverType uint32, flags uint32) (*device, *deviceCtx, uint32, error) {
 	var (

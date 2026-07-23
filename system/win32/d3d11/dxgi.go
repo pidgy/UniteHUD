@@ -249,11 +249,11 @@ func errNotFound(err error) bool {
 	return e.code == 0x887A0002
 }
 
-func (a *interfaceAccess) getInterfaceTexture2D(iid *guid) (*texture2D, error) {
+func (i *interfaceAccess) getInterfaceTexture2D(iid *guid) (*texture2D, error) {
 	var tex *texture2D
 	r, _, _ := syscall.SyscallN(
-		a.vtbl.getInterface,
-		uintptr(unsafe.Pointer(a)),
+		i.vtbl.getInterface,
+		uintptr(unsafe.Pointer(i)),
 		uintptr(unsafe.Pointer(iid)),
 		uintptr(unsafe.Pointer(&tex)),
 	)
@@ -263,7 +263,7 @@ func (a *interfaceAccess) getInterfaceTexture2D(iid *guid) (*texture2D, error) {
 	return tex, nil
 }
 
-func (a *interfaceAccess) release() { release(unsafe.Pointer(a), a.vtbl.Release) }
+func (i *interfaceAccess) release() { release(unsafe.Pointer(i), i.vtbl.Release) }
 
 func (o *output) desc() (descOutput, error) {
 	desc := descOutput{}

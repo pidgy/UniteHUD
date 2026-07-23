@@ -5,8 +5,14 @@ import (
 	"unsafe"
 )
 
-func (s size) pack() uintptr {
-	return uintptr(uint32(s.width)) | uintptr(uint32(s.height))<<32
+type graphicsCaptureItem struct {
+	vtbl *struct {
+		inspectableVTbl
+		getDisplayName uintptr
+		getSize        uintptr
+		addClosed      uintptr
+		removeClosed   uintptr
+	}
 }
 
 type graphicsCaptureItemInterop struct {
@@ -14,6 +20,13 @@ type graphicsCaptureItemInterop struct {
 		unknownVTbl
 		createForWindow  uintptr
 		createForMonitor uintptr
+	}
+}
+
+type graphicsCaptureSession struct {
+	vtbl *struct {
+		inspectableVTbl
+		startCapture uintptr
 	}
 }
 
@@ -34,21 +47,11 @@ func (g *graphicsCaptureItemInterop) createForWindow(hwnd uintptr) (*graphicsCap
 
 func (g *graphicsCaptureItemInterop) release() { release(unsafe.Pointer(g), g.vtbl.Release) }
 
-type graphicsCaptureItem struct {
-	vtbl *struct {
-		inspectableVTbl
-		getDisplayName uintptr
-		getSize        uintptr
-		addClosed      uintptr
-		removeClosed   uintptr
-	}
-}
-
-func (i *graphicsCaptureItem) size() (size, error) {
+func (g *graphicsCaptureItem) size() (size, error) {
 	var sz size
 	r, _, _ := syscall.SyscallN(
-		i.vtbl.getSize,
-		uintptr(unsafe.Pointer(i)),
+		g.vtbl.getSize,
+		uintptr(unsafe.Pointer(g)),
 		uintptr(unsafe.Pointer(&sz)),
 	)
 	if r != 0 {
@@ -57,21 +60,14 @@ func (i *graphicsCaptureItem) size() (size, error) {
 	return sz, nil
 }
 
-func (i *graphicsCaptureItem) release() { release(unsafe.Pointer(i), i.vtbl.Release) }
+func (g *graphicsCaptureItem) release() { release(unsafe.Pointer(g), g.vtbl.Release) }
 
-type graphicsCaptureSession struct {
-	vtbl *struct {
-		inspectableVTbl
-		startCapture uintptr
-	}
-}
-
-func (s *graphicsCaptureSession) startCapture() error {
-	r, _, _ := syscall.SyscallN(s.vtbl.startCapture, uintptr(unsafe.Pointer(s)))
+func (g *graphicsCaptureSession) startCapture() error {
+	r, _, _ := syscall.SyscallN(g.vtbl.startCapture, uintptr(unsafe.Pointer(g)))
 	if r != 0 {
 		return errDXGI{name: "IGraphicsCaptureSession::StartCapture", code: uint32(r)}
 	}
 	return nil
 }
 
-func (s *graphicsCaptureSession) release() { release(unsafe.Pointer(s), s.vtbl.Release) }
+func (g *graphicsCaptureSession) release() { release(unsafe.Pointer(g), g.vtbl.Release) }
